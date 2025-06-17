@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import supabase from "./supabaseClient";
+import { supabase } from './supabaseClient';
 
 export default function ProjectTasks({ projectId }) {
   const [tasks, setTasks] = useState([]);
