@@ -21,10 +21,24 @@ function AddProjectForm({ onClose, onProjectAdded }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const { error } = await supabase.from('projects').insert([formData]);
+
+    if (formData.deal_value === '' || isNaN(formData.deal_value)) {
+      alert('❌ Deal Value must be a number');
+      return;
+    }
+
+    const cleanData = {
+      ...formData,
+      deal_value: parseFloat(formData.deal_value),
+    };
+
+    const { error } = await supabase.from('projects').insert([cleanData]);
+
     if (error) {
       console.error('Error adding project:', error.message);
+      alert('❌ Failed to add project: ' + error.message);
     } else {
+      alert('✅ Project added successfully');
       onProjectAdded();
       onClose();
     }
@@ -39,7 +53,13 @@ function AddProjectForm({ onClose, onProjectAdded }) {
           <input name="country" placeholder="Country" onChange={handleChange} required />
           <input name="account_manager" placeholder="Account Manager" onChange={handleChange} />
           <input name="product" placeholder="Product" onChange={handleChange} />
-          <input name="deal_value" placeholder="Deal Value" type="number" onChange={handleChange} />
+          <input
+            name="deal_value"
+            placeholder="Deal Value"
+            type="number"
+            onChange={handleChange}
+            required
+          />
           <input name="scope" placeholder="Scope" onChange={handleChange} />
           <input name="backup_presales" placeholder="Backup Presales" onChange={handleChange} />
           <input name="remarks" placeholder="Remarks" onChange={handleChange} />
