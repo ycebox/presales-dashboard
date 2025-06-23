@@ -2,7 +2,7 @@ import React from 'react';
 import './App.css';
 import Projects from './Projects';
 import TodayTasks from './TodayTasks';
-import PersonalTodo from './PersonalTodo';
+//import PersonalTodo from './PersonalTodo';
 import TaskSummaryDashboard from './TaskSummaryDashboard';
 
 function App() {
@@ -15,7 +15,7 @@ function App() {
 
       {/* Projects and task tracking per project */}
       <Projects />
-      <PersonalTodo />
+        {/*   <PersonalTodo />*/}
     </div>
   );
 }
