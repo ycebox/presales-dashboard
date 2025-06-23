@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import supabase from './supabaseClient';
+import { supabase } from './supabaseClient';
 
 function ProjectDetail() {
   const { id } = useParams();
