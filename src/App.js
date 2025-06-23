@@ -1,11 +1,10 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import './App.css';
 import Projects from './Projects';
 import TodayTasks from './TodayTasks';
-// import PersonalTodo from './PersonalTodo';
 import TaskSummaryDashboard from './TaskSummaryDashboard';
-import ProjectDetail from './ProjectDetail'; // <-- newly added
+import ProjectDetailsPage from './ProjectDetailsPage'; // <-- new page
 
 function App() {
   return (
@@ -20,11 +19,10 @@ function App() {
                 <TaskSummaryDashboard />
                 <TodayTasks />
                 <Projects />
-                {/* <PersonalTodo /> */}
               </>
             }
           />
-          <Route path="/project/:id" element={<ProjectDetail />} />
+          <Route path="/project/:id" element={<ProjectDetailsPage />} />
         </Routes>
       </div>
     </Router>
