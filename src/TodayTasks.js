@@ -81,7 +81,7 @@ export default function TodayTasks() {
                 >
                   <strong>{t.title}</strong><br />
                   <span style={{ fontSize: "0.85rem" }}>
-                    Project: {t.projects?.title || t.project_id}
+                    Project: {t.projects?.customer_name || t.project_id}
                   </span><br />
                   <span style={{ fontSize: "0.8rem", color: "#666" }}>
                     Status: {t.status}<br />
