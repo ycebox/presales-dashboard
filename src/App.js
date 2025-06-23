@@ -4,7 +4,7 @@ import './App.css';
 import Projects from './Projects';
 import TodayTasks from './TodayTasks';
 import TaskSummaryDashboard from './TaskSummaryDashboard';
-import ProjectDetailsPage from './ProjectDetailsPage'; // <-- new page
+import ProjectDetailsPage from './ProjectDetails'; // <-- new page
 
 function App() {
   return (
