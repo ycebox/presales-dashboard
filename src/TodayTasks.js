@@ -13,7 +13,7 @@ export default function TodayTasks() {
 
     const { data, error } = await supabase
       .from("project_tasks")
-      .select("id, title, status, due_date, project_id, projects(title)")
+      .select("id, title, status, due_date, project_id, projects(customer_name)")
       .lte("due_date", today)
       .eq("is_archived", false)
       .order("due_date", { ascending: true });
