@@ -13,26 +13,36 @@ function ProjectDetails() {
     async function fetchProjectDetails() {
       setLoading(true);
 
-      const { data: projectData } = await supabase
+      const { data: projectData, error: projectError } = await supabase
         .from('projects')
         .select('*')
         .eq('id', id)
         .single();
 
-      const { data: taskData } = await supabase
+      if (projectError) console.error('Error loading project:', projectError);
+
+      const { data: taskData, error: taskError } = await supabase
         .from('project_tasks')
         .select('*')
         .eq('project_id', id);
 
-      const { data: logData } = await supabase
+      if (taskError) console.error('Error loading tasks:', taskError);
+
+      const { data: logData, error: logError } = await supabase
         .from('project_logs')
         .select('*')
         .eq('project_id', id)
         .order('created_at', { ascending: false });
 
+      if (logError) {
+        console.error('Error loading logs:', logError.message);
+        setLogs([]); // fallback to empty
+      } else {
+        setLogs(logData || []);
+      }
+
       setProject(projectData);
       setTasks(taskData || []);
-      setLogs(logData || []);
       setLoading(false);
     }
 
@@ -43,7 +53,6 @@ function ProjectDetails() {
 
   if (!project) return <p>Project not found.</p>;
 
-  // Group tasks by status
   const groupTasks = (status) =>
     tasks.filter((task) => task.status === status);
 
@@ -73,7 +82,7 @@ function ProjectDetails() {
       ))}
 
       <h3>📚 Project Logs</h3>
-      {logs && logs.length > 0 ? (
+      {Array.isArray(logs) && logs.length > 0 ? (
         logs.map((log) => (
           <div key={log.id} style={{ borderBottom: '1px solid #ccc', marginBottom: '8px' }}>
             <p>{log.message}</p>
