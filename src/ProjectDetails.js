@@ -101,6 +101,8 @@ function ProjectDetails() {
     }
   };
 
+  const taskStatuses = ['Not Started', 'In Progress', 'Completed', 'Cancelled / On-hold'];
+
   if (loading) return <p>Loading project details...</p>;
   if (!project) return <p>Project not found.</p>;
 
@@ -127,15 +129,15 @@ function ProjectDetails() {
           required
         />
         <select name="status" value={newTask.status} onChange={handleTaskInput}>
-          <option value="Not Started">Not Started</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Completed">Completed</option>
+          {taskStatuses.map((status) => (
+            <option key={status} value={status}>{status}</option>
+          ))}
         </select>
         <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
         <button type="submit">+ Add Task</button>
       </form>
 
-      {['Not Started', 'In Progress', 'Completed'].map((status) => (
+      {taskStatuses.map((status) => (
         <div key={status}>
           <h4>{status}</h4>
           <ul>
@@ -149,9 +151,9 @@ function ProjectDetails() {
                       onChange={handleEditChange}
                     />
                     <select name="status" value={editForm.status} onChange={handleEditChange}>
-                      <option value="Not Started">Not Started</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Completed">Completed</option>
+                      {taskStatuses.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
                     </select>
                     <input
                       type="date"
