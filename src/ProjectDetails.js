@@ -9,7 +9,7 @@ function ProjectDetails() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [newTask, setNewTask] = useState({ title: '', status: 'Not Started', due_date: '' });
+  const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '' });
 
   useEffect(() => {
     fetchProjectDetails();
@@ -54,11 +54,11 @@ function ProjectDetails() {
 
   const handleAddTask = async (e) => {
     e.preventDefault();
-    if (!newTask.title.trim()) return;
+    if (!newTask.description.trim()) return;
 
     const { error } = await supabase.from('project_tasks').insert([
       {
-        title: newTask.title,
+        description: newTask.description,
         status: newTask.status,
         due_date: newTask.due_date || null,
         project_id: id,
@@ -68,7 +68,7 @@ function ProjectDetails() {
     if (error) {
       console.error('Error adding task:', error.message);
     } else {
-      setNewTask({ title: '', status: 'Not Started', due_date: '' });
+      setNewTask({ description: '', status: 'Not Started', due_date: '' });
       fetchProjectDetails();
     }
   };
@@ -92,9 +92,9 @@ function ProjectDetails() {
       <h3>📝 Tasks</h3>
       <form onSubmit={handleAddTask} style={{ marginBottom: '20px' }}>
         <input
-          name="title"
-          placeholder="Task Title"
-          value={newTask.title}
+          name="description"
+          placeholder="Task Description"
+          value={newTask.description}
           onChange={handleTaskInput}
           required
         />
@@ -117,7 +117,9 @@ function ProjectDetails() {
           <h4>{status}</h4>
           <ul>
             {groupTasks(status).map((task) => (
-              <li key={task.id}>{task.title}</li>
+              <li key={task.id}>
+                {task.description} {task.due_date ? `(Due: ${task.due_date})` : ''}
+              </li>
             ))}
             {groupTasks(status).length === 0 && <li>No tasks.</li>}
           </ul>
