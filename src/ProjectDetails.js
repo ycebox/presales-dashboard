@@ -1,122 +1,88 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { supabase } from './supabaseClient';
+import { useParams } from 'react-router-dom';
+import supabase from './supabaseClient';
 
 function ProjectDetails() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [logs, setLogs] = useState([]);
-  const [newLog, setNewLog] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchProject();
-    fetchTasks();
-    fetchLogs();
+    async function fetchProjectDetails() {
+      setLoading(true);
+
+      const { data: projectData } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      const { data: taskData } = await supabase
+        .from('project_tasks')
+        .select('*')
+        .eq('project_id', id);
+
+      const { data: logData } = await supabase
+        .from('project_logs')
+        .select('*')
+        .eq('project_id', id)
+        .order('created_at', { ascending: false });
+
+      setProject(projectData);
+      setTasks(taskData || []);
+      setLogs(logData || []);
+      setLoading(false);
+    }
+
+    fetchProjectDetails();
   }, [id]);
 
-  const fetchProject = async () => {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', id)
-      .single();
-    if (!error) setProject(data);
-  };
+  if (loading) return <p>Loading project details...</p>;
 
-  const fetchTasks = async () => {
-    const { data, error } = await supabase
-      .from('project_tasks')
-      .select('*')
-      .eq('project_id', id);
-    if (!error) setTasks(data);
-  };
+  if (!project) return <p>Project not found.</p>;
 
-  const fetchLogs = async () => {
-    const { data } = await supabase
-      .from('project_logs')
-      .select('*')
-      .eq('project_id', id)
-      .order('created_at', { ascending: false });
-    setLogs(data);
-  };
-
-  const handleLogSubmit = async (e) => {
-    e.preventDefault();
-    const { error } = await supabase.from('project_logs').insert([
-      {
-        project_id: id,
-        comment: newLog,
-      },
-    ]);
-    if (!error) {
-      setNewLog('');
-      fetchLogs();
-    }
-  };
-
-  const groupedTasks = {
-    'Not Started': [],
-    'In Progress': [],
-    Completed: [],
-  };
-
-  tasks.forEach((task) => {
-    if (groupedTasks[task.status]) {
-      groupedTasks[task.status].push(task);
-    }
-  });
+  // Group tasks by status
+  const groupTasks = (status) =>
+    tasks.filter((task) => task.status === status);
 
   return (
-    <div className="project-detail">
-      <Link to="/">← Back to Dashboard</Link>
-      <h2>Project Details</h2>
+    <div style={{ padding: '20px' }}>
+      <h2>🔍 {project.customer_name} - Project Details</h2>
+      <p><strong>Country:</strong> {project.country}</p>
+      <p><strong>Account Manager:</strong> {project.account_manager}</p>
+      <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
+      <p><strong>Product:</strong> {project.product}</p>
+      <p><strong>Deal Value:</strong> {project.deal_value}</p>
+      <p><strong>Scope:</strong> {project.scope}</p>
+      <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
+      <p><strong>Remarks:</strong> {project.remarks}</p>
 
-      {project && (
-        <div className="project-info">
-          <p><strong>Customer:</strong> {project.customer_name}</p>
-          <p><strong>Country:</strong> {project.country}</p>
-          <p><strong>Account Manager:</strong> {project.account_manager}</p>
-          <p><strong>Scope:</strong> {project.scope}</p>
-          <p><strong>Deal Value:</strong> {project.deal_value}</p>
-          <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
-          <p><strong>Product:</strong> {project.product}</p>
-          <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
-          <p><strong>Remarks:</strong> {project.remarks}</p>
+      <h3>📝 Tasks</h3>
+      {['Not Started', 'In Progress', 'Completed'].map((status) => (
+        <div key={status}>
+          <h4>{status}</h4>
+          <ul>
+            {groupTasks(status).map((task) => (
+              <li key={task.id}>{task.title}</li>
+            ))}
+            {groupTasks(status).length === 0 && <li>No tasks.</li>}
+          </ul>
         </div>
-      )}
+      ))}
 
-      <h3>Project Tasks</h3>
-      <div className="task-board">
-        {Object.keys(groupedTasks).map((status) => (
-          <div key={status} className="task-group">
-            <h4>{status}</h4>
-            {groupedTasks[status].length === 0 && <p>No tasks</p>}
-            <ul>
-              {groupedTasks[status].map((task) => (
-                <li key={task.id}>{task.title} (Due: {task.due_date})</li>
-              ))}
-            </ul>
+      <h3>📚 Project Logs</h3>
+      {logs && logs.length > 0 ? (
+        logs.map((log) => (
+          <div key={log.id} style={{ borderBottom: '1px solid #ccc', marginBottom: '8px' }}>
+            <p>{log.message}</p>
+            <small>{new Date(log.created_at).toLocaleString()}</small>
           </div>
-        ))}
-      </div>
-
-      <h3>Project Logs / Comments</h3>
-      <form onSubmit={handleLogSubmit}>
-        <textarea
-          rows="3"
-          placeholder="Write your comment here..."
-          value={newLog}
-          onChange={(e) => setNewLog(e.target.value)}
-          required
-        />
-        <button type="submit">Add Log</button>
-      </form>
-      <ul>
-        {logs.map((log) => (
-          <li key={log.id}>{log.comment} — <em>{new Date(log.created_at).toLocaleString()}</em></li>
-        ))}
-      </ul>
+        ))
+      ) : (
+        <p>No logs available.</p>
+      )}
     </div>
   );
 }
