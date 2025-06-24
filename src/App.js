@@ -4,7 +4,7 @@ import './App.css';
 import Projects from './Projects';
 import TodayTasks from './TodayTasks';
 import TaskSummaryDashboard from './TaskSummaryDashboard';
-import ProjectDetailsPage from './ProjectDetails'; // <-- new page
+import ProjectDetails from './ProjectDetails'; // <-- new page
 
 function App() {
   return (
@@ -22,7 +22,7 @@ function App() {
               </>
             }
           />
-          <Route path="/project/:id" element={<ProjectDetailsPage />} />
+          <Route path="/project/:id" element={<ProjectDetails />} />
         </Routes>
       </div>
     </Router>
