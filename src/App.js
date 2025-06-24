@@ -1,14 +1,13 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Projects from './Projects';
 import TodayTasks from './TodayTasks';
 import TaskSummaryDashboard from './TaskSummaryDashboard';
-import ProjectDetails from './ProjectDetails'; // <-- new page
+import ProjectDetails from './ProjectDetails';
 
 function App() {
   return (
-    <Router>
+    <Router basename="/presales-dashboard">
       <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
         <h1>📋 My Presales Dashboard</h1>
         <Routes>
