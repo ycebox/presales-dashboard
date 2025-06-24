@@ -151,12 +151,22 @@ function ProjectDetails() {
               <div key={key}>
                 <label>
                   <strong>{key.replace(/_/g, ' ')}:</strong>{' '}
-                  <input
-                    name={key}
-                    value={value || ''}
-                    onChange={handleProjectFieldChange}
-                    style={{ marginBottom: '8px', width: '100%' }}
-                  />
+                  {key.includes('date') ? (
+                    <input
+                      type="date"
+                      name={key}
+                      value={value ? value.split('T')[0] : ''}
+                      onChange={handleProjectFieldChange}
+                      style={{ marginBottom: '8px', width: '100%' }}
+                    />
+                  ) : (
+                    <input
+                      name={key}
+                      value={value || ''}
+                      onChange={handleProjectFieldChange}
+                      style={{ marginBottom: '8px', width: '100%' }}
+                    />
+                  )}
                 </label>
               </div>
             ) : null
