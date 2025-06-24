@@ -247,7 +247,6 @@ function ProjectDetails() {
         logs.map((log) => (
           <div key={log.id} style={{ borderBottom: '1px solid #ccc', marginTop: '10px' }}>
             <p>{log.notes}</p>
-            <small>{new Date(log.created_at).toLocaleString()}</small>
           </div>
         ))
       ) : (
