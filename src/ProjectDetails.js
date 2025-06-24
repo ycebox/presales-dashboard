@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';  // ✅ Include Link
+import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 
 function ProjectDetails() {
@@ -9,58 +9,77 @@ function ProjectDetails() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [newTask, setNewTask] = useState({ title: '', status: 'Not Started', due_date: '' });
+
   useEffect(() => {
-    async function fetchProjectDetails() {
-      setLoading(true);
-
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', id)
-        .single();
-      if (projectError) console.error('Error loading project:', projectError);
-
-      const { data: taskData, error: taskError } = await supabase
-        .from('project_tasks')
-        .select('*')
-        .eq('project_id', id);
-      if (taskError) console.error('Error loading tasks:', taskError);
-
-      const { data: logData, error: logError } = await supabase
-        .from('project_logs')
-        .select('*')
-        .eq('project_id', id)
-        .order('created_at', { ascending: false });
-
-      if (logError) {
-        console.error('Error loading logs:', logError.message);
-        setLogs([]);
-      } else {
-        setLogs(logData || []);
-      }
-
-      setProject(projectData);
-      setTasks(taskData || []);
-      setLoading(false);
-    }
-
     fetchProjectDetails();
   }, [id]);
+
+  async function fetchProjectDetails() {
+    setLoading(true);
+
+    const { data: projectData, error: projectError } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    const { data: taskData, error: taskError } = await supabase
+      .from('project_tasks')
+      .select('*')
+      .eq('project_id', id);
+
+    const { data: logData, error: logError } = await supabase
+      .from('project_logs')
+      .select('*')
+      .eq('project_id', id)
+      .order('created_at', { ascending: false });
+
+    if (projectError) console.error('Error loading project:', projectError);
+    if (taskError) console.error('Error loading tasks:', taskError);
+    if (logError) console.error('Error loading logs:', logError);
+
+    setProject(projectData);
+    setTasks(taskData || []);
+    setLogs(logData || []);
+    setLoading(false);
+  }
+
+  const groupTasks = (status) => tasks.filter((task) => task.status === status);
+
+  const handleTaskInput = (e) => {
+    const { name, value } = e.target;
+    setNewTask((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddTask = async (e) => {
+    e.preventDefault();
+    if (!newTask.title.trim()) return;
+
+    const { error } = await supabase.from('project_tasks').insert([
+      {
+        title: newTask.title,
+        status: newTask.status,
+        due_date: newTask.due_date || null,
+        project_id: id,
+      },
+    ]);
+
+    if (error) {
+      console.error('Error adding task:', error.message);
+    } else {
+      setNewTask({ title: '', status: 'Not Started', due_date: '' });
+      fetchProjectDetails();
+    }
+  };
 
   if (loading) return <p>Loading project details...</p>;
   if (!project) return <p>Project not found.</p>;
 
-  const groupTasks = (status) =>
-    tasks.filter((task) => task.status === status);
-
   return (
     <div style={{ padding: '20px' }}>
-      {/* ✅ Back to Dashboard Link */}
-      <Link to="/" style={{ display: 'inline-block', marginBottom: '16px', textDecoration: 'none' }}>
-        ⬅️ Back to Dashboard
-      </Link>
-
       <h2>🔍 {project.customer_name} - Project Details</h2>
+      <Link to="/">⬅️ Back to Dashboard</Link>
       <p><strong>Country:</strong> {project.country}</p>
       <p><strong>Account Manager:</strong> {project.account_manager}</p>
       <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
@@ -71,6 +90,28 @@ function ProjectDetails() {
       <p><strong>Remarks:</strong> {project.remarks}</p>
 
       <h3>📝 Tasks</h3>
+      <form onSubmit={handleAddTask} style={{ marginBottom: '20px' }}>
+        <input
+          name="title"
+          placeholder="Task Title"
+          value={newTask.title}
+          onChange={handleTaskInput}
+          required
+        />
+        <select name="status" value={newTask.status} onChange={handleTaskInput}>
+          <option value="Not Started">Not Started</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
+        <input
+          type="date"
+          name="due_date"
+          value={newTask.due_date}
+          onChange={handleTaskInput}
+        />
+        <button type="submit">+ Add Task</button>
+      </form>
+
       {['Not Started', 'In Progress', 'Completed'].map((status) => (
         <div key={status}>
           <h4>{status}</h4>
