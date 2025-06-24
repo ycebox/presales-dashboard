@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { supabase  } from './supabaseClient';
+import { useParams, Link } from 'react-router-dom';  // ✅ Include Link
+import { supabase } from './supabaseClient';
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -18,14 +18,12 @@ function ProjectDetails() {
         .select('*')
         .eq('id', id)
         .single();
-
       if (projectError) console.error('Error loading project:', projectError);
 
       const { data: taskData, error: taskError } = await supabase
         .from('project_tasks')
         .select('*')
         .eq('project_id', id);
-
       if (taskError) console.error('Error loading tasks:', taskError);
 
       const { data: logData, error: logError } = await supabase
@@ -36,7 +34,7 @@ function ProjectDetails() {
 
       if (logError) {
         console.error('Error loading logs:', logError.message);
-        setLogs([]); // fallback to empty
+        setLogs([]);
       } else {
         setLogs(logData || []);
       }
@@ -50,7 +48,6 @@ function ProjectDetails() {
   }, [id]);
 
   if (loading) return <p>Loading project details...</p>;
-
   if (!project) return <p>Project not found.</p>;
 
   const groupTasks = (status) =>
@@ -58,6 +55,11 @@ function ProjectDetails() {
 
   return (
     <div style={{ padding: '20px' }}>
+      {/* ✅ Back to Dashboard Link */}
+      <Link to="/" style={{ display: 'inline-block', marginBottom: '16px', textDecoration: 'none' }}>
+        ⬅️ Back to Dashboard
+      </Link>
+
       <h2>🔍 {project.customer_name} - Project Details</h2>
       <p><strong>Country:</strong> {project.country}</p>
       <p><strong>Account Manager:</strong> {project.account_manager}</p>
