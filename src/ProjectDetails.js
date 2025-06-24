@@ -10,6 +10,8 @@ function ProjectDetails() {
   const [loading, setLoading] = useState(true);
 
   const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '' });
+  const [editTaskId, setEditTaskId] = useState(null);
+  const [editForm, setEditForm] = useState({ description: '', status: '', due_date: '' });
 
   useEffect(() => {
     fetchProjectDetails();
@@ -18,26 +20,13 @@ function ProjectDetails() {
   async function fetchProjectDetails() {
     setLoading(true);
 
-    const { data: projectData, error: projectError } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    const { data: taskData, error: taskError } = await supabase
-      .from('project_tasks')
-      .select('*')
-      .eq('project_id', id);
-
-    const { data: logData, error: logError } = await supabase
+    const { data: projectData } = await supabase.from('projects').select('*').eq('id', id).single();
+    const { data: taskData } = await supabase.from('project_tasks').select('*').eq('project_id', id);
+    const { data: logData } = await supabase
       .from('project_logs')
       .select('*')
       .eq('project_id', id)
       .order('created_at', { ascending: false });
-
-    if (projectError) console.error('Error loading project:', projectError);
-    if (taskError) console.error('Error loading tasks:', taskError);
-    if (logError) console.error('Error loading logs:', logError);
 
     setProject(projectData);
     setTasks(taskData || []);
@@ -73,6 +62,40 @@ function ProjectDetails() {
     }
   };
 
+  const startEdit = (task) => {
+    setEditTaskId(task.id);
+    setEditForm({
+      description: task.description,
+      status: task.status,
+      due_date: task.due_date ? task.due_date.split('T')[0] : '',
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditTaskId(null);
+    setEditForm({ description: '', status: '', due_date: '' });
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const saveEdit = async () => {
+    const { error } = await supabase
+      .from('project_tasks')
+      .update(editForm)
+      .eq('id', editTaskId);
+
+    if (error) {
+      console.error('Error updating task:', error.message);
+    } else {
+      setEditTaskId(null);
+      setEditForm({ description: '', status: '', due_date: '' });
+      fetchProjectDetails();
+    }
+  };
+
   if (loading) return <p>Loading project details...</p>;
   if (!project) return <p>Project not found.</p>;
 
@@ -103,12 +126,7 @@ function ProjectDetails() {
           <option value="In Progress">In Progress</option>
           <option value="Completed">Completed</option>
         </select>
-        <input
-          type="date"
-          name="due_date"
-          value={newTask.due_date}
-          onChange={handleTaskInput}
-        />
+        <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
         <button type="submit">+ Add Task</button>
       </form>
 
@@ -118,7 +136,35 @@ function ProjectDetails() {
           <ul>
             {groupTasks(status).map((task) => (
               <li key={task.id}>
-                {task.description} {task.due_date ? `(Due: ${task.due_date})` : ''}
+                {editTaskId === task.id ? (
+                  <>
+                    <input
+                      name="description"
+                      value={editForm.description}
+                      onChange={handleEditChange}
+                    />
+                    <select name="status" value={editForm.status} onChange={handleEditChange}>
+                      <option value="Not Started">Not Started</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Completed">Completed</option>
+                    </select>
+                    <input
+                      type="date"
+                      name="due_date"
+                      value={editForm.due_date}
+                      onChange={handleEditChange}
+                    />
+                    <button onClick={saveEdit}>💾 Save</button>
+                    <button onClick={cancelEdit}>✖ Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    {task.description} {task.due_date ? `(Due: ${task.due_date.split('T')[0]})` : ''}
+                    <button onClick={() => startEdit(task)} style={{ marginLeft: '10px' }}>
+                      ✏️ Edit
+                    </button>
+                  </>
+                )}
               </li>
             ))}
             {groupTasks(status).length === 0 && <li>No tasks.</li>}
