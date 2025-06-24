@@ -82,9 +82,14 @@ function ProjectDetails() {
   };
 
   const saveEdit = async () => {
+    const updateData = {
+      ...editForm,
+      due_date: editForm.due_date === '' ? null : editForm.due_date,
+    };
+
     const { error } = await supabase
       .from('project_tasks')
-      .update(editForm)
+      .update(updateData)
       .eq('id', editTaskId);
 
     if (error) {
