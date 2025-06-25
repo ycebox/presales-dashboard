@@ -243,46 +243,48 @@ function ProjectDetails() {
       ))}
 
       {/* Logs Section */}
-      <h3>📚 Project Logs</h3>
-      <textarea
-        rows={3}
-        placeholder="Add a log entry..."
-        value={newLog}
-        onChange={(e) => setNewLog(e.target.value)}
-        style={{ width: '100%', marginBottom: '10px' }}
-      />
-      <button onClick={handleAddLog}>➕ Add Log</button>
+      {/* Logs */}
+<h3>📚 Project Logs</h3>
+<textarea
+  rows={3}
+  placeholder="Add a log entry..."
+  value={newLog}
+  onChange={(e) => setNewLog(e.target.value)}
+  style={{ width: '100%', marginBottom: '10px' }}
+/>
+<button type="button" onClick={handleAddLog}>➕ Add Log</button>
 
-      {logs.length > 0 ? (
-        logs.map((log) => (
-          <div key={log.id} style={{ borderBottom: '1px solid #ccc', marginTop: '10px' }}>
-            {editLogId === log.id ? (
-              <>
-                <textarea
-                  rows={2}
-                  value={editLogText}
-                  onChange={(e) => setEditLogText(e.target.value)}
-                  style={{ width: '100%' }}
-                />
-                <div style={{ marginTop: '5px' }}>
-                  <button onClick={() => saveEditLog(log.id)}>💾 Save</button>
-                  <button onClick={cancelEditLog} style={{ marginLeft: '5px' }}>✖ Cancel</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p>{log.notes}</p>
-                <div>
-                  <button onClick={() => startEditLog(log)}>✏️ Edit</button>
-                  <button onClick={() => deleteLog(log.id)} style={{ marginLeft: '5px' }}>🗑️ Delete</button>
-                </div>
-              </>
-            )}
+{logs.length > 0 ? (
+  logs.map((log) => (
+    <div key={log.id} style={{ borderBottom: '1px solid #ccc', marginTop: '10px' }}>
+      {editLogId === log.id ? (
+        <>
+          <textarea
+            rows={2}
+            value={editLogText}
+            onChange={(e) => setEditLogText(e.target.value)}
+            style={{ width: '100%' }}
+          />
+          <div style={{ marginTop: '5px' }}>
+            <button type="button" onClick={() => saveEditLog(log.id)}>💾 Save</button>
+            <button type="button" onClick={cancelEditLog} style={{ marginLeft: '5px' }}>✖ Cancel</button>
           </div>
-        ))
+        </>
       ) : (
-        <p>No logs available.</p>
+        <>
+          <p>{log.notes}</p>
+          <div>
+            <button type="button" onClick={() => startEditLog(log)}>✏️ Edit</button>
+            <button type="button" onClick={() => deleteLog(log.id)} style={{ marginLeft: '5px' }}>🗑️ Delete</button>
+          </div>
+        </>
       )}
+    </div>
+  ))
+) : (
+  <p>No logs available.</p>
+)}
+
     </div>
   );
 }
