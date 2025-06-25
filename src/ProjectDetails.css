@@ -221,3 +221,35 @@ select:focus {
   color: #1e293b;
   margin-bottom: 1rem;
 }
+
+ul li.task-row {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.task-desc {
+  font-weight: 500;
+}
+
+.task-date {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.task-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.task-headers {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  font-size: 0.85rem;
+  color: #475569;
+  padding: 0.5rem 0;
+  border-bottom: 2px solid #cbd5e1;
+  font-weight: 600;
+}
