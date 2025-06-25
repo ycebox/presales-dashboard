@@ -1,4 +1,3 @@
-<div className="project-details-container">
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -148,8 +147,9 @@ function ProjectDetails() {
   if (loading) return <div className="loader">Loading project details...</div>;
   if (!project) return <div className="not-found">Project not found.</div>;
 
-  return (
-    <div className="project-container">
+return (
+  <div className="project-details-container">
+    <div className="project-box">
       <header>
         <h2>{project.customer_name}</h2>
         <Link to="/" className="back-link">⬅ Back to Dashboard</Link>
@@ -263,7 +263,7 @@ function ProjectDetails() {
         )}
       </section>
     </div>
-</div>
+ </div>
   );
 }
 
