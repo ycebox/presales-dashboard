@@ -14,7 +14,10 @@ function ProjectDetails() {
   const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '' });
   const [editTaskId, setEditTaskId] = useState(null);
   const [taskEditForm, setTaskEditForm] = useState({ description: '', status: '', due_date: '' });
+
   const [newLog, setNewLog] = useState('');
+  const [editLogId, setEditLogId] = useState(null);
+  const [editLogText, setEditLogText] = useState('');
 
   useEffect(() => {
     fetchProjectDetails();
@@ -136,6 +139,42 @@ function ProjectDetails() {
     }
   };
 
+  const startEditLog = (log) => {
+    setEditLogId(log.id);
+    setEditLogText(log.notes);
+  };
+
+  const cancelEditLog = () => {
+    setEditLogId(null);
+    setEditLogText('');
+  };
+
+  const saveEditLog = async () => {
+    if (!editLogText.trim()) return;
+
+    const { error } = await supabase
+      .from('project_logs')
+      .update({ notes: editLogText })
+      .eq('id', editLogId);
+
+    if (error) {
+      console.error('Error editing log:', error.message);
+    } else {
+      setEditLogId(null);
+      setEditLogText('');
+      fetchProjectDetails();
+    }
+  };
+
+  const deleteLog = async (logId) => {
+    const { error } = await supabase.from('project_logs').delete().eq('id', logId);
+    if (error) {
+      console.error('Error deleting log:', error.message);
+    } else {
+      fetchProjectDetails();
+    }
+  };
+
   if (loading) return <p>Loading project details...</p>;
   if (!project) return <p>Project not found.</p>;
 
@@ -144,6 +183,7 @@ function ProjectDetails() {
       <h2>🔍 {project.customer_name} - Project Details</h2>
       <Link to="/">⬅️ Back to Dashboard</Link>
 
+      {/* Project Edit Block */}
       {editingProject ? (
         <div style={{ marginTop: '10px' }}>
           {Object.entries(editForm).map(([key, value]) =>
@@ -151,22 +191,12 @@ function ProjectDetails() {
               <div key={key}>
                 <label>
                   <strong>{key.replace(/_/g, ' ')}:</strong>{' '}
-                  {key.includes('date') ? (
-                    <input
-                      type="date"
-                      name={key}
-                      value={value ? value.split('T')[0] : ''}
-                      onChange={handleProjectFieldChange}
-                      style={{ marginBottom: '8px', width: '100%' }}
-                    />
-                  ) : (
-                    <input
-                      name={key}
-                      value={value || ''}
-                      onChange={handleProjectFieldChange}
-                      style={{ marginBottom: '8px', width: '100%' }}
-                    />
-                  )}
+                  <input
+                    name={key}
+                    value={value || ''}
+                    onChange={handleProjectFieldChange}
+                    style={{ marginBottom: '8px', width: '100%' }}
+                  />
                 </label>
               </div>
             ) : null
@@ -188,6 +218,7 @@ function ProjectDetails() {
         </>
       )}
 
+      {/* Tasks */}
       <h3>📝 Tasks</h3>
       <form onSubmit={handleAddTask} style={{ marginBottom: '20px' }}>
         <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
@@ -233,6 +264,7 @@ function ProjectDetails() {
         </div>
       ))}
 
+      {/* Logs */}
       <h3>📚 Project Logs</h3>
       <textarea
         rows={3}
@@ -246,7 +278,24 @@ function ProjectDetails() {
       {logs.length > 0 ? (
         logs.map((log) => (
           <div key={log.id} style={{ borderBottom: '1px solid #ccc', marginTop: '10px' }}>
-            <p>{log.notes}</p>
+            {editLogId === log.id ? (
+              <>
+                <textarea
+                  rows={2}
+                  value={editLogText}
+                  onChange={(e) => setEditLogText(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+                <button onClick={saveEditLog}>💾 Save</button>
+                <button onClick={cancelEditLog}>✖ Cancel</button>
+              </>
+            ) : (
+              <>
+                <p>{log.notes}</p>
+                <button onClick={() => startEditLog(log)}>✏️ Edit</button>
+                <button onClick={() => deleteLog(log.id)} style={{ marginLeft: '5px' }}>🗑️ Delete</button>
+              </>
+            )}
           </div>
         ))
       ) : (
