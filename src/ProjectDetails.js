@@ -21,7 +21,7 @@ function ProjectDetails() {
   const [editLogId, setEditLogId] = useState(null);
   const [editLogText, setEditLogText] = useState('');
 
-    useEffect(() => {
+  useEffect(() => {
     fetchProjectDetails();
   }, [id]);
 
@@ -210,35 +210,30 @@ function ProjectDetails() {
             {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
               <div key={status} className="task-group">
                 <h4>{status}</h4>
-              
-              <div className="task-headers">
-            <span>Description</span>
-          <span>Due Date</span>
-          <span>Actions</span>
-          </div>  
-              <ul>
+                <div className="task-headers">
+                  <span>Description</span>
+                  <span>Due Date</span>
+                  <span>Actions</span>
+                </div>
+                <ul>
                   {groupTasks(status).map((task) => (
-                    <li key={task.id}>
+                    <li key={task.id} className="task-row">
                       {editTaskId === task.id ? (
                         <>
                           <input name="description" value={taskEditForm.description} onChange={handleEditTaskChange} />
-                          <select name="status" value={taskEditForm.status} onChange={handleEditTaskChange}>
-                            <option value="Not Started">Not Started</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Completed">Completed</option>
-                            <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-                          </select>
                           <input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} />
-                          <button onClick={saveEditTask}><FaSave /></button>
-                          <button onClick={cancelEditTask}><FaTimes /></button>
+                          <div>
+                            <button onClick={saveEditTask}><FaSave /></button>
+                            <button onClick={cancelEditTask}><FaTimes /></button>
+                          </div>
                         </>
                       ) : (
                         <>
-                       <span className="task-desc">{task.description}</span>
-                <span className="task-date">{task.due_date ? task.due_date.split('T')[0] : '—'}</span>
-          <div className="task-actions">
-             <button onClick={() => startEditTask(task)}><FaEdit /></button>
-                      </div>
+                          <span className="task-desc">{task.description}</span>
+                          <span className="task-date">{task.due_date ? task.due_date.split('T')[0] : '—'}</span>
+                          <div className="task-actions">
+                            <button onClick={() => startEditTask(task)}><FaEdit /></button>
+                          </div>
                         </>
                       )}
                     </li>
