@@ -210,11 +210,12 @@ function ProjectDetails() {
             {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
               <div key={status} className="task-group">
                 <h4>{status}</h4>
+              
               <div className="task-headers">
-      <span>Description</span>
-    <span>Due Date</span>
-  <span>Actions</span>
-</div>  
+            <span>Description</span>
+          <span>Due Date</span>
+          <span>Actions</span>
+          </div>  
               <ul>
                   {groupTasks(status).map((task) => (
                     <li key={task.id}>
@@ -234,10 +235,10 @@ function ProjectDetails() {
                       ) : (
                         <>
                        <span className="task-desc">{task.description}</span>
-          <span className="task-date">{task.due_date ? task.due_date.split('T')[0] : '—'}</span>
-  <div className="task-actions">
-   <button onClick={() => startEditTask(task)}><FaEdit /></button>
-                     
+                <span className="task-date">{task.due_date ? task.due_date.split('T')[0] : '—'}</span>
+          <div className="task-actions">
+             <button onClick={() => startEditTask(task)}><FaEdit /></button>
+                      </div>
                         </>
                       )}
                     </li>
