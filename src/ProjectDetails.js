@@ -1,3 +1,4 @@
+<div className="project-details-container">
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -262,6 +263,7 @@ function ProjectDetails() {
         )}
       </section>
     </div>
+</div>
   );
 }
 
