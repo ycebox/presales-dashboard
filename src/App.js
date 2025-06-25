@@ -9,7 +9,7 @@ function App() {
   return (
     <Router basename="/presales-dashboard">
       <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-        <h1>📋 My Presales Dashboard</h1>
+        <h1>📋 Jonathan's "It's Fine, Everything's Fine" Dashboard</h1>
         <Routes>
           <Route
             path="/"
