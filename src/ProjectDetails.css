@@ -1,92 +1,143 @@
-/* Main container */
-.project-details-container {
+/* ProjectDetails.css */
+
+body {
+  font-family: 'Open Sans', sans-serif;
+  background-color: #f9f9f9;
+  margin: 0;
+  padding: 0;
+}
+
+.page-wrapper {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f0f2f5;
+}
+
+.sidebar {
+  width: 240px;
+  background-color: #1f1f1f;
+  color: #fff;
+  padding: 30px 20px;
+  font-size: 20px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.project-container {
+  flex: 1;
   max-width: 900px;
   margin: 40px auto;
-  padding: 30px;
   background-color: #ffffff;
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  font-family: 'Lato', 'Helvetica Neue', sans-serif;
-  color: #333;
+  padding: 30px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
 }
 
-/* Headings */
-.project-details-container h2,
-.project-details-container h3,
-.project-details-container h4 {
-  font-weight: 600;
-  color: #111;
-  margin-top: 24px;
-  margin-bottom: 12px;
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
 }
 
-/* Back link */
-.project-details-container a {
-  display: inline-block;
-  margin-bottom: 20px;
-  color: #444;
+h2 {
+  font-size: 28px;
+  color: #222;
+  margin: 0;
+}
+
+.back-link {
   text-decoration: none;
+  color: #0077cc;
   font-size: 14px;
 }
 
-.project-details-container a:hover {
-  text-decoration: underline;
+.edit-form label,
+.details-box p {
+  display: block;
+  margin-bottom: 10px;
 }
 
-/* Form inputs */
-.project-details-container input,
-.project-details-container select,
-.project-details-container textarea {
+.edit-form input {
   width: 100%;
   padding: 10px;
-  margin-top: 4px;
-  margin-bottom: 12px;
   border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 14px;
+  margin-top: 4px;
+  border-radius: 4px;
 }
 
-/* Buttons */
-.project-details-container button {
-  background-color: #333;
-  color: #fff;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-size: 14px;
-  margin-top: 8px;
-  margin-right: 6px;
-  cursor: pointer;
+.form-actions {
+  margin-top: 20px;
 }
 
-.project-details-container button:hover {
-  background-color: #555;
+.form-actions button {
+  margin-right: 10px;
 }
 
-/* Task list */
-.project-details-container ul {
+.details-box button {
+  margin-top: 20px;
+}
+
+.tasks-section,
+.logs-section {
+  margin-top: 40px;
+}
+
+.task-form,
+.task-group,
+.logs-section {
+  margin-bottom: 20px;
+}
+
+.task-form input,
+.task-form select,
+.task-form button,
+.logs-section textarea,
+.logs-section button {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.task-group h4 {
+  margin-top: 20px;
+  font-size: 18px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 5px;
+}
+
+.task-group ul {
   list-style: none;
   padding-left: 0;
 }
 
-.project-details-container li {
-  background: #f9f9f9;
+.task-group li {
   padding: 10px;
-  margin-bottom: 8px;
+  border: 1px solid #eee;
   border-radius: 6px;
+  margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-/* Log box */
-.project-details-container .log-entry {
-  background-color: #f2f2f2;
-  padding: 12px;
-  border-radius: 6px;
-  margin-top: 10px;
+.task-group li button {
+  margin-left: 10px;
 }
 
-.project-details-container .log-entry button {
-  margin-top: 6px;
+.log-entry {
+  border: 1px solid #eee;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.loader,
+.not-found {
+  text-align: center;
+  font-size: 20px;
+  padding: 60px;
+  color: #888;
 }
