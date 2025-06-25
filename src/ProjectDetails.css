@@ -28,6 +28,11 @@ body {
   overflow: hidden;
 }
 
+.details-box p {
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
 .sidebar {
   width: 220px;
   background-color: #1e293b;
