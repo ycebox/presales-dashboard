@@ -231,7 +231,7 @@ select:focus {
   padding: 0.5rem 0;
   border-bottom: 2px solid #e2e8f0;
   margin-top: 1rem;
-
+}
 ul li.task-row {
  display: grid;
   grid-template-columns: 1fr 120px auto;
