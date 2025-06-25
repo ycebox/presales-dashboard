@@ -28,9 +28,16 @@ body {
   overflow: hidden;
 }
 
+.details-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+}
+
 .details-box p {
-  margin-bottom: 0.75rem;
-  line-height: 1.4;
+  margin: 0;
+  line-height: 1.5;
 }
 
 .sidebar {
