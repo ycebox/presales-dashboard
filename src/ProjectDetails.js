@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
+import { FaHome, FaTasks, FaBookOpen, FaCog, FaEdit, FaSave, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -147,126 +148,129 @@ function ProjectDetails() {
 
   return (
     <div className="page-wrapper navy-theme">
-      <div className="sidebar">
-        <h2>SmartVista</h2>
-        <nav>
-          <Link to="/">🏠 Dashboard</Link>
-          <a href="#tasks">📝 Tasks</a>
-          <a href="#logs">📚 Logs</a>
-        </nav>
-      </div>
-      <div className="project-container">
-        <div className="project-card">
-          <div className="project-header">
-            <h2 className="highlight-name big-name">{project.customer_name}</h2>
-            {!editingProject && <button onClick={() => setEditingProject(true)}>Edit</button>}
-          </div>
-          {editingProject ? (
-            <div className="edit-form">
-              {Object.entries(editForm).map(([key, value]) => (
-                key !== 'id' && key !== 'created_at' && (
-                  <label key={key}>
-                    {key.replace(/_/g, ' ')}
-                    <input name={key} value={value || ''} onChange={handleProjectFieldChange} />
-                  </label>
-                )
-              ))}
-              <div className="form-actions">
-                <button onClick={saveProjectDetails}>Save</button>
-                <button onClick={() => setEditingProject(false)}>Cancel</button>
-              </div>
-            </div>
-          ) : (
-            <div className="details-box">
-              <p><strong>Country:</strong> {project.country}</p>
-              <p><strong>Account Manager:</strong> {project.account_manager}</p>
-              <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
-              <p><strong>Product:</strong> {project.product}</p>
-              <p><strong>Deal Value:</strong> {project.deal_value}</p>
-              <p><strong>Scope:</strong> {project.scope}</p>
-              <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
-              <p><strong>Remarks:</strong> {project.remarks}</p>
-            </div>
-          )}
+      <div className="page-content">
+        <div className="sidebar">
+          <h2>SmartVista</h2>
+          <nav>
+            <Link to="/"><FaHome /> Dashboard</Link>
+            <a href="#tasks"><FaTasks /> Tasks</a>
+            <a href="#logs"><FaBookOpen /> Logs</a>
+            <Link to="/settings"><FaCog /> Settings</Link>
+          </nav>
         </div>
-
-        <div className="section-card" id="tasks">
-          <h3>Tasks</h3>
-          <form onSubmit={handleAddTask} className="task-form">
-            <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
-            <select name="status" value={newTask.status} onChange={handleTaskInput}>
-              <option value="Not Started">Not Started</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-            </select>
-            <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
-            <button type="submit">Add</button>
-          </form>
-
-          {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
-            <div key={status} className="task-group">
-              <h4>{status}</h4>
-              <ul>
-                {groupTasks(status).map((task) => (
-                  <li key={task.id}>
-                    {editTaskId === task.id ? (
-                      <>
-                        <input name="description" value={taskEditForm.description} onChange={handleEditTaskChange} />
-                        <select name="status" value={taskEditForm.status} onChange={handleEditTaskChange}>
-                          <option value="Not Started">Not Started</option>
-                          <option value="In Progress">In Progress</option>
-                          <option value="Completed">Completed</option>
-                          <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-                        </select>
-                        <input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} />
-                        <button onClick={saveEditTask}>💾</button>
-                        <button onClick={cancelEditTask}>✖</button>
-                      </>
-                    ) : (
-                      <>
-                        {task.description} {task.due_date ? `(Due: ${task.due_date.split('T')[0]})` : ''}
-                        <button onClick={() => startEditTask(task)}>✏️</button>
-                      </>
-                    )}
-                  </li>
+        <div className="project-container">
+          <div className="project-card">
+            <div className="project-header">
+              <h2 className="highlight-name big-name">{project.customer_name}</h2>
+              {!editingProject && <button onClick={() => setEditingProject(true)}><FaEdit /> Edit</button>}
+            </div>
+            {editingProject ? (
+              <div className="edit-form">
+                {Object.entries(editForm).map(([key, value]) => (
+                  key !== 'id' && key !== 'created_at' && (
+                    <label key={key}>
+                      {key.replace(/_/g, ' ')}
+                      <input name={key} value={value || ''} onChange={handleProjectFieldChange} />
+                    </label>
+                  )
                 ))}
-                {groupTasks(status).length === 0 && <li>No tasks.</li>}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        <div className="section-card" id="logs">
-          <h3>Project Logs</h3>
-          <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
-          <button onClick={handleAddLog}>Add</button>
-
-          {logs.length > 0 ? (
-            logs.map((log) => (
-              <div key={log.id} className="log-entry">
-                {editLogId === log.id ? (
-                  <>
-                    <textarea rows={2} value={editLogText} onChange={(e) => setEditLogText(e.target.value)} />
-                    <div>
-                      <button onClick={() => saveEditLog(log.id)}>💾</button>
-                      <button onClick={cancelEditLog}>✖</button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p>{log.notes}</p>
-                    <div>
-                      <button onClick={() => startEditLog(log)}>✏️</button>
-                      <button onClick={() => deleteLog(log.id)}>🗑️</button>
-                    </div>
-                  </>
-                )}
+                <div className="form-actions">
+                  <button onClick={saveProjectDetails}><FaSave /> Save</button>
+                  <button onClick={() => setEditingProject(false)}><FaTimes /> Cancel</button>
+                </div>
               </div>
-            ))
-          ) : (
-            <p>No logs available.</p>
-          )}
+            ) : (
+              <div className="details-box grid-2">
+                <div><strong>Country:</strong> {project.country}</div>
+                <div><strong>Account Manager:</strong> {project.account_manager}</div>
+                <div><strong>Sales Stage:</strong> {project.sales_stage}</div>
+                <div><strong>Product:</strong> {project.product}</div>
+                <div><strong>Deal Value:</strong> {project.deal_value}</div>
+                <div><strong>Scope:</strong> {project.scope}</div>
+                <div><strong>Backup Presales:</strong> {project.backup_presales}</div>
+                <div><strong>Remarks:</strong> {project.remarks}</div>
+              </div>
+            )}
+          </div>
+
+          <div className="section-card" id="tasks">
+            <h3>Tasks</h3>
+            <form onSubmit={handleAddTask} className="task-form">
+              <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
+              <select name="status" value={newTask.status} onChange={handleTaskInput}>
+                <option value="Not Started">Not Started</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+              </select>
+              <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
+              <button type="submit"><FaPlus /> Add</button>
+            </form>
+
+            {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
+              <div key={status} className="task-group">
+                <h4>{status}</h4>
+                <ul>
+                  {groupTasks(status).map((task) => (
+                    <li key={task.id}>
+                      {editTaskId === task.id ? (
+                        <>
+                          <input name="description" value={taskEditForm.description} onChange={handleEditTaskChange} />
+                          <select name="status" value={taskEditForm.status} onChange={handleEditTaskChange}>
+                            <option value="Not Started">Not Started</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+                          </select>
+                          <input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} />
+                          <button onClick={saveEditTask}><FaSave /></button>
+                          <button onClick={cancelEditTask}><FaTimes /></button>
+                        </>
+                      ) : (
+                        <>
+                          {task.description} {task.due_date ? `(Due: ${task.due_date.split('T')[0]})` : ''}
+                          <button onClick={() => startEditTask(task)}><FaEdit /></button>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                  {groupTasks(status).length === 0 && <li>No tasks.</li>}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="section-card" id="logs">
+            <h3>Project Logs</h3>
+            <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
+            <button onClick={handleAddLog}><FaPlus /> Add</button>
+
+            {logs.length > 0 ? (
+              logs.map((log) => (
+                <div key={log.id} className="log-entry">
+                  {editLogId === log.id ? (
+                    <>
+                      <textarea rows={2} value={editLogText} onChange={(e) => setEditLogText(e.target.value)} />
+                      <div>
+                        <button onClick={() => saveEditLog(log.id)}><FaSave /></button>
+                        <button onClick={cancelEditLog}><FaTimes /></button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p>{log.notes}</p>
+                      <div>
+                        <button onClick={() => startEditLog(log)}><FaEdit /></button>
+                        <button onClick={() => deleteLog(log.id)}><FaTrash /></button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p>No logs available.</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
