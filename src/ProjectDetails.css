@@ -222,16 +222,34 @@ select:focus {
   margin-bottom: 1rem;
 }
 
-ul li.task-row {
+.task-header {
   display: grid;
   grid-template-columns: 1fr 120px auto;
-  align-items: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #475569;
   padding: 0.5rem 0;
+  border-bottom: 2px solid #e2e8f0;
+  margin-top: 1rem;
+
+ul li.task-row {
+ display: grid;
+  grid-template-columns: 1fr 120px auto;
+  align-items: start;
+  padding: 0.75rem 0;
   border-bottom: 1px solid #e2e8f0;
+  gap: 1rem;
 }
 
 .task-desc {
   font-weight: 500;
+   word-wrap: break-word;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.task-row span {
+  word-break: break-word;
 }
 
 .task-date {
