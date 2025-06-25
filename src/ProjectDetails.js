@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import './ProjectDetails.css';
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -50,8 +51,7 @@ function ProjectDetails() {
     delete updated.id;
     delete updated.created_at;
     const { error } = await supabase.from('projects').update(updated).eq('id', id);
-    if (error) console.error('Error updating project:', error.message);
-    else {
+    if (!error) {
       setEditingProject(false);
       fetchProjectDetails();
     }
@@ -73,8 +73,7 @@ function ProjectDetails() {
         project_id: id,
       },
     ]);
-    if (error) console.error('Error adding task:', error.message);
-    else {
+    if (!error) {
       setNewTask({ description: '', status: 'Not Started', due_date: '' });
       fetchProjectDetails();
     }
@@ -102,13 +101,9 @@ function ProjectDetails() {
   };
 
   const saveEditTask = async () => {
-    const payload = {
-      ...taskEditForm,
-      due_date: taskEditForm.due_date || null,
-    };
+    const payload = { ...taskEditForm, due_date: taskEditForm.due_date || null };
     const { error } = await supabase.from('project_tasks').update(payload).eq('id', editTaskId);
-    if (error) console.error('Error updating task:', error.message);
-    else {
+    if (!error) {
       setEditTaskId(null);
       fetchProjectDetails();
     }
@@ -117,8 +112,7 @@ function ProjectDetails() {
   const handleAddLog = async () => {
     if (!newLog.trim()) return;
     const { error } = await supabase.from('project_logs').insert([{ notes: newLog, project_id: id }]);
-    if (error) console.error('Error adding log:', error.message);
-    else {
+    if (!error) {
       setNewLog('');
       fetchProjectDetails();
     }
@@ -137,8 +131,7 @@ function ProjectDetails() {
   const saveEditLog = async (logId) => {
     if (!editLogText.trim()) return;
     const { error } = await supabase.from('project_logs').update({ notes: editLogText }).eq('id', logId);
-    if (error) console.error('Error editing log:', error.message);
-    else {
+    if (!error) {
       setEditLogId(null);
       setEditLogText('');
       fetchProjectDetails();
@@ -146,43 +139,38 @@ function ProjectDetails() {
   };
 
   const deleteLog = async (logId) => {
-    const confirm = window.confirm('Are you sure you want to delete this log?');
-    if (!confirm) return;
+    if (!window.confirm('Are you sure you want to delete this log?')) return;
     const { error } = await supabase.from('project_logs').delete().eq('id', logId);
-    if (error) console.error('Error deleting log:', error.message);
-    else fetchProjectDetails();
+    if (!error) fetchProjectDetails();
   };
 
-  if (loading) return <p>Loading project details...</p>;
-  if (!project) return <p>Project not found.</p>;
+  if (loading) return <div className="loader">Loading project details...</div>;
+  if (!project) return <div className="not-found">Project not found.</div>;
 
   return (
-    <div style={{ maxWidth: '900px', margin: '20px auto', padding: '30px', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)' }}>
-      <h2 style={{ fontSize: '1.5rem', marginBottom: '10px' }}>🔍 {project.customer_name} - Project Details</h2>
-      <Link to="/">⬅️ Back to Dashboard</Link>
+    <div className="project-container">
+      <header>
+        <h2>{project.customer_name}</h2>
+        <Link to="/" className="back-link">⬅ Back to Dashboard</Link>
+      </header>
 
       {editingProject ? (
-        <div style={{ marginTop: '10px' }}>
-          {Object.entries(editForm).map(([key, value]) =>
-            key !== 'id' && key !== 'created_at' ? (
-              <div key={key} style={{ marginBottom: '10px' }}>
-                <label>
-                  <strong>{key.replace(/_/g, ' ')}:</strong>
-                  <input
-                    name={key}
-                    value={value || ''}
-                    onChange={handleProjectFieldChange}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '6px' }}
-                  />
-                </label>
-              </div>
-            ) : null
-          )}
-          <button onClick={saveProjectDetails} style={buttonStyle}>💾 Save</button>
-          <button onClick={() => setEditingProject(false)} style={buttonStyle}>✖ Cancel</button>
+        <div className="edit-form">
+          {Object.entries(editForm).map(([key, value]) => (
+            key !== 'id' && key !== 'created_at' && (
+              <label key={key}>
+                {key.replace(/_/g, ' ')}
+                <input name={key} value={value || ''} onChange={handleProjectFieldChange} />
+              </label>
+            )
+          ))}
+          <div className="form-actions">
+            <button onClick={saveProjectDetails}>Save</button>
+            <button onClick={() => setEditingProject(false)}>Cancel</button>
+          </div>
         </div>
       ) : (
-        <>
+        <div className="details-box">
           <p><strong>Country:</strong> {project.country}</p>
           <p><strong>Account Manager:</strong> {project.account_manager}</p>
           <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
@@ -191,123 +179,90 @@ function ProjectDetails() {
           <p><strong>Scope:</strong> {project.scope}</p>
           <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
           <p><strong>Remarks:</strong> {project.remarks}</p>
-          <button onClick={() => setEditingProject(true)} style={buttonStyle}>✏️ Edit Project Details</button>
-        </>
-      )}
-
-      <h3 style={{ marginTop: '30px' }}>📝 Tasks</h3>
-      <form onSubmit={handleAddTask} style={{ marginBottom: '20px' }}>
-        <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required style={inputStyle} />
-        <select name="status" value={newTask.status} onChange={handleTaskInput} style={inputStyle}>
-          <option value="Not Started">Not Started</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Completed">Completed</option>
-          <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-        </select>
-        <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} style={inputStyle} />
-        <button type="submit" style={buttonStyle}>+ Add Task</button>
-      </form>
-
-      {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
-        <div key={status}>
-          <h4>{status}</h4>
-          <ul style={{ listStyleType: 'none', padding: 0 }}>
-            {groupTasks(status).map((task) => (
-              <li key={task.id} style={cardStyle}>
-                {editTaskId === task.id ? (
-                  <>
-                    <input name="description" value={taskEditForm.description} onChange={handleEditTaskChange} style={inputStyle} />
-                    <select name="status" value={taskEditForm.status} onChange={handleEditTaskChange} style={inputStyle}>
-                      <option value="Not Started">Not Started</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Completed">Completed</option>
-                      <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-                    </select>
-                    <input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} style={inputStyle} />
-                    <button onClick={saveEditTask} style={buttonStyle}>💾 Save</button>
-                    <button onClick={cancelEditTask} style={buttonStyle}>✖ Cancel</button>
-                  </>
-                ) : (
-                  <>
-                    <p>{task.description} {task.due_date ? `(Due: ${task.due_date.split('T')[0]})` : ''}</p>
-                    <button onClick={() => startEditTask(task)} style={buttonStyle}>✏️ Edit</button>
-                  </>
-                )}
-              </li>
-            ))}
-            {groupTasks(status).length === 0 && <li>No tasks.</li>}
-          </ul>
+          <button onClick={() => setEditingProject(true)}>Edit Project Details</button>
         </div>
-      ))}
-
-      <h3 style={{ marginTop: '30px' }}>📚 Project Logs</h3>
-      <textarea
-        rows={3}
-        placeholder="Add a log entry..."
-        value={newLog}
-        onChange={(e) => setNewLog(e.target.value)}
-        style={{ width: '100%', marginBottom: '10px', ...inputStyle }}
-      />
-      <button type="button" onClick={handleAddLog} style={buttonStyle}>➕ Add Log</button>
-
-      {logs.length > 0 ? (
-        logs.map((log) => (
-          <div key={log.id} style={cardStyle}>
-            {editLogId === log.id ? (
-              <>
-                <textarea
-                  rows={2}
-                  value={editLogText}
-                  onChange={(e) => setEditLogText(e.target.value)}
-                  style={{ width: '100%', ...inputStyle }}
-                />
-                <div style={{ marginTop: '5px' }}>
-                  <button onClick={() => saveEditLog(log.id)} style={buttonStyle}>💾 Save</button>
-                  <button onClick={cancelEditLog} style={buttonStyle}>✖ Cancel</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p>{log.notes}</p>
-                <div>
-                  <button onClick={() => startEditLog(log)} style={buttonStyle}>✏️ Edit</button>
-                  <button onClick={() => deleteLog(log.id)} style={buttonStyle}>🗑️ Delete</button>
-                </div>
-              </>
-            )}
-          </div>
-        ))
-      ) : (
-        <p>No logs available.</p>
       )}
+
+      <section className="tasks-section">
+        <h3>Tasks</h3>
+        <form onSubmit={handleAddTask} className="task-form">
+          <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
+          <select name="status" value={newTask.status} onChange={handleTaskInput}>
+            <option value="Not Started">Not Started</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+          </select>
+          <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
+          <button type="submit">Add Task</button>
+        </form>
+
+        {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
+          <div key={status} className="task-group">
+            <h4>{status}</h4>
+            <ul>
+              {groupTasks(status).map((task) => (
+                <li key={task.id}>
+                  {editTaskId === task.id ? (
+                    <>
+                      <input name="description" value={taskEditForm.description} onChange={handleEditTaskChange} />
+                      <select name="status" value={taskEditForm.status} onChange={handleEditTaskChange}>
+                        <option value="Not Started">Not Started</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+                      </select>
+                      <input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} />
+                      <button onClick={saveEditTask}>Save</button>
+                      <button onClick={cancelEditTask}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      {task.description} {task.due_date ? `(Due: ${task.due_date.split('T')[0]})` : ''}
+                      <button onClick={() => startEditTask(task)}>Edit</button>
+                    </>
+                  )}
+                </li>
+              ))}
+              {groupTasks(status).length === 0 && <li>No tasks.</li>}
+            </ul>
+          </div>
+        ))}
+      </section>
+
+      <section className="logs-section">
+        <h3>Project Logs</h3>
+        <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
+        <button onClick={handleAddLog}>Add Log</button>
+
+        {logs.length > 0 ? (
+          logs.map((log) => (
+            <div key={log.id} className="log-entry">
+              {editLogId === log.id ? (
+                <>
+                  <textarea rows={2} value={editLogText} onChange={(e) => setEditLogText(e.target.value)} />
+                  <div>
+                    <button onClick={() => saveEditLog(log.id)}>Save</button>
+                    <button onClick={cancelEditLog}>Cancel</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p>{log.notes}</p>
+                  <div>
+                    <button onClick={() => startEditLog(log)}>Edit</button>
+                    <button onClick={() => deleteLog(log.id)}>Delete</button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))
+        ) : (
+          <p>No logs available.</p>
+        )}
+      </section>
     </div>
   );
 }
-
-const inputStyle = {
-  padding: '8px',
-  border: '1px solid #ccc',
-  borderRadius: '6px',
-  width: '100%',
-  marginBottom: '10px'
-};
-
-const buttonStyle = {
-  padding: '8px 14px',
-  margin: '5px',
-  borderRadius: '8px',
-  border: 'none',
-  backgroundColor: '#007bff',
-  color: '#fff',
-  cursor: 'pointer'
-};
-
-const cardStyle = {
-  background: '#fdfdfd',
-  padding: '12px',
-  borderRadius: '8px',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-  marginBottom: '10px'
-};
 
 export default ProjectDetails;
