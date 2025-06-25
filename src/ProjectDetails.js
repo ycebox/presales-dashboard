@@ -150,7 +150,7 @@ function ProjectDetails() {
   return (
     <div className="page-wrapper">
       <div className="sidebar">
-        <h2>Presales App</h2>
+        <h2>SmartVista</h2>
         <nav>
           <Link to="/">🏠 Dashboard</Link>
           <a href="#tasks">📝 Tasks</a>
@@ -158,40 +158,41 @@ function ProjectDetails() {
         </nav>
       </div>
       <div className="project-container">
-        <header>
-          <h2 className="highlight-name">{project.customer_name}</h2>
-        </header>
-
-        {editingProject ? (
-          <div className="edit-form">
-            {Object.entries(editForm).map(([key, value]) => (
-              key !== 'id' && key !== 'created_at' && (
-                <label key={key}>
-                  {key.replace(/_/g, ' ')}
-                  <input name={key} value={value || ''} onChange={handleProjectFieldChange} />
-                </label>
-              )
-            ))}
-            <div className="form-actions">
-              <button onClick={saveProjectDetails}>Save</button>
-              <button onClick={() => setEditingProject(false)}>Cancel</button>
+        <div className="project-card">
+          <div className="project-header">
+            <h2 className="highlight-name">{project.customer_name}</h2>
+            {!editingProject && <button onClick={() => setEditingProject(true)}>Edit Project</button>}
+          </div>
+          {editingProject ? (
+            <div className="edit-form">
+              {Object.entries(editForm).map(([key, value]) => (
+                key !== 'id' && key !== 'created_at' && (
+                  <label key={key}>
+                    {key.replace(/_/g, ' ')}
+                    <input name={key} value={value || ''} onChange={handleProjectFieldChange} />
+                  </label>
+                )
+              ))}
+              <div className="form-actions">
+                <button onClick={saveProjectDetails}>Save</button>
+                <button onClick={() => setEditingProject(false)}>Cancel</button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="details-box">
-            <p><strong>Country:</strong> {project.country}</p>
-            <p><strong>Account Manager:</strong> {project.account_manager}</p>
-            <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
-            <p><strong>Product:</strong> {project.product}</p>
-            <p><strong>Deal Value:</strong> {project.deal_value}</p>
-            <p><strong>Scope:</strong> {project.scope}</p>
-            <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
-            <p><strong>Remarks:</strong> {project.remarks}</p>
-            <button onClick={() => setEditingProject(true)}>Edit</button>
-          </div>
-        )}
+          ) : (
+            <div className="details-box">
+              <p><strong>Country:</strong> {project.country}</p>
+              <p><strong>Account Manager:</strong> {project.account_manager}</p>
+              <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
+              <p><strong>Product:</strong> {project.product}</p>
+              <p><strong>Deal Value:</strong> {project.deal_value}</p>
+              <p><strong>Scope:</strong> {project.scope}</p>
+              <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
+              <p><strong>Remarks:</strong> {project.remarks}</p>
+            </div>
+          )}
+        </div>
 
-        <section className="tasks-section" id="tasks">
+        <div className="section-card" id="tasks">
           <h3>Tasks</h3>
           <form onSubmit={handleAddTask} className="task-form">
             <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
@@ -202,7 +203,7 @@ function ProjectDetails() {
               <option value="Cancelled/On-hold">Cancelled/On-hold</option>
             </select>
             <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
-            <button type="submit">➕</button>
+            <button type="submit">Add</button>
           </form>
 
           {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
@@ -236,12 +237,12 @@ function ProjectDetails() {
               </ul>
             </div>
           ))}
-        </section>
+        </div>
 
-        <section className="logs-section" id="logs">
+        <div className="section-card" id="logs">
           <h3>Project Logs</h3>
           <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
-          <button onClick={handleAddLog}>➕</button>
+          <button onClick={handleAddLog}>Add</button>
 
           {logs.length > 0 ? (
             logs.map((log) => (
@@ -268,7 +269,7 @@ function ProjectDetails() {
           ) : (
             <p>No logs available.</p>
           )}
-        </section>
+        </div>
       </div>
     </div>
   );
