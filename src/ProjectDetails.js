@@ -148,7 +148,7 @@ function ProjectDetails() {
   if (!project) return <div className="not-found">Project not found.</div>;
 
   return (
-    <div className="page-wrapper">
+    <div className="page-wrapper navy-theme">
       <div className="sidebar">
         <h2>SmartVista</h2>
         <nav>
@@ -160,7 +160,7 @@ function ProjectDetails() {
       <div className="project-container">
         <div className="project-card">
           <div className="project-header">
-            <h2 className="highlight-name">{project.customer_name}</h2>
+            <h2 className="highlight-name big-name">{project.customer_name}</h2>
             {!editingProject && <button onClick={() => setEditingProject(true)}>Edit Project</button>}
           </div>
           {editingProject ? (
