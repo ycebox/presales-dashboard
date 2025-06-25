@@ -149,11 +149,17 @@ function ProjectDetails() {
 
   return (
     <div className="page-wrapper">
-      <div className="sidebar">Presales App</div>
+      <div className="sidebar">
+        <h2>Presales App</h2>
+        <nav>
+          <Link to="/">🏠 Dashboard</Link>
+          <a href="#tasks">📝 Tasks</a>
+          <a href="#logs">📚 Logs</a>
+        </nav>
+      </div>
       <div className="project-container">
         <header>
-          <h2>{project.customer_name}</h2>
-          <Link to="/" className="back-link">⬅ Back to Dashboard</Link>
+          <h2 className="highlight-name">{project.customer_name}</h2>
         </header>
 
         {editingProject ? (
@@ -181,11 +187,11 @@ function ProjectDetails() {
             <p><strong>Scope:</strong> {project.scope}</p>
             <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
             <p><strong>Remarks:</strong> {project.remarks}</p>
-            <button onClick={() => setEditingProject(true)}>Edit Project Details</button>
+            <button onClick={() => setEditingProject(true)}>Edit</button>
           </div>
         )}
 
-        <section className="tasks-section">
+        <section className="tasks-section" id="tasks">
           <h3>Tasks</h3>
           <form onSubmit={handleAddTask} className="task-form">
             <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
@@ -196,7 +202,7 @@ function ProjectDetails() {
               <option value="Cancelled/On-hold">Cancelled/On-hold</option>
             </select>
             <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
-            <button type="submit">Add Task</button>
+            <button type="submit">➕</button>
           </form>
 
           {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
@@ -215,13 +221,13 @@ function ProjectDetails() {
                           <option value="Cancelled/On-hold">Cancelled/On-hold</option>
                         </select>
                         <input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} />
-                        <button onClick={saveEditTask}>Save</button>
-                        <button onClick={cancelEditTask}>Cancel</button>
+                        <button onClick={saveEditTask}>💾</button>
+                        <button onClick={cancelEditTask}>✖</button>
                       </>
                     ) : (
                       <>
                         {task.description} {task.due_date ? `(Due: ${task.due_date.split('T')[0]})` : ''}
-                        <button onClick={() => startEditTask(task)}>Edit</button>
+                        <button onClick={() => startEditTask(task)}>✏️</button>
                       </>
                     )}
                   </li>
@@ -232,10 +238,10 @@ function ProjectDetails() {
           ))}
         </section>
 
-        <section className="logs-section">
+        <section className="logs-section" id="logs">
           <h3>Project Logs</h3>
           <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
-          <button onClick={handleAddLog}>Add Log</button>
+          <button onClick={handleAddLog}>➕</button>
 
           {logs.length > 0 ? (
             logs.map((log) => (
@@ -244,16 +250,16 @@ function ProjectDetails() {
                   <>
                     <textarea rows={2} value={editLogText} onChange={(e) => setEditLogText(e.target.value)} />
                     <div>
-                      <button onClick={() => saveEditLog(log.id)}>Save</button>
-                      <button onClick={cancelEditLog}>Cancel</button>
+                      <button onClick={() => saveEditLog(log.id)}>💾</button>
+                      <button onClick={cancelEditLog}>✖</button>
                     </div>
                   </>
                 ) : (
                   <>
                     <p>{log.notes}</p>
                     <div>
-                      <button onClick={() => startEditLog(log)}>Edit</button>
-                      <button onClick={() => deleteLog(log.id)}>Delete</button>
+                      <button onClick={() => startEditLog(log)}>✏️</button>
+                      <button onClick={() => deleteLog(log.id)}>🗑️</button>
                     </div>
                   </>
                 )}
