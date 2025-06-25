@@ -245,7 +245,6 @@ function ProjectDetails() {
       ))}
 
       {/* Logs Section */}
-      {/* Logs */}
 <h3>📚 Project Logs</h3>
 <textarea
   rows={3}
@@ -268,16 +267,43 @@ function ProjectDetails() {
             style={{ width: '100%' }}
           />
           <div style={{ marginTop: '5px' }}>
-            <button type="button" onClick={() => saveEditLog(log.id)}>💾 Save</button>
-            <button type="button" onClick={cancelEditLog} style={{ marginLeft: '5px' }}>✖ Cancel</button>
+            <button
+              type="button"
+              onClick={() => {
+                console.log('Saving log with ID:', log.id);
+                saveEditLog(log.id);
+              }}
+            >
+              💾 Save
+            </button>
+            <button type="button" onClick={cancelEditLog} style={{ marginLeft: '5px' }}>
+              ✖ Cancel
+            </button>
           </div>
         </>
       ) : (
         <>
           <p>{log.notes}</p>
           <div>
-            <button type="button" onClick={() => startEditLog(log)}>✏️ Edit</button>
-            <button type="button" onClick={() => deleteLog(log.id)} style={{ marginLeft: '5px' }}>🗑️ Delete</button>
+            <button
+              type="button"
+              onClick={() => {
+                console.log('Editing log:', log.id);
+                startEditLog(log);
+              }}
+            >
+              ✏️ Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                console.log('Deleting log:', log.id);
+                deleteLog(log.id);
+              }}
+              style={{ marginLeft: '5px' }}
+            >
+              🗑️ Delete
+            </button>
           </div>
         </>
       )}
@@ -286,6 +312,7 @@ function ProjectDetails() {
 ) : (
   <p>No logs available.</p>
 )}
+
 
     </div>
   );
