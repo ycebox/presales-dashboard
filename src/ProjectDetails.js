@@ -21,7 +21,7 @@ function ProjectDetails() {
   const [editLogId, setEditLogId] = useState(null);
   const [editLogText, setEditLogText] = useState('');
 
-  useEffect(() => {
+    useEffect(() => {
     fetchProjectDetails();
   }, [id]);
 
