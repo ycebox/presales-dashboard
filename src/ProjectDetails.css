@@ -5,8 +5,8 @@
 body {
   margin: 0;
   font-family: 'Inter', 'Segoe UI', sans-serif;
-  background-color: #eef3f9;
-  color: #001b2e;
+  background-color: #f8fafc;
+  color: #1e293b;
 }
 
 .page-wrapper {
@@ -16,7 +16,7 @@ body {
 
 .sidebar {
   width: 220px;
-  background-color: #001b2e;
+  background-color: #1e293b;
   color: white;
   padding: 2rem 1rem;
   display: flex;
@@ -32,7 +32,7 @@ body {
 }
 
 .sidebar nav a {
-  color: #b3cde4;
+  color: #cbd5e1;
   text-decoration: none;
   padding: 0.5rem 1rem;
   border-radius: 6px;
@@ -44,8 +44,8 @@ body {
 
 .sidebar nav a:hover,
 .sidebar nav a.active {
-  background-color: #1d3f58;
-  color: #eef3f9;
+  background-color: #334155;
+  color: #f8fafc;
 }
 
 .project-container {
@@ -61,7 +61,7 @@ body {
   background: white;
   padding: 2rem;
   border-radius: 12px;
-  box-shadow: 0 4px 8px rgba(0, 27, 46, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
 .project-header {
@@ -74,7 +74,7 @@ body {
 .big-name {
   font-size: 2rem;
   font-weight: 700;
-  color: #001b2e;
+  color: #1e293b;
 }
 
 .edit-form label {
@@ -88,7 +88,7 @@ body {
 textarea {
   width: 100%;
   padding: 0.6rem;
-  border: 1px solid #ccc;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 1rem;
 }
@@ -102,7 +102,7 @@ textarea {
 }
 
 button {
-  background-color: #1d3f58;
+  background-color: #334155;
   color: white;
   padding: 0.4rem 0.9rem;
   border: none;
@@ -112,7 +112,7 @@ button {
 }
 
 button:hover {
-  background-color: #537692;
+  background-color: #475569;
 }
 
 .task-group {
@@ -121,7 +121,7 @@ button:hover {
 
 .task-group h4 {
   margin-bottom: 0.5rem;
-  color: #1d3f58;
+  color: #334155;
   font-size: 1.1rem;
 }
 
@@ -135,8 +135,8 @@ ul li {
 }
 
 .log-entry {
-  background-color: #f5f9fc;
-  border: 1px solid #b3cde4;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
   border-radius: 6px;
   padding: 0.75rem 1rem;
   margin-bottom: 0.75rem;
@@ -147,7 +147,7 @@ ul li {
 }
 
 .highlight-name {
-  color: #001b2e;
+  color: #0f172a;
 }
 
 .loader,
