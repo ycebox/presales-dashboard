@@ -147,123 +147,124 @@ function ProjectDetails() {
   if (loading) return <div className="loader">Loading project details...</div>;
   if (!project) return <div className="not-found">Project not found.</div>;
 
-return (
-  <div className="project-details-container">
-    <div className="project-box">
-      <header>
-        <h2>{project.customer_name}</h2>
-        <Link to="/" className="back-link">⬅ Back to Dashboard</Link>
-      </header>
+  return (
+    <div className="page-wrapper">
+      <div className="sidebar">Presales App</div>
+      <div className="project-container">
+        <header>
+          <h2>{project.customer_name}</h2>
+          <Link to="/" className="back-link">⬅ Back to Dashboard</Link>
+        </header>
 
-      {editingProject ? (
-        <div className="edit-form">
-          {Object.entries(editForm).map(([key, value]) => (
-            key !== 'id' && key !== 'created_at' && (
-              <label key={key}>
-                {key.replace(/_/g, ' ')}
-                <input name={key} value={value || ''} onChange={handleProjectFieldChange} />
-              </label>
-            )
-          ))}
-          <div className="form-actions">
-            <button onClick={saveProjectDetails}>Save</button>
-            <button onClick={() => setEditingProject(false)}>Cancel</button>
-          </div>
-        </div>
-      ) : (
-        <div className="details-box">
-          <p><strong>Country:</strong> {project.country}</p>
-          <p><strong>Account Manager:</strong> {project.account_manager}</p>
-          <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
-          <p><strong>Product:</strong> {project.product}</p>
-          <p><strong>Deal Value:</strong> {project.deal_value}</p>
-          <p><strong>Scope:</strong> {project.scope}</p>
-          <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
-          <p><strong>Remarks:</strong> {project.remarks}</p>
-          <button onClick={() => setEditingProject(true)}>Edit Project Details</button>
-        </div>
-      )}
-
-      <section className="tasks-section">
-        <h3>Tasks</h3>
-        <form onSubmit={handleAddTask} className="task-form">
-          <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
-          <select name="status" value={newTask.status} onChange={handleTaskInput}>
-            <option value="Not Started">Not Started</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Completed">Completed</option>
-            <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-          </select>
-          <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
-          <button type="submit">Add Task</button>
-        </form>
-
-        {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
-          <div key={status} className="task-group">
-            <h4>{status}</h4>
-            <ul>
-              {groupTasks(status).map((task) => (
-                <li key={task.id}>
-                  {editTaskId === task.id ? (
-                    <>
-                      <input name="description" value={taskEditForm.description} onChange={handleEditTaskChange} />
-                      <select name="status" value={taskEditForm.status} onChange={handleEditTaskChange}>
-                        <option value="Not Started">Not Started</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-                      </select>
-                      <input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} />
-                      <button onClick={saveEditTask}>Save</button>
-                      <button onClick={cancelEditTask}>Cancel</button>
-                    </>
-                  ) : (
-                    <>
-                      {task.description} {task.due_date ? `(Due: ${task.due_date.split('T')[0]})` : ''}
-                      <button onClick={() => startEditTask(task)}>Edit</button>
-                    </>
-                  )}
-                </li>
-              ))}
-              {groupTasks(status).length === 0 && <li>No tasks.</li>}
-            </ul>
-          </div>
-        ))}
-      </section>
-
-      <section className="logs-section">
-        <h3>Project Logs</h3>
-        <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
-        <button onClick={handleAddLog}>Add Log</button>
-
-        {logs.length > 0 ? (
-          logs.map((log) => (
-            <div key={log.id} className="log-entry">
-              {editLogId === log.id ? (
-                <>
-                  <textarea rows={2} value={editLogText} onChange={(e) => setEditLogText(e.target.value)} />
-                  <div>
-                    <button onClick={() => saveEditLog(log.id)}>Save</button>
-                    <button onClick={cancelEditLog}>Cancel</button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p>{log.notes}</p>
-                  <div>
-                    <button onClick={() => startEditLog(log)}>Edit</button>
-                    <button onClick={() => deleteLog(log.id)}>Delete</button>
-                  </div>
-                </>
-              )}
+        {editingProject ? (
+          <div className="edit-form">
+            {Object.entries(editForm).map(([key, value]) => (
+              key !== 'id' && key !== 'created_at' && (
+                <label key={key}>
+                  {key.replace(/_/g, ' ')}
+                  <input name={key} value={value || ''} onChange={handleProjectFieldChange} />
+                </label>
+              )
+            ))}
+            <div className="form-actions">
+              <button onClick={saveProjectDetails}>Save</button>
+              <button onClick={() => setEditingProject(false)}>Cancel</button>
             </div>
-          ))
+          </div>
         ) : (
-          <p>No logs available.</p>
+          <div className="details-box">
+            <p><strong>Country:</strong> {project.country}</p>
+            <p><strong>Account Manager:</strong> {project.account_manager}</p>
+            <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
+            <p><strong>Product:</strong> {project.product}</p>
+            <p><strong>Deal Value:</strong> {project.deal_value}</p>
+            <p><strong>Scope:</strong> {project.scope}</p>
+            <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
+            <p><strong>Remarks:</strong> {project.remarks}</p>
+            <button onClick={() => setEditingProject(true)}>Edit Project Details</button>
+          </div>
         )}
-      </section>
+
+        <section className="tasks-section">
+          <h3>Tasks</h3>
+          <form onSubmit={handleAddTask} className="task-form">
+            <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
+            <select name="status" value={newTask.status} onChange={handleTaskInput}>
+              <option value="Not Started">Not Started</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+            </select>
+            <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
+            <button type="submit">Add Task</button>
+          </form>
+
+          {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
+            <div key={status} className="task-group">
+              <h4>{status}</h4>
+              <ul>
+                {groupTasks(status).map((task) => (
+                  <li key={task.id}>
+                    {editTaskId === task.id ? (
+                      <>
+                        <input name="description" value={taskEditForm.description} onChange={handleEditTaskChange} />
+                        <select name="status" value={taskEditForm.status} onChange={handleEditTaskChange}>
+                          <option value="Not Started">Not Started</option>
+                          <option value="In Progress">In Progress</option>
+                          <option value="Completed">Completed</option>
+                          <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+                        </select>
+                        <input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} />
+                        <button onClick={saveEditTask}>Save</button>
+                        <button onClick={cancelEditTask}>Cancel</button>
+                      </>
+                    ) : (
+                      <>
+                        {task.description} {task.due_date ? `(Due: ${task.due_date.split('T')[0]})` : ''}
+                        <button onClick={() => startEditTask(task)}>Edit</button>
+                      </>
+                    )}
+                  </li>
+                ))}
+                {groupTasks(status).length === 0 && <li>No tasks.</li>}
+              </ul>
+            </div>
+          ))}
+        </section>
+
+        <section className="logs-section">
+          <h3>Project Logs</h3>
+          <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
+          <button onClick={handleAddLog}>Add Log</button>
+
+          {logs.length > 0 ? (
+            logs.map((log) => (
+              <div key={log.id} className="log-entry">
+                {editLogId === log.id ? (
+                  <>
+                    <textarea rows={2} value={editLogText} onChange={(e) => setEditLogText(e.target.value)} />
+                    <div>
+                      <button onClick={() => saveEditLog(log.id)}>Save</button>
+                      <button onClick={cancelEditLog}>Cancel</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p>{log.notes}</p>
+                    <div>
+                      <button onClick={() => startEditLog(log)}>Edit</button>
+                      <button onClick={() => deleteLog(log.id)}>Delete</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))
+          ) : (
+            <p>No logs available.</p>
+          )}
+        </section>
+      </div>
     </div>
- </div>
   );
 }
 
