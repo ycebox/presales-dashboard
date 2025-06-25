@@ -25,7 +25,6 @@ function ProjectDetails() {
 
   async function fetchProjectDetails() {
     setLoading(true);
-
     const { data: projectData } = await supabase.from('projects').select('*').eq('id', id).single();
     const { data: taskData } = await supabase.from('project_tasks').select('*').eq('project_id', id);
     const { data: logData } = await supabase
@@ -50,11 +49,9 @@ function ProjectDetails() {
     const updated = { ...editForm };
     delete updated.id;
     delete updated.created_at;
-
     const { error } = await supabase.from('projects').update(updated).eq('id', id);
-    if (error) {
-      console.error('Error updating project:', error.message);
-    } else {
+    if (error) console.error('Error updating project:', error.message);
+    else {
       setEditingProject(false);
       fetchProjectDetails();
     }
@@ -68,7 +65,6 @@ function ProjectDetails() {
   const handleAddTask = async (e) => {
     e.preventDefault();
     if (!newTask.description.trim()) return;
-
     const { error } = await supabase.from('project_tasks').insert([
       {
         description: newTask.description,
@@ -77,10 +73,8 @@ function ProjectDetails() {
         project_id: id,
       },
     ]);
-
-    if (error) {
-      console.error('Error adding task:', error.message);
-    } else {
+    if (error) console.error('Error adding task:', error.message);
+    else {
       setNewTask({ description: '', status: 'Not Started', due_date: '' });
       fetchProjectDetails();
     }
@@ -113,9 +107,8 @@ function ProjectDetails() {
       due_date: taskEditForm.due_date || null,
     };
     const { error } = await supabase.from('project_tasks').update(payload).eq('id', editTaskId);
-    if (error) {
-      console.error('Error updating task:', error.message);
-    } else {
+    if (error) console.error('Error updating task:', error.message);
+    else {
       setEditTaskId(null);
       fetchProjectDetails();
     }
@@ -123,17 +116,9 @@ function ProjectDetails() {
 
   const handleAddLog = async () => {
     if (!newLog.trim()) return;
-
-    const { error } = await supabase.from('project_logs').insert([
-      {
-        notes: newLog,
-        project_id: id,
-      },
-    ]);
-
-    if (error) {
-      console.error('Error adding log:', error.message);
-    } else {
+    const { error } = await supabase.from('project_logs').insert([{ notes: newLog, project_id: id }]);
+    if (error) console.error('Error adding log:', error.message);
+    else {
       setNewLog('');
       fetchProjectDetails();
     }
@@ -149,31 +134,23 @@ function ProjectDetails() {
     setEditLogText('');
   };
 
-const saveEditLog = async (logId) => {
-  if (!editLogText.trim()) return;
-
-  const { error } = await supabase
-    .from('project_logs')
-    .update({ notes: editLogText })
-    .eq('id', logId);
-
-  if (error) {
-    console.error('Error editing log:', error.message);
-  } else {
-    setEditLogId(null);
-    setEditLogText('');
-    fetchProjectDetails();
-  }
-};
-
-
-  const deleteLog = async (logId) => {
-    const { error } = await supabase.from('project_logs').delete().eq('id', logId);
-    if (error) {
-      console.error('Error deleting log:', error.message);
-    } else {
+  const saveEditLog = async (logId) => {
+    if (!editLogText.trim()) return;
+    const { error } = await supabase.from('project_logs').update({ notes: editLogText }).eq('id', logId);
+    if (error) console.error('Error editing log:', error.message);
+    else {
+      setEditLogId(null);
+      setEditLogText('');
       fetchProjectDetails();
     }
+  };
+
+  const deleteLog = async (logId) => {
+    const confirm = window.confirm('Are you sure you want to delete this log?');
+    if (!confirm) return;
+    const { error } = await supabase.from('project_logs').delete().eq('id', logId);
+    if (error) console.error('Error deleting log:', error.message);
+    else fetchProjectDetails();
   };
 
   if (loading) return <p>Loading project details...</p>;
@@ -184,7 +161,7 @@ const saveEditLog = async (logId) => {
       <h2>🔍 {project.customer_name} - Project Details</h2>
       <Link to="/">⬅️ Back to Dashboard</Link>
 
-      {/* Project Edit Block */}
+      {/* Edit Project Section */}
       {editingProject ? (
         <div style={{ marginTop: '10px' }}>
           {Object.entries(editForm).map(([key, value]) =>
@@ -219,7 +196,7 @@ const saveEditLog = async (logId) => {
         </>
       )}
 
-      {/* Tasks */}
+      {/* Tasks Section */}
       <h3>📝 Tasks</h3>
       <form onSubmit={handleAddTask} style={{ marginBottom: '20px' }}>
         <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
@@ -265,47 +242,47 @@ const saveEditLog = async (logId) => {
         </div>
       ))}
 
-      {/* Logs */}
-    <h3>📚 Project Logs</h3>
-<textarea
-  rows={3}
-  placeholder="Add a log entry..."
-  value={newLog}
-  onChange={(e) => setNewLog(e.target.value)}
-  style={{ width: '100%', marginBottom: '10px' }}
-/>
-<button onClick={handleAddLog}>➕ Add Log</button>
+      {/* Logs Section */}
+      <h3>📚 Project Logs</h3>
+      <textarea
+        rows={3}
+        placeholder="Add a log entry..."
+        value={newLog}
+        onChange={(e) => setNewLog(e.target.value)}
+        style={{ width: '100%', marginBottom: '10px' }}
+      />
+      <button onClick={handleAddLog}>➕ Add Log</button>
 
-{logs.length > 0 ? (
-  logs.map((log) => (
-    <div key={log.id} style={{ borderBottom: '1px solid #ccc', marginTop: '10px' }}>
-      {editLogId === log.id ? (
-        <>
-          <textarea
-            rows={2}
-            value={editLogText}
-            onChange={(e) => setEditLogText(e.target.value)}
-            style={{ width: '100%' }}
-          />
-          <div style={{ marginTop: '5px' }}>
-            <button onClick={() => saveEditLog(log.id)}>💾 Save</button>
-            <button onClick={cancelEditLog} style={{ marginLeft: '5px' }}>✖ Cancel</button>
+      {logs.length > 0 ? (
+        logs.map((log) => (
+          <div key={log.id} style={{ borderBottom: '1px solid #ccc', marginTop: '10px' }}>
+            {editLogId === log.id ? (
+              <>
+                <textarea
+                  rows={2}
+                  value={editLogText}
+                  onChange={(e) => setEditLogText(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+                <div style={{ marginTop: '5px' }}>
+                  <button onClick={() => saveEditLog(log.id)}>💾 Save</button>
+                  <button onClick={cancelEditLog} style={{ marginLeft: '5px' }}>✖ Cancel</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p>{log.notes}</p>
+                <div>
+                  <button onClick={() => startEditLog(log)}>✏️ Edit</button>
+                  <button onClick={() => deleteLog(log.id)} style={{ marginLeft: '5px' }}>🗑️ Delete</button>
+                </div>
+              </>
+            )}
           </div>
-        </>
+        ))
       ) : (
-        <>
-          <p>{log.notes}</p>
-          <div>
-            <button onClick={() => startEditLog(log)}>✏️ Edit</button>
-            <button onClick={() => deleteLog(log.id)} style={{ marginLeft: '5px' }}>🗑️ Delete</button>
-          </div>
-        </>
+        <p>No logs available.</p>
       )}
-    </div>
-  ))
-) : (
-  <p>No logs available.</p>
-)}
     </div>
   );
 }
