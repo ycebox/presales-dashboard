@@ -14,7 +14,7 @@ body {
   justify-content: center;
   background-color: #f1f5f9;
   min-height: 100vh;
-  padding: 3rem 1rem;
+  padding: 2rem 1rem;
   box-sizing: border-box;
 }
 
@@ -75,12 +75,14 @@ body {
   flex-direction: column;
   gap: 2rem;
   background-color: #f8fafc;
+  max-width: 800px;
+  margin: auto;
 }
 
 .project-card,
 .section-card {
   background: white;
-  padding: 2rem;
+  padding: 1.5rem;
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
@@ -89,13 +91,15 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
 }
 
 .big-name {
-  font-size: 1.75rem;
+  font-size: 1.9rem;
   font-weight: 700;
   color: #1e293b;
+  margin: 0;
 }
 
 .edit-form label {
@@ -124,20 +128,20 @@ textarea {
 }
 
 button {
-  background-color: #1e293b;
+  background-color: #2563eb;
   color: white;
-  padding: 0.4rem 0.9rem;
+  padding: 0.4rem 0.8rem;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 button:hover {
-  background-color: #334155;
+  background-color: #1d4ed8;
 }
 
 .task-group {
