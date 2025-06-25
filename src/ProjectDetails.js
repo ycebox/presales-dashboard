@@ -149,22 +149,23 @@ function ProjectDetails() {
     setEditLogText('');
   };
 
-  const saveEditLog = async () => {
-    if (!editLogText.trim()) return;
+const saveEditLog = async (logId) => {
+  if (!editLogText.trim()) return;
 
-    const { error } = await supabase
-      .from('project_logs')
-      .update({ notes: editLogText })
-      .eq('id', editLogId);
+  const { error } = await supabase
+    .from('project_logs')
+    .update({ notes: editLogText })
+    .eq('id', logId);
 
-    if (error) {
-      console.error('Error editing log:', error.message);
-    } else {
-      setEditLogId(null);
-      setEditLogText('');
-      fetchProjectDetails();
-    }
-  };
+  if (error) {
+    console.error('Error editing log:', error.message);
+  } else {
+    setEditLogId(null);
+    setEditLogText('');
+    fetchProjectDetails();
+  }
+};
+
 
   const deleteLog = async (logId) => {
     const { error } = await supabase.from('project_logs').delete().eq('id', logId);
@@ -265,42 +266,46 @@ function ProjectDetails() {
       ))}
 
       {/* Logs */}
-      <h3>📚 Project Logs</h3>
-      <textarea
-        rows={3}
-        placeholder="Add a log entry..."
-        value={newLog}
-        onChange={(e) => setNewLog(e.target.value)}
-        style={{ width: '100%', marginBottom: '10px' }}
-      />
-      <button onClick={handleAddLog}>➕ Add Log</button>
+    <h3>📚 Project Logs</h3>
+<textarea
+  rows={3}
+  placeholder="Add a log entry..."
+  value={newLog}
+  onChange={(e) => setNewLog(e.target.value)}
+  style={{ width: '100%', marginBottom: '10px' }}
+/>
+<button onClick={handleAddLog}>➕ Add Log</button>
 
-      {logs.length > 0 ? (
-        logs.map((log) => (
-          <div key={log.id} style={{ borderBottom: '1px solid #ccc', marginTop: '10px' }}>
-            {editLogId === log.id ? (
-              <>
-                <textarea
-                  rows={2}
-                  value={editLogText}
-                  onChange={(e) => setEditLogText(e.target.value)}
-                  style={{ width: '100%' }}
-                />
-                <button onClick={saveEditLog}>💾 Save</button>
-                <button onClick={cancelEditLog}>✖ Cancel</button>
-              </>
-            ) : (
-              <>
-                <p>{log.notes}</p>
-                <button onClick={() => startEditLog(log)}>✏️ Edit</button>
-                <button onClick={() => deleteLog(log.id)} style={{ marginLeft: '5px' }}>🗑️ Delete</button>
-              </>
-            )}
+{logs.length > 0 ? (
+  logs.map((log) => (
+    <div key={log.id} style={{ borderBottom: '1px solid #ccc', marginTop: '10px' }}>
+      {editLogId === log.id ? (
+        <>
+          <textarea
+            rows={2}
+            value={editLogText}
+            onChange={(e) => setEditLogText(e.target.value)}
+            style={{ width: '100%' }}
+          />
+          <div style={{ marginTop: '5px' }}>
+            <button onClick={() => saveEditLog(log.id)}>💾 Save</button>
+            <button onClick={cancelEditLog} style={{ marginLeft: '5px' }}>✖ Cancel</button>
           </div>
-        ))
+        </>
       ) : (
-        <p>No logs available.</p>
+        <>
+          <p>{log.notes}</p>
+          <div>
+            <button onClick={() => startEditLog(log)}>✏️ Edit</button>
+            <button onClick={() => deleteLog(log.id)} style={{ marginLeft: '5px' }}>🗑️ Delete</button>
+          </div>
+        </>
       )}
+    </div>
+  ))
+) : (
+  <p>No logs available.</p>
+)}
     </div>
   );
 }
