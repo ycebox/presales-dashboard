@@ -33,8 +33,7 @@ function ProjectDetails() {
       .eq('project_id', id)
       .order('created_at', { ascending: false });
 
-    console.log('Logs:', logData); // <-- Add this line to check log structure
-    
+      
     setProject(projectData);
     setEditForm(projectData || {});
     setTasks(taskData || []);
