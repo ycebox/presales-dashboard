@@ -14,25 +14,20 @@ function Projects() {
     product: ''
   });
   const [showModal, setShowModal] = useState(false);
-const [newProject, setNewProject] = useState({
-  customer_name: '',
-  country: '',
-  account_manager: '',
-  sales_stage: '',
-  product: '',
-  scope: '',
-  backup_presales: '',
-  remarks: ''
-});
+  const [newProject, setNewProject] = useState({
+    customer_name: '',
+    country: '',
+    account_manager: '',
+    sales_stage: '',
+    product: '',
+    scope: '',
+    backup_presales: '',
+    remarks: ''
+  });
 
   useEffect(() => {
     fetchProjects();
   }, [filters]);
-
-  <label key={key}>
-  {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-  <input name={key} value={value} onChange={handleNewProjectChange} />
-</label>
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -76,6 +71,8 @@ const [newProject, setNewProject] = useState({
         remarks: ''
       });
       fetchProjects();
+    } else {
+      console.error('Error adding project:', error.message);
     }
   };
 
@@ -166,12 +163,12 @@ const [newProject, setNewProject] = useState({
           <div className="modal-content">
             <h3>Add New Project</h3>
             <form onSubmit={handleAddProject}>
-            Object.entries(newProject).map(([key, value]) => (
-  <label key={key}>
-    {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-    <input name={key} value={value} onChange={handleNewProjectChange} />
-  </label>
-))
+              {Object.entries(newProject).map(([key, value]) => (
+                <label key={key}>
+                  {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                  <input name={key} value={value} onChange={handleNewProjectChange} />
+                </label>
+              ))}
               <button type="submit">Save</button>
               <button type="button" onClick={() => setShowModal(false)}>Cancel</button>
             </form>
