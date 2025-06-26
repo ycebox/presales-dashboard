@@ -42,34 +42,55 @@
 .modern-table {
   width: 100%;
   border-collapse: separate;
-  border-spacing: 0 12px;
+  border-spacing: 0;
   font-size: 0.95rem;
   background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 /* Header styling */
+
+.modern-table thead {
+  background-color: #f3f5f6;
+}
+
 .modern-table thead tr {
   background-color: #f3f5f6;
   text-align: left;
 }
 
 .modern-table thead th {
-  padding: 12px 16px;
+   padding: 14px 18px;
   font-weight: 600;
   color: #1e293b;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 /* Body rows */
-.modern-table tbody td {
+.modern-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.modern-table tbody tr:nth-child(even) {
+  background-color: #f8fafc;
+}
+
+.modern-table tbody tr:nth-child(odd) {
   background-color: #ffffff;
-  padding: 14px 16px;
+}
+
+.modern-table tbody td {
+  padding: 14px 18px;
   border-bottom: 1px solid #e2e8f0;
   vertical-align: top;
 }
 
 /* Row hover effect */
-.modern-table tbody tr:hover td {
-  background-color: #f8fafc;
+.modern-table tbody tr:hover {
+  background-color: #e6e9ea;
 }
 
 /* Project name link */
