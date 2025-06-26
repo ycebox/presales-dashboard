@@ -228,3 +228,17 @@
 .modal-content button[type="button"]:hover {
   background-color: #e2e8f0;
 }
+
+.delete-btn {
+  background: transparent;
+  border: none;
+  color: #e11d48; /* rose-600 */
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem;
+}
+
+.delete-btn:hover {
+  color: #be123c;
+}
+
