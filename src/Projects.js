@@ -166,12 +166,12 @@ const [newProject, setNewProject] = useState({
           <div className="modal-content">
             <h3>Add New Project</h3>
             <form onSubmit={handleAddProject}>
-              {Object.entries(newProject).map(([key, value]) => (
-                <label key={key}>
-                  {key.replace(/_/g, ' ')}
-                  <input name={key} value={value} onChange={handleNewProjectChange} />
-                </label>
-              ))}
+            Object.entries(newProject).map(([key, value]) => (
+  <label key={key}>
+    {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+    <input name={key} value={value} onChange={handleNewProjectChange} />
+  </label>
+))
               <button type="submit">Save</button>
               <button type="button" onClick={() => setShowModal(false)}>Cancel</button>
             </form>
