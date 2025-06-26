@@ -15,14 +15,14 @@ function Projects() {
   });
   const [showModal, setShowModal] = useState(false);
   const [newProject, setNewProject] = useState({
-    customer_name: '',
-    country: '',
-    account_manager: '',
-    sales_stage: '',
-    product: '',
-    scope: '',
-    backup_presales: '',
-    remarks: ''
+    Customer_Name: '',
+    Country: '',
+    Account_Manager: '',
+    Sales_Stage: '',
+    Product: '',
+    Scope: '',
+    Backup_Presales: '',
+    Remarks: ''
   });
 
   useEffect(() => {
