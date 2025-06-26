@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from './supabaseClient';
+import { FaTasks, FaCalendarDay, FaExclamationCircle, FaCheck } from 'react-icons/fa';
+import './ProjectDetails.css'; // Reusing styles like .section-card, etc.
 
 export default function TaskSummaryDashboard() {
   const [taskSummary, setTaskSummary] = useState({
@@ -36,38 +38,44 @@ export default function TaskSummaryDashboard() {
     });
   };
 
-  const cardStyle = {
-    display: "inline-block",
-    padding: "10px 20px",
-    margin: "10px",
-    borderRadius: "8px",
-    color: "white",
-    fontWeight: "bold",
-    width: "160px",
-    textAlign: "center"
-  };
+  const summaryCards = [
+    { label: "Total Tasks", value: taskSummary.total, icon: <FaTasks />, bg: "#bbc2c9" },
+    { label: "Due Today", value: taskSummary.today, icon: <FaCalendarDay />, bg: "#d1d8db" },
+    { label: "Overdue", value: taskSummary.overdue, icon: <FaExclamationCircle />, bg: "#e6e9ea" },
+    { label: "Done", value: taskSummary.done, icon: <FaCheck />, bg: "#f3f5f6" },
+  ];
 
   return (
-    <section style={{ padding: "20px", border: "1px solid #ccc", marginTop: "20px" }}>
-      <h2>📊 Task Summary Dashboard</h2>
-      <div style={{ display: "flex", flexWrap: "wrap" }}>
-        <div style={{ ...cardStyle, backgroundColor: "#007bff" }}>
-          Total Tasks<br />
-          {taskSummary.total}
-        </div>
-        <div style={{ ...cardStyle, backgroundColor: "orange" }}>
-          Due Today<br />
-          {taskSummary.today}
-        </div>
-        <div style={{ ...cardStyle, backgroundColor: "red" }}>
-          Overdue<br />
-          {taskSummary.overdue}
-        </div>
-        <div style={{ ...cardStyle, backgroundColor: "gray" }}>
-          Done<br />
-          {taskSummary.done}
-        </div>
+    <div className="section-card">
+      <h3>📊 Task Summary Dashboard</h3>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+        {summaryCards.map((card, index) => (
+          <div
+            key={index}
+            style={{
+              backgroundColor: card.bg,
+              borderRadius: "12px",
+              padding: "1.2rem",
+              minWidth: "160px",
+              flex: "1",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              boxShadow: "0 4px 8px rgba(0,0,0,0.04)",
+              fontWeight: "600",
+              fontSize: "1rem"
+            }}
+          >
+            <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>{card.icon}</div>
+            <div>{card.label}</div>
+            <div style={{ fontSize: "1.25rem", marginTop: "0.25rem", color: "#1e293b" }}>
+              {card.value}
+            </div>
+          </div>
+        ))}
       </div>
-    </section>
+    </div>
   );
 }
