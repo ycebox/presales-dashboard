@@ -88,11 +88,12 @@ body {
   padding: 4rem;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 4rem;
 }
 
 .project-card,
 .section-card {
+   width: 100%;
   background: white;
   padding: 1.5rem;
   border-radius: 16px;
