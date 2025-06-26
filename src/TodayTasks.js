@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from './supabaseClient';
+import { FaCalendarDay, FaExclamationCircle, FaCheckCircle, FaTasks } from "react-icons/fa";
 
 export default function TodayTasks() {
   const [tasks, setTasks] = useState([]);
@@ -26,7 +27,7 @@ export default function TodayTasks() {
   const isOverdue = (due) => due && due < today;
   const isToday = (due) => due === today;
 
-  const openCount = tasks.filter((t) => t.status === "Open").length;
+  const openCount = tasks.filter((t) => t.status !== "Done").length;
   const doneCount = tasks.filter((t) => t.status === "Done").length;
 
   const grouped = {
@@ -36,57 +37,64 @@ export default function TodayTasks() {
 
   const scrollToProject = (projectId) => {
     const el = document.getElementById(`project-${projectId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const getCardColor = (status) => {
     switch (status) {
-      case "Open": return "#e0fce0";
-      case "In Progress": return "#fff5cc";
-      case "Blocked": return "#ffe6e6";
-      case "Done": return "#f0f0f0";
-      default: return "#ffffff";
+      case "In Progress": return "#e6e9ea";
+      case "Completed":
+      case "Done": return "#f3f5f6";
+      case "Cancelled/On-hold": return "#d1d8db";
+      default: return "#bbc2c9"; // default gray-blue tone
     }
   };
 
   return (
-    <section style={{ padding: "10px", border: "1px solid #ccc", marginBottom: "20px" }}>
-      <h3>📌 Today + Overdue Tasks</h3>
-      <p style={{ fontSize: "0.9rem" }}>
+    <section style={{ padding: "24px", background: "#fff", borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", marginTop: "24px" }}>
+      <h2 style={{ display: "flex", alignItems: "center", fontSize: "1.3rem", gap: "10px", marginBottom: "12px" }}>
+        <FaTasks /> Today + Overdue Tasks
+      </h2>
+      <p style={{ fontSize: "0.9rem", color: "#475569", marginBottom: "16px" }}>
         Total: {tasks.length} | Open: {openCount} | Done: {doneCount}
       </p>
 
       {["overdue", "today"].map((groupKey) => (
         grouped[groupKey].length > 0 && (
-          <div key={groupKey}>
-            <h4 style={{ color: groupKey === "overdue" ? "red" : "orange" }}>
-              {groupKey === "overdue" ? "🔴 Overdue" : "🟡 Due Today"}
+          <div key={groupKey} style={{ marginBottom: "20px" }}>
+            <h4 style={{
+              color: groupKey === "overdue" ? "#dc2626" : "#ea580c",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              fontSize: "1.05rem"
+            }}>
+              {groupKey === "overdue" ? <FaExclamationCircle /> : <FaCalendarDay />}
+              {groupKey === "overdue" ? "Overdue Tasks" : "Due Today"}
             </h4>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginTop: "10px" }}>
               {grouped[groupKey].map((t) => (
                 <div
                   key={t.id}
                   onClick={() => scrollToProject(t.project_id)}
                   style={{
                     background: getCardColor(t.status),
-                    border: "1px solid #aaa",
-                    padding: "10px",
-                    borderRadius: "8px",
-                    width: "220px",
+                    padding: "14px",
+                    borderRadius: "10px",
+                    width: "250px",
                     cursor: "pointer",
-                    boxShadow: "1px 1px 5px rgba(0,0,0,0.1)"
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
+                    borderLeft: `4px solid ${groupKey === "overdue" ? "#dc2626" : "#f59e0b"}`
                   }}
                 >
-                  <strong>{t.title}</strong><br />
-                  <span style={{ fontSize: "0.85rem" }}>
-                    Project: {t.projects?.customer_name || t.project_id}
-                  </span><br />
-                  <span style={{ fontSize: "0.8rem", color: "#666" }}>
-                    Status: {t.status}<br />
-                    Due: {t.due_date}
-                  </span>
+                  <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "6px" }}>
+                    {t.description}
+                  </div>
+                  <div style={{ fontSize: "0.85rem", color: "#475569" }}>
+                    <strong>Project:</strong> {t.projects?.customer_name || t.project_id}<br />
+                    <strong>Status:</strong> {t.status}<br />
+                    <strong>Due:</strong> {t.due_date}
+                  </div>
                 </div>
               ))}
             </div>
