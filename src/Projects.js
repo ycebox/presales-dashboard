@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { Link } from 'react-router-dom';
-import { FaFolderOpen, FaPlus } from 'react-icons/fa';
+import { FaFolderOpen, FaPlus, FaTrash } from 'react-icons/fa';
 import './Projects.css';
 
 function Projects() {
@@ -32,7 +32,6 @@ function Projects() {
   const fetchProjects = async () => {
     setLoading(true);
     let query = supabase.from('projects').select('*');
-
     Object.entries(filters).forEach(([key, value]) => {
       if (value) query = query.eq(key, value);
     });
@@ -75,11 +74,22 @@ function Projects() {
     }
   };
 
+  const handleDeleteProject = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this project?')) return;
+    const { error } = await supabase.from('projects').delete().eq('id', id);
+    if (!error) fetchProjects();
+    else console.error('Delete error:', error.message);
+  };
+
   return (
     <section className="projects-wrapper">
       <div className="projects-header-row">
-        <h2 className="projects-header"><FaFolderOpen style={{ marginRight: '8px' }} /> Presales Projects</h2>
-        <button className="add-btn" style={{ backgroundColor: '#a6b2d9' }} onClick={() => setShowModal(true)}><FaPlus /> Add Project</button>
+        <h2 className="projects-header">
+          <FaFolderOpen style={{ marginRight: '8px' }} /> Presales Projects
+        </h2>
+        <button className="add-btn" style={{ backgroundColor: '#a6b2d9' }} onClick={() => setShowModal(true)}>
+          <FaPlus /> Add Project
+        </button>
       </div>
 
       <div className="filters modern-flat">
@@ -116,6 +126,7 @@ function Projects() {
                 <th>Scope</th>
                 <th>Backup</th>
                 <th>Remarks</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -133,6 +144,11 @@ function Projects() {
                   <td>{project.scope}</td>
                   <td>{project.backup_presales}</td>
                   <td>{project.remarks}</td>
+                  <td>
+                    <button className="delete-btn" onClick={() => handleDeleteProject(project.id)}>
+                      <FaTrash />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
