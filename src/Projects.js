@@ -79,10 +79,10 @@ function Projects() {
     <section className="projects-wrapper">
       <div className="projects-header-row">
         <h2 className="projects-header"><FaFolderOpen style={{ marginRight: '8px' }} /> Presales Projects</h2>
-        <button className="add-btn" onClick={() => setShowModal(true)}><FaPlus /> Add Project</button>
+        <button className="add-btn" style={{ backgroundColor: '#f3f5f6' }} onClick={() => setShowModal(true)}><FaPlus /> Add Project</button>
       </div>
 
-      <div className="filters">
+      <div className="filters modern-flat">
         <select name="country" value={filters.country} onChange={handleFilterChange}>
           <option value="">All Countries</option>
           {[...new Set(projects.map(p => p.country))].map((c, i) => <option key={i} value={c}>{c}</option>)}
