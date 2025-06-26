@@ -148,20 +148,11 @@ function ProjectDetails() {
 
   return (
     <div className="page-wrapper navy-theme">
-      <div className="page-content">
-        <div className="sidebar">
-          <h2>SmartVista</h2>
-          <nav>
-            <Link to="/"><FaHome /> Dashboard</Link>
-            <a href="#tasks"><FaTasks /> Tasks</a>
-            <a href="#logs"><FaBookOpen /> Logs</a>
-            <Link to="/settings"><FaCog /> Settings</Link>
-          </nav>
-        </div>
+      <div className="page-content wide">
         <div className="project-container">
           <div className="project-card">
             <div className="project-header">
-              <h2 className="highlight-name big-name">{project.customer_name}</h2>
+              <h2 className="highlight-name big-name center-text">{project.customer_name}</h2>
               {!editingProject && <button onClick={() => setEditingProject(true)}><FaEdit /> Edit</button>}
             </div>
             {editingProject ? (
@@ -169,7 +160,7 @@ function ProjectDetails() {
                 {Object.entries(editForm).map(([key, value]) => (
                   key !== 'id' && key !== 'created_at' && (
                     <label key={key}>
-                      {key.replace(/_/g, ' ')}
+                      {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                       <input name={key} value={value || ''} onChange={handleProjectFieldChange} />
                     </label>
                   )
@@ -180,12 +171,11 @@ function ProjectDetails() {
                 </div>
               </div>
             ) : (
-              <div className="details-box grid-2">
+              <div className="details-box grid-2 spaced">
                 <div><strong>Country:</strong> {project.country}</div>
                 <div><strong>Account Manager:</strong> {project.account_manager}</div>
                 <div><strong>Sales Stage:</strong> {project.sales_stage}</div>
                 <div><strong>Product:</strong> {project.product}</div>
-                <div><strong>Deal Value:</strong> {project.deal_value}</div>
                 <div><strong>Scope:</strong> {project.scope}</div>
                 <div><strong>Backup Presales:</strong> {project.backup_presales}</div>
                 <div><strong>Remarks:</strong> {project.remarks}</div>
@@ -194,7 +184,7 @@ function ProjectDetails() {
           </div>
 
           <div className="section-card" id="tasks">
-            <h3>Tasks</h3>
+            <h3><FaTasks /> Tasks</h3>
             <form onSubmit={handleAddTask} className="task-form">
               <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
               <select name="status" value={newTask.status} onChange={handleTaskInput}>
@@ -245,9 +235,11 @@ function ProjectDetails() {
           </div>
 
           <div className="section-card" id="logs">
-            <h3>Project Logs</h3>
-            <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
-            <button onClick={handleAddLog}><FaPlus /> Add</button>
+            <h3><FaBookOpen /> Project Logs</h3>
+            <div className="log-form">
+              <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
+              <button onClick={handleAddLog}><FaPlus /> Add</button>
+            </div>
 
             {logs.length > 0 ? (
               logs.map((log) => (
