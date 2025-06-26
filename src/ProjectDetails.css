@@ -216,6 +216,14 @@ select:focus {
   box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.2);
 }
 
+#logs textarea {
+  margin-bottom: 0.5rem;
+}
+
+#logs button {
+  margin-bottom: 1rem;
+}
+
 .section-card h3 {
   font-size: 1.25rem;
   font-weight: 600;
