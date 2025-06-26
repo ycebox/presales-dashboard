@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from './supabaseClient';
-import { FaCalendarDay, FaExclamationCircle, FaCheckCircle, FaTasks } from "react-icons/fa";
+import { FaCalendarDay, FaExclamationCircle, FaTasks } from "react-icons/fa";
 
 export default function TodayTasks() {
   const [tasks, setTasks] = useState([]);
@@ -19,8 +19,14 @@ export default function TodayTasks() {
       .eq("is_archived", false)
       .order("due_date", { ascending: true });
 
-    if (!error) setTasks(data);
-    else console.error("Error loading today's tasks:", error);
+    if (!error) {
+      const filtered = data.filter(
+        (t) => !["Done", "Completed", "Cancelled/On-hold"].includes(t.status)
+      );
+      setTasks(filtered);
+    } else {
+      console.error("Error loading today's tasks:", error);
+    }
   };
 
   const today = new Date().toISOString().split("T")[0];
@@ -43,10 +49,8 @@ export default function TodayTasks() {
   const getCardColor = (status) => {
     switch (status) {
       case "In Progress": return "#e6e9ea";
-      case "Completed":
-      case "Done": return "#f3f5f6";
-      case "Cancelled/On-hold": return "#d1d8db";
-      default: return "#bbc2c9"; // default gray-blue tone
+      case "Open": return "#d1d8db";
+      default: return "#bbc2c9";
     }
   };
 
