@@ -85,7 +85,7 @@ body {
   background-color: #f8fafc;
   border-radius: 16px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
-  padding: 2rem;
+  padding: 4rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
