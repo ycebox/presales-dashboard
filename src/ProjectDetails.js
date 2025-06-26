@@ -181,7 +181,7 @@ function ProjectDetails() {
               </div>
             )}
           </div>
-         {/* tasks and logs stay unchanged */}
+     
         </div>
       </div>
     </div>
