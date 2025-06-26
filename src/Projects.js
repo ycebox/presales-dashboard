@@ -14,20 +14,25 @@ function Projects() {
     product: ''
   });
   const [showModal, setShowModal] = useState(false);
-  const [newProject, setNewProject] = useState({
-    Customer_Name: '',
-    Country: '',
-    Account_Manager: '',
-    Sales_Stage: '',
-    Product: '',
-    Scope: '',
-    Backup_Presales: '',
-    Remarks: ''
-  });
+const [newProject, setNewProject] = useState({
+  customer_name: '',
+  country: '',
+  account_manager: '',
+  sales_stage: '',
+  product: '',
+  scope: '',
+  backup_presales: '',
+  remarks: ''
+});
 
   useEffect(() => {
     fetchProjects();
   }, [filters]);
+
+  <label key={key}>
+  {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+  <input name={key} value={value} onChange={handleNewProjectChange} />
+</label>
 
   const fetchProjects = async () => {
     setLoading(true);
