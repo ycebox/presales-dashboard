@@ -79,7 +79,7 @@ function Projects() {
     <section className="projects-wrapper">
       <div className="projects-header-row">
         <h2 className="projects-header"><FaFolderOpen style={{ marginRight: '8px' }} /> Presales Projects</h2>
-        <button className="add-btn" style={{ backgroundColor: '#798c96' }} onClick={() => setShowModal(true)}><FaPlus /> Add Project</button>
+        <button className="add-btn" style={{ backgroundColor: '#a6b2d9' }} onClick={() => setShowModal(true)}><FaPlus /> Add Project</button>
       </div>
 
       <div className="filters modern-flat">
