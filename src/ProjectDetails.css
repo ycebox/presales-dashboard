@@ -14,7 +14,7 @@ body {
   justify-content: center;
   background-color: #f1f5f9;
   min-height: 100vh;
-  padding: 2rem 1rem;
+  padding: 4rem 1rem;
   box-sizing: border-box;
 }
 
@@ -81,14 +81,14 @@ body {
 }
 
 .project-container {
-  flex: 1;
+  width: 74%;
+  background-color: #f8fafc;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
   padding: 2rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  background-color: #f8fafc;
-  max-width: 800px;
-  margin: auto;
 }
 
 .project-card,
