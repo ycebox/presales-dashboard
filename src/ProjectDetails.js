@@ -78,12 +78,6 @@ function ProjectDetails() {
     }
   };
 
-  const deleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
-    const { error } = await supabase.from('project_tasks').delete().eq('id', taskId);
-    if (!error) fetchProjectDetails();
-  };
-
   const groupTasks = (status) => tasks.filter((task) => task.status === status);
 
   const startEditTask = (task) => {
@@ -156,10 +150,11 @@ function ProjectDetails() {
     <div className="page-wrapper navy-theme">
       <div className="page-content wide">
         <div className="back-link-container">
-          <Link to="/" className="back-btn">
-            <FaHome /> Back to Dashboard
-          </Link>
-        </div>
+  <Link to="/" className="back-btn">
+    <FaHome /> Back to Dashboard
+  </Link>
+</div>
+
 
         <div className="project-container">
           <div className="project-card">
@@ -237,7 +232,6 @@ function ProjectDetails() {
                           <span className="task-date">{task.due_date ? task.due_date.split('T')[0] : '—'}</span>
                           <div className="task-actions">
                             <button onClick={() => startEditTask(task)}><FaEdit /></button>
-                            <button onClick={() => deleteTask(task.id)}><FaTrash /></button>
                           </div>
                         </>
                       )}
