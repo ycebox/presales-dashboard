@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
-import { FaArrowLeft, FaEdit, FaSave, FaTimes, FaPlus, FaTrash, FaCheck } from 'react-icons/fa';
+import { FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -29,7 +29,11 @@ function ProjectDetails() {
     setLoading(true);
     const { data: projectData } = await supabase.from('projects').select('*').eq('id', id).single();
     const { data: taskData } = await supabase.from('project_tasks').select('*').eq('project_id', id);
-    const { data: logData } = await supabase.from('project_logs').select('*').eq('project_id', id).order('created_at', { ascending: false });
+    const { data: logData } = await supabase
+      .from('project_logs')
+      .select('*')
+      .eq('project_id', id)
+      .order('created_at', { ascending: false });
 
     setProject(projectData);
     setEditForm(projectData || {});
@@ -37,8 +41,6 @@ function ProjectDetails() {
     setLogs(logData || []);
     setLoading(false);
   }
-
-  const groupTasks = (status) => tasks.filter((task) => task.status === status);
 
   const handleProjectFieldChange = (e) => {
     const { name, value } = e.target;
@@ -64,19 +66,32 @@ function ProjectDetails() {
   const handleAddTask = async (e) => {
     e.preventDefault();
     if (!newTask.description.trim()) return;
-    const { error } = await supabase.from('project_tasks').insert([{ ...newTask, project_id: id }]);
+    const { error } = await supabase.from('project_tasks').insert([{
+      description: newTask.description,
+      status: newTask.status,
+      due_date: newTask.due_date || null,
+      project_id: id,
+    }]);
     if (!error) {
       setNewTask({ description: '', status: 'Not Started', due_date: '' });
       fetchProjectDetails();
     }
   };
 
+  const deleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    const { error } = await supabase.from('project_tasks').delete().eq('id', taskId);
+    if (!error) fetchProjectDetails();
+  };
+
+  const groupTasks = (status) => tasks.filter((task) => task.status === status);
+
   const startEditTask = (task) => {
     setEditTaskId(task.id);
     setTaskEditForm({
       description: task.description,
       status: task.status,
-      due_date: task.due_date ? task.due_date.split('T')[0] : ''
+      due_date: task.due_date ? task.due_date.split('T')[0] : '',
     });
   };
 
@@ -91,16 +106,12 @@ function ProjectDetails() {
   };
 
   const saveEditTask = async () => {
-    const { error } = await supabase.from('project_tasks').update({ ...taskEditForm }).eq('id', editTaskId);
+    const payload = { ...taskEditForm, due_date: taskEditForm.due_date || null };
+    const { error } = await supabase.from('project_tasks').update(payload).eq('id', editTaskId);
     if (!error) {
       setEditTaskId(null);
       fetchProjectDetails();
     }
-  };
-
-  const deleteTask = async (taskId) => {
-    const { error } = await supabase.from('project_tasks').delete().eq('id', taskId);
-    if (!error) fetchProjectDetails();
   };
 
   const handleAddLog = async () => {
@@ -133,93 +144,145 @@ function ProjectDetails() {
   };
 
   const deleteLog = async (logId) => {
+    if (!window.confirm('Are you sure you want to delete this log?')) return;
     const { error } = await supabase.from('project_logs').delete().eq('id', logId);
     if (!error) fetchProjectDetails();
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div className="loader">Loading project details...</div>;
+  if (!project) return <div className="not-found">Project not found.</div>;
 
   return (
-    <div className="project-page">
-      <div className="header-bar">
-        <Link to="/" className="back-link"><FaArrowLeft /> Back to Dashboard</Link>
-      </div>
-
-      <div className="project-layout">
-        <div className="project-overview">
-          <h2>Project Overview</h2>
-          <p><strong>Customer:</strong> {project.customer_name}</p>
-          <p><strong>Country:</strong> {project.country}</p>
-          <p><strong>Product:</strong> {project.product}</p>
-          <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
+    <div className="page-wrapper navy-theme">
+      <div className="page-content wide">
+        <div className="back-link-container">
+          <Link to="/" className="back-btn">
+            <FaHome /> Back to Dashboard
+          </Link>
         </div>
 
-        <div className="task-summary">
-          <h2>Task Summary</h2>
-          <p>{tasks.length} Total</p>
-          <p>{groupTasks('Not Started').length} Not Started</p>
-          <p>{groupTasks('In Progress').length} In Progress</p>
-          <p>{groupTasks('Completed').length} Completed</p>
-        </div>
-      </div>
+        <div className="project-container">
+          <div className="project-card">
+            <div className="project-header">
+              <h2 className="highlight-name big-name center-text">{project.customer_name}</h2>
+              {!editingProject && <button onClick={() => setEditingProject(true)}><FaEdit /> Edit</button>}
+            </div>
 
-      <div className="task-section">
-        <h3>Tasks</h3>
-        <form onSubmit={handleAddTask} className="task-form">
-          <input name="description" value={newTask.description} onChange={handleTaskInput} placeholder="Task description" />
-          <select name="status" value={newTask.status} onChange={handleTaskInput}>
-            <option value="Not Started">Not Started</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Completed">Completed</option>
-          </select>
-          <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
-          <button type="submit"><FaPlus /></button>
-        </form>
-
-        <ul className="task-list">
-          {tasks.map(task => (
-            <li key={task.id}>
-              {editTaskId === task.id ? (
-                <>
-                  <input name="description" value={taskEditForm.description} onChange={handleEditTaskChange} />
-                  <input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} />
-                  <button onClick={saveEditTask}><FaSave /></button>
-                  <button onClick={cancelEditTask}><FaTimes /></button>
-                </>
-              ) : (
-                <>
-                  <span>{task.description} ({task.status})</span>
-                  <button onClick={() => startEditTask(task)}><FaEdit /></button>
-                  <button onClick={() => deleteTask(task.id)}><FaTrash /></button>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="log-section">
-        <h3>Project Logs</h3>
-        <textarea value={newLog} onChange={(e) => setNewLog(e.target.value)} placeholder="Add log..."></textarea>
-        <button onClick={handleAddLog}><FaPlus /></button>
-
-        {logs.map(log => (
-          <div key={log.id} className="log-entry">
-            {editLogId === log.id ? (
-              <>
-                <textarea value={editLogText} onChange={(e) => setEditLogText(e.target.value)}></textarea>
-                <button onClick={() => saveEditLog(log.id)}><FaSave /></button>
-                <button onClick={cancelEditLog}><FaTimes /></button>
-              </>
+            {editingProject ? (
+              <div className="edit-form">
+                {Object.entries(editForm).map(([key, value]) => (
+                  key !== 'id' && key !== 'created_at' && (
+                    <label key={key}>
+                      {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                      <input name={key} value={value || ''} onChange={handleProjectFieldChange} />
+                    </label>
+                  )
+                ))}
+                <div className="form-actions">
+                  <button onClick={saveProjectDetails}><FaSave /> Save</button>
+                  <button onClick={() => setEditingProject(false)}><FaTimes /> Cancel</button>
+                </div>
+              </div>
             ) : (
-              <>
-                <p>{log.notes}</p>
-                <button onClick={() => startEditLog(log)}><FaEdit /></button>
-                <button onClick={() => deleteLog(log.id)}><FaTrash /></button>
-              </>
+              <div className="edit-form">
+                {Object.entries(project).map(([key, value]) => (
+                  key !== 'id' && key !== 'created_at' && (
+                    <label key={key}>
+                      {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                      <input name={key} value={value || ''} readOnly />
+                    </label>
+                  )
+                ))}
+              </div>
             )}
           </div>
-        ))}
+
+          <div className="section-card" id="tasks">
+            <h3><FaTasks /> Tasks</h3>
+            <form onSubmit={handleAddTask} className="task-form">
+              <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
+              <select name="status" value={newTask.status} onChange={handleTaskInput}>
+                <option value="Not Started">Not Started</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+              </select>
+              <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
+              <button type="submit"><FaPlus /> Add</button>
+            </form>
+
+            {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
+              <div key={status} className="task-group">
+                <h4>{status}</h4>
+                <div className="task-headers">
+                  <span>Description</span>
+                  <span>Due Date</span>
+                  <span>Actions</span>
+                </div>
+                <ul>
+                  {groupTasks(status).map((task) => (
+                    <li key={task.id} className="task-row">
+                      {editTaskId === task.id ? (
+                        <>
+                          <input name="description" value={taskEditForm.description} onChange={handleEditTaskChange} />
+                          <input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} />
+                          <div>
+                            <button onClick={saveEditTask}><FaSave /></button>
+                            <button onClick={cancelEditTask}><FaTimes /></button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="task-desc">{task.description}</span>
+                          <span className="task-date">{task.due_date ? task.due_date.split('T')[0] : '—'}</span>
+                          <div className="task-actions">
+                            <button onClick={() => startEditTask(task)}><FaEdit /></button>
+                            <button onClick={() => deleteTask(task.id)}><FaTrash /></button>
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                  {groupTasks(status).length === 0 && <li>No tasks.</li>}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="section-card" id="logs">
+            <h3><FaBookOpen /> Project Logs</h3>
+            <div className="log-form">
+              <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
+              <button onClick={handleAddLog}><FaPlus /> Add</button>
+            </div>
+
+            {logs.length > 0 ? (
+              logs.map((log) => (
+                <div key={log.id} className="log-entry">
+                  {editLogId === log.id ? (
+                    <>
+                      <textarea rows={2} value={editLogText} onChange={(e) => setEditLogText(e.target.value)} />
+                      <div>
+                        <button onClick={() => saveEditLog(log.id)}><FaSave /></button>
+                        <button onClick={cancelEditLog}><FaTimes /></button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p>{log.notes}</p>
+                      <div>
+                        <button onClick={() => startEditLog(log)}><FaEdit /></button>
+                        <button onClick={() => deleteLog(log.id)}><FaTrash /></button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p>No logs available.</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
