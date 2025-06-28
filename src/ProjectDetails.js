@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
-import { FaHome, FaTasks, FaBookOpen, FaCog, FaEdit, FaSave, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaArrowLeft, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -149,6 +149,9 @@ function ProjectDetails() {
   return (
     <div className="page-wrapper navy-theme">
       <div className="page-content wide">
+        <div className="project-header back-link">
+          <Link to="/" className="back-btn"><FaArrowLeft /> Back to Dashboard</Link>
+        </div>
         <div className="project-container">
           <div className="project-card">
             <div className="project-header">
@@ -171,22 +174,23 @@ function ProjectDetails() {
                 </div>
               </div>
             ) : (
-              <div className="project-info-grid">
-                {[['Country', project.country], ['Account Manager', project.account_manager], ['Sales Stage', project.sales_stage], ['Product', project.product], ['Scope', project.scope], ['Backup Presales', project.backup_presales], ['Remarks', project.remarks]].map(([label, value], i) => (
-                  <div className="info-row" key={i}>
-                    <label>{label}</label>
-                    <div className="info-value">{value || '—'}</div>
-                  </div>
+              <div className="edit-form">
+                {Object.entries(project).map(([key, value]) => (
+                  key !== 'id' && key !== 'created_at' && (
+                    <label key={key}>
+                      {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                      <input name={key} value={value || ''} readOnly />
+                    </label>
+                  )
                 ))}
               </div>
             )}
           </div>
-     
+          {/* tasks and logs stay unchanged */}
         </div>
       </div>
     </div>
   );
 }
-
 
 export default ProjectDetails;
