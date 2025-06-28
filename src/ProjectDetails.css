@@ -1,30 +1,232 @@
-/* Back to Dashboard link */
-.back-link-container {
-  margin-top: -1.5rem;
-  margin-bottom: 2rem;
-  display: flex;
-  justify-content: flex-start;
-}
+/* ProjectDetails.css */
 
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  color: #334155;
-  background-color: #e2e8f0;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: 500;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
-.back-btn:hover {
-  background-color: #cbd5e1;
+body {
+  margin: 0;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background-color: #f8fafc;
   color: #1e293b;
 }
 
-.back-btn svg {
+.page-wrapper {
+  display: flex;
+  justify-content: center;
+  background-color: #f1f5f9;
+  min-height: 100vh;
+  padding: 4rem 1rem;
+  box-sizing: border-box;
+}
+
+.page-content {
+  width: 100%;
+  max-width: 1500px;
+  display: flex;
+  background-color: #f8fafc;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.project-container {
+  width: 100%;
+  background-color: #f8fafc;
+  border-radius: 16px;
+  padding: 2rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4rem;
+}
+
+.project-card,
+.section-card {
+  width: 100%;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.big-name {
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.edit-form label {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.edit-form input,
+.task-form input,
+.task-form select,
+textarea {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background-color: #fff;
+}
+
+.task-form,
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+button {
+  background-color: #2563eb;
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+button:hover {
+  background-color: #1d4ed8;
+}
+
+.task-group {
+  margin-top: 1.25rem;
+}
+
+.task-group h4 {
+  margin-bottom: 0.5rem;
+  color: #334155;
+  font-size: 1.1rem;
+}
+
+ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+ul li.task-row {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  align-items: start;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e2e8f0;
+  gap: 1rem;
+}
+
+.task-desc {
+  font-weight: 500;
+  word-wrap: break-word;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.task-row span {
+  word-break: break-word;
+}
+
+.task-date {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.task-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.task-headers {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  font-size: 0.85rem;
+  color: #475569;
+  padding: 0.5rem 0;
+  border-bottom: 2px solid #cbd5e1;
+  font-weight: 600;
+}
+
+.log-entry {
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.log-entry p {
+  margin: 0 0 0.5rem;
+}
+
+.highlight-name {
+  color: #0f172a;
+}
+
+.loader,
+.not-found {
+  font-size: 1.2rem;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+textarea {
+  font-family: 'Inter', sans-serif;
   font-size: 1rem;
+}
+
+textarea:focus,
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.2);
+}
+
+#logs textarea {
+  margin-bottom: 0.5rem;
+}
+
+#logs button {
+  margin-bottom: 1rem;
+}
+
+.section-card h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.back-link-container {
+  margin: 1rem 0 0 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.back-btn {
+  text-decoration: none;
+  color: #2563eb;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+}
+
+.back-btn:hover {
+  text-decoration: underline;
 }
