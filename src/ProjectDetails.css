@@ -227,3 +227,7 @@ select:focus {
 .back-btn:hover {
   background-color: #cbd5e1;
 }
+
+.task-actions button {
+  margin-left: 4px;
+}
