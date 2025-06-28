@@ -193,7 +193,7 @@ function ProjectDetails() {
             </div>
           </div>
 
-          <!-- tasks and logs remain unchanged -->
+         {/* tasks and logs remain unchanged */}
 
         </div>
       </div>
