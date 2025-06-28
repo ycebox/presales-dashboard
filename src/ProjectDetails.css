@@ -41,7 +41,7 @@ body {
 
 .project-card,
 .section-card {
-  width: 100%;
+  width: 60%;
   background: white;
   padding: 1.5rem;
   border-radius: 16px;
