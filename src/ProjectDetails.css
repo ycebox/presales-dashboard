@@ -231,3 +231,14 @@ select:focus {
 .task-actions button {
   margin-left: 4px;
 }
+
+.flat-readonly {
+  border: none;
+  background-color: transparent;
+  padding: 0;
+  font-weight: 500;
+  color: #1e293b;
+}
+.flat-readonly:focus {
+  outline: none;
+}
