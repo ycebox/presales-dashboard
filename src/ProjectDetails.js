@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
-import { FaArrowLeft, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -149,9 +149,12 @@ function ProjectDetails() {
   return (
     <div className="page-wrapper navy-theme">
       <div className="page-content wide">
-        <div className="project-header back-link">
-          <Link to="/" className="back-btn"><FaArrowLeft /> Back to Dashboard</Link>
-        </div>
+        <div className="back-link-container">
+  <Link to="/" className="back-btn">
+    <FaHome /> Back to Dashboard
+  </Link>
+</div>
+
 
         <div className="project-container">
           <div className="project-card">
