@@ -22,7 +22,6 @@ function App() {
                   style={{
                     display: 'flex',
                     flexDirection: 'row',
-                    gap: '2rem', // ✅ this creates visible spacing between the columns
                     alignItems: 'flex-start',
                     width: '100%',
                     flexWrap: 'nowrap',
@@ -36,6 +35,7 @@ function App() {
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '1.5rem',
+                      marginRight: '2rem', // ✅ adds real space between columns
                     }}
                   >
                     <div className="section-card">
@@ -46,19 +46,20 @@ function App() {
                     </div>
                   </div>
 
-                  {/* RIGHT COLUMN */}
-                  <div
-                    className="section-card"
-                    style={{
-                      flex: 1,
-                      overflowY: 'auto',
-                      maxHeight: '80vh',
-                      borderLeft: '1px solid #e2e8f0',
-                      paddingLeft: '1rem',
-                      minWidth: '400px',
-                    }}
-                  >
-                    <Projects />
+                  {/* RIGHT COLUMN WRAPPER */}
+                  <div style={{ flex: 2 }}>
+                    <div
+                      className="section-card"
+                      style={{
+                        overflowY: 'auto',
+                        maxHeight: '80vh',
+                        borderLeft: '1px solid #e2e8f0',
+                        paddingLeft: '1rem',
+                        minWidth: '400px',
+                      }}
+                    >
+                      <Projects />
+                    </div>
                   </div>
                 </div>
               }
