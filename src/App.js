@@ -35,7 +35,6 @@ function App() {
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '1.5rem',
-                      marginRight: '2rem', // ✅ adds real space between columns
                     }}
                   >
                     <div className="section-card">
@@ -45,6 +44,9 @@ function App() {
                       <TodayTasks />
                     </div>
                   </div>
+
+                  {/* SPACER */}
+                  <div style={{ width: '2rem' }} /> {/* 👈 Forces gap visually */}
 
                   {/* RIGHT COLUMN WRAPPER */}
                   <div style={{ flex: 2 }}>
