@@ -55,7 +55,7 @@ export default function TodayTasks() {
   };
 
   return (
-    <section style={{ padding: "24px", background: "#fff", borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", marginTop: "24px" }}>
+    <div className="section-card" style={{ width: "100%" }}>
       <h2 style={{ display: "flex", alignItems: "center", fontSize: "1.3rem", gap: "10px", marginBottom: "12px" }}>
         <FaTasks /> Today + Overdue Tasks
       </h2>
@@ -85,7 +85,8 @@ export default function TodayTasks() {
                     background: getCardColor(t.status),
                     padding: "14px",
                     borderRadius: "10px",
-                    width: "250px",
+                    width: "100%",
+                    maxWidth: "280px",
                     cursor: "pointer",
                     boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
                     borderLeft: `4px solid ${groupKey === "overdue" ? "#dc2626" : "#f59e0b"}`
@@ -105,6 +106,6 @@ export default function TodayTasks() {
           </div>
         )
       ))}
-    </section>
+    </div>
   );
 }
