@@ -30,3 +30,11 @@
     flex-direction: row !important;
   }
 }
+
+.task-card-text {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  line-height: 1.4;
+}
+
