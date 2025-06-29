@@ -43,3 +43,18 @@
   max-width: 100%;
   padding: 0 1rem;
 }
+/* Make wide project tables scrollable and not break grid layout */
+.table-scroll-wrapper {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Optional: prevent wide td/th text from expanding table */
+.modern-table td,
+.modern-table th {
+  max-width: 180px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
