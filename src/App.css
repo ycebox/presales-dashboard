@@ -1,57 +1,32 @@
 .dashboard-grid-2col {
   display: flex;
+  flex-direction: row;
   gap: 2rem;
   align-items: flex-start;
-  flex-wrap: nowrap; /* force side-by-side */
+  width: 100%;
 }
 
+/* Left column: Summary + Today Tasks */
 .left-stack {
-  width: 360px; /* fixed width for left column */
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  flex: 1;
+  min-width: 320px;
 }
 
+/* Right column: Projects */
 .right-projects {
-  flex: 1; /* right side takes remaining space */
+  flex: 2;
   overflow-y: auto;
-  max-height: 85vh;
-  padding-left: 1rem;
+  max-height: 80vh;
   border-left: 1px solid #e2e8f0;
+  padding-left: 1rem;
 }
 
-/* Card container for visual sections */
-.section-card {
-  background: #ffffff;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+/* Make sure this overrides responsive CSS */
+@media (max-width: 100px) {
+  .dashboard-grid-2col {
+    flex-direction: row !important;
+  }
 }
-
-/* Wrap long task descriptions */
-.task-card-text {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: normal;
-}
-
-/* Allow full width usage */
-.page-wrapper {
-  max-width: 100%;
-  padding: 0 1rem;
-}
-/* Make wide project tables scrollable and not break grid layout */
-.table-scroll-wrapper {
-  overflow-x: auto;
-  max-width: 100%;
-}
-
-/* Optional: prevent wide td/th text from expanding table */
-.modern-table td,
-.modern-table th {
-  max-width: 180px;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: normal;
-}
-
