@@ -39,3 +39,13 @@
   line-height: 1.4;
 }
 
+.project-container {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  padding-left: 2rem;
+  padding-right: 2rem;
+  box-sizing: border-box;
+}
+
+
