@@ -1,17 +1,21 @@
+/* Always side-by-side 2-column layout */
 .dashboard-grid-2col {
   display: grid;
-  grid-template-columns: 1.2fr 1.8fr; /* Always side-by-side */
+  grid-template-columns: 1.2fr 1.8fr;
   gap: 2rem;
   align-items: flex-start;
   margin-bottom: 2rem;
+  min-width: 768px; /* Prevent stacking */
 }
 
+/* Stack task sections vertically in left column */
 .left-stack {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
+/* Right panel: project list/details */
 .right-projects {
   overflow-y: auto;
   max-height: 80vh;
@@ -19,7 +23,7 @@
   border-left: 1px solid #e2e8f0;
 }
 
-/* Clean card style */
+/* Card container for visual sections */
 .section-card {
   background: #ffffff;
   padding: 1.5rem;
@@ -27,15 +31,15 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-/* Ensure long task text wraps */
+/* Wrap long task descriptions */
 .task-card-text {
   word-wrap: break-word;
   overflow-wrap: break-word;
   white-space: normal;
 }
 
-/* Optional base styles for container */
+/* Allow full width usage */
 .page-wrapper {
-  max-width: 1200px;
-  margin: auto;
+  max-width: 100%;
+  padding: 0 1rem;
 }
