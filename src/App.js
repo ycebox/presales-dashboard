@@ -21,12 +21,16 @@ function App() {
                 <div className="dashboard-grid-2col">
                   {/* Left Column */}
                   <div className="left-stack">
-                    <TaskSummaryDashboard />
-                    <TodayTasks />
+                    <div className="section-card">
+                      <TaskSummaryDashboard />
+                    </div>
+                    <div className="section-card">
+                      <TodayTasks />
+                    </div>
                   </div>
 
                   {/* Right Column */}
-                  <div className="right-projects">
+                  <div className="right-projects section-card">
                     <Projects />
                   </div>
                 </div>
