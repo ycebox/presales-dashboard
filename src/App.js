@@ -25,7 +25,6 @@ function App() {
                     alignItems: 'flex-start',
                     width: '100%',
                     flexWrap: 'nowrap',
-                    gap: '2rem' // ✅ This now works as spacing is outside the cards
                   }}
                 >
                   {/* LEFT COLUMN */}
@@ -36,6 +35,7 @@ function App() {
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '1.5rem',
+                      marginRight: '2rem', // ✅ guarantees space between columns
                     }}
                   >
                     <div className="section-card">
@@ -50,7 +50,6 @@ function App() {
                   <div
                     style={{
                       flex: 2,
-                      minWidth: '400px',
                     }}
                   >
                     <div
@@ -58,8 +57,10 @@ function App() {
                       style={{
                         overflowY: 'auto',
                         maxHeight: '80vh',
-                        paddingLeft: '1rem',
                         borderLeft: '1px solid #e2e8f0',
+                        paddingLeft: '2rem', // ✅ adds visible internal space
+                        minWidth: '400px',
+                        boxSizing: 'border-box',
                       }}
                     >
                       <Projects />
