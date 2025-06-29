@@ -51,7 +51,6 @@
 }
 
 /* Header styling */
-
 .modern-table thead {
   background-color: #f3f5f6;
 }
@@ -62,7 +61,7 @@
 }
 
 .modern-table thead th {
-   padding: 14px 18px;
+  padding: 14px 18px;
   font-weight: 600;
   color: #1e293b;
   text-align: left;
@@ -242,3 +241,8 @@
   color: #be123c;
 }
 
+/* ✅ NEW: Add space inside the Projects column */
+.projects-wrapper {
+  padding-left: 1.5rem;
+  box-sizing: border-box;
+}
