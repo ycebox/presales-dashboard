@@ -35,7 +35,7 @@ function App() {
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '1.5rem',
-                      marginRight: '2rem', // ensures spacing between columns
+                      marginRight: '2rem',
                     }}
                   >
                     <div className="section-card">
@@ -46,7 +46,7 @@ function App() {
                     </div>
                   </div>
 
-                  {/* RIGHT COLUMN — REMOVE CARD WRAPPER HERE */}
+                  {/* RIGHT COLUMN */}
                   <div
                     style={{
                       flex: 2,
@@ -62,4 +62,12 @@ function App() {
                 </div>
               }
             />
-            <Route
+            <Route path="/project/:id" element={<ProjectDetails />} />
+          </Routes>
+        </div>
+      </div>
+    </Router>
+  );
+}
+
+export default App;
