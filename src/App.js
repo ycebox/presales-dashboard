@@ -13,17 +13,23 @@ function App() {
           <h1 className="big-name" style={{ marginBottom: '1.5rem' }}>
             📋 Jonathan's "It's Fine, Everything's Fine" Dashboard
           </h1>
+
           <Routes>
             <Route
               path="/"
               element={
-                <>
-                  <div className="dashboard-top">
+                <div className="dashboard-2col">
+                  {/* Left Column: Task Summary + Today Tasks */}
+                  <div className="left-panel">
                     <TaskSummaryDashboard />
                     <TodayTasks />
                   </div>
-                  <Projects />
-                </>
+
+                  {/* Right Column: Projects */}
+                  <div className="right-panel">
+                    <Projects />
+                  </div>
+                </div>
               }
             />
             <Route path="/project/:id" element={<ProjectDetails />} />
