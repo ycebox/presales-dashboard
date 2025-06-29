@@ -47,7 +47,7 @@ export default function TaskSummaryDashboard() {
   ];
 
   return (
-    <div className="section-card">
+    <div className="section-card" style={{ width: "100%" }}>
       <h2 style={{ fontSize: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.25rem", color: "#1e293b" }}>
         <LuLayoutDashboard /> Task Summary Dashboard
       </h2>
