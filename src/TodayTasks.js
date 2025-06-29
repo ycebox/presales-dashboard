@@ -92,9 +92,16 @@ export default function TodayTasks() {
                     borderLeft: `4px solid ${groupKey === "overdue" ? "#dc2626" : "#f59e0b"}`
                   }}
                 >
-                  <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "6px" }}>
-                    {t.description}
-                  </div>
+                 <div style={{
+  fontWeight: 600,
+  fontSize: "0.95rem",
+  marginBottom: "6px",
+  wordWrap: "break-word",
+  overflowWrap: "break-word",
+  whiteSpace: "normal"
+}}>
+  {t.description}
+</div>
                   <div style={{ fontSize: "0.85rem", color: "#475569" }}>
                     <strong>Project:</strong> {t.projects?.customer_name || t.project_id}<br />
                     <strong>Status:</strong> {t.status}<br />
