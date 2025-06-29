@@ -1,1 +1,12 @@
-/* You can add styles later. For now, this prevents the error. */
+.dashboard-top {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .dashboard-top {
+    grid-template-columns: 1fr 1fr;
+  }
+}
