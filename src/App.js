@@ -22,7 +22,7 @@ function App() {
                   style={{
                     display: 'flex',
                     flexDirection: 'row',
-                    gap: '3rem', // ⬅️ Stronger horizontal spacing
+                    gap: '2rem', // ✅ this creates visible spacing between the columns
                     alignItems: 'flex-start',
                     width: '100%',
                     flexWrap: 'nowrap',
@@ -31,17 +31,17 @@ function App() {
                   {/* LEFT COLUMN */}
                   <div
                     style={{
-                      flex: 1.2,
+                      flex: 1,
                       minWidth: '300px',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '1.5rem',
                     }}
                   >
-                    <div className="section-card" style={{ padding: '1.5rem' }}>
+                    <div className="section-card">
                       <TaskSummaryDashboard />
                     </div>
-                    <div className="section-card" style={{ padding: '1.5rem' }}>
+                    <div className="section-card">
                       <TodayTasks />
                     </div>
                   </div>
@@ -50,14 +50,11 @@ function App() {
                   <div
                     className="section-card"
                     style={{
-                      flex: 1.8,
+                      flex: 1,
                       overflowY: 'auto',
                       maxHeight: '80vh',
-                      padding: '1.5rem',
-                      borderLeft: '2px solid #e2e8f0',
-                      background: '#ffffff',
-                      borderRadius: '12px',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                      borderLeft: '1px solid #e2e8f0',
+                      paddingLeft: '1rem',
                       minWidth: '400px',
                     }}
                   >
