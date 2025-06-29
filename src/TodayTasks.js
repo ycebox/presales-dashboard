@@ -95,7 +95,11 @@ export default function TodayTasks() {
                   <div className="task-card-text" style={{
                     fontWeight: 600,
                     fontSize: "0.95rem",
-                    marginBottom: "6px"
+                    marginBottom: "6px",
+                    wordWrap: "break-word",
+                    overflowWrap: "break-word",
+                    whiteSpace: "normal",
+                    lineHeight: "1.4"
                   }}>
                     {t.description}
                   </div>
