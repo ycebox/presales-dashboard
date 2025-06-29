@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { supabase } from './supabaseClient';
 import { FaTasks, FaCalendarDay, FaExclamationCircle, FaCheck } from 'react-icons/fa';
 import { LuLayoutDashboard } from "react-icons/lu";
-import './ProjectDetails.css'; // reuse section-card and font styles
 
 export default function TaskSummaryDashboard() {
   const [taskSummary, setTaskSummary] = useState({
@@ -47,7 +46,7 @@ export default function TaskSummaryDashboard() {
   ];
 
   return (
-    <div className="section-card" style={{ width: "100%" }}>
+    <>
       <h2 style={{ fontSize: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.25rem", color: "#1e293b" }}>
         <LuLayoutDashboard /> Task Summary Dashboard
       </h2>
@@ -69,16 +68,3 @@ export default function TaskSummaryDashboard() {
               boxShadow: "0 4px 8px rgba(0,0,0,0.04)",
               fontWeight: "600",
               fontSize: "1rem"
-            }}
-          >
-            <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>{card.icon}</div>
-            <div>{card.label}</div>
-            <div style={{ fontSize: "1.25rem", marginTop: "0.25rem", color: "#1e293b" }}>
-              {card.value}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
