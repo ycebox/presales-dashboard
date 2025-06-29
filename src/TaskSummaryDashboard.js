@@ -68,3 +68,16 @@ export default function TaskSummaryDashboard() {
               boxShadow: "0 4px 8px rgba(0,0,0,0.04)",
               fontWeight: "600",
               fontSize: "1rem"
+            }}
+          >
+            <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>{card.icon}</div>
+            <div>{card.label}</div>
+            <div style={{ fontSize: "1.25rem", marginTop: "0.25rem", color: "#1e293b" }}>
+              {card.value}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
