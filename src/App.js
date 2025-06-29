@@ -18,15 +18,15 @@ function App() {
             <Route
               path="/"
               element={
-                <div className="dashboard-2col">
-                  {/* Left Column: Task Summary + Today Tasks */}
-                  <div className="left-panel">
+                <div className="dashboard-grid-2col">
+                  {/* Left Column */}
+                  <div className="left-stack">
                     <TaskSummaryDashboard />
                     <TodayTasks />
                   </div>
 
-                  {/* Right Column: Projects */}
-                  <div className="right-panel">
+                  {/* Right Column */}
+                  <div className="right-projects">
                     <Projects />
                   </div>
                 </div>
