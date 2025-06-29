@@ -35,7 +35,6 @@ function App() {
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '1.5rem',
-                      marginRight: '2rem', // ✅ guarantees space between columns
                     }}
                   >
                     <div className="section-card">
@@ -46,25 +45,23 @@ function App() {
                     </div>
                   </div>
 
+                  {/* SPACER */}
+                  <div style={{ width: '32px', minWidth: '32px' }}></div>
+
                   {/* RIGHT COLUMN */}
                   <div
+                    className="section-card"
                     style={{
                       flex: 2,
+                      overflowY: 'auto',
+                      maxHeight: '80vh',
+                      borderLeft: '1px solid #e2e8f0',
+                      paddingLeft: '1rem',
+                      minWidth: '400px',
+                      boxSizing: 'border-box',
                     }}
                   >
-                    <div
-                      className="section-card"
-                      style={{
-                        overflowY: 'auto',
-                        maxHeight: '80vh',
-                        borderLeft: '1px solid #e2e8f0',
-                        paddingLeft: '2rem', // ✅ adds visible internal space
-                        minWidth: '400px',
-                        boxSizing: 'border-box',
-                      }}
-                    >
-                      <Projects />
-                    </div>
+                    <Projects />
                   </div>
                 </div>
               }
