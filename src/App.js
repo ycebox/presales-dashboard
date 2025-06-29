@@ -56,7 +56,7 @@ function App() {
                       overflowY: 'auto',
                       maxHeight: '80vh',
                       borderLeft: '1px solid #e2e8f0',
-                      paddingLeft: '10rem',
+                      paddingLeft: '1rem',
                       minWidth: '400px',
                       boxSizing: 'border-box',
                     }}
