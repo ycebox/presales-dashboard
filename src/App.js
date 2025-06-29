@@ -8,7 +8,7 @@ import ProjectDetails from './ProjectDetails';
 function App() {
   return (
     <Router basename="/presales-dashboard">
-      <div className="page-wrapper" style={{ padding: '1.5rem' }}>
+      <div className="page-wrapper">
         <div className="project-container">
           <h1 className="big-name" style={{ marginBottom: '1.5rem' }}>
             📋 Jonathan's "It's Fine, Everything's Fine" Dashboard
@@ -18,20 +18,22 @@ function App() {
             <Route
               path="/"
               element={
-                <div className="dashboard-grid-2col">
-                  {/* LEFT COLUMN */}
-                  <div className="left-stack">
-                    <div className="section-card">
-                      <TaskSummaryDashboard />
+                <div style={{ overflowX: 'auto' }}>
+                  <div className="dashboard-grid-2col">
+                    {/* LEFT COLUMN */}
+                    <div className="left-stack">
+                      <div className="section-card">
+                        <TaskSummaryDashboard />
+                      </div>
+                      <div className="section-card">
+                        <TodayTasks />
+                      </div>
                     </div>
-                    <div className="section-card">
-                      <TodayTasks />
-                    </div>
-                  </div>
 
-                  {/* RIGHT COLUMN */}
-                  <div className="right-projects section-card">
-                    <Projects />
+                    {/* RIGHT COLUMN */}
+                    <div className="right-projects section-card">
+                      <Projects />
+                    </div>
                   </div>
                 </div>
               }
