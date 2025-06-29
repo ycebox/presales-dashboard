@@ -18,8 +18,10 @@ function App() {
               path="/"
               element={
                 <>
-                  <TaskSummaryDashboard />
-                  <TodayTasks />
+                  <div className="dashboard-top">
+                    <TaskSummaryDashboard />
+                    <TodayTasks />
+                  </div>
                   <Projects />
                 </>
               }
