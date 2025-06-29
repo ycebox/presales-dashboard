@@ -1,44 +1,27 @@
 /* Main 2-column layout */
-.dashboard-2col {
+.dashboard-grid-2col {
   display: grid;
   grid-template-columns: 1fr;
   gap: 2rem;
-  margin-bottom: 2rem;
 }
 
 @media (min-width: 1024px) {
-  .dashboard-2col {
+  .dashboard-grid-2col {
     grid-template-columns: 1.2fr 1.8fr;
-    align-items: flex-start;
   }
 }
 
-/* Left Panel: Task Summary + Today Tasks */
-.left-panel {
+/* Left side: task summary + today's tasks stacked vertically */
+.left-stack {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-/* Right Panel: Project List / Project Details */
-.right-panel {
+/* Right side: projects panel */
+.right-projects {
   overflow-y: auto;
   max-height: 80vh;
-  padding-left: 1.25rem;
   border-left: 1px solid #e2e8f0;
-}
-
-/* Optional improvements for card appearance */
-.section-card {
-  background-color: #ffffff;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-/* Make long task descriptions wrap inside cards */
-.task-card-text {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: normal;
+  padding-left: 1.25rem;
 }
