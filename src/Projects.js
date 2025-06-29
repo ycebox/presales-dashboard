@@ -84,7 +84,13 @@ function Projects() {
   };
 
   return (
-    <section className="projects-wrapper">
+    <section
+      className="projects-wrapper"
+      style={{
+        marginLeft: '2rem', // ✅ creates the visual gap between left and right column
+        width: '100%',
+      }}
+    >
       <div className="projects-header-row">
         <h2 className="projects-header">
           <FaFolderOpen style={{ marginRight: '8px' }} /> Presales Projects
