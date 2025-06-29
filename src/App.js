@@ -5,7 +5,6 @@ import TodayTasks from './TodayTasks';
 import TaskSummaryDashboard from './TaskSummaryDashboard';
 import ProjectDetails from './ProjectDetails';
 
-
 function App() {
   return (
     <Router basename="/presales-dashboard">
@@ -19,22 +18,47 @@ function App() {
             <Route
               path="/"
               element={
-                <div style={{ overflowX: 'auto' }}>
-                  <div className="dashboard-grid-2col">
-                    {/* LEFT COLUMN */}
-                    <div className="left-stack">
-                      <div className="section-card">
-                        <TaskSummaryDashboard />
-                      </div>
-                      <div className="section-card">
-                        <TodayTasks />
-                      </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    gap: '2rem',
+                    alignItems: 'flex-start',
+                    width: '100%',
+                    flexWrap: 'nowrap',
+                  }}
+                >
+                  {/* LEFT COLUMN */}
+                  <div
+                    style={{
+                      flex: 1,
+                      minWidth: '300px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1.5rem',
+                    }}
+                  >
+                    <div className="section-card">
+                      <TaskSummaryDashboard />
                     </div>
+                    <div className="section-card">
+                      <TodayTasks />
+                    </div>
+                  </div>
 
-                    {/* RIGHT COLUMN */}
-                    <div className="right-projects section-card">
-                      <Projects />
-                    </div>
+                  {/* RIGHT COLUMN */}
+                  <div
+                    className="section-card"
+                    style={{
+                      flex: 2,
+                      overflowY: 'auto',
+                      maxHeight: '80vh',
+                      paddingLeft: '1rem',
+                      borderLeft: '1px solid #e2e8f0',
+                      minWidth: '400px',
+                    }}
+                  >
+                    <Projects />
                   </div>
                 </div>
               }
