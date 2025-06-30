@@ -77,13 +77,23 @@ function ProjectDetails() {
   };
 
   const saveEditTask = async (taskId) => {
+    if (!taskId) {
+      console.error('Missing task ID.');
+      return;
+    }
+
     const payload = {
       description: editTaskForm.description,
       status: editTaskForm.status,
       due_date: editTaskForm.due_date || null,
       notes: editTaskForm.notes
     };
-    const { error } = await supabase.from('project_tasks').update(payload).eq('id', taskId);
+
+    const { error } = await supabase
+      .from('project_tasks')
+      .update(payload)
+      .match({ id: taskId }); // <-- Correct method to filter updates
+
     if (!error) {
       setEditTaskId(null);
       fetchProjectDetails();
