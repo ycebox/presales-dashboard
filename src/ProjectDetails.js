@@ -1,244 +1,291 @@
-/* ProjectDetails.css */
+import React, { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { supabase } from './supabaseClient';
+import './ProjectDetails.css';
+import { FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+function ProjectDetails() {
+  const { id } = useParams();
+  const [project, setProject] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-body {
-  margin: 0;
-  font-family: 'Inter', 'Segoe UI', sans-serif;
-  background-color: #f8fafc;
-  color: #1e293b;
+  const [editingProject, setEditingProject] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '' });
+  const [editTaskId, setEditTaskId] = useState(null);
+  const [taskEditForm, setTaskEditForm] = useState({ description: '', status: '', due_date: '' });
+
+  const [newLog, setNewLog] = useState('');
+  const [editLogId, setEditLogId] = useState(null);
+  const [editLogText, setEditLogText] = useState('');
+
+  useEffect(() => {
+    fetchProjectDetails();
+  }, [id]);
+
+  async function fetchProjectDetails() {
+    setLoading(true);
+    const { data: projectData } = await supabase.from('projects').select('*').eq('id', id).single();
+    const { data: taskData } = await supabase.from('project_tasks').select('*').eq('project_id', id);
+    const { data: logData } = await supabase
+      .from('project_logs')
+      .select('*')
+      .eq('project_id', id)
+      .order('created_at', { ascending: false });
+
+    setProject(projectData);
+    setEditForm(projectData || {});
+    setTasks(taskData || []);
+    setLogs(logData || []);
+    setLoading(false);
+  }
+
+  const handleProjectFieldChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const saveProjectDetails = async () => {
+    const updated = { ...editForm };
+    delete updated.id;
+    delete updated.created_at;
+    const { error } = await supabase.from('projects').update(updated).eq('id', id);
+    if (!error) {
+      setEditingProject(false);
+      fetchProjectDetails();
+    }
+  };
+
+  const handleTaskInput = (e) => {
+    const { name, value } = e.target;
+    setNewTask((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddTask = async (e) => {
+    e.preventDefault();
+    if (!newTask.description.trim()) return;
+    const { error } = await supabase.from('project_tasks').insert([{
+      description: newTask.description,
+      status: newTask.status,
+      due_date: newTask.due_date || null,
+      project_id: id,
+    }]);
+    if (!error) {
+      setNewTask({ description: '', status: 'Not Started', due_date: '' });
+      fetchProjectDetails();
+    }
+  };
+
+  const deleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    const { error } = await supabase.from('project_tasks').delete().eq('id', taskId);
+    if (!error) fetchProjectDetails();
+  };
+
+  const groupTasks = (status) => tasks.filter((task) => task.status === status);
+
+  const startEditTask = (task) => {
+    setEditTaskId(task.id);
+    setTaskEditForm({
+      description: task.description,
+      status: task.status,
+      due_date: task.due_date ? task.due_date.split('T')[0] : '',
+    });
+  };
+
+  const cancelEditTask = () => {
+    setEditTaskId(null);
+    setTaskEditForm({ description: '', status: '', due_date: '' });
+  };
+
+  const handleEditTaskChange = (e) => {
+    const { name, value } = e.target;
+    setTaskEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const saveEditTask = async () => {
+    const payload = { ...taskEditForm, due_date: taskEditForm.due_date || null };
+    const { error } = await supabase.from('project_tasks').update(payload).eq('id', editTaskId);
+    if (!error) {
+      setEditTaskId(null);
+      fetchProjectDetails();
+    }
+  };
+
+  const handleAddLog = async () => {
+    if (!newLog.trim()) return;
+    const { error } = await supabase.from('project_logs').insert([{ notes: newLog, project_id: id }]);
+    if (!error) {
+      setNewLog('');
+      fetchProjectDetails();
+    }
+  };
+
+  const startEditLog = (log) => {
+    setEditLogId(log.id);
+    setEditLogText(log.notes);
+  };
+
+  const cancelEditLog = () => {
+    setEditLogId(null);
+    setEditLogText('');
+  };
+
+  const saveEditLog = async (logId) => {
+    if (!editLogText.trim()) return;
+    const { error } = await supabase.from('project_logs').update({ notes: editLogText }).eq('id', logId);
+    if (!error) {
+      setEditLogId(null);
+      setEditLogText('');
+      fetchProjectDetails();
+    }
+  };
+
+  const deleteLog = async (logId) => {
+    if (!window.confirm('Are you sure you want to delete this log?')) return;
+    const { error } = await supabase.from('project_logs').delete().eq('id', logId);
+    if (!error) fetchProjectDetails();
+  };
+
+  if (loading) return <div className="loader">Loading project details...</div>;
+  if (!project) return <div className="not-found">Project not found.</div>;
+
+  return (
+    <div className="page-wrapper navy-theme">
+      <div className="page-content wide">
+        <div className="back-link-container">
+          <Link to="/" className="back-btn">
+            <FaHome /> Back to Dashboard
+          </Link>
+        </div>
+
+        <div className="project-container">
+          <div className="project-card">
+            <div className="project-header">
+              <h2 className="highlight-name big-name center-text">{project.customer_name}</h2>
+              {!editingProject && <button onClick={() => setEditingProject(true)}><FaEdit /> Edit</button>}
+            </div>
+
+            {editingProject ? (
+              <div className="edit-form">
+                {Object.entries(editForm).map(([key, value]) => (
+                  key !== 'id' && key !== 'created_at' && (
+                    <label key={key}>
+                      {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                      <input name={key} value={value || ''} onChange={handleProjectFieldChange} />
+                    </label>
+                  )
+                ))}
+                <div className="form-actions">
+                  <button onClick={saveProjectDetails}><FaSave /> Save</button>
+                  <button onClick={() => setEditingProject(false)}><FaTimes /> Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div className="edit-form">
+                {Object.entries(project).map(([key, value]) => (
+                  key !== 'id' && key !== 'created_at' && (
+                    <label key={key}>
+                      {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                      <input name={key} value={value || ''} readOnly />
+                    </label>
+                  )
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="section-card" id="tasks">
+            <h3><FaTasks /> Tasks</h3>
+            <form onSubmit={handleAddTask} className="task-form">
+              <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
+              <select name="status" value={newTask.status} onChange={handleTaskInput}>
+                <option value="Not Started">Not Started</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+              </select>
+              <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
+              <button type="submit"><FaPlus /> Add</button>
+            </form>
+
+            {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
+              <div key={status} className="task-group">
+                <h4>{status}</h4>
+                <div className="task-headers">
+                  <span>Description</span>
+                  <span>Due Date</span>
+                  <span>Actions</span>
+                </div>
+                <ul>
+                  {groupTasks(status).map((task) => (
+                    <li key={task.id} className="task-row">
+                      {editTaskId === task.id ? (
+                        <>
+                          <input name="description" value={taskEditForm.description} onChange={handleEditTaskChange} />
+                          <input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} />
+                          <div>
+                            <button onClick={saveEditTask}><FaSave /></button>
+                            <button onClick={cancelEditTask}><FaTimes /></button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="task-desc">{task.description}</span>
+                          <span className="task-date">{task.due_date ? task.due_date.split('T')[0] : '—'}</span>
+                          <div className="task-actions">
+                            <button onClick={() => startEditTask(task)}><FaEdit /></button>
+                            <button onClick={() => deleteTask(task.id)}><FaTrash /></button>
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                  {groupTasks(status).length === 0 && <li>No tasks.</li>}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="section-card" id="logs">
+            <h3><FaBookOpen /> Project Logs</h3>
+            <div className="log-form">
+              <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
+              <button onClick={handleAddLog}><FaPlus /> Add</button>
+            </div>
+
+            {logs.length > 0 ? (
+              logs.map((log) => (
+                <div key={log.id} className="log-entry">
+                  {editLogId === log.id ? (
+                    <>
+                      <textarea rows={2} value={editLogText} onChange={(e) => setEditLogText(e.target.value)} />
+                      <div>
+                        <button onClick={() => saveEditLog(log.id)}><FaSave /></button>
+                        <button onClick={cancelEditLog}><FaTimes /></button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p>{log.notes}</p>
+                      <div>
+                        <button onClick={() => startEditLog(log)}><FaEdit /></button>
+                        <button onClick={() => deleteLog(log.id)}><FaTrash /></button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p>No logs available.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-.page-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background-color: #f1f5f9;
-  padding: 2rem 1rem;
-  box-sizing: border-box;
-}
-
-.page-content {
-  width: 100%;
-  max-width: 1200px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2rem;
-  background-color: #f8fafc;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
-  padding: 2rem;
-}
-
-.project-container {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  align-items: center;
-}
-
-.project-card,
-.section-card {
-  width: 100%;
-  background: white;
-  padding: 2rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-}
-
-.project-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 1.5rem;
-}
-
-.big-name {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0;
-}
-
-.edit-form label {
-  display: block;
-  margin-bottom: 1rem;
-}
-
-.edit-form input,
-.task-form input,
-.task-form select,
-textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 1rem;
-  background-color: #fff;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.task-form,
-.form-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-}
-
-button {
-  background-color: #2563eb;
-  color: white;
-  padding: 0.6rem 1rem;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-}
-
-button:hover {
-  background-color: #1d4ed8;
-  transform: scale(1.02);
-}
-
-.task-group {
-  margin-top: 1.5rem;
-}
-
-.task-group h4 {
-  margin-bottom: 0.75rem;
-  color: #334155;
-  font-size: 1.1rem;
-}
-
-ul {
-  list-style-type: none;
-  padding-left: 0;
-}
-
-ul li.task-row {
-  display: grid;
-  grid-template-columns: 1fr 120px auto;
-  align-items: start;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #e2e8f0;
-  gap: 1rem;
-}
-
-.task-desc {
-  font-weight: 500;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.task-date {
-  color: #64748b;
-  font-size: 0.9rem;
-}
-
-.task-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.task-headers {
-  display: grid;
-  grid-template-columns: 1fr 120px auto;
-  font-size: 0.9rem;
-  color: #475569;
-  padding: 0.5rem 0;
-  border-bottom: 2px solid #cbd5e1;
-  font-weight: 600;
-}
-
-.log-entry {
-  background-color: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.log-entry p {
-  margin: 0 0 0.5rem;
-}
-
-textarea {
-  font-family: 'Inter', sans-serif;
-  font-size: 1rem;
-}
-
-textarea:focus,
-input:focus,
-select:focus {
-  outline: none;
-  border-color: #94a3b8;
-  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.2);
-}
-
-#logs textarea {
-  margin-bottom: 0.5rem;
-}
-
-#logs button {
-  margin-bottom: 1rem;
-}
-
-.section-card h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 1rem;
-}
-
-.loader,
-.not-found {
-  font-size: 1.2rem;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-.highlight-name {
-  color: #0f172a;
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background-color: #e2e8f0;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  text-decoration: none;
-  color: #1e293b;
-  font-weight: 500;
-  margin-bottom: 1.5rem;
-  transition: background-color 0.2s ease;
-}
-
-.back-btn:hover {
-  background-color: #cbd5e1;
-}
-
-.task-actions button {
-  margin-left: 4px;
-}
-
-.flat-readonly {
-  border: none;
-  background-color: transparent;
-  padding: 0;
-  font-weight: 500;
-  color: #1e293b;
-}
-.flat-readonly:focus {
-  outline: none;
-}
+export default ProjectDetails;
