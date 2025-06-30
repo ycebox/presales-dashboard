@@ -12,19 +12,18 @@ body {
 .page-wrapper {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: start;
   min-height: 100vh;
   background-color: #f1f5f9;
   padding: 2rem 1rem;
   box-sizing: border-box;
 }
 
-.page-content {
+.page-content.wide {
   width: 100%;
   max-width: 1200px;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 2rem;
   background-color: #f8fafc;
   border-radius: 16px;
@@ -32,17 +31,17 @@ body {
   padding: 2rem;
 }
 
-.project-container {
-  width: 100%;
+.project-layout {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 2rem;
-  align-items: center;
+  width: 100%;
+  align-items: flex-start;
 }
 
-.project-card,
-.section-card {
-  width: 100%;
+.project-left,
+.project-right {
+  flex: 1;
   background: white;
   padding: 2rem;
   border-radius: 16px;
@@ -239,6 +238,7 @@ select:focus {
   font-weight: 500;
   color: #1e293b;
 }
+
 .flat-readonly:focus {
   outline: none;
 }
