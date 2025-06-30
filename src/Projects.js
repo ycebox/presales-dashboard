@@ -241,13 +241,7 @@ function Projects() {
                 Remarks
                 <input name="remarks" value={newProject.remarks || ''} onChange={handleNewProjectChange} />
               </label>
-              <label>
-                Archived?
-                <select name="is_archived" value={newProject.is_archived || 'false'} onChange={handleNewProjectChange}>
-                  <option value="false">No</option>
-                  <option value="true">Yes</option>
-                </select>
-              </label>
+           
               <div className="modal-actions">
                 <button type="button" onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit">Save</button>
