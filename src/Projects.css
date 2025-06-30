@@ -340,6 +340,63 @@
 .modal-content button:hover {
   opacity: 0.95;
 }
+/* 2-Column Form Grid */
+.modern-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem 1.5rem;
+}
+
+.modern-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+.modern-form input,
+.modern-form select {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.95rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background-color: white;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.modern-form input:focus,
+.modern-form select:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+  outline: none;
+}
+
+/* Button Row */
+.modal-actions {
+  grid-column: span 2;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.modal-actions button {
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+}
+
+.modal-actions button[type="submit"] {
+  background-color: #1e40af;
+  color: white;
+}
+
+.modal-actions button[type="button"] {
+  background-color: #f1f5f9;
+  color: #1e
 
 .updated-filters select:focus {
   outline: none;
