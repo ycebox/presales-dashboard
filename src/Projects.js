@@ -87,8 +87,9 @@ function Projects() {
     <section
       className="projects-wrapper"
       style={{
-        marginLeft: '2rem', // ✅ creates the visual gap between left and right column
+        marginLeft: '2rem',
         width: '100%',
+        overflowX: 'hidden' // ✅ Hide horizontal scroll bar
       }}
     >
       <div className="projects-header-row">
