@@ -19,10 +19,7 @@ function Projects() {
     country: '',
     account_manager: '',
     sales_stage: '',
-    product: '',
-    scope: '',
-    backup_presales: '',
-    remarks: ''
+    product: ''
   });
 
   useEffect(() => {
@@ -65,10 +62,7 @@ function Projects() {
         country: '',
         account_manager: '',
         sales_stage: '',
-        product: '',
-        scope: '',
-        backup_presales: '',
-        remarks: ''
+        product: ''
       });
       fetchProjects();
     } else {
@@ -83,137 +77,96 @@ function Projects() {
     else console.error('Delete error:', error.message);
   };
 
-return (
-<section
-  className="projects-wrapper"
-  style={{
-    width: '100%',
-    maxWidth: '100%',
-    flexShrink: 1,
-    flexGrow: 1,
-    overflow: 'hidden',
-    boxSizing: 'border-box',
-  }}
->
-    <div className="projects-header-row">
-      <h2 className="projects-header">
-        <FaFolderOpen style={{ marginRight: '8px' }} /> Presales Projects
-      </h2>
-      <button
-        className="add-btn"
-        style={{ backgroundColor: '#a6b2d9' }}
-        onClick={() => setShowModal(true)}
-      >
-        <FaPlus /> Add Project
-      </button>
-    </div>
+  return (
+    <section className="projects-wrapper">
+      <div className="projects-header-row">
+        <h2 className="projects-header">
+          <FaFolderOpen style={{ marginRight: '8px' }} /> Presales Projects
+        </h2>
+        <button className="add-btn" style={{ backgroundColor: '#a6b2d9' }} onClick={() => setShowModal(true)}>
+          <FaPlus /> Add Project
+        </button>
+      </div>
 
-    <div className="filters modern-flat">
-      <select name="country" value={filters.country} onChange={handleFilterChange}>
-        <option value="">All Countries</option>
-        {[...new Set(projects.map(p => p.country))].map((c, i) => <option key={i} value={c}>{c}</option>)}
-      </select>
-      <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
-        <option value="">All AMs</option>
-        {[...new Set(projects.map(p => p.account_manager))].map((c, i) => <option key={i} value={c}>{c}</option>)}
-      </select>
-      <select name="sales_stage" value={filters.sales_stage} onChange={handleFilterChange}>
-        <option value="">All Stages</option>
-        {[...new Set(projects.map(p => p.sales_stage))].map((c, i) => <option key={i} value={c}>{c}</option>)}
-      </select>
-      <select name="product" value={filters.product} onChange={handleFilterChange}>
-        <option value="">All Products</option>
-        {[...new Set(projects.map(p => p.product))].map((c, i) => <option key={i} value={c}>{c}</option>)}
-      </select>
-    </div>
+      <div className="filters modern-flat">
+        <select name="country" value={filters.country} onChange={handleFilterChange}>
+          <option value="">All Countries</option>
+          {[...new Set(projects.map(p => p.country))].map((c, i) => <option key={i} value={c}>{c}</option>)}
+        </select>
+        <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
+          <option value="">All AMs</option>
+          {[...new Set(projects.map(p => p.account_manager))].map((c, i) => <option key={i} value={c}>{c}</option>)}
+        </select>
+        <select name="sales_stage" value={filters.sales_stage} onChange={handleFilterChange}>
+          <option value="">All Stages</option>
+          {[...new Set(projects.map(p => p.sales_stage))].map((c, i) => <option key={i} value={c}>{c}</option>)}
+        </select>
+        <select name="product" value={filters.product} onChange={handleFilterChange}>
+          <option value="">All Products</option>
+          {[...new Set(projects.map(p => p.product))].map((c, i) => <option key={i} value={c}>{c}</option>)}
+        </select>
+      </div>
 
-    {loading ? (
-      <p>Loading...</p>
-    ) : (
-      <div
-        className="table-scroll-wrapper"
-        style={{
-          width: '100%',
-          overflowX: 'auto',
-        }}
-      >
-    <div
-  className="table-container"
-  style={{
-    width: '100%',
-    minWidth: 0, // important
-    overflowX: 'auto',
-    boxSizing: 'border-box',
-  }}
->
-          <table
-            className="modern-table"
-            style={{
-              width: '100%',
-              tableLayout: 'auto',
-            }}
-          >
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Country</th>
-                <th>Account Manager</th>
-                <th>Sales Stage</th>
-                <th>Product</th>
-                <th>Scope</th>
-                <th>Backup</th>
-                <th>Remarks</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((project) => (
-                <tr key={project.id}>
-                  <td>
-                    <Link to={`/project/${project.id}`} className="project-link">
-                      {project.customer_name}
-                    </Link>
-                  </td>
-                  <td>{project.country}</td>
-                  <td>{project.account_manager}</td>
-                  <td>{project.sales_stage}</td>
-                  <td>{project.product}</td>
-                  <td>{project.scope}</td>
-                  <td>{project.backup_presales}</td>
-                  <td>{project.remarks}</td>
-                  <td>
-                    <button className="delete-btn" onClick={() => handleDeleteProject(project.id)}>
-                      <FaTrash />
-                    </button>
-                  </td>
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <div className="table-scroll-wrapper">
+          <div className="table-container">
+            <table className="modern-table">
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Country</th>
+                  <th>Account Manager</th>
+                  <th>Sales Stage</th>
+                  <th>Product</th>
+                  <th>Actions</th>
                 </tr>
+              </thead>
+              <tbody>
+                {projects.map((project) => (
+                  <tr key={project.id} id={`project-${project.id}`}>
+                    <td>
+                      <Link to={`/project/${project.id}`} className="project-link">
+                        {project.customer_name}
+                      </Link>
+                    </td>
+                    <td>{project.country}</td>
+                    <td>{project.account_manager}</td>
+                    <td>{project.sales_stage}</td>
+                    <td>{project.product}</td>
+                    <td>
+                      <button className="delete-btn" onClick={() => handleDeleteProject(project.id)}>
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {showModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content">
+            <h3>Add New Project</h3>
+            <form onSubmit={handleAddProject}>
+              {Object.entries(newProject).map(([key, value]) => (
+                <label key={key}>
+                  {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                  <input name={key} value={value} onChange={handleNewProjectChange} />
+                </label>
               ))}
-            </tbody>
-          </table>
+              <button type="submit">Save</button>
+              <button type="button" onClick={() => setShowModal(false)}>Cancel</button>
+            </form>
+          </div>
         </div>
-      </div>
-    )}
-
-    {showModal && (
-      <div className="modal-backdrop">
-        <div className="modal-content">
-          <h3>Add New Project</h3>
-          <form onSubmit={handleAddProject}>
-            {Object.entries(newProject).map(([key, value]) => (
-              <label key={key}>
-                {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-                <input name={key} value={value} onChange={handleNewProjectChange} />
-              </label>
-            ))}
-            <button type="submit">Save</button>
-            <button type="button" onClick={() => setShowModal(false)}>Cancel</button>
-          </form>
-        </div>
-      </div>
-    )}
-  </section>
-);
-
+      )}
+    </section>
+  );
 }
 
 export default Projects;
