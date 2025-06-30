@@ -2,10 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
-import {
-  FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
-  FaPlus, FaTrash, FaEye, FaEyeSlash
-} from 'react-icons/fa';
+import { FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes, FaPlus, FaTrash, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -18,7 +15,8 @@ function ProjectDetails() {
   const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '', notes: '' });
   const [selectedTasks, setSelectedTasks] = useState([]);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [newLog, setNewLog] = useState('');
+  const [editTaskId, setEditTaskId] = useState(null);
+  const [taskEditForm, setTaskEditForm] = useState({ description: '', status: '', due_date: '', notes: '' });
 
   useEffect(() => {
     fetchProjectDetails();
@@ -71,27 +69,30 @@ function ProjectDetails() {
     }
   };
 
-  const handleProjectFieldChange = (e) => {
+  const startEditTask = (task) => {
+    setEditTaskId(task.id);
+    setTaskEditForm({
+      description: task.description,
+      status: task.status,
+      due_date: task.due_date ? task.due_date.split('T')[0] : '',
+      notes: task.notes || ''
+    });
+  };
+
+  const cancelEditTask = () => {
+    setEditTaskId(null);
+    setTaskEditForm({ description: '', status: '', due_date: '', notes: '' });
+  };
+
+  const handleEditTaskChange = (e) => {
     const { name, value } = e.target;
-    setEditForm((prev) => ({ ...prev, [name]: value }));
+    setTaskEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const saveProjectDetails = async () => {
-    const updated = { ...editForm };
-    delete updated.id;
-    delete updated.created_at;
-    const { error } = await supabase.from('projects').update(updated).eq('id', id);
+  const saveEditTask = async () => {
+    const { error } = await supabase.from('project_tasks').update(taskEditForm).eq('id', editTaskId);
     if (!error) {
-      setEditingProject(false);
-      fetchProjectDetails();
-    }
-  };
-
-  const handleAddLog = async () => {
-    if (!newLog.trim()) return;
-    const { error } = await supabase.from('project_logs').insert([{ notes: newLog, project_id: id }]);
-    if (!error) {
-      setNewLog('');
+      setEditTaskId(null);
       fetchProjectDetails();
     }
   };
@@ -109,63 +110,6 @@ function ProjectDetails() {
           <Link to="/" className="back-btn">
             <FaHome /> Back to Dashboard
           </Link>
-        </div>
-
-        <div className="section-card">
-          <h3>{project.customer_name}</h3>
-          {!editingProject && (
-            <button onClick={() => setEditingProject(true)}><FaEdit /> Edit</button>
-          )}
-
-          {editingProject ? (
-            <div className="edit-form">
-              {Object.entries(editForm).map(([key, value]) => (
-                key !== 'id' && key !== 'created_at' && (
-                  <label key={key}>
-                    {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    <input name={key} value={value || ''} onChange={handleProjectFieldChange} />
-                  </label>
-                )
-              ))}
-              <div className="form-actions">
-                <button onClick={saveProjectDetails}><FaSave /> Save</button>
-                <button onClick={() => setEditingProject(false)}><FaTimes /> Cancel</button>
-              </div>
-            </div>
-          ) : (
-            <div className="edit-form">
-              {Object.entries(project).map(([key, value]) => (
-                key !== 'id' && key !== 'created_at' && (
-                  <label key={key}>
-                    {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    <input name={key} value={value || ''} readOnly />
-                  </label>
-                )
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="section-card project-logs">
-          <h3><FaBookOpen /> Project Logs</h3>
-          <div className="log-form">
-            <textarea
-              rows={3}
-              placeholder="Add a log entry..."
-              value={newLog}
-              onChange={(e) => setNewLog(e.target.value)}
-            />
-            <button onClick={handleAddLog}><FaPlus /> Add</button>
-          </div>
-          {logs.length > 0 ? (
-            logs.map((log) => (
-              <div key={log.id} className="log-entry">
-                <p>{log.notes}</p>
-              </div>
-            ))
-          ) : (
-            <p>No logs available.</p>
-          )}
         </div>
 
         <div className="section-card">
@@ -198,16 +142,42 @@ function ProjectDetails() {
                 <th>Status</th>
                 <th>Due Date</th>
                 <th>Notes</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {activeTasks.map(task => (
                 <tr key={task.id}>
                   <td><input type="checkbox" checked={selectedTasks.includes(task.id)} onChange={() => handleCheckboxChange(task.id)} /></td>
-                  <td>{task.description}</td>
-                  <td>{task.status}</td>
-                  <td>{task.due_date ? task.due_date.split('T')[0] : '—'}</td>
-                  <td>{task.notes}</td>
+                  {editTaskId === task.id ? (
+                    <>
+                      <td><input name="description" value={taskEditForm.description} onChange={handleEditTaskChange} /></td>
+                      <td>
+                        <select name="status" value={taskEditForm.status} onChange={handleEditTaskChange}>
+                          <option value="Not Started">Not Started</option>
+                          <option value="In Progress">In Progress</option>
+                          <option value="Completed">Completed</option>
+                          <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+                        </select>
+                      </td>
+                      <td><input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} /></td>
+                      <td><input name="notes" value={taskEditForm.notes} onChange={handleEditTaskChange} /></td>
+                      <td>
+                        <button onClick={saveEditTask}><FaSave /></button>
+                        <button onClick={cancelEditTask}><FaTimes /></button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{task.description}</td>
+                      <td>{task.status}</td>
+                      <td>{task.due_date ? task.due_date.split('T')[0] : '—'}</td>
+                      <td>{task.notes}</td>
+                      <td>
+                        <button onClick={() => startEditTask(task)}><FaEdit /></button>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>
