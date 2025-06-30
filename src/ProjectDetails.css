@@ -39,19 +39,33 @@ body {
   gap: 2rem;
   width: 100%;
   align-items: flex-start;
+  flex-wrap: wrap;
 }
 
-
+/* Left column: Project Details */
 .project-left {
-  flex: 1.7; /* ✅ More space for Project Details */
+  flex: 1;
+  min-width: 320px;
   background: white;
   padding: 2rem;
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
-.project-right {
-  flex: 1.3; /* ✅ Slightly narrower for Logs */
+/* Right column: Tasks */
+.project-middle {
+  flex: 1;
+  min-width: 320px;
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* Logs will be placed below both columns */
+.project-logs {
+  width: 100%;
+  margin-top: 2rem;
   background: white;
   padding: 2rem;
   border-radius: 16px;
