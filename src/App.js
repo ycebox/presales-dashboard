@@ -22,7 +22,7 @@ function App() {
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr minmax(0, 2fr)',
-          gap: '2rem', // this gives clear space between columns
+          gap: '5rem', // this gives clear space between columns
           alignItems: 'flex-start',
           width: '100%',
         }}
