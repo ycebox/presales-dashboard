@@ -39,7 +39,17 @@ body {
   align-items: flex-start;
 }
 
-.project-left,
+
+/* Make project-left take more space */
+.project-left {
+  flex: 1.5;
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* Reduce width of project-logs */
 .project-right {
   flex: 1;
   background: white;
@@ -47,7 +57,6 @@ body {
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
-
 .project-header {
   display: flex;
   justify-content: space-between;
