@@ -10,9 +10,10 @@ body {
 }
 
 .page-wrapper {
+  width: 100%;
   display: flex;
   justify-content: center;
-  align-items: start;
+  align-items: flex-start;
   min-height: 100vh;
   background-color: #f1f5f9;
   padding: 2rem 1rem;
@@ -20,8 +21,8 @@ body {
 }
 
 .page-content.wide {
-  width: 100%;
-  max-width: 70vw; /* ✅ Previously 1200px */
+  width: 70vw;                /* ✅ Expands to 70% of browser width */
+  margin: 0 auto;             /* ✅ Centers the content */
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -30,6 +31,7 @@ body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
   padding: 2rem;
 }
+
 
 .project-layout {
   display: flex;
