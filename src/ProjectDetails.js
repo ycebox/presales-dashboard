@@ -13,10 +13,9 @@ function ProjectDetails() {
   const [editingProject, setEditingProject] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '', notes: '' });
-  const [selectedTasks, setSelectedTasks] = useState([]);
-  const [showCompleted, setShowCompleted] = useState(false);
   const [editTaskId, setEditTaskId] = useState(null);
-  const [taskEditForm, setTaskEditForm] = useState({ description: '', status: '', due_date: '', notes: '' });
+  const [editTaskForm, setEditTaskForm] = useState({ description: '', status: '', due_date: '', notes: '' });
+  const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
     fetchProjectDetails();
@@ -54,24 +53,9 @@ function ProjectDetails() {
     }
   };
 
-  const handleCheckboxChange = (taskId) => {
-    setSelectedTasks((prev) =>
-      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
-    );
-  };
-
-  const deleteSelectedTasks = async () => {
-    if (!window.confirm('Delete selected tasks?')) return;
-    const { error } = await supabase.from('project_tasks').delete().in('id', selectedTasks);
-    if (!error) {
-      setSelectedTasks([]);
-      fetchProjectDetails();
-    }
-  };
-
   const startEditTask = (task) => {
     setEditTaskId(task.id);
-    setTaskEditForm({
+    setEditTaskForm({
       description: task.description,
       status: task.status,
       due_date: task.due_date ? task.due_date.split('T')[0] : '',
@@ -79,22 +63,34 @@ function ProjectDetails() {
     });
   };
 
-  const cancelEditTask = () => {
-    setEditTaskId(null);
-    setTaskEditForm({ description: '', status: '', due_date: '', notes: '' });
-  };
-
   const handleEditTaskChange = (e) => {
     const { name, value } = e.target;
-    setTaskEditForm((prev) => ({ ...prev, [name]: value }));
+    setEditTaskForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const saveEditTask = async () => {
-    const { error } = await supabase.from('project_tasks').update(taskEditForm).eq('id', editTaskId);
+  const cancelEditTask = () => {
+    setEditTaskId(null);
+    setEditTaskForm({ description: '', status: '', due_date: '', notes: '' });
+  };
+
+  const saveEditTask = async (taskId) => {
+    const payload = {
+      description: editTaskForm.description,
+      status: editTaskForm.status,
+      due_date: editTaskForm.due_date || null,
+      notes: editTaskForm.notes
+    };
+    const { error } = await supabase.from('project_tasks').update(payload).eq('id', taskId);
     if (!error) {
       setEditTaskId(null);
       fetchProjectDetails();
     }
+  };
+
+  const deleteTask = async (taskId) => {
+    if (!window.confirm('Delete this task?')) return;
+    const { error } = await supabase.from('project_tasks').delete().eq('id', taskId);
+    if (!error) fetchProjectDetails();
   };
 
   if (loading) return <div className="loader">Loading project details...</div>;
@@ -127,17 +123,9 @@ function ProjectDetails() {
             <button type="submit"><FaPlus /> Add</button>
           </form>
 
-          {selectedTasks.length > 0 && (
-            <div className="task-toolbar">
-              <span>{selectedTasks.length} selected</span>
-              <button onClick={deleteSelectedTasks}><FaTrash /> Delete</button>
-            </div>
-          )}
-
           <table className="task-table">
             <thead>
               <tr>
-                <th></th>
                 <th>Task</th>
                 <th>Status</th>
                 <th>Due Date</th>
@@ -148,22 +136,21 @@ function ProjectDetails() {
             <tbody>
               {activeTasks.map(task => (
                 <tr key={task.id}>
-                  <td><input type="checkbox" checked={selectedTasks.includes(task.id)} onChange={() => handleCheckboxChange(task.id)} /></td>
                   {editTaskId === task.id ? (
                     <>
-                      <td><input name="description" value={taskEditForm.description} onChange={handleEditTaskChange} /></td>
+                      <td><input name="description" value={editTaskForm.description} onChange={handleEditTaskChange} /></td>
                       <td>
-                        <select name="status" value={taskEditForm.status} onChange={handleEditTaskChange}>
+                        <select name="status" value={editTaskForm.status} onChange={handleEditTaskChange}>
                           <option value="Not Started">Not Started</option>
                           <option value="In Progress">In Progress</option>
                           <option value="Completed">Completed</option>
                           <option value="Cancelled/On-hold">Cancelled/On-hold</option>
                         </select>
                       </td>
-                      <td><input type="date" name="due_date" value={taskEditForm.due_date} onChange={handleEditTaskChange} /></td>
-                      <td><input name="notes" value={taskEditForm.notes} onChange={handleEditTaskChange} /></td>
+                      <td><input type="date" name="due_date" value={editTaskForm.due_date} onChange={handleEditTaskChange} /></td>
+                      <td><input name="notes" value={editTaskForm.notes} onChange={handleEditTaskChange} /></td>
                       <td>
-                        <button onClick={saveEditTask}><FaSave /></button>
+                        <button onClick={() => saveEditTask(task.id)}><FaSave /></button>
                         <button onClick={cancelEditTask}><FaTimes /></button>
                       </td>
                     </>
@@ -175,6 +162,7 @@ function ProjectDetails() {
                       <td>{task.notes}</td>
                       <td>
                         <button onClick={() => startEditTask(task)}><FaEdit /></button>
+                        <button onClick={() => deleteTask(task.id)}><FaTrash /></button>
                       </td>
                     </>
                   )}
@@ -191,21 +179,23 @@ function ProjectDetails() {
             <table className="task-table completed">
               <thead>
                 <tr>
-                  <th></th>
                   <th>Task</th>
                   <th>Status</th>
                   <th>Due Date</th>
                   <th>Notes</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {completedTasks.map(task => (
                   <tr key={task.id}>
-                    <td><input type="checkbox" checked={selectedTasks.includes(task.id)} onChange={() => handleCheckboxChange(task.id)} /></td>
                     <td>{task.description}</td>
                     <td>{task.status}</td>
                     <td>{task.due_date ? task.due_date.split('T')[0] : '—'}</td>
                     <td>{task.notes}</td>
+                    <td>
+                      <button onClick={() => deleteTask(task.id)}><FaTrash /></button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
