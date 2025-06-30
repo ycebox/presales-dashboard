@@ -259,3 +259,16 @@ select:focus {
 .flat-readonly:focus {
   outline: none;
 }
+.edit-form input,
+.edit-form select,
+.edit-form textarea {
+  width: 100%;
+  padding: 8px 12px;
+  margin: 6px 0;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: #fff;
+  box-sizing: border-box;
+  font-family: inherit;
+}
