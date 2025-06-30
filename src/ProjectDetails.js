@@ -112,8 +112,8 @@ function ProjectDetails() {
           </Link>
         </div>
 
-        <div className="project-content-row">
-          <div className="section-card project-details">
+        <div className="project-layout">
+          <div className="project-left">
             <h3><FaBookOpen /> Project Details</h3>
             <p><strong>Customer:</strong> {project.customer_name}</p>
             <p><strong>Country:</strong> {project.country}</p>
@@ -126,7 +126,7 @@ function ProjectDetails() {
             <p><strong>Remarks:</strong> {project.remarks}</p>
           </div>
 
-          <div className="section-card tasks-section">
+          <div className="project-middle">
             <h3><FaTasks /> Tasks</h3>
             <form onSubmit={handleAddTask} className="task-form">
               <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
@@ -222,7 +222,7 @@ function ProjectDetails() {
           </div>
         </div>
 
-        <div className="section-card">
+        <div className="project-logs">
           <h3><FaBookOpen /> Project Logs</h3>
           <ul className="logs-list">
             {logs.map(log => (
