@@ -92,7 +92,7 @@ function ProjectDetails() {
     const { error } = await supabase
       .from('project_tasks')
       .update(payload)
-      .match({ id: taskId }); // <-- Correct method to filter updates
+      .match({ id: taskId });
 
     if (!error) {
       setEditTaskId(null);
@@ -123,6 +123,35 @@ function ProjectDetails() {
           </Link>
         </div>
 
+        {/* Project Details Section */}
+        <div className="section-card">
+          <h3><FaBookOpen /> Project Details</h3>
+          <div className="project-details-grid">
+            <p><strong>Customer:</strong> {project.customer_name}</p>
+            <p><strong>Country:</strong> {project.customer_country}</p>
+            <p><strong>Account Manager:</strong> {project.account_manager}</p>
+            <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
+            <p><strong>Deal Value:</strong> {project.deal_value}</p>
+            <p><strong>Product:</strong> {project.product}</p>
+            <p><strong>Scope:</strong> {project.scope}</p>
+            <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
+            <p><strong>Remarks:</strong> {project.remarks}</p>
+          </div>
+        </div>
+
+        {/* Project Logs Section */}
+        <div className="section-card">
+          <h3><FaBookOpen /> Project Logs</h3>
+          <ul className="log-list">
+            {logs.map((log, index) => (
+              <li key={index}>
+                <span className="log-date">{new Date(log.created_at).toLocaleString()}</span> - {log.entry}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Tasks Section */}
         <div className="section-card">
           <h3><FaTasks /> Tasks</h3>
           <form onSubmit={handleAddTask} className="task-form">
