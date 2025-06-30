@@ -19,7 +19,11 @@ function Projects() {
     country: '',
     account_manager: '',
     sales_stage: '',
-    product: ''
+    product: '',
+    deal_value: '',
+    backup_presales: '',
+    remarks: '',
+    is_archived: 'false'
   });
 
   useEffect(() => {
@@ -62,7 +66,11 @@ function Projects() {
         country: '',
         account_manager: '',
         sales_stage: '',
-        product: ''
+        product: '',
+        deal_value: '',
+        backup_presales: '',
+        remarks: '',
+        is_archived: 'false'
       });
       fetchProjects();
     } else {
@@ -219,6 +227,25 @@ function Projects() {
                   {products.map((p, i) => (
                     <option key={i} value={p}>{p}</option>
                   ))}
+                </select>
+              </label>
+              <label>
+                Deal Value
+                <input name="deal_value" type="number" value={newProject.deal_value || ''} onChange={handleNewProjectChange} />
+              </label>
+              <label>
+                Backup Presales
+                <input name="backup_presales" value={newProject.backup_presales || ''} onChange={handleNewProjectChange} />
+              </label>
+              <label style={{ gridColumn: 'span 2' }}>
+                Remarks
+                <input name="remarks" value={newProject.remarks || ''} onChange={handleNewProjectChange} />
+              </label>
+              <label>
+                Archived?
+                <select name="is_archived" value={newProject.is_archived || 'false'} onChange={handleNewProjectChange}>
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
                 </select>
               </label>
               <div className="modal-actions">
