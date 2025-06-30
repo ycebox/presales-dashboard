@@ -2,7 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
-import { FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes, FaPlus, FaTrash, FaEye, FaEyeSlash } from 'react-icons/fa';
+import {
+  FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
+  FaPlus, FaTrash, FaEye, FaEyeSlash
+} from 'react-icons/fa';
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -84,6 +87,8 @@ function ProjectDetails() {
     if (!error) {
       setEditTaskId(null);
       fetchProjectDetails();
+    } else {
+      console.error('Error updating task:', error.message);
     }
   };
 
