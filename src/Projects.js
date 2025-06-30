@@ -84,15 +84,17 @@ function Projects() {
   };
 
 return (
-  <section
-    className="projects-wrapper"
-    style={{
-      flex: 1,
-      maxWidth: '100%',
-      overflow: 'hidden',
-      boxSizing: 'border-box',
-    }}
-  >
+<section
+  className="projects-wrapper"
+  style={{
+    width: '100%',
+    maxWidth: '100%',
+    flexShrink: 1,
+    flexGrow: 1,
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+  }}
+>
     <div className="projects-header-row">
       <h2 className="projects-header">
         <FaFolderOpen style={{ marginRight: '8px' }} /> Presales Projects
