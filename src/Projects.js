@@ -137,13 +137,15 @@ return (
           overflowX: 'auto',
         }}
       >
-        <div
-          className="table-container"
-          style={{
-            minWidth: '100%',
-            overflowX: 'auto',
-          }}
-        >
+    <div
+  className="table-container"
+  style={{
+    width: '100%',
+    minWidth: 0, // important
+    overflowX: 'auto',
+    boxSizing: 'border-box',
+  }}
+>
           <table
             className="modern-table"
             style={{
