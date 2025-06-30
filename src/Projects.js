@@ -88,23 +88,26 @@ function Projects() {
         </button>
       </div>
 
-      <div className="filters modern-flat">
-        <select name="country" value={filters.country} onChange={handleFilterChange}>
-          <option value="">All Countries</option>
-          {[...new Set(projects.map(p => p.country))].map((c, i) => <option key={i} value={c}>{c}</option>)}
-        </select>
-        <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
-          <option value="">All AMs</option>
-          {[...new Set(projects.map(p => p.account_manager))].map((c, i) => <option key={i} value={c}>{c}</option>)}
-        </select>
-        <select name="sales_stage" value={filters.sales_stage} onChange={handleFilterChange}>
-          <option value="">All Stages</option>
-          {[...new Set(projects.map(p => p.sales_stage))].map((c, i) => <option key={i} value={c}>{c}</option>)}
-        </select>
-        <select name="product" value={filters.product} onChange={handleFilterChange}>
-          <option value="">All Products</option>
-          {[...new Set(projects.map(p => p.product))].map((c, i) => <option key={i} value={c}>{c}</option>)}
-        </select>
+      <div className="filters modern-flat updated-filters">
+        <div className="filter-label">Filter Projects</div>
+        <div className="filter-controls">
+          <select name="country" value={filters.country} onChange={handleFilterChange}>
+            <option value="">All Countries</option>
+            {[...new Set(projects.map(p => p.country))].map((c, i) => <option key={i} value={c}>{c}</option>)}
+          </select>
+          <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
+            <option value="">All AMs</option>
+            {[...new Set(projects.map(p => p.account_manager))].map((c, i) => <option key={i} value={c}>{c}</option>)}
+          </select>
+          <select name="sales_stage" value={filters.sales_stage} onChange={handleFilterChange}>
+            <option value="">All Stages</option>
+            {[...new Set(projects.map(p => p.sales_stage))].map((c, i) => <option key={i} value={c}>{c}</option>)}
+          </select>
+          <select name="product" value={filters.product} onChange={handleFilterChange}>
+            <option value="">All Products</option>
+            {[...new Set(projects.map(p => p.product))].map((c, i) => <option key={i} value={c}>{c}</option>)}
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -112,15 +115,14 @@ function Projects() {
       ) : (
         <div className="table-scroll-wrapper">
           <div className="table-container">
-            <table className="modern-table" style={{ fontSize: '1rem', tableLayout: 'fixed', width: '100%' }}>
+            <table className="modern-table" style={{ fontSize: '1.05rem', tableLayout: 'fixed', width: '100%' }}>
               <thead>
                 <tr>
-                  <th style={{ width: '20%' }}>Customer</th>
-                  <th style={{ width: '20%' }}>Country</th>
-                  <th style={{ width: '20%' }}>Account Manager</th>
-                  <th style={{ width: '20%' }}>Sales Stage</th>
-                  <th style={{ width: '15%' }}>Product</th>
-                  <th style={{ width: '5%' }}>Actions</th>
+                  <th style={{ width: '22%' }}>Customer</th>
+                  <th style={{ width: '22%' }}>Country</th>
+                  <th style={{ width: '22%' }}>Account Manager</th>
+                  <th style={{ width: '22%' }}>Sales Stage</th>
+                  <th style={{ width: '12%' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -134,7 +136,6 @@ function Projects() {
                     <td>{project.country}</td>
                     <td>{project.account_manager}</td>
                     <td>{project.sales_stage}</td>
-                    <td>{project.product}</td>
                     <td>
                       <button className="delete-btn" onClick={() => handleDeleteProject(project.id)}>
                         <FaTrash />
