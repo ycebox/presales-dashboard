@@ -152,6 +152,35 @@ function ProjectDetails() {
   if (loading) return <div className="loader">Loading project details...</div>;
   if (!project) return <div className="not-found">Project not found.</div>;
 
+  const dropdownFields = {
+    sales_stage: ['Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery',
+    'PoC', 'RFI', 'RFP', 'SoW'],
+    product: ['Marketplace', 'O-City', 'Processing', 'SmartVista'],
+    country: ["Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
+    "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
+    "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"],
+  };
+
+  const renderInputField = (key, value, isEdit) => {
+    const label = key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+    const isDropdown = dropdownFields[key];
+    return (
+      <label key={key}>
+        {label}
+        {isEdit && isDropdown ? (
+          <select name={key} value={value || ''} onChange={handleProjectFieldChange}>
+            <option value="">Select</option>
+            {dropdownFields[key].map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        ) : (
+          <input name={key} value={value || ''} onChange={isEdit ? handleProjectFieldChange : undefined} readOnly={!isEdit} />
+        )}
+      </label>
+    );
+  };
+
   return (
     <div className="page-wrapper navy-theme">
       <div className="page-content wide">
@@ -167,33 +196,49 @@ function ProjectDetails() {
               <h2 className="highlight-name big-name center-text">{project.customer_name}</h2>
               {!editingProject && <button onClick={() => setEditingProject(true)}><FaEdit /> Edit</button>}
             </div>
-
-            {editingProject ? (
-              <div className="edit-form">
-                {Object.entries(editForm).map(([key, value]) => (
-                  key !== 'id' && key !== 'created_at' && (
-                    <label key={key}>
-                      {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-                      <input name={key} value={value || ''} onChange={handleProjectFieldChange} />
-                    </label>
-                  )
-                ))}
+            <div className="edit-form">
+              {Object.entries(editForm).map(([key, value]) => (
+                key !== 'id' && key !== 'created_at' && renderInputField(key, value, editingProject)
+              ))}
+              {editingProject && (
                 <div className="form-actions">
                   <button onClick={saveProjectDetails}><FaSave /> Save</button>
                   <button onClick={() => setEditingProject(false)}><FaTimes /> Cancel</button>
                 </div>
-              </div>
+              )}
+            </div>
+          </div>
+
+          <div className="section-card project-logs">
+            <h3><FaBookOpen /> Project Logs</h3>
+            <div className="log-form">
+              <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
+              <button onClick={handleAddLog}><FaPlus /> Add</button>
+            </div>
+            {logs.length > 0 ? (
+              logs.map((log) => (
+                <div key={log.id} className="log-entry">
+                  {editLogId === log.id ? (
+                    <>
+                      <textarea rows={2} value={editLogText} onChange={(e) => setEditLogText(e.target.value)} />
+                      <div>
+                        <button onClick={() => saveEditLog(log.id)}><FaSave /></button>
+                        <button onClick={cancelEditLog}><FaTimes /></button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p>{log.notes}</p>
+                      <div>
+                        <button onClick={() => startEditLog(log)}><FaEdit /></button>
+                        <button onClick={() => deleteLog(log.id)}><FaTrash /></button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
             ) : (
-              <div className="edit-form">
-                {Object.entries(project).map(([key, value]) => (
-                  key !== 'id' && key !== 'created_at' && (
-                    <label key={key}>
-                      {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-                      <input name={key} value={value || ''} readOnly />
-                    </label>
-                  )
-                ))}
-              </div>
+              <p>No logs available.</p>
             )}
           </div>
         </div>
@@ -211,7 +256,6 @@ function ProjectDetails() {
             <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
             <button type="submit"><FaPlus /> Add</button>
           </form>
-
           {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map((status) => (
             <div key={status} className="task-group">
               <h4>{status}</h4>
@@ -248,40 +292,6 @@ function ProjectDetails() {
               </ul>
             </div>
           ))}
-        </div>
-
-        <div className="section-card project-logs">
-          <h3><FaBookOpen /> Project Logs</h3>
-          <div className="log-form">
-            <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
-            <button onClick={handleAddLog}><FaPlus /> Add</button>
-          </div>
-
-          {logs.length > 0 ? (
-            logs.map((log) => (
-              <div key={log.id} className="log-entry">
-                {editLogId === log.id ? (
-                  <>
-                    <textarea rows={2} value={editLogText} onChange={(e) => setEditLogText(e.target.value)} />
-                    <div>
-                      <button onClick={() => saveEditLog(log.id)}><FaSave /></button>
-                      <button onClick={cancelEditLog}><FaTimes /></button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p>{log.notes}</p>
-                    <div>
-                      <button onClick={() => startEditLog(log)}><FaEdit /></button>
-                      <button onClick={() => deleteLog(log.id)}><FaTrash /></button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))
-          ) : (
-            <p>No logs available.</p>
-          )}
         </div>
       </div>
     </div>
