@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
 import { FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
 
+
 function ProjectDetails() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
