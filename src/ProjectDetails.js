@@ -161,8 +161,8 @@ function ProjectDetails() {
           </Link>
         </div>
 
-        <div className="projectdetails-grid">
-          <div className="project-card">
+        <div className="project-layout">
+          <div className="project-left">
             <div className="project-header">
               <h2 className="highlight-name big-name center-text">{project.customer_name}</h2>
               {!editingProject && <button onClick={() => setEditingProject(true)}><FaEdit /> Edit</button>}
@@ -197,7 +197,7 @@ function ProjectDetails() {
             )}
           </div>
 
-          <div className="section-card project-logs">
+          <div className="project-right">
             <h3><FaBookOpen /> Project Logs</h3>
             <div className="log-form">
               <textarea rows={3} placeholder="Add a log entry..." value={newLog} onChange={(e) => setNewLog(e.target.value)} />
@@ -232,7 +232,7 @@ function ProjectDetails() {
           </div>
         </div>
 
-        <div className="section-card" id="tasks">
+        <div className="project-tasks" id="tasks">
           <h3><FaTasks /> Tasks</h3>
           <form onSubmit={handleAddTask} className="task-form">
             <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
