@@ -12,7 +12,7 @@ body {
 .page-wrapper {
   display: flex;
   justify-content: center;
-  align-items: start;
+  align-items: center;
   min-height: 100vh;
   background-color: #f1f5f9;
   padding: 2rem 1rem;
@@ -21,9 +21,9 @@ body {
 
 .page-content.wide {
   width: 100%;
-  max-width: 1200px;
-  display: flex;
-  flex-direction: column;
+  max-width: 1300px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 2rem;
   background-color: #f8fafc;
   border-radius: 16px;
@@ -31,17 +31,32 @@ body {
   padding: 2rem;
 }
 
-.project-layout {
+.project-container {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   gap: 2rem;
-  width: 100%;
-  align-items: flex-start;
+  grid-column: 1 / -1;
 }
 
-.project-left,
-.project-right {
-  flex: 1;
+.project-card {
+  grid-column: 1 / 2;
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.section-card#tasks {
+  grid-column: 2 / 3;
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  height: fit-content;
+}
+
+.section-card#logs {
+  grid-column: 1 / -1;
   background: white;
   padding: 2rem;
   border-radius: 16px;
@@ -238,7 +253,17 @@ select:focus {
   font-weight: 500;
   color: #1e293b;
 }
-
 .flat-readonly:focus {
   outline: none;
+}
+
+/* Ensure changes are scoped only to project details */
+.page-wrapper.navy-theme .page-content.wide {
+  display: grid;
+}
+
+/* Revert base dashboard content styling */
+body:not(.project-details) .page-content.wide {
+  display: flex !important;
+  flex-direction: column;
 }
