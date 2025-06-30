@@ -56,6 +56,19 @@ function ProjectDetails() {
     }
   };
 
+  const handleEditProjectChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const saveProjectChanges = async () => {
+    const { error } = await supabase.from('projects').update(editForm).eq('id', id);
+    if (!error) {
+      setEditingProject(false);
+      fetchProjectDetails();
+    }
+  };
+
   const startEditTask = (task) => {
     setEditTaskId(task.id);
     setEditTaskForm({
@@ -77,28 +90,17 @@ function ProjectDetails() {
   };
 
   const saveEditTask = async (taskId) => {
-    if (!taskId) {
-      console.error('Missing task ID.');
-      return;
-    }
-
+    if (!taskId) return;
     const payload = {
       description: editTaskForm.description,
       status: editTaskForm.status,
       due_date: editTaskForm.due_date || null,
       notes: editTaskForm.notes
     };
-
-    const { error } = await supabase
-      .from('project_tasks')
-      .update(payload)
-      .match({ id: taskId });
-
+    const { error } = await supabase.from('project_tasks').update(payload).match({ id: taskId });
     if (!error) {
       setEditTaskId(null);
       fetchProjectDetails();
-    } else {
-      console.error('Error updating task:', error.message);
     }
   };
 
@@ -123,23 +125,38 @@ function ProjectDetails() {
           </Link>
         </div>
 
-        {/* Project Details Section */}
         <div className="section-card">
           <h3><FaBookOpen /> Project Details</h3>
-          <div className="project-details-grid">
-            <p><strong>Customer:</strong> {project.customer_name}</p>
-            <p><strong>Country:</strong> {project.customer_country}</p>
-            <p><strong>Account Manager:</strong> {project.account_manager}</p>
-            <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
-            <p><strong>Deal Value:</strong> {project.deal_value}</p>
-            <p><strong>Product:</strong> {project.product}</p>
-            <p><strong>Scope:</strong> {project.scope}</p>
-            <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
-            <p><strong>Remarks:</strong> {project.remarks}</p>
-          </div>
+          {editingProject ? (
+            <div className="project-edit-form">
+              <input name="customer_name" value={editForm.customer_name} onChange={handleEditProjectChange} placeholder="Customer Name" />
+              <input name="customer_country" value={editForm.customer_country} onChange={handleEditProjectChange} placeholder="Country" />
+              <input name="account_manager" value={editForm.account_manager} onChange={handleEditProjectChange} placeholder="Account Manager" />
+              <input name="sales_stage" value={editForm.sales_stage} onChange={handleEditProjectChange} placeholder="Sales Stage" />
+              <input name="deal_value" value={editForm.deal_value} onChange={handleEditProjectChange} placeholder="Deal Value" />
+              <input name="product" value={editForm.product} onChange={handleEditProjectChange} placeholder="Product" />
+              <input name="scope" value={editForm.scope} onChange={handleEditProjectChange} placeholder="Scope" />
+              <input name="backup_presales" value={editForm.backup_presales} onChange={handleEditProjectChange} placeholder="Backup Presales" />
+              <input name="remarks" value={editForm.remarks} onChange={handleEditProjectChange} placeholder="Remarks" />
+              <button onClick={saveProjectChanges}><FaSave /> Save</button>
+              <button onClick={() => setEditingProject(false)}><FaTimes /> Cancel</button>
+            </div>
+          ) : (
+            <div className="project-details-view">
+              <p><strong>Customer:</strong> {project.customer_name}</p>
+              <p><strong>Country:</strong> {project.customer_country}</p>
+              <p><strong>Account Manager:</strong> {project.account_manager}</p>
+              <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
+              <p><strong>Deal Value:</strong> {project.deal_value}</p>
+              <p><strong>Product:</strong> {project.product}</p>
+              <p><strong>Scope:</strong> {project.scope}</p>
+              <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
+              <p><strong>Remarks:</strong> {project.remarks}</p>
+              <button onClick={() => setEditingProject(true)}><FaEdit /> Edit Project</button>
+            </div>
+          )}
         </div>
 
-        {/* Project Logs Section */}
         <div className="section-card">
           <h3><FaBookOpen /> Project Logs</h3>
           <ul className="log-list">
@@ -151,7 +168,6 @@ function ProjectDetails() {
           </ul>
         </div>
 
-        {/* Tasks Section */}
         <div className="section-card">
           <h3><FaTasks /> Tasks</h3>
           <form onSubmit={handleAddTask} className="task-form">
