@@ -21,7 +21,7 @@ body {
 
 .page-content.wide {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1600px;
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -63,9 +63,17 @@ body {
   margin: 0;
 }
 
+.edit-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem 2rem;
+}
+
 .edit-form label {
-  display: block;
-  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+  color: #334155;
 }
 
 .edit-form input,
@@ -238,45 +246,6 @@ select:focus {
   font-weight: 500;
   color: #1e293b;
 }
-
-/* ✅ Layout for Top Section (Details + Logs side-by-side) */
-.project-top-section {
-  display: flex;
-  flex-direction: row;
-  gap: 2rem;
-  width: 100%;
-  flex-wrap: wrap;
-}
-
-/* ✅ Left = Project Details */
-.project-left {
-  flex: 1;
-  min-width: 300px;
-  background: white;
-  padding: 2rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-}
-
-/* ✅ Right = Project Logs */
-.project-right {
-  flex: 1;
-  min-width: 300px;
-  background: white;
-  padding: 2rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-}
-
-/* ✅ Bottom Section for Tasks */
-.project-tasks {
-  width: 100%;
-  background: white;
-  padding: 2rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-}
-
 
 .flat-readonly:focus {
   outline: none;
