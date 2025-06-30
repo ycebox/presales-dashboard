@@ -21,7 +21,7 @@ body {
 
 .page-content.wide {
   width: 100%;
-  max-width: 1600px;
+  max-width: 70vw; /* ✅ Previously 1200px */
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -40,18 +40,16 @@ body {
 }
 
 
-/* Make project-left take more space */
 .project-left {
-  flex: 1.5;
+  flex: 1.7; /* ✅ More space for Project Details */
   background: white;
   padding: 2rem;
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
-/* Reduce width of project-logs */
 .project-right {
-  flex: 1;
+  flex: 1.3; /* ✅ Slightly narrower for Logs */
   background: white;
   padding: 2rem;
   border-radius: 16px;
