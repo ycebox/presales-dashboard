@@ -78,17 +78,17 @@ function Projects() {
   };
 
   const asiaPacificCountries = [
- "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
-  "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
-  "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
-  ];
+    "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
+    "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
+    "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
+  ].sort();
 
-  const products = ['SmartVista', 'Processing', 'O-City', 'Marketplace'];
+  const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
 
   const salesStages = [
-    'Discovery', 'RFI', 'RFP', 'SoW', 'Demo', 'PoC',
-    'Contracting', 'Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold'
-  ];
+    'Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery',
+    'PoC', 'RFI', 'RFP', 'SoW'
+  ].sort();
 
   return (
     <section className="projects-wrapper">
@@ -115,7 +115,7 @@ function Projects() {
           Account Manager
           <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
             <option value="">All AMs</option>
-            {[...new Set(projects.map(p => p.account_manager))].map((c, i) => (
+            {[...new Set(projects.map(p => p.account_manager))].sort().map((c, i) => (
               <option key={i} value={c}>{c}</option>
             ))}
           </select>
@@ -145,15 +145,15 @@ function Projects() {
       ) : (
         <div className="table-scroll-wrapper">
           <div className="table-container">
-            <table className="modern-table" style={{ fontSize: '1rem', tableLayout: 'fixed', width: '100%' }}>
+            <table className="modern-table project-table">
               <thead>
                 <tr>
-                  <th style={{ width: '20%' }}>Customer</th>
-                  <th style={{ width: '20%' }}>Country</th>
-                  <th style={{ width: '20%' }}>Account Manager</th>
-                  <th style={{ width: '20%' }}>Sales Stage</th>
-                  <th style={{ width: '15%' }}>Product</th>
-                  <th style={{ width: '5%' }}>Actions</th>
+                  <th>Customer</th>
+                  <th>Country</th>
+                  <th>Account Manager</th>
+                  <th>Sales Stage</th>
+                  <th>Product</th>
+                  <th style={{ textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -168,7 +168,7 @@ function Projects() {
                     <td>{project.account_manager}</td>
                     <td>{project.sales_stage}</td>
                     <td>{project.product}</td>
-                    <td>
+                    <td style={{ textAlign: 'center' }}>
                       <button className="delete-btn" onClick={() => handleDeleteProject(project.id)}>
                         <FaTrash />
                       </button>
@@ -221,7 +221,7 @@ function Projects() {
                   ))}
                 </select>
               </label>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1rem' }}>
+              <div className="modal-actions">
                 <button type="button" onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit">Save</button>
               </div>
