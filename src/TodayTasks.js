@@ -65,7 +65,7 @@ export default function TodayTasks() {
 
       {["overdue", "today"].map((groupKey) => (
         grouped[groupKey].length > 0 && (
-          <div key={groupKey} style={{ marginBottom: "20px" }}>
+          <div key={groupKey} style={{ marginBottom: "24px" }}>
             <h4 style={{
               color: groupKey === "overdue" ? "#dc2626" : "#ea580c",
               display: "flex",
@@ -76,7 +76,16 @@ export default function TodayTasks() {
               {groupKey === "overdue" ? <FaExclamationCircle /> : <FaCalendarDay />}
               {groupKey === "overdue" ? "Overdue Tasks" : "Due Today"}
             </h4>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginTop: "10px" }}>
+
+            <div
+              className="task-cards-wrapper"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "1rem",
+                marginTop: "10px"
+              }}
+            >
               {grouped[groupKey].map((t) => (
                 <div
                   key={t.id}
@@ -85,11 +94,12 @@ export default function TodayTasks() {
                     background: getCardColor(t.status),
                     padding: "14px",
                     borderRadius: "10px",
-                    width: "100%",
+                    flex: "1 1 250px",
                     maxWidth: "280px",
                     cursor: "pointer",
                     boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
-                    borderLeft: `4px solid ${groupKey === "overdue" ? "#dc2626" : "#f59e0b"}`
+                    borderLeft: `4px solid ${groupKey === "overdue" ? "#dc2626" : "#f59e0b"}`,
+                    boxSizing: "border-box"
                   }}
                 >
                   <div className="task-card-text" style={{
