@@ -112,15 +112,15 @@ function Projects() {
       ) : (
         <div className="table-scroll-wrapper">
           <div className="table-container">
-            <table className="modern-table">
+            <table className="modern-table" style={{ fontSize: '1rem', tableLayout: 'fixed', width: '100%' }}>
               <thead>
                 <tr>
-                  <th>Customer</th>
-                  <th>Country</th>
-                  <th>Account Manager</th>
-                  <th>Sales Stage</th>
-                  <th>Product</th>
-                  <th>Actions</th>
+                  <th style={{ width: '20%' }}>Customer</th>
+                  <th style={{ width: '20%' }}>Country</th>
+                  <th style={{ width: '20%' }}>Account Manager</th>
+                  <th style={{ width: '20%' }}>Sales Stage</th>
+                  <th style={{ width: '15%' }}>Product</th>
+                  <th style={{ width: '5%' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
