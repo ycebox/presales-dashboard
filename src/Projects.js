@@ -78,9 +78,9 @@ function Projects() {
   };
 
   const asiaPacificCountries = [
-    'Australia', 'New Zealand', 'Fiji', 'Papua New Guinea', 'Samoa', 'Tonga',
-    'Singapore', 'Malaysia', 'Indonesia', 'Thailand', 'Philippines', 'Vietnam',
-    'Cambodia', 'Laos', 'Myanmar', 'Brunei', 'India', 'Sri Lanka', 'Bangladesh'
+ "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
+  "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
+  "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
   ];
 
   const products = ['SmartVista', 'Processing', 'O-City', 'Marketplace'];
