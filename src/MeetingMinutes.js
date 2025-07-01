@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient';
 import { FaPlus, FaEdit, FaSave, FaTimes, FaTrash } from 'react-icons/fa';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import { useParams } from 'react-router-dom';
 
 function MeetingMinutes() {
   const [notes, setNotes] = useState([]);
@@ -10,6 +11,7 @@ function MeetingMinutes() {
   const [editNoteId, setEditNoteId] = useState(null);
   const [form, setForm] = useState({ title: '', content: '', project_id: '' });
   const [projects, setProjects] = useState([]);
+   const { id } = useParams();
 
   useEffect(() => {
     fetchNotes();
