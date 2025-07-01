@@ -80,7 +80,7 @@ function App() {
               }
             />
             <Route path="/project/:id" element={<ProjectDetails />} />
-            <Route path="/meeting-minutes/:id" element={<MeetingMinutes />} />
+           <Route path="/meeting-minutes" element={<MeetingMinutes />} />
           </Routes>
         </div>
       </div>
