@@ -118,9 +118,9 @@ function ProjectDetails() {
                 <li key={note.id}>
                   <strong>{note.title}</strong>
                   <div className="task-actions" style={{ marginTop: '0.25rem' }}>
-                    <Link to={`/meeting-minutes?id=${note.id}`} target="_blank">
-                      <button><FaEye /> View</button>
-                    </Link>
+                   <Link to={`/meeting-minutes/${note.id}`} target="_blank">
+  <button><FaEye /> View</button>
+</Link>
                   </div>
                 </li>
               ))}
