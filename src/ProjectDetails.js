@@ -13,11 +13,17 @@ function ProjectDetails() {
   const [tasks, setTasks] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingProject, setEditingProject] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '', notes: '' });
   const [editTaskId, setEditTaskId] = useState(null);
   const [editTaskForm, setEditTaskForm] = useState({ description: '', status: '', due_date: '', notes: '' });
-  const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '', notes: '' });
   const [showCompleted, setShowCompleted] = useState(false);
-  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [newLogEntry, setNewLogEntry] = useState('');
+  const [editLogId, setEditLogId] = useState(null);
+  const [editLogEntry, setEditLogEntry] = useState('');
 
   useEffect(() => {
     fetchProjectDetails();
@@ -34,6 +40,7 @@ function ProjectDetails() {
       .order('created_at', { ascending: false });
 
     setProject(projectData);
+    setEditForm(projectData || {});
     setTasks(taskData || []);
     setLogs(logData || []);
     setLoading(false);
@@ -50,7 +57,6 @@ function ProjectDetails() {
     const { error } = await supabase.from('project_tasks').insert([{ ...newTask, project_id: id }]);
     if (!error) {
       setNewTask({ description: '', status: 'Not Started', due_date: '', notes: '' });
-      setShowAddTaskModal(false);
       fetchProjectDetails();
     }
   };
@@ -96,6 +102,37 @@ function ProjectDetails() {
     if (!error) fetchProjectDetails();
   };
 
+  const addLogEntry = async () => {
+    if (!newLogEntry.trim()) return;
+    const { error } = await supabase.from('project_logs').insert([{ project_id: id, entry: newLogEntry }]);
+    if (!error) {
+      setNewLogEntry('');
+      setShowLogModal(false);
+      fetchProjectDetails();
+    }
+  };
+
+  const startEditLog = (log) => {
+    setEditLogId(log.id);
+    setEditLogEntry(log.entry);
+  };
+
+  const saveEditLog = async () => {
+    if (!editLogEntry.trim()) return;
+    const { error } = await supabase.from('project_logs').update({ entry: editLogEntry }).eq('id', editLogId);
+    if (!error) {
+      setEditLogId(null);
+      setEditLogEntry('');
+      fetchProjectDetails();
+    }
+  };
+
+  const deleteLog = async (logId) => {
+    if (!window.confirm('Delete this log?')) return;
+    const { error } = await supabase.from('project_logs').delete().eq('id', logId);
+    if (!error) fetchProjectDetails();
+  };
+
   if (loading) return <div className="loader">Loading project details...</div>;
   if (!project) return <div className="not-found">Project not found.</div>;
 
@@ -125,9 +162,20 @@ function ProjectDetails() {
             <p><strong>Remarks:</strong> {project.remarks}</p>
           </div>
 
-          <div className="project-right">
+          <div className="project-middle">
             <h3><FaTasks /> Tasks</h3>
-            <button onClick={() => setShowAddTaskModal(true)}><FaPlus /> Add Task</button>
+            <form onSubmit={handleAddTask} className="task-form">
+              <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
+              <select name="status" value={newTask.status} onChange={handleTaskInput}>
+                <option value="Not Started">Not Started</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+              </select>
+              <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
+              <input name="notes" placeholder="Notes" value={newTask.notes} onChange={handleTaskInput} />
+              <button type="submit"><FaPlus /> Add</button>
+            </form>
 
             <table className="task-table">
               <thead>
@@ -210,40 +258,45 @@ function ProjectDetails() {
           </div>
         </div>
 
-        <div className="section-card">
-          <h3><FaBookOpen /> Project Logs</h3>
+        <div className="project-logs">
+          <div className="project-logs-header">
+            <h3><FaBookOpen /> Project Logs</h3>
+            <button onClick={() => setShowLogModal(true)}><FaPlus /> Add Log</button>
+          </div>
           <ul className="logs-list">
             {logs.map(log => (
               <li key={log.id}>
-                <strong>{new Date(log.created_at).toLocaleString()}:</strong> {log.entry}
+                <strong>{new Date(log.created_at).toLocaleString()}:</strong>
+                {editLogId === log.id ? (
+                  <>
+                    <textarea value={editLogEntry} onChange={e => setEditLogEntry(e.target.value)} />
+                    <button onClick={saveEditLog}><FaSave /></button>
+                    <button onClick={() => setEditLogId(null)}><FaTimes /></button>
+                  </>
+                ) : (
+                  <>
+                    {' '}{log.entry}
+                    <button onClick={() => startEditLog(log)}><FaEdit /></button>
+                    <button onClick={() => deleteLog(log.id)}><FaTrash /></button>
+                  </>
+                )}
               </li>
             ))}
           </ul>
         </div>
 
-        {showAddTaskModal && (
+        {showLogModal && (
           <div className="modal-overlay">
             <div className="modal">
-              <h3><FaPlus /> Add New Task</h3>
-              <form onSubmit={handleAddTask} className="task-form">
-                <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
-                <select name="status" value={newTask.status} onChange={handleTaskInput}>
-                  <option value="Not Started">Not Started</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-                </select>
-                <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
-                <input name="notes" placeholder="Notes" value={newTask.notes} onChange={handleTaskInput} />
-                <div className="form-actions">
-                  <button type="submit"><FaSave /> Save</button>
-                  <button type="button" onClick={() => setShowAddTaskModal(false)}><FaTimes /> Cancel</button>
-                </div>
-              </form>
+              <h3>Add Project Log</h3>
+              <textarea value={newLogEntry} onChange={e => setNewLogEntry(e.target.value)} placeholder="Log entry..." />
+              <div className="modal-actions">
+                <button onClick={addLogEntry}><FaSave /> Save</button>
+                <button onClick={() => setShowLogModal(false)}><FaTimes /> Cancel</button>
+              </div>
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
