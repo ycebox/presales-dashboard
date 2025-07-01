@@ -6,6 +6,7 @@ import {
   FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
   FaPlus, FaTrash, FaEye, FaEyeSlash
 } from 'react-icons/fa';
+import 'react-quill/dist/quill.snow.css';
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -13,6 +14,7 @@ function ProjectDetails() {
   const [tasks, setTasks] = useState([]);
   const [logs, setLogs] = useState([]);
   const [linkedMeetingMinutes, setLinkedMeetingMinutes] = useState([]);
+  const [selectedMeetingNote, setSelectedMeetingNote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editForm, setEditForm] = useState({});
   const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '', notes: '' });
@@ -57,13 +59,8 @@ function ProjectDetails() {
     if (!error) setLinkedMeetingMinutes(data || []);
   }
 
-  // ... your existing logic for tasks, logs, handlers, etc.
-
   if (loading) return <div className="loader">Loading project details...</div>;
   if (!project) return <div className="not-found">Project not found.</div>;
-
-  const activeTasks = tasks.filter(t => !['Completed', 'Cancelled/On-hold'].includes(t.status));
-  const completedTasks = tasks.filter(t => ['Completed', 'Cancelled/On-hold'].includes(t.status));
 
   return (
     <div className="page-wrapper navy-theme">
@@ -74,9 +71,40 @@ function ProjectDetails() {
           </Link>
         </div>
 
-        {/* ... your existing project info, tasks, logs ... */}
+        <div className="project-left">
+          <h3><FaBookOpen /> Project Details</h3>
+          <p><strong>Customer:</strong> {project.customer_name}</p>
+          <p><strong>Country:</strong> {project.country}</p>
+          <p><strong>Account Manager:</strong> {project.account_manager}</p>
+          <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
+          <p><strong>Product:</strong> {project.product}</p>
+          <p><strong>Scope:</strong> {project.scope}</p>
+          <p><strong>Deal Value:</strong> {project.deal_value}</p>
+          <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
+          <p><strong>Remarks:</strong> {project.remarks}</p>
+        </div>
 
-        {/* ✅ Linked Meeting Minutes */}
+        <div className="project-middle">
+          <h3><FaTasks /> Tasks</h3>
+          {tasks.map(task => (
+            <div key={task.id} className="task-item">
+              <p><strong>{task.description}</strong></p>
+              <p>Status: {task.status}</p>
+              <p>Due: {task.due_date}</p>
+              <p>Notes: {task.notes}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="project-logs">
+          <h3><FaBookOpen /> Project Logs</h3>
+          <ul>
+            {logs.map(log => (
+              <li key={log.id}>{log.entry}</li>
+            ))}
+          </ul>
+        </div>
+
         <div className="meeting-minutes-section">
           <h3><FaBookOpen /> Linked Meeting Minutes</h3>
           {linkedMeetingMinutes.length === 0 ? (
@@ -87,15 +115,29 @@ function ProjectDetails() {
                 <li key={note.id}>
                   <strong>{note.title}</strong>
                   <div className="task-actions" style={{ marginTop: '0.25rem' }}>
-                    <Link to={`/meeting-minutes?id=${note.id}`} target="_blank">
-                      <button><FaEye /> View</button>
-                    </Link>
+                    <button onClick={() => setSelectedMeetingNote(note)}><FaEye /> View</button>
                   </div>
                 </li>
               ))}
             </ul>
           )}
         </div>
+
+        {selectedMeetingNote && (
+          <div className="modal-overlay">
+            <div className="modal" style={{ maxWidth: '800px', width: '90%' }}>
+              <h3>{selectedMeetingNote.title}</h3>
+              <div
+                className="meeting-note-content"
+                style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1rem' }}
+                dangerouslySetInnerHTML={{ __html: selectedMeetingNote.content }}
+              />
+              <div className="modal-actions">
+                <button onClick={() => setSelectedMeetingNote(null)}><FaTimes /> Close</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
