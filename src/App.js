@@ -59,6 +59,9 @@ function App() {
                     <div className="section-card">
                       <TodayTasks />
                     </div>
+                    <div className="section-card">
+                      <MeetingMinutes /> {/* ✅ Placed below TodayTasks */}
+                    </div>
                   </div>
 
                   {/* RIGHT COLUMN */}
