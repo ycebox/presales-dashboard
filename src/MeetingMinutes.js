@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import { FaPlus, FaEdit, FaSave, FaTimes, FaTrash } from 'react-icons/fa';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 function MeetingMinutes() {
   const [notes, setNotes] = useState([]);
@@ -11,12 +11,23 @@ function MeetingMinutes() {
   const [editNoteId, setEditNoteId] = useState(null);
   const [form, setForm] = useState({ title: '', content: '', project_id: '' });
   const [projects, setProjects] = useState([]);
-   const { id } = useParams();
+  const [selectedNote, setSelectedNote] = useState(null);
+
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const viewId = params.get('id');
 
   useEffect(() => {
-    fetchNotes();
     fetchProjects();
+    fetchNotes();
   }, []);
+
+  useEffect(() => {
+    if (viewId && notes.length > 0) {
+      const note = notes.find(n => n.id === parseInt(viewId));
+      setSelectedNote(note || null);
+    }
+  }, [viewId, notes]);
 
   const fetchNotes = async () => {
     const { data } = await supabase.from('meeting_minutes').select('*').order('created_at', { ascending: false });
@@ -58,6 +69,18 @@ function MeetingMinutes() {
     await supabase.from('meeting_minutes').delete().eq('id', id);
     fetchNotes();
   };
+
+  // --- RENDERING ---
+  if (viewId && selectedNote) {
+    return (
+      <div className="page-wrapper">
+        <div className="page-content wide">
+          <h2>{selectedNote.title}</h2>
+          <div dangerouslySetInnerHTML={{ __html: selectedNote.content }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="section-card">
