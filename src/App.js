@@ -15,6 +15,23 @@ function App() {
             📋 Jonathan's "It's Fine, Everything's Fine" Dashboard
           </h1>
 
+          {/* ✅ Link to Meeting Minutes Page */}
+          <div style={{ marginBottom: '1rem' }}>
+            <a
+              href="/presales-dashboard/meeting-minutes"
+              style={{
+                background: '#2b6cb0',
+                color: 'white',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                fontWeight: 'bold',
+              }}
+            >
+              📄 Meeting Minutes
+            </a>
+          </div>
+
           <Routes>
             <Route
               path="/"
