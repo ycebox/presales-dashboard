@@ -9,6 +9,7 @@ import {
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
+
 function ProjectDetails() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
