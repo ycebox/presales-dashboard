@@ -19,11 +19,9 @@ function ProjectDetails() {
   const [editTaskId, setEditTaskId] = useState(null);
   const [editTaskForm, setEditTaskForm] = useState({ description: '', status: '', due_date: '', notes: '' });
   const [showCompleted, setShowCompleted] = useState(false);
-
+  const [showTaskModal, setShowTaskModal] = useState(false);
   const [showLogModal, setShowLogModal] = useState(false);
   const [newLogEntry, setNewLogEntry] = useState('');
-  const [editLogId, setEditLogId] = useState(null);
-  const [editLogEntry, setEditLogEntry] = useState('');
 
   useEffect(() => {
     fetchProjectDetails();
@@ -57,6 +55,7 @@ function ProjectDetails() {
     const { error } = await supabase.from('project_tasks').insert([{ ...newTask, project_id: id }]);
     if (!error) {
       setNewTask({ description: '', status: 'Not Started', due_date: '', notes: '' });
+      setShowTaskModal(false);
       fetchProjectDetails();
     }
   };
@@ -102,7 +101,7 @@ function ProjectDetails() {
     if (!error) fetchProjectDetails();
   };
 
-  const addLogEntry = async () => {
+  const handleAddLog = async () => {
     if (!newLogEntry.trim()) return;
     const { error } = await supabase.from('project_logs').insert([{ project_id: id, entry: newLogEntry }]);
     if (!error) {
@@ -110,27 +109,6 @@ function ProjectDetails() {
       setShowLogModal(false);
       fetchProjectDetails();
     }
-  };
-
-  const startEditLog = (log) => {
-    setEditLogId(log.id);
-    setEditLogEntry(log.entry);
-  };
-
-  const saveEditLog = async () => {
-    if (!editLogEntry.trim()) return;
-    const { error } = await supabase.from('project_logs').update({ entry: editLogEntry }).eq('id', editLogId);
-    if (!error) {
-      setEditLogId(null);
-      setEditLogEntry('');
-      fetchProjectDetails();
-    }
-  };
-
-  const deleteLog = async (logId) => {
-    if (!window.confirm('Delete this log?')) return;
-    const { error } = await supabase.from('project_logs').delete().eq('id', logId);
-    if (!error) fetchProjectDetails();
   };
 
   if (loading) return <div className="loader">Loading project details...</div>;
@@ -164,19 +142,7 @@ function ProjectDetails() {
 
           <div className="project-middle">
             <h3><FaTasks /> Tasks</h3>
-            <form onSubmit={handleAddTask} className="task-form">
-              <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
-              <select name="status" value={newTask.status} onChange={handleTaskInput}>
-                <option value="Not Started">Not Started</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-              </select>
-              <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
-              <input name="notes" placeholder="Notes" value={newTask.notes} onChange={handleTaskInput} />
-              <button type="submit"><FaPlus /> Add</button>
-            </form>
-
+            <button onClick={() => setShowTaskModal(true)}><FaPlus /> Add Task</button>
             <table className="task-table">
               <thead>
                 <tr>
@@ -259,39 +225,49 @@ function ProjectDetails() {
         </div>
 
         <div className="project-logs">
-          <div className="project-logs-header">
+          <div className="log-header">
             <h3><FaBookOpen /> Project Logs</h3>
             <button onClick={() => setShowLogModal(true)}><FaPlus /> Add Log</button>
           </div>
           <ul className="logs-list">
             {logs.map(log => (
               <li key={log.id}>
-                <strong>{new Date(log.created_at).toLocaleString()}:</strong>
-                {editLogId === log.id ? (
-                  <>
-                    <textarea value={editLogEntry} onChange={e => setEditLogEntry(e.target.value)} />
-                    <button onClick={saveEditLog}><FaSave /></button>
-                    <button onClick={() => setEditLogId(null)}><FaTimes /></button>
-                  </>
-                ) : (
-                  <>
-                    {' '}{log.entry}
-                    <button onClick={() => startEditLog(log)}><FaEdit /></button>
-                    <button onClick={() => deleteLog(log.id)}><FaTrash /></button>
-                  </>
-                )}
+                <strong>{new Date(log.created_at).toLocaleString()}:</strong> {log.entry}
               </li>
             ))}
           </ul>
         </div>
 
+        {showTaskModal && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h3>Add New Task</h3>
+              <form onSubmit={handleAddTask} className="task-form">
+                <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
+                <select name="status" value={newTask.status} onChange={handleTaskInput}>
+                  <option value="Not Started">Not Started</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+                </select>
+                <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
+                <input name="notes" placeholder="Notes" value={newTask.notes} onChange={handleTaskInput} />
+                <div className="modal-actions">
+                  <button type="submit"><FaSave /> Save</button>
+                  <button type="button" onClick={() => setShowTaskModal(false)}><FaTimes /> Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {showLogModal && (
           <div className="modal-overlay">
             <div className="modal">
-              <h3>Add Project Log</h3>
-              <textarea value={newLogEntry} onChange={e => setNewLogEntry(e.target.value)} placeholder="Log entry..." />
+              <h3>Add Log Entry</h3>
+              <textarea value={newLogEntry} onChange={(e) => setNewLogEntry(e.target.value)} rows="4" placeholder="Type your log entry here..."></textarea>
               <div className="modal-actions">
-                <button onClick={addLogEntry}><FaSave /> Save</button>
+                <button onClick={handleAddLog}><FaSave /> Save</button>
                 <button onClick={() => setShowLogModal(false)}><FaTimes /> Cancel</button>
               </div>
             </div>
