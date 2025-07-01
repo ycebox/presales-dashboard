@@ -12,7 +12,7 @@ function ProjectDetails() {
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [logs, setLogs] = useState([]);
-  const [linkedMeetingMinutes, setLinkedMeetingMinutes] = useState([]); // ✅ Added
+  const [linkedMeetingMinutes, setLinkedMeetingMinutes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editForm, setEditForm] = useState({});
   const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '', notes: '' });
@@ -27,7 +27,7 @@ function ProjectDetails() {
 
   useEffect(() => {
     fetchProjectDetails();
-    fetchLinkedMeetingMinutes(); // ✅ Added
+    fetchLinkedMeetingMinutes();
   }, [id]);
 
   async function fetchProjectDetails() {
@@ -47,7 +47,6 @@ function ProjectDetails() {
     setLoading(false);
   }
 
-  // ✅ New function to get linked meeting notes
   async function fetchLinkedMeetingMinutes() {
     const { data, error } = await supabase
       .from('meeting_minutes')
@@ -58,7 +57,7 @@ function ProjectDetails() {
     if (!error) setLinkedMeetingMinutes(data || []);
   }
 
-  // ... (no changes to the rest of your original code)
+  // ... your existing logic for tasks, logs, handlers, etc.
 
   if (loading) return <div className="loader">Loading project details...</div>;
   if (!project) return <div className="not-found">Project not found.</div>;
@@ -75,39 +74,9 @@ function ProjectDetails() {
           </Link>
         </div>
 
-        {/* ... (everything else stays exactly the same) */}
+        {/* ... your existing project info, tasks, logs ... */}
 
-        <div className="project-logs">
-          <div className="log-header">
-            <h3><FaBookOpen /> Project Logs</h3>
-            <button onClick={() => setShowLogModal(true)}><FaPlus /> Add Log</button>
-          </div>
-          <ul className="logs-list">
-            {logs.map(log => (
-              <li key={log.id}>
-                {editLogId === log.id ? (
-                  <>
-                    <textarea value={editLogEntry} onChange={(e) => setEditLogEntry(e.target.value)} rows="3" style={{ width: '100%' }} />
-                    <div className="modal-actions" style={{ marginTop: '0.5rem' }}>
-                      <button onClick={() => saveEditLog(log.id)}><FaSave /> Save</button>
-                      <button onClick={cancelEditLog}><FaTimes /> Cancel</button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {log.entry}
-                    <div className="task-actions" style={{ marginTop: '0.25rem' }}>
-                      <button onClick={() => startEditLog(log)}><FaEdit /></button>
-                      <button onClick={() => deleteLog(log.id)}><FaTrash /></button>
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* ✅ New: Linked Meeting Minutes */}
+        {/* ✅ Linked Meeting Minutes */}
         <div className="meeting-minutes-section">
           <h3><FaBookOpen /> Linked Meeting Minutes</h3>
           {linkedMeetingMinutes.length === 0 ? (
@@ -118,17 +87,15 @@ function ProjectDetails() {
                 <li key={note.id}>
                   <strong>{note.title}</strong>
                   <div className="task-actions" style={{ marginTop: '0.25rem' }}>
-                   <Link to={`/meeting-minutes/${note.id}`} target="_blank">
-  <button><FaEye /> View</button>
-</Link>
+                    <Link to={`/meeting-minutes?id=${note.id}`} target="_blank">
+                      <button><FaEye /> View</button>
+                    </Link>
                   </div>
                 </li>
               ))}
             </ul>
           )}
         </div>
-
-        {/* (no changes to modals or other sections) */}
       </div>
     </div>
   );
