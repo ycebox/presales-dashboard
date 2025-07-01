@@ -4,7 +4,7 @@ import Projects from './Projects';
 import TodayTasks from './TodayTasks';
 import TaskSummaryDashboard from './TaskSummaryDashboard';
 import ProjectDetails from './ProjectDetails';
-import MeetingMinutes from './MeetingMinutes'; // ✅ New import
+import MeetingMinutes from './MeetingMinutes'; // ✅ Already imported
 
 function App() {
   return (
@@ -14,23 +14,6 @@ function App() {
           <h1 className="big-name" style={{ marginBottom: '1.5rem' }}>
             📋 Jonathan's "It's Fine, Everything's Fine" Dashboard
           </h1>
-
-          {/* ✅ Link to Meeting Minutes Page */}
-          <div style={{ marginBottom: '1rem' }}>
-            <a
-              href="/presales-dashboard/meeting-minutes"
-              style={{
-                background: '#2b6cb0',
-                color: 'white',
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                fontWeight: 'bold',
-              }}
-            >
-              📄 Meeting Minutes
-            </a>
-          </div>
 
           <Routes>
             <Route
@@ -59,9 +42,6 @@ function App() {
                     <div className="section-card">
                       <TodayTasks />
                     </div>
-                    <div className="section-card">
-                      <MeetingMinutes /> {/* ✅ Placed below TodayTasks */}
-                    </div>
                   </div>
 
                   {/* RIGHT COLUMN */}
@@ -80,7 +60,8 @@ function App() {
               }
             />
             <Route path="/project/:id" element={<ProjectDetails />} />
-           <Route path="/meeting-minutes" element={<MeetingMinutes />} />
+            <Route path="/meeting-minutes" element={<MeetingMinutes />} />
+            <Route path="/meeting-minutes/*" element={<MeetingMinutes />} /> {/* ✅ Add this line */}
           </Routes>
         </div>
       </div>
