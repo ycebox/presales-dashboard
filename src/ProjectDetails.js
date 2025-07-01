@@ -104,7 +104,7 @@ function ProjectDetails() {
 
   const handleAddLog = async () => {
     if (!newLogEntry.trim()) return;
-    const { error } = await supabase.from('project_logs').insert([{ project_id: id, log_entry: newLogEntry }]);
+    const { error } = await supabase.from('project_logs').insert([{ project_id: id, entry: newLogEntry }]);
     if (!error) {
       setNewLogEntry('');
       setShowLogModal(false);
@@ -114,7 +114,7 @@ function ProjectDetails() {
 
   const startEditLog = (log) => {
     setEditLogId(log.id);
-    setEditLogEntry(log.log_entry);
+    setEditLogEntry(log.entry);
   };
 
   const cancelEditLog = () => {
@@ -123,7 +123,7 @@ function ProjectDetails() {
   };
 
   const saveEditLog = async (logId) => {
-    const { error } = await supabase.from('project_logs').update({ log_entry: editLogEntry }).eq('id', logId);
+    const { error } = await supabase.from('project_logs').update({ entry: editLogEntry }).eq('id', logId);
     if (!error) {
       setEditLogId(null);
       setEditLogEntry('');
@@ -268,7 +268,7 @@ function ProjectDetails() {
                   </>
                 ) : (
                   <>
-                    {log.log_entry}
+                    {log.entry}
                     <div className="task-actions" style={{ marginTop: '0.25rem' }}>
                       <button onClick={() => startEditLog(log)}><FaEdit /></button>
                       <button onClick={() => deleteLog(log.id)}><FaTrash /></button>
