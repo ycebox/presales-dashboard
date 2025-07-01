@@ -80,7 +80,7 @@ function App() {
               }
             />
             <Route path="/project/:id" element={<ProjectDetails />} />
-            <Route path="/meeting-minutes" element={<MeetingMinutes />} /> {/* ✅ New route */}
+            <Route path="/meeting-minutes/:id" element={<MeetingMinutes />} />
           </Routes>
         </div>
       </div>
