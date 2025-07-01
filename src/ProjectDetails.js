@@ -13,7 +13,6 @@ function ProjectDetails() {
   const [tasks, setTasks] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingProject, setEditingProject] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '', notes: '' });
   const [editTaskId, setEditTaskId] = useState(null);
@@ -22,6 +21,8 @@ function ProjectDetails() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showLogModal, setShowLogModal] = useState(false);
   const [newLogEntry, setNewLogEntry] = useState('');
+  const [editLogId, setEditLogId] = useState(null);
+  const [editLogEntry, setEditLogEntry] = useState('');
 
   useEffect(() => {
     fetchProjectDetails();
@@ -102,25 +103,39 @@ function ProjectDetails() {
   };
 
   const handleAddLog = async () => {
-  if (!newLogEntry.trim()) return;
+    if (!newLogEntry.trim()) return;
+    const { error } = await supabase.from('project_logs').insert([{ project_id: id, log_entry: newLogEntry }]);
+    if (!error) {
+      setNewLogEntry('');
+      setShowLogModal(false);
+      fetchProjectDetails();
+    }
+  };
 
-  const { error } = await supabase
-    .from('project_logs')
-    .insert([
-      {
-        project_id: id,
-        entry: newLogEntry
-      }
-    ]);
+  const startEditLog = (log) => {
+    setEditLogId(log.id);
+    setEditLogEntry(log.log_entry);
+  };
 
-  if (error) {
-    console.error("Error saving log:", error.message);
-  } else {
-    setNewLogEntry('');
-    setShowLogModal(false);
-    fetchProjectDetails();
-  }
-};
+  const cancelEditLog = () => {
+    setEditLogId(null);
+    setEditLogEntry('');
+  };
+
+  const saveEditLog = async (logId) => {
+    const { error } = await supabase.from('project_logs').update({ log_entry: editLogEntry }).eq('id', logId);
+    if (!error) {
+      setEditLogId(null);
+      setEditLogEntry('');
+      fetchProjectDetails();
+    }
+  };
+
+  const deleteLog = async (logId) => {
+    if (!window.confirm('Delete this log entry?')) return;
+    const { error } = await supabase.from('project_logs').delete().eq('id', logId);
+    if (!error) fetchProjectDetails();
+  };
 
   if (loading) return <div className="loader">Loading project details...</div>;
   if (!project) return <div className="not-found">Project not found.</div>;
@@ -243,7 +258,23 @@ function ProjectDetails() {
           <ul className="logs-list">
             {logs.map(log => (
               <li key={log.id}>
-                <strong>{new Date(log.created_at).toLocaleString()}:</strong> {log.entry}
+                {editLogId === log.id ? (
+                  <>
+                    <textarea value={editLogEntry} onChange={(e) => setEditLogEntry(e.target.value)} rows="3" style={{ width: '100%' }} />
+                    <div className="modal-actions" style={{ marginTop: '0.5rem' }}>
+                      <button onClick={() => saveEditLog(log.id)}><FaSave /> Save</button>
+                      <button onClick={cancelEditLog}><FaTimes /> Cancel</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {log.log_entry}
+                    <div className="task-actions" style={{ marginTop: '0.25rem' }}>
+                      <button onClick={() => startEditLog(log)}><FaEdit /></button>
+                      <button onClick={() => deleteLog(log.id)}><FaTrash /></button>
+                    </div>
+                  </>
+                )}
               </li>
             ))}
           </ul>
