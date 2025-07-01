@@ -102,14 +102,25 @@ function ProjectDetails() {
   };
 
   const handleAddLog = async () => {
-    if (!newLogEntry.trim()) return;
-    const { error } = await supabase.from('project_logs').insert([{ project_id: id, entry: newLogEntry }]);
-    if (!error) {
-      setNewLogEntry('');
-      setShowLogModal(false);
-      fetchProjectDetails();
-    }
-  };
+  if (!newLogEntry.trim()) return;
+
+  const { error } = await supabase
+    .from('project_logs')
+    .insert([
+      {
+        project_id: id,
+        entry: newLogEntry
+      }
+    ]);
+
+  if (error) {
+    console.error("Error saving log:", error.message);
+  } else {
+    setNewLogEntry('');
+    setShowLogModal(false);
+    fetchProjectDetails();
+  }
+};
 
   if (loading) return <div className="loader">Loading project details...</div>;
   if (!project) return <div className="not-found">Project not found.</div>;
