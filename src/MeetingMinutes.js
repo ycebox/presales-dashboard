@@ -1,25 +1,18 @@
-// src/MeetingMinutes.js
+// MeetingMinutes.js (enhanced with modal and Quill editor)
 import React, { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
-import { Link } from 'react-router-dom';
+import { FaPlus, FaSave, FaTimes, FaEdit, FaTrash } from 'react-icons/fa';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import './MeetingMinutes.css';
-import { FaPlus, FaSave, FaTimes } from 'react-icons/fa';
 
 function MeetingMinutes() {
   const [minutes, setMinutes] = useState([]);
-  const [projects, setProjects] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [newNote, setNewNote] = useState({
-    title: '',
-    content: '',
-    project_id: '',
-  });
+  const [form, setForm] = useState({ title: '', content: '', project_id: null });
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     fetchMinutes();
-    fetchProjects();
   }, []);
 
   const fetchMinutes = async () => {
@@ -27,73 +20,73 @@ function MeetingMinutes() {
     setMinutes(data || []);
   };
 
-  const fetchProjects = async () => {
-    const { data } = await supabase.from('projects').select('id, customer_name');
-    setProjects(data || []);
-  };
-
   const handleSave = async () => {
-    if (!newNote.title.trim() || !newNote.content.trim()) return;
-    const { error } = await supabase.from('meeting_minutes').insert([newNote]);
+    if (!form.title.trim()) return;
+    const payload = { ...form };
+    let error;
+
+    if (editingId) {
+      ({ error } = await supabase.from('meeting_minutes').update(payload).eq('id', editingId));
+    } else {
+      ({ error } = await supabase.from('meeting_minutes').insert([payload]));
+    }
+
     if (!error) {
       setShowModal(false);
-      setNewNote({ title: '', content: '', project_id: '' });
+      setForm({ title: '', content: '', project_id: null });
+      setEditingId(null);
       fetchMinutes();
     }
   };
 
-  return (
-    <div className="page-wrapper navy-theme">
-      <div className="page-content wide">
-        <h2>📑 Meeting Minutes</h2>
-        <button onClick={() => setShowModal(true)} className="add-btn"><FaPlus /> Add Note</button>
+  const handleEdit = (note) => {
+    setEditingId(note.id);
+    setForm({ title: note.title, content: note.content, project_id: note.project_id });
+    setShowModal(true);
+  };
 
-        <ul className="minutes-list">
-          {minutes.map((note) => (
-            <li key={note.id}>
-              <strong>{note.title}</strong> 
-              {note.project_id && (
-                <>
-                  {' '}– linked to project <Link to={`/project/${note.project_id}`}>View Project</Link>
-                </>
-              )}
-              <div
-                className="note-preview"
-                dangerouslySetInnerHTML={{ __html: note.content.slice(0, 150) + '...' }}
-              />
-            </li>
-          ))}
-        </ul>
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this meeting note?')) return;
+    const { error } = await supabase.from('meeting_minutes').delete().eq('id', id);
+    if (!error) fetchMinutes();
+  };
+
+  return (
+    <div className="meeting-minutes-card section-card">
+      <div className="header-row">
+        <h3>Meeting Minutes</h3>
+        <button onClick={() => setShowModal(true)}><FaPlus /> Add</button>
       </div>
+      <ul className="meeting-list">
+        {minutes.map(note => (
+          <li key={note.id}>
+            <strong>{note.title}</strong>
+            <div className="actions">
+              <button onClick={() => handleEdit(note)}><FaEdit /></button>
+              <button onClick={() => handleDelete(note.id)}><FaTrash /></button>
+            </div>
+          </li>
+        ))}
+      </ul>
 
       {showModal && (
         <div className="modal-overlay">
-          <div className="modal large">
-            <h3>Add Meeting Minute</h3>
+          <div className="modal">
+            <h3>{editingId ? 'Edit' : 'Add'} Meeting Minute</h3>
             <input
               type="text"
-              placeholder="Meeting title"
-              value={newNote.title}
-              onChange={(e) => setNewNote({ ...newNote, title: e.target.value })}
+              placeholder="Meeting Title"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
             />
-            <select
-              value={newNote.project_id}
-              onChange={(e) => setNewNote({ ...newNote, project_id: e.target.value })}
-            >
-              <option value="">-- Optional: Link to project --</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.customer_name}</option>
-              ))}
-            </select>
             <ReactQuill
-              value={newNote.content}
-              onChange={(value) => setNewNote({ ...newNote, content: value })}
-              placeholder="Write your meeting notes here..."
-              style={{ marginTop: '1rem' }}
+              theme="snow"
+              value={form.content}
+              onChange={(value) => setForm({ ...form, content: value })}
             />
-            <div className="modal-actions" style={{ marginTop: '1rem' }}>
+            <div className="modal-actions">
               <button onClick={handleSave}><FaSave /> Save</button>
-              <button onClick={() => setShowModal(false)}><FaTimes /> Cancel</button>
+              <button onClick={() => { setShowModal(false); setEditingId(null); }}><FaTimes /> Cancel</button>
             </div>
           </div>
         </div>
