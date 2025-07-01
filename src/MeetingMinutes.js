@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import { FaPlus, FaEdit, FaSave, FaTimes, FaTrash } from 'react-icons/fa';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 
 function MeetingMinutes() {
   const [notes, setNotes] = useState([]);
@@ -24,7 +24,7 @@ function MeetingMinutes() {
 
   useEffect(() => {
     if (viewId && notes.length > 0) {
-      const note = notes.find(n => n.id === parseInt(viewId));
+      const note = notes.find(n => String(n.id) === viewId);
       setSelectedNote(note || null);
     }
   }, [viewId, notes]);
@@ -70,13 +70,14 @@ function MeetingMinutes() {
     fetchNotes();
   };
 
-  // --- RENDERING ---
+  // --- RENDERING VIEW MODE ---
   if (viewId && selectedNote) {
     return (
       <div className="page-wrapper">
         <div className="page-content wide">
+          <Link to="/" className="back-btn" style={{ marginBottom: '1rem', display: 'inline-block' }}>← Back to Dashboard</Link>
           <h2>{selectedNote.title}</h2>
-          <div dangerouslySetInnerHTML={{ __html: selectedNote.content }} />
+          <div dangerouslySetInnerHTML={{ __html: selectedNote.content }} style={{ marginTop: '1rem' }} />
         </div>
       </div>
     );
@@ -96,6 +97,9 @@ function MeetingMinutes() {
             <div style={{ marginTop: '0.25rem', fontSize: '0.9rem' }}>
               <div dangerouslySetInnerHTML={{ __html: note.content.substring(0, 100) + '...' }}></div>
               <div style={{ marginTop: '0.5rem' }}>
+                <Link to={`/meeting-minutes?id=${note.id}`} className="btn-view" style={{ marginRight: '0.5rem' }}>
+                  View
+                </Link>
                 <button onClick={() => handleEdit(note)}><FaEdit /></button>
                 <button onClick={() => handleDelete(note.id)} style={{ marginLeft: '0.5rem' }}><FaTrash /></button>
               </div>
