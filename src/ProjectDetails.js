@@ -73,6 +73,16 @@ function ProjectDetails() {
     }
   };
 
+  const handleAddLog = async () => {
+    if (!newLogEntry.trim()) return;
+    const { error } = await supabase.from('project_logs').insert([{ project_id: id, entry: newLogEntry }]);
+    if (!error) {
+      setNewLogEntry('');
+      setShowLogModal(false);
+      fetchProjectDetails();
+    }
+  };
+
   const activeTasks = tasks.filter(t => !['Completed', 'Cancelled/On-hold'].includes(t.status));
   const completedTasks = tasks.filter(t => ['Completed', 'Cancelled/On-hold'].includes(t.status));
 
@@ -132,6 +142,7 @@ function ProjectDetails() {
 
         <div className="project-logs">
           <h3><FaBookOpen /> Project Logs</h3>
+          <button onClick={() => setShowLogModal(true)}><FaPlus /> Add Log</button>
           <ul className="logs-list">
             {logs.map(log => (
               <li key={log.id}>{log.entry}</li>
@@ -176,6 +187,19 @@ function ProjectDetails() {
                   <button type="button" onClick={() => setShowTaskModal(false)}><FaTimes /> Cancel</button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {showLogModal && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h3>Add Log Entry</h3>
+              <textarea value={newLogEntry} onChange={(e) => setNewLogEntry(e.target.value)} rows="4" placeholder="Type your log entry here..."></textarea>
+              <div className="modal-actions">
+                <button onClick={handleAddLog}><FaSave /> Save</button>
+                <button onClick={() => setShowLogModal(false)}><FaTimes /> Cancel</button>
+              </div>
             </div>
           </div>
         )}
