@@ -13,6 +13,7 @@ function ProjectDetails() {
   const [tasks, setTasks] = useState([]);
   const [logs, setLogs] = useState([]);
   const [linkedMeetingMinutes, setLinkedMeetingMinutes] = useState([]);
+  const [selectedMeetingNote, setSelectedMeetingNote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editForm, setEditForm] = useState({});
   const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '', notes: '' });
@@ -69,16 +70,6 @@ function ProjectDetails() {
     if (!error) {
       setNewTask({ description: '', status: 'Not Started', due_date: '', notes: '' });
       setShowTaskModal(false);
-      fetchProjectDetails();
-    }
-  };
-
-  const handleAddLog = async () => {
-    if (!newLogEntry.trim()) return;
-    const { error } = await supabase.from('project_logs').insert([{ project_id: id, entry: newLogEntry }]);
-    if (!error) {
-      setNewLogEntry('');
-      setShowLogModal(false);
       fetchProjectDetails();
     }
   };
@@ -160,7 +151,7 @@ function ProjectDetails() {
                 <li key={note.id}>
                   <strong>{note.title}</strong>
                   <div className="task-actions" style={{ marginTop: '0.25rem' }}>
-                    <button onClick={() => window.open(`/presales-dashboard/meeting-minutes?id=${note.id}`, '_blank')}><FaEye /> View</button>
+                    <button onClick={() => setSelectedMeetingNote(note)}><FaEye /> View</button>
                   </div>
                 </li>
               ))}
@@ -195,14 +186,45 @@ function ProjectDetails() {
           <div className="modal-overlay">
             <div className="modal">
               <h3>Add Log Entry</h3>
-              <textarea value={newLogEntry} onChange={(e) => setNewLogEntry(e.target.value)} rows="4" placeholder="Type your log entry here..."></textarea>
+              <textarea
+                placeholder="Type your log here..."
+                value={newLogEntry}
+                onChange={(e) => setNewLogEntry(e.target.value)}
+                rows="4"
+                style={{ width: '100%' }}
+              />
               <div className="modal-actions">
-                <button onClick={handleAddLog}><FaSave /> Save</button>
+                <button
+                  onClick={async () => {
+                    if (!newLogEntry.trim()) return;
+                    const { error } = await supabase.from('project_logs').insert([{ project_id: id, entry: newLogEntry }]);
+                    if (!error) {
+                      setNewLogEntry('');
+                      setShowLogModal(false);
+                      fetchProjectDetails();
+                    }
+                  }}
+                >
+                  <FaSave /> Save
+                </button>
                 <button onClick={() => setShowLogModal(false)}><FaTimes /> Cancel</button>
               </div>
             </div>
           </div>
         )}
+
+        {selectedMeetingNote && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h3>{selectedMeetingNote.title}</h3>
+              <div dangerouslySetInnerHTML={{ __html: selectedMeetingNote.content }} />
+              <div className="modal-actions">
+                <button onClick={() => setSelectedMeetingNote(null)}><FaTimes /> Close</button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
