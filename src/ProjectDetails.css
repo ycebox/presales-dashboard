@@ -1,4 +1,4 @@
-/* ProjectDetails.css */
+/* ProjectDetails.css - with improved badges, layout polish, button styles */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
@@ -69,7 +69,7 @@ body {
 }
 
 .customer-name {
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 700;
   color: #0f172a;
   margin: 0;
@@ -80,11 +80,15 @@ body {
   color: #2563eb;
   cursor: pointer;
   font-weight: 500;
-  text-decoration: underline;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .edit-link:hover {
   color: #1d4ed8;
+  text-decoration: underline;
 }
 
 .edit-form {
@@ -287,7 +291,6 @@ button:hover {
   }
 }
 
-
 .toggle-completed-btn {
   background-color: #e2e8f0;
   color: #1e293b;
@@ -303,4 +306,19 @@ button:hover {
 
 .toggle-completed-btn:hover {
   background-color: #cbd5e1;
+}
+
+.flat-readonly {
+  background: none;
+  color: #2563eb;
+  font-size: 0.85rem;
+  padding: 0;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.flat-readonly:hover {
+  text-decoration: underline;
+  color: #1d4ed8;
 }
