@@ -221,74 +221,76 @@ function ProjectDetails() {
               {showCompleted ? <><FaChevronUp /> Hide Completed</> : <><FaChevronDown /> Show Completed</>}
             </button>
           </div>
-        <div className="task-group">
-  <div className="task-headers">
-    <span>Task</span>
-    <span>Status</span>
-    <span>Due Date</span>
-    <span>Notes</span>
-    <span>Actions</span>
-  </div>
 
-  {activeTasks.map(task => (
-    <div className="task-row" key={task.id}>
-      <div className="task-desc">{task.description}</div>
-      <div className="task-status">
-        <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
-      </div>
-      <div className="task-date">{task.due_date}</div>
-      <div className="task-notes">{task.notes}</div>
-      <div className="task-actions">
-        <button onClick={() => handleEditTask(task)}><FaEdit /></button>
-        <button onClick={() => handleDeleteTask(task.id)}><FaTrash /></button>
-      </div>
-    </div>
-  ))}
-
-  {showCompleted && (
-    <>
-      {completedTasks.filter(task => task.status === 'Completed').length > 0 && (
-        <div style={{ marginTop: '1.5rem' }}>
-          <h4>Completed Tasks</h4>
-          {completedTasks.filter(task => task.status === 'Completed').map(task => (
-            <div className="task-row" key={task.id}>
-              <div className="task-desc">{task.description}</div>
-              <div className="task-status">
-                <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
-              </div>
-              <div className="task-date">{task.due_date}</div>
-              <div className="task-notes">{task.notes}</div>
-              <div className="task-actions">
-                <button onClick={() => handleEditTask(task)}><FaEdit /></button>
-                <button onClick={() => handleDeleteTask(task.id)}><FaTrash /></button>
-              </div>
+          <div className="task-group">
+            <div className="task-headers">
+              <span>Task</span>
+              <span>Status</span>
+              <span>Due Date</span>
+              <span>Notes</span>
+              <span>Actions</span>
             </div>
-          ))}
-        </div>
-      )}
 
-      {completedTasks.filter(task => task.status === 'Cancelled/On-hold').length > 0 && (
-        <div style={{ marginTop: '1.5rem' }}>
-          <h4>On-hold / Cancelled Tasks</h4>
-          {completedTasks.filter(task => task.status === 'Cancelled/On-hold').map(task => (
-            <div className="task-row" key={task.id}>
-              <div className="task-desc">{task.description}</div>
-              <div className="task-status">
-                <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
+            {activeTasks.map(task => (
+              <div className="task-row" key={task.id}>
+                <div className="task-desc">{task.description}</div>
+                <div className="task-status">
+                  <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
+                </div>
+                <div className="task-date">{task.due_date}</div>
+                <div className="task-notes">{task.notes}</div>
+                <div className="task-actions">
+                  <button onClick={() => handleEditTask(task)}><FaEdit /></button>
+                  <button onClick={() => handleDeleteTask(task.id)}><FaTrash /></button>
+                </div>
               </div>
-              <div className="task-date">{task.due_date}</div>
-              <div className="task-notes">{task.notes}</div>
-              <div className="task-actions">
-                <button onClick={() => handleEditTask(task)}><FaEdit /></button>
-                <button onClick={() => handleDeleteTask(task.id)}><FaTrash /></button>
-              </div>
-            </div>
-          ))}
+            ))}
+
+            {showCompleted && (
+              <>
+                {completedTasks.filter(task => task.status === 'Completed').length > 0 && (
+                  <>
+                    <h4>Completed Tasks</h4>
+                    {completedTasks.filter(task => task.status === 'Completed').map(task => (
+                      <div className="task-row" key={task.id}>
+                        <div className="task-desc">{task.description}</div>
+                        <div className="task-status">
+                          <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
+                        </div>
+                        <div className="task-date">{task.due_date}</div>
+                        <div className="task-notes">{task.notes}</div>
+                        <div className="task-actions">
+                          <button onClick={() => handleEditTask(task)}><FaEdit /></button>
+                          <button onClick={() => handleDeleteTask(task.id)}><FaTrash /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {completedTasks.filter(task => task.status === 'Cancelled/On-hold').length > 0 && (
+                  <>
+                    <h4>On-hold / Cancelled Tasks</h4>
+                    {completedTasks.filter(task => task.status === 'Cancelled/On-hold').map(task => (
+                      <div className="task-row" key={task.id}>
+                        <div className="task-desc">{task.description}</div>
+                        <div className="task-status">
+                          <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
+                        </div>
+                        <div className="task-date">{task.due_date}</div>
+                        <div className="task-notes">{task.notes}</div>
+                        <div className="task-actions">
+                          <button onClick={() => handleEditTask(task)}><FaEdit /></button>
+                          <button onClick={() => handleDeleteTask(task.id)}><FaTrash /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      )}
-    </>
-  )}
-</div>
+
         <div className="meeting-minutes-section">
           <h3><FaBookOpen /> Linked Meeting Minutes</h3>
           {linkedMeetingMinutes.length === 0 ? (
