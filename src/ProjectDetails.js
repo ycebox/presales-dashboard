@@ -1,4 +1,4 @@
-// ProjectDetails.js - Tasks added back, layout: Logs (left), Tasks (middle), Minutes (bottom)
+// ProjectDetails.js - Fixed layout: Logs (left), Tasks (middle), Meeting Minutes (bottom)
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
