@@ -51,34 +51,13 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
-.readonly {
-  background-color: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  color: #475569;
-}
-
-.dropdown {
-  position: relative;
-  z-index: 10;
-  background-color: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 0.6rem 0.75rem;
-  font-size: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-select.dropdown:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
-  outline: none;
-}
-
-.section-card h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 1rem;
+.project-logs {
+  width: 100%;
+  margin-top: 2rem;
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
 .project-header {
@@ -124,22 +103,204 @@ select.dropdown:focus {
 
 .edit-form input,
 .edit-form select,
-.edit-form textarea {
+.edit-form textarea,
+.task-form input,
+.task-form select,
+textarea {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 1rem;
-  margin-top: 0.25rem;
   background-color: #fff;
-  font-family: 'Inter', sans-serif;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  font-family: 'Inter', sans-serif;
 }
 
 .edit-form input:focus,
 .edit-form textarea:focus,
-.edit-form select:focus {
+textarea:focus,
+input:focus,
+select:focus {
+  outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
-  outline: none;
+}
+
+.task-form,
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+button {
+  background-color: #2563eb;
+  color: white;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+button:hover {
+  background-color: #1d4ed8;
+  transform: scale(1.02);
+}
+
+.task-group {
+  margin-top: 1.5rem;
+}
+
+.task-headers {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 2fr auto;
+  font-size: 0.9rem;
+  color: #475569;
+  padding: 0.5rem 0;
+  border-bottom: 2px solid #cbd5e1;
+  font-weight: 600;
+}
+
+.task-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 2fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.95rem;
+}
+
+.task-status .status-badge {
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+  text-transform: capitalize;
+}
+
+.status-badge.not-started {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.status-badge.in-progress {
+  background-color: #fef9c3;
+  color: #b45309;
+}
+
+.status-badge.completed {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.cancelled\/on-hold {
+  background-color: #fef2f2;
+  color: #991b1b;
+}
+
+.task-actions button {
+  background: none;
+  color: #2563eb;
+  padding: 0.25rem;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+}
+
+.task-actions button:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.section-card h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.loader,
+.not-found {
+  font-size: 1.2rem;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #e2e8f0;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #1e293b;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  transition: background-color 0.2s ease;
+}
+
+.back-btn:hover {
+  background-color: #cbd5e1;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 16px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  animation: slideFadeIn 0.3s ease-out;
+}
+
+@keyframes slideFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+.toggle-completed-btn {
+  background-color: #e2e8f0;
+  color: #1e293b;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  margin-left: 1rem;
+  transition: background-color 0.2s ease;
+}
+
+.toggle-completed-btn:hover {
+  background-color: #cbd5e1;
 }
