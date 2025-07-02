@@ -1,4 +1,4 @@
-// ProjectDetails.js - With UI/UX polish: improved hierarchy, badges, buttons, readability, modern project details layout + inline editing with dropdowns
+// ProjectDetails.js - With UI/UX polish: improved hierarchy, badges, buttons, readability, modern project details layout + inline editing with dropdowns + tasks + meeting minutes
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -86,6 +86,53 @@ function ProjectDetails() {
   const handleCancelEdit = () => {
     setIsEditingDetails(false);
     setEditForm(project);
+  };
+
+  const handleTaskInput = (e) => {
+    const { name, value } = e.target;
+    setNewTask((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditTaskInput = (e) => {
+    const { name, value } = e.target;
+    setEditTaskForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddTask = async (e) => {
+    e.preventDefault();
+    if (!newTask.description.trim()) return;
+    const { error } = await supabase.from('project_tasks').insert([{ ...newTask, project_id: id }]);
+    if (!error) {
+      setNewTask({ description: '', status: 'Not Started', due_date: '', notes: '' });
+      setShowTaskModal(false);
+      fetchProjectDetails();
+    }
+  };
+
+  const handleEditTask = (task) => {
+    setEditTaskId(task.id);
+    setEditTaskForm(task);
+    setShowTaskModal(true);
+  };
+
+  const handleUpdateTask = async (e) => {
+    e.preventDefault();
+    const { error } = await supabase
+      .from('project_tasks')
+      .update(editTaskForm)
+      .eq('id', editTaskId);
+    if (!error) {
+      setEditTaskId(null);
+      setShowTaskModal(false);
+      fetchProjectDetails();
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    const { error } = await supabase.from('project_tasks').delete().eq('id', taskId);
+    if (!error) {
+      fetchProjectDetails();
+    }
   };
 
   const activeTasks = tasks.filter(t => !['Completed', 'Cancelled/On-hold'].includes(t.status));
@@ -186,6 +233,59 @@ function ProjectDetails() {
               </ul>
             </div>
           </div>
+        </div>
+
+        {/* Project Tasks */}
+        <div className="project-tasks">
+          <h3><FaTasks /> Tasks</h3>
+          <div className="form-actions">
+            <button onClick={() => setShowTaskModal(true)}><FaPlus /> Add Task</button>
+            <button className="toggle-completed-btn" onClick={() => setShowCompleted(prev => !prev)}>
+              {showCompleted ? <><FaChevronUp /> Hide Completed</> : <><FaChevronDown /> Show Completed</>}
+            </button>
+          </div>
+          <div className="task-group">
+            <div className="task-headers">
+              <span>Task</span>
+              <span>Status</span>
+              <span>Due Date</span>
+              <span>Notes</span>
+              <span>Actions</span>
+            </div>
+            {[...activeTasks, ...(showCompleted ? completedTasks : [])].map(task => (
+              <div className="task-row" key={task.id}>
+                <div className="task-desc">{task.description}</div>
+                <div className="task-status">
+                  <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
+                </div>
+                <div className="task-date">{task.due_date}</div>
+                <div className="task-notes">{task.notes}</div>
+                <div className="task-actions">
+                  <button onClick={() => handleEditTask(task)}><FaEdit /></button>
+                  <button onClick={() => handleDeleteTask(task.id)}><FaTrash /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Meeting Minutes */}
+        <div className="meeting-minutes-section">
+          <h3><FaBookOpen /> Linked Meeting Minutes</h3>
+          {linkedMeetingMinutes.length === 0 ? (
+            <p style={{ fontStyle: 'italic' }}>No meeting minutes linked to this project.</p>
+          ) : (
+            <ul className="logs-list">
+              {linkedMeetingMinutes.map(note => (
+                <li key={note.id}>
+                  <strong>{note.title}</strong>
+                  <div className="task-actions" style={{ marginTop: '0.25rem' }}>
+                    <button onClick={() => setSelectedMeetingNote(note)}><FaEye /> View</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>
