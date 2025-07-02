@@ -7,6 +7,7 @@ import {
   FaPlus, FaTrash, FaEye, FaEyeSlash
 } from 'react-icons/fa';
 
+
 function ProjectDetails() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
