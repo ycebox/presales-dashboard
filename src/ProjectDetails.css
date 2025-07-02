@@ -320,3 +320,23 @@ select:focus {
     transform: translateY(0);
   }
 }
+
+.customer-name {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.edit-link {
+  font-size: 0.95rem;
+  color: #2563eb;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.edit-link:hover {
+  color: #1d4ed8;
+}
+
