@@ -16,6 +16,7 @@ function ProjectDetails() {
   const [selectedMeetingNote, setSelectedMeetingNote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editForm, setEditForm] = useState({});
+  const [showEditProjectModal, setShowEditProjectModal] = useState(false);
   const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '', notes: '' });
   const [editTaskId, setEditTaskId] = useState(null);
   const [editTaskForm, setEditTaskForm] = useState({ description: '', status: '', due_date: '', notes: '' });
@@ -91,7 +92,10 @@ function ProjectDetails() {
 
         <div className="project-layout">
           <div className="project-left">
-            <h3><FaBookOpen /> Project Details</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3><FaBookOpen /> Project Details</h3>
+              <button onClick={() => setShowEditProjectModal(true)}><FaEdit /> Edit</button>
+            </div>
             <p><strong>Customer:</strong> {project.customer_name}</p>
             <p><strong>Country:</strong> {project.country}</p>
             <p><strong>Account Manager:</strong> {project.account_manager}</p>
@@ -225,6 +229,40 @@ function ProjectDetails() {
           </div>
         )}
 
+        {showEditProjectModal && (
+          <div className="modal-overlay">
+            <div className="modal" style={{ maxWidth: '800px' }}>
+              <h3>Edit Project</h3>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const { error } = await supabase
+                    .from('projects')
+                    .update(editForm)
+                    .eq('id', id);
+                  if (!error) {
+                    setShowEditProjectModal(false);
+                    fetchProjectDetails();
+                  }
+                }}
+              >
+                <input placeholder="Customer Name" value={editForm.customer_name || ''} onChange={(e) => setEditForm({ ...editForm, customer_name: e.target.value })} />
+                <input placeholder="Country" value={editForm.country || ''} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} />
+                <input placeholder="Account Manager" value={editForm.account_manager || ''} onChange={(e) => setEditForm({ ...editForm, account_manager: e.target.value })} />
+                <input placeholder="Sales Stage" value={editForm.sales_stage || ''} onChange={(e) => setEditForm({ ...editForm, sales_stage: e.target.value })} />
+                <input placeholder="Product" value={editForm.product || ''} onChange={(e) => setEditForm({ ...editForm, product: e.target.value })} />
+                <input placeholder="Scope" value={editForm.scope || ''} onChange={(e) => setEditForm({ ...editForm, scope: e.target.value })} />
+                <input placeholder="Deal Value" value={editForm.deal_value || ''} onChange={(e) => setEditForm({ ...editForm, deal_value: e.target.value })} />
+                <input placeholder="Backup Presales" value={editForm.backup_presales || ''} onChange={(e) => setEditForm({ ...editForm, backup_presales: e.target.value })} />
+                <textarea placeholder="Remarks" value={editForm.remarks || ''} onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })} rows={3} />
+                <div className="modal-actions" style={{ marginTop: '1rem' }}>
+                  <button type="submit"><FaSave /> Save</button>
+                  <button type="button" onClick={() => setShowEditProjectModal(false)}><FaTimes /> Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
