@@ -108,6 +108,7 @@ function ProjectDetails() {
               <p><strong>Remarks:</strong> {project.remarks}</p>
             </div>
           </div>
+        </div>
 
         {showEditProjectModal && (
           <div className="modal-overlay">
@@ -127,42 +128,15 @@ function ProjectDetails() {
                 }}
                 className="edit-form"
               >
-                <label>
-                  Customer Name
-                  <input value={editForm.customer_name || ''} onChange={(e) => setEditForm({ ...editForm, customer_name: e.target.value })} />
-                </label>
-                <label>
-                  Country
-                  <input value={editForm.country || ''} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} />
-                </label>
-                <label>
-                  Account Manager
-                  <input value={editForm.account_manager || ''} onChange={(e) => setEditForm({ ...editForm, account_manager: e.target.value })} />
-                </label>
-                <label>
-                  Sales Stage
-                  <input value={editForm.sales_stage || ''} onChange={(e) => setEditForm({ ...editForm, sales_stage: e.target.value })} />
-                </label>
-                <label>
-                  Product
-                  <input value={editForm.product || ''} onChange={(e) => setEditForm({ ...editForm, product: e.target.value })} />
-                </label>
-                <label>
-                  Scope
-                  <input value={editForm.scope || ''} onChange={(e) => setEditForm({ ...editForm, scope: e.target.value })} />
-                </label>
-                <label>
-                  Deal Value
-                  <input value={editForm.deal_value || ''} onChange={(e) => setEditForm({ ...editForm, deal_value: e.target.value })} />
-                </label>
-                <label>
-                  Backup Presales
-                  <input value={editForm.backup_presales || ''} onChange={(e) => setEditForm({ ...editForm, backup_presales: e.target.value })} />
-                </label>
-                <label>
-                  Remarks
-                  <textarea value={editForm.remarks || ''} onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })} rows={3} />
-                </label>
+                <label>Customer Name<input value={editForm.customer_name || ''} onChange={(e) => setEditForm({ ...editForm, customer_name: e.target.value })} /></label>
+                <label>Country<input value={editForm.country || ''} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} /></label>
+                <label>Account Manager<input value={editForm.account_manager || ''} onChange={(e) => setEditForm({ ...editForm, account_manager: e.target.value })} /></label>
+                <label>Sales Stage<input value={editForm.sales_stage || ''} onChange={(e) => setEditForm({ ...editForm, sales_stage: e.target.value })} /></label>
+                <label>Product<input value={editForm.product || ''} onChange={(e) => setEditForm({ ...editForm, product: e.target.value })} /></label>
+                <label>Scope<input value={editForm.scope || ''} onChange={(e) => setEditForm({ ...editForm, scope: e.target.value })} /></label>
+                <label>Deal Value<input value={editForm.deal_value || ''} onChange={(e) => setEditForm({ ...editForm, deal_value: e.target.value })} /></label>
+                <label>Backup Presales<input value={editForm.backup_presales || ''} onChange={(e) => setEditForm({ ...editForm, backup_presales: e.target.value })} /></label>
+                <label>Remarks<textarea value={editForm.remarks || ''} onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })} rows={3} /></label>
                 <div className="modal-actions" style={{ marginTop: '1rem' }}>
                   <button type="submit"><FaSave /> Save</button>
                   <button type="button" onClick={() => setShowEditProjectModal(false)}><FaTimes /> Cancel</button>
