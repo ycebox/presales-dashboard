@@ -27,14 +27,9 @@ function ProjectDetails() {
   const [newLogEntry, setNewLogEntry] = useState('');
   const [showCompleted, setShowCompleted] = useState(false);
 
-  const countryOptions = [ "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
-    "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
-    "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
-];
-  const salesStageOptions = [ 'Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery',
-    'PoC', 'RFI', 'RFP', 'SoW'
-];
-  const productOptions = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
+  const countryOptions = ['Singapore', 'Philippines', 'Malaysia', 'Vietnam', 'Thailand'];
+  const salesStageOptions = ['Lead', 'Opportunity', 'Proposal', 'Contracting', 'Done'];
+  const productOptions = ['Card Issuing', 'Payment Switching', 'eWallet', 'SmartVista EPG'];
 
   useEffect(() => {
     fetchProjectDetails();
