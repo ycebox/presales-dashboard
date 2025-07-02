@@ -1,7 +1,3 @@
-<!-- PATCHED: Redesigned task table layout -->
-<!-- MODIFICATION GOES HERE -->
-<!-- Will replace <table> with <div> based task list -->
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
