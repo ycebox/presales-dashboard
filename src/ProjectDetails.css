@@ -21,8 +21,8 @@ body {
 }
 
 .page-content.wide {
-  width: 70vw;                /* ✅ Expands to 70% of browser width */
-  margin: 0 auto;             /* ✅ Centers the content */
+  width: 70vw;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -31,7 +31,6 @@ body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
   padding: 2rem;
 }
-
 
 .project-layout {
   display: flex;
@@ -42,17 +41,7 @@ body {
   flex-wrap: wrap;
 }
 
-/* Left column: Project Details */
-.project-left {
-  flex: 1;
-  min-width: 320px;
-  background: white;
-  padding: 2rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-}
-
-/* Right column: Tasks */
+.project-left,
 .project-middle {
   flex: 1;
   min-width: 320px;
@@ -62,7 +51,6 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
-/* Logs will be placed below both columns */
 .project-logs {
   width: 100%;
   margin-top: 2rem;
@@ -71,6 +59,7 @@ body {
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
+
 .project-header {
   display: flex;
   justify-content: space-between;
@@ -79,11 +68,23 @@ body {
   margin-bottom: 1.5rem;
 }
 
-.big-name {
-  font-size: 2rem;
+.customer-name {
+  font-size: 1.75rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #0f172a;
   margin: 0;
+}
+
+.edit-link {
+  font-size: 0.95rem;
+  color: #2563eb;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.edit-link:hover {
+  color: #1d4ed8;
 }
 
 .edit-form {
@@ -102,25 +103,7 @@ body {
 
 .edit-form input,
 .edit-form select,
-.edit-form textarea {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 1rem;
-  margin-top: 0.25rem;
-  background-color: #fff;
-  font-family: 'Inter', sans-serif;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.edit-form input:focus,
-.edit-form textarea:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
-  outline: none;
-}
-
+.edit-form textarea,
 .task-form input,
 .task-form select,
 textarea {
@@ -131,6 +114,17 @@ textarea {
   font-size: 1rem;
   background-color: #fff;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.edit-form input:focus,
+.edit-form textarea:focus,
+textarea:focus,
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 
 .task-form,
@@ -164,45 +158,9 @@ button:hover {
   margin-top: 1.5rem;
 }
 
-.task-group h4 {
-  margin-bottom: 0.75rem;
-  color: #334155;
-  font-size: 1.1rem;
-}
-
-ul {
-  list-style-type: none;
-  padding-left: 0;
-}
-
-ul li.task-row {
-  display: grid;
-  grid-template-columns: 1fr 120px auto;
-  align-items: start;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #e2e8f0;
-  gap: 1rem;
-}
-
-.task-desc {
-  font-weight: 500;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.task-date {
-  color: #64748b;
-  font-size: 0.9rem;
-}
-
-.task-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
 .task-headers {
   display: grid;
-  grid-template-columns: 1fr 120px auto;
+  grid-template-columns: 2fr 1fr 1fr 2fr auto;
   font-size: 0.9rem;
   color: #475569;
   padding: 0.5rem 0;
@@ -210,37 +168,57 @@ ul li.task-row {
   font-weight: 600;
 }
 
-.log-entry {
-  background-color: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.75rem;
+.task-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 2fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.95rem;
 }
 
-.log-entry p {
-  margin: 0 0 0.5rem;
+.task-status .status-badge {
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+  text-transform: capitalize;
 }
 
-textarea {
-  font-family: 'Inter', sans-serif;
-  font-size: 1rem;
+.status-badge.not-started {
+  background-color: #e0f2fe;
+  color: #0369a1;
 }
 
-textarea:focus,
-input:focus,
-select:focus {
-  outline: none;
-  border-color: #94a3b8;
-  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.2);
+.status-badge.in-progress {
+  background-color: #fef9c3;
+  color: #b45309;
 }
 
-#logs textarea {
-  margin-bottom: 0.5rem;
+.status-badge.completed {
+  background-color: #dcfce7;
+  color: #15803d;
 }
 
-#logs button {
-  margin-bottom: 1rem;
+.status-badge.cancelled\/on-hold {
+  background-color: #fef2f2;
+  color: #991b1b;
+}
+
+.task-actions button {
+  background: none;
+  color: #2563eb;
+  padding: 0.25rem;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+}
+
+.task-actions button:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
 }
 
 .section-card h3 {
@@ -255,10 +233,6 @@ select:focus {
   font-size: 1.2rem;
   text-align: center;
   margin-top: 2rem;
-}
-
-.highlight-name {
-  color: #0f172a;
 }
 
 .back-btn {
@@ -277,35 +251,6 @@ select:focus {
 
 .back-btn:hover {
   background-color: #cbd5e1;
-}
-
-.task-actions button {
-  margin-left: 4px;
-}
-
-.flat-readonly {
-  border: none;
-  background-color: transparent;
-  padding: 0;
-  font-weight: 500;
-  color: #1e293b;
-}
-
-.flat-readonly:focus {
-  outline: none;
-}
-.edit-form input,
-.edit-form select,
-.edit-form textarea {
-  width: 100%;
-  padding: 8px 12px;
-  margin: 6px 0;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 14px;
-  background-color: #fff;
-  box-sizing: border-box;
-  font-family: inherit;
 }
 
 .modal-overlay {
@@ -341,23 +286,3 @@ select:focus {
     transform: translateY(0);
   }
 }
-
-.customer-name {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-}
-
-.edit-link {
-  font-size: 0.95rem;
-  color: #2563eb;
-  cursor: pointer;
-  font-weight: 500;
-  text-decoration: underline;
-}
-
-.edit-link:hover {
-  color: #1d4ed8;
-}
-
