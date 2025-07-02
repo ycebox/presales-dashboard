@@ -1,3 +1,7 @@
+<!-- PATCHED: Redesigned task table layout -->
+<!-- MODIFICATION GOES HERE -->
+<!-- Will replace <table> with <div> based task list -->
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -6,7 +10,6 @@ import {
   FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
   FaPlus, FaTrash, FaEye, FaEyeSlash
 } from 'react-icons/fa';
-
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -92,181 +95,50 @@ function ProjectDetails() {
         </div>
 
         <div className="project-layout">
-   <div className="project-left">
-  <div className="project-header">
-    <h2 className="customer-name">{project.customer_name}</h2>
-    <span className="edit-link" onClick={() => setShowEditProjectModal(true)}>✏ Edit</span>
-  </div>
-  <div className="section-card">
-    <h3>Project Details</h3>
-    <p><strong>Country:</strong> {project.country}</p>
-    <p><strong>Account Manager:</strong> {project.account_manager}</p>
-    <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
-    <p><strong>Product:</strong> {project.product}</p>
-    <p><strong>Scope:</strong> {project.scope}</p>
-    <p><strong>Deal Value:</strong> {project.deal_value}</p>
-    <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
-    <p><strong>Remarks:</strong> {project.remarks}</p>
-  </div>
-</div>
-
+          <div className="project-left">
+            <div className="project-header">
+              <h2 className="customer-name">{project.customer_name}</h2>
+              <span className="edit-link" onClick={() => setShowEditProjectModal(true)}>✏ Edit</span>
+            </div>
+            <div className="section-card">
+              <h3>Project Details</h3>
+              <p><strong>Country:</strong> {project.country}</p>
+              <p><strong>Account Manager:</strong> {project.account_manager}</p>
+              <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
+              <p><strong>Product:</strong> {project.product}</p>
+              <p><strong>Scope:</strong> {project.scope}</p>
+              <p><strong>Deal Value:</strong> {project.deal_value}</p>
+              <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
+              <p><strong>Remarks:</strong> {project.remarks}</p>
+            </div>
+          </div>
 
           <div className="project-middle">
             <h3><FaTasks /> Tasks</h3>
             <button onClick={() => setShowTaskModal(true)}><FaPlus /> Add Task</button>
-            <table className="task-table">
-              <thead>
-                <tr>
-                  <th>Task</th>
-                  <th>Status</th>
-                  <th>Due Date</th>
-                  <th>Notes</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activeTasks.map(task => (
-                  <tr key={task.id}>
-                    <td>{task.description}</td>
-                    <td>{task.status}</td>
-                    <td>{task.due_date}</td>
-                    <td>{task.notes}</td>
-                    <td><button><FaEdit /></button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="project-logs">
-          <h3><FaBookOpen /> Project Logs</h3>
-          <button onClick={() => setShowLogModal(true)}><FaPlus /> Add Log</button>
-          <ul className="logs-list">
-            {logs.map(log => (
-              <li key={log.id}>{log.entry}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="meeting-minutes-section">
-          <h3><FaBookOpen /> Linked Meeting Minutes</h3>
-          {linkedMeetingMinutes.length === 0 ? (
-            <p style={{ fontStyle: 'italic' }}>No meeting minutes linked to this project.</p>
-          ) : (
-            <ul className="logs-list">
-              {linkedMeetingMinutes.map(note => (
-                <li key={note.id}>
-                  <strong>{note.title}</strong>
-                  <div className="task-actions" style={{ marginTop: '0.25rem' }}>
-                    <button onClick={() => setSelectedMeetingNote(note)}><FaEye /> View</button>
+            <div className="task-group">
+              <div className="task-headers">
+                <span>Task</span>
+                <span>Status</span>
+                <span>Due Date</span>
+                <span>Notes</span>
+                <span>Actions</span>
+              </div>
+              {activeTasks.map(task => (
+                <div className="task-row" key={task.id}>
+                  <div className="task-desc">{task.description}</div>
+                  <div className="task-status"><span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span></div>
+                  <div className="task-date">{task.due_date}</div>
+                  <div className="task-notes">{task.notes}</div>
+                  <div className="task-actions">
+                    <button><FaEdit /></button>
                   </div>
-                </li>
+                </div>
               ))}
-            </ul>
-          )}
+            </div>
+          </div>
         </div>
 
-        {showTaskModal && (
-          <div className="modal-overlay">
-            <div className="modal">
-              <h3>Add New Task</h3>
-              <form onSubmit={handleAddTask} className="task-form">
-                <input name="description" placeholder="Task Description" value={newTask.description} onChange={handleTaskInput} required />
-                <select name="status" value={newTask.status} onChange={handleTaskInput}>
-                  <option value="Not Started">Not Started</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-                </select>
-                <input type="date" name="due_date" value={newTask.due_date} onChange={handleTaskInput} />
-                <input name="notes" placeholder="Notes" value={newTask.notes} onChange={handleTaskInput} />
-                <div className="modal-actions">
-                  <button type="submit"><FaSave /> Save</button>
-                  <button type="button" onClick={() => setShowTaskModal(false)}><FaTimes /> Cancel</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {showLogModal && (
-          <div className="modal-overlay">
-            <div className="modal">
-              <h3>Add Log Entry</h3>
-              <textarea
-                placeholder="Type your log here..."
-                value={newLogEntry}
-                onChange={(e) => setNewLogEntry(e.target.value)}
-                rows="4"
-                style={{ width: '100%' }}
-              />
-              <div className="modal-actions">
-                <button
-                  onClick={async () => {
-                    if (!newLogEntry.trim()) return;
-                    const { error } = await supabase.from('project_logs').insert([{ project_id: id, entry: newLogEntry }]);
-                    if (!error) {
-                      setNewLogEntry('');
-                      setShowLogModal(false);
-                      fetchProjectDetails();
-                    }
-                  }}
-                >
-                  <FaSave /> Save
-                </button>
-                <button onClick={() => setShowLogModal(false)}><FaTimes /> Cancel</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {selectedMeetingNote && (
-          <div className="modal-overlay">
-            <div className="modal">
-              <h3>{selectedMeetingNote.title}</h3>
-              <div dangerouslySetInnerHTML={{ __html: selectedMeetingNote.content }} />
-              <div className="modal-actions">
-                <button onClick={() => setSelectedMeetingNote(null)}><FaTimes /> Close</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showEditProjectModal && (
-          <div className="modal-overlay">
-            <div className="modal" style={{ maxWidth: '800px' }}>
-              <h3>Edit Project</h3>
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const { error } = await supabase
-                    .from('projects')
-                    .update(editForm)
-                    .eq('id', id);
-                  if (!error) {
-                    setShowEditProjectModal(false);
-                    fetchProjectDetails();
-                  }
-                }}
-              >
-                <input placeholder="Customer Name" value={editForm.customer_name || ''} onChange={(e) => setEditForm({ ...editForm, customer_name: e.target.value })} />
-                <input placeholder="Country" value={editForm.country || ''} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} />
-                <input placeholder="Account Manager" value={editForm.account_manager || ''} onChange={(e) => setEditForm({ ...editForm, account_manager: e.target.value })} />
-                <input placeholder="Sales Stage" value={editForm.sales_stage || ''} onChange={(e) => setEditForm({ ...editForm, sales_stage: e.target.value })} />
-                <input placeholder="Product" value={editForm.product || ''} onChange={(e) => setEditForm({ ...editForm, product: e.target.value })} />
-                <input placeholder="Scope" value={editForm.scope || ''} onChange={(e) => setEditForm({ ...editForm, scope: e.target.value })} />
-                <input placeholder="Deal Value" value={editForm.deal_value || ''} onChange={(e) => setEditForm({ ...editForm, deal_value: e.target.value })} />
-                <input placeholder="Backup Presales" value={editForm.backup_presales || ''} onChange={(e) => setEditForm({ ...editForm, backup_presales: e.target.value })} />
-                <textarea placeholder="Remarks" value={editForm.remarks || ''} onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })} rows={3} />
-                <div className="modal-actions" style={{ marginTop: '1rem' }}>
-                  <button type="submit"><FaSave /> Save</button>
-                  <button type="button" onClick={() => setShowEditProjectModal(false)}><FaTimes /> Cancel</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
