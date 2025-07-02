@@ -1,5 +1,3 @@
-// ProjectDetails.js - Enhanced with completed/on-hold task toggle
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -157,8 +155,6 @@ function ProjectDetails() {
             </div>
           </div>
         </div>
-
-        <!-- LOGS AND MEETING SECTIONS OMITTED FOR BREVITY -->
 
       </div>
     </div>
