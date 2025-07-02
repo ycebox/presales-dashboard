@@ -1,4 +1,4 @@
-""// ProjectDetails.js - With UI/UX polish: improved hierarchy, badges, buttons, readability, modern project details layout + inline editing with dropdowns
+// ProjectDetails.js - With UI/UX polish: improved hierarchy, badges, buttons, readability, modern project details layout + inline editing with dropdowns
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -27,9 +27,14 @@ function ProjectDetails() {
   const [newLogEntry, setNewLogEntry] = useState('');
   const [showCompleted, setShowCompleted] = useState(false);
 
-  const countryOptions = ['Singapore', 'Philippines', 'Malaysia', 'Vietnam', 'Thailand'];
-  const salesStageOptions = ['Lead', 'Opportunity', 'Proposal', 'Contracting', 'Done'];
-  const productOptions = ['Card Issuing', 'Payment Switching', 'eWallet', 'SmartVista EPG'];
+  const countryOptions = [ "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
+    "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
+    "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
+  ];
+  const salesStageOptions = [ 'Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery',
+    'PoC', 'RFI', 'RFP', 'SoW'
+  ];
+  const productOptions = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
 
   useEffect(() => {
     fetchProjectDetails();
@@ -119,7 +124,7 @@ function ProjectDetails() {
                 <label>
                   Country
                   {isEditingDetails ? (
-                    <select name="country" value={editForm.country || ''} onChange={handleEditFormChange}>
+                    <select name="country" value={editForm.country || ''} onChange={handleEditFormChange} className="dropdown">
                       {countryOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                   ) : (
@@ -133,7 +138,7 @@ function ProjectDetails() {
                 <label>
                   Sales Stage
                   {isEditingDetails ? (
-                    <select name="sales_stage" value={editForm.sales_stage || ''} onChange={handleEditFormChange}>
+                    <select name="sales_stage" value={editForm.sales_stage || ''} onChange={handleEditFormChange} className="dropdown">
                       {salesStageOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                   ) : (
@@ -143,7 +148,7 @@ function ProjectDetails() {
                 <label>
                   Product
                   {isEditingDetails ? (
-                    <select name="product" value={editForm.product || ''} onChange={handleEditFormChange}>
+                    <select name="product" value={editForm.product || ''} onChange={handleEditFormChange} className="dropdown">
                       {productOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                   ) : (
