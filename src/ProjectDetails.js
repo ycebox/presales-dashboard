@@ -1,4 +1,4 @@
-// ProjectDetails.js - Grouped completed tasks in collapsible section with heading
+// ProjectDetails.js - Switched position: Tasks in center, Logs in right column, followed by Meeting Minutes
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -125,6 +125,16 @@ function ProjectDetails() {
               <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
               <p><strong>Remarks:</strong> {project.remarks}</p>
             </div>
+
+            <div className="project-logs">
+              <h3><FaBookOpen /> Project Logs</h3>
+              <button onClick={() => setShowLogModal(true)}><FaPlus /> Add Log</button>
+              <ul className="logs-list">
+                {logs.map(log => (
+                  <li key={log.id}>{log.entry}</li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           <div className="project-middle">
@@ -173,10 +183,26 @@ function ProjectDetails() {
                 ))}
               </div>
             )}
+
+            <div className="meeting-minutes-section">
+              <h3><FaBookOpen /> Linked Meeting Minutes</h3>
+              {linkedMeetingMinutes.length === 0 ? (
+                <p style={{ fontStyle: 'italic' }}>No meeting minutes linked to this project.</p>
+              ) : (
+                <ul className="logs-list">
+                  {linkedMeetingMinutes.map(note => (
+                    <li key={note.id}>
+                      <strong>{note.title}</strong>
+                      <div className="task-actions" style={{ marginTop: '0.25rem' }}>
+                        <button onClick={() => setSelectedMeetingNote(note)}><FaEye /> View</button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
-
-     
       </div>
     </div>
   );
