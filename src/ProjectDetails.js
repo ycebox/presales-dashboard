@@ -1,4 +1,4 @@
-// ProjectDetails.js - With UI/UX polish: improved hierarchy, badges, buttons, readability
+// ProjectDetails.js - With UI/UX polish: improved hierarchy, badges, buttons, readability, modern project details layout
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -128,14 +128,40 @@ function ProjectDetails() {
             </div>
             <div className="section-card">
               <h3>Project Details</h3>
-              <p><strong>Country:</strong> {project.country}</p>
-              <p><strong>Account Manager:</strong> {project.account_manager}</p>
-              <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
-              <p><strong>Product:</strong> {project.product}</p>
-              <p><strong>Scope:</strong> {project.scope}</p>
-              <p><strong>Deal Value:</strong> {project.deal_value}</p>
-              <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
-              <p><strong>Remarks:</strong> {project.remarks}</p>
+              <div className="edit-form">
+                <label>
+                  Country
+                  <input type="text" value={project.country || ''} readOnly />
+                </label>
+                <label>
+                  Account Manager
+                  <input type="text" value={project.account_manager || ''} readOnly />
+                </label>
+                <label>
+                  Sales Stage
+                  <input type="text" value={project.sales_stage || ''} readOnly />
+                </label>
+                <label>
+                  Product
+                  <input type="text" value={project.product || ''} readOnly />
+                </label>
+                <label>
+                  Scope
+                  <input type="text" value={project.scope || ''} readOnly />
+                </label>
+                <label>
+                  Deal Value
+                  <input type="text" value={project.deal_value || ''} readOnly />
+                </label>
+                <label>
+                  Backup Presales
+                  <input type="text" value={project.backup_presales || ''} readOnly />
+                </label>
+                <label style={{ gridColumn: '1 / -1' }}>
+                  Remarks
+                  <textarea rows="3" value={project.remarks || ''} readOnly />
+                </label>
+              </div>
             </div>
           </div>
 
