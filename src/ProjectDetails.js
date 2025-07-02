@@ -229,7 +229,24 @@ function ProjectDetails() {
               <span>Notes</span>
               <span>Actions</span>
             </div>
-            {[...activeTasks, ...(showCompleted ? completedTasks : [])].map(task => (
+            {{[...activeTasks].map(task => (
+  <div className="task-row" key={task.id}>...</div>
+))}
+
+{showCompleted && (
+  <>
+    <div className="task-headers" style={{ marginTop: '1rem', color: '#15803d' }}>Completed</div>
+    {completedTasks.filter(t => t.status === 'Completed').map(task => (
+      <div className="task-row" key={task.id}>...</div>
+    ))}
+
+    <div className="task-headers" style={{ marginTop: '1rem', color: #991b1b' }}>Cancelled / On-hold</div>
+    {completedTasks.filter(t => t.status === 'Cancelled/On-hold').map(task => (
+      <div className="task-row" key={task.id}>...</div>
+    ))}
+  </>
+)}
+
               <div className="task-row" key={task.id}>
                 <div className="task-desc">{task.description}</div>
                 <div className="task-status">
