@@ -108,5 +108,7 @@ function ProjectDetails() {
   const activeTasks = tasks.filter(t => !['Completed', 'Cancelled/On-hold'].includes(t.status));
   const completedTasks = tasks.filter(t => ['Completed', 'Cancelled/On-hold'].includes(t.status));
 
+ 
+}
 
-  export default ProjectDetails;
+export default ProjectDetails;
