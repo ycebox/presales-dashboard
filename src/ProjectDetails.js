@@ -1,4 +1,4 @@
-// ProjectDetails.js - With UI/UX polish: improved hierarchy, badges, buttons, readability, modern project details layout
+// ProjectDetails.js - With UI/UX polish: improved hierarchy, badges, buttons, readability, modern project details layout + inline editing
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -18,7 +18,7 @@ function ProjectDetails() {
   const [selectedMeetingNote, setSelectedMeetingNote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editForm, setEditForm] = useState({});
-  const [showEditProjectModal, setShowEditProjectModal] = useState(false);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '', notes: '' });
   const [editTaskId, setEditTaskId] = useState(null);
   const [editTaskForm, setEditTaskForm] = useState({ description: '', status: '', due_date: '', notes: '' });
@@ -57,6 +57,22 @@ function ProjectDetails() {
       .order('created_at', { ascending: false });
     if (!error) setLinkedMeetingMinutes(data || []);
   }
+
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveProject = async () => {
+    const { error } = await supabase
+      .from('projects')
+      .update(editForm)
+      .eq('id', id);
+    if (!error) {
+      setIsEditingDetails(false);
+      fetchProjectDetails();
+    }
+  };
 
   const handleTaskInput = (e) => {
     const { name, value } = e.target;
@@ -123,43 +139,41 @@ function ProjectDetails() {
         <div className="project-layout">
           <div className="project-left">
             <div className="project-header">
-              <h2 className="customer-name highlight-name">{project.customer_name}</h2>
-              <span className="edit-link" onClick={() => setShowEditProjectModal(true)}><FaEdit /> Edit</span>
+              <h2 className="customer-name highlight-name">{editForm.customer_name}</h2>
+              <span className="edit-link" onClick={() => {
+                if (isEditingDetails) {
+                  handleSaveProject();
+                } else {
+                  setIsEditingDetails(true);
+                }
+              }}>
+                {isEditingDetails ? <><FaSave /> Save</> : <><FaEdit /> Edit</>}
+              </span>
             </div>
             <div className="section-card">
               <h3>Project Details</h3>
               <div className="edit-form">
-                <label>
-                  Country
-                  <input type="text" value={project.country || ''} readOnly />
-                </label>
-                <label>
-                  Account Manager
-                  <input type="text" value={project.account_manager || ''} readOnly />
-                </label>
-                <label>
-                  Sales Stage
-                  <input type="text" value={project.sales_stage || ''} readOnly />
-                </label>
-                <label>
-                  Product
-                  <input type="text" value={project.product || ''} readOnly />
-                </label>
-                <label>
-                  Scope
-                  <input type="text" value={project.scope || ''} readOnly />
-                </label>
-                <label>
-                  Deal Value
-                  <input type="text" value={project.deal_value || ''} readOnly />
-                </label>
-                <label>
-                  Backup Presales
-                  <input type="text" value={project.backup_presales || ''} readOnly />
-                </label>
+                {['country', 'account_manager', 'sales_stage', 'product', 'scope', 'deal_value', 'backup_presales'].map((field) => (
+                  <label key={field}>
+                    {field.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                    <input
+                      type="text"
+                      name={field}
+                      value={editForm[field] || ''}
+                      onChange={handleEditFormChange}
+                      readOnly={!isEditingDetails}
+                    />
+                  </label>
+                ))}
                 <label style={{ gridColumn: '1 / -1' }}>
                   Remarks
-                  <textarea rows="3" value={project.remarks || ''} readOnly />
+                  <textarea
+                    rows="3"
+                    name="remarks"
+                    value={editForm.remarks || ''}
+                    onChange={handleEditFormChange}
+                    readOnly={!isEditingDetails}
+                  />
                 </label>
               </div>
             </div>
