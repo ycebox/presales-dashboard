@@ -1,10 +1,12 @@
+// ProjectDetails.js - Grouped completed tasks in collapsible section with heading
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
 import {
   FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
-  FaPlus, FaTrash, FaEye
+  FaPlus, FaTrash, FaEye, FaChevronDown, FaChevronUp
 } from 'react-icons/fa';
 
 function ProjectDetails() {
@@ -128,8 +130,8 @@ function ProjectDetails() {
           <div className="project-middle">
             <h3><FaTasks /> Tasks</h3>
             <button onClick={() => setShowTaskModal(true)}><FaPlus /> Add Task</button>
-            <button style={{ marginLeft: '1rem' }} onClick={() => setShowCompleted(prev => !prev)}>
-              {showCompleted ? 'Hide Completed/On-hold' : 'Show Completed/On-hold'}
+            <button className="toggle-completed-btn" onClick={() => setShowCompleted(prev => !prev)}>
+              {showCompleted ? <><FaChevronUp /> Hide Completed</> : <><FaChevronDown /> Show Completed</>}
             </button>
             <div className="task-group">
               <div className="task-headers">
@@ -139,7 +141,7 @@ function ProjectDetails() {
                 <span>Notes</span>
                 <span>Actions</span>
               </div>
-              {[...activeTasks, ...(showCompleted ? completedTasks : [])].map(task => (
+              {activeTasks.map(task => (
                 <div className="task-row" key={task.id}>
                   <div className="task-desc">{task.description}</div>
                   <div className="task-status">
@@ -153,9 +155,28 @@ function ProjectDetails() {
                 </div>
               ))}
             </div>
+            {showCompleted && (
+              <div className="task-group completed-task-group">
+                <h4>Completed / On-hold Tasks</h4>
+                {completedTasks.map(task => (
+                  <div className="task-row" key={task.id}>
+                    <div className="task-desc">{task.description}</div>
+                    <div className="task-status">
+                      <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
+                    </div>
+                    <div className="task-date">{task.due_date}</div>
+                    <div className="task-notes">{task.notes}</div>
+                    <div className="task-actions">
+                      <button onClick={() => handleEditTask(task)}><FaEdit /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
+     
       </div>
     </div>
   );
