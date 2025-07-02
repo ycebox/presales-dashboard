@@ -1,4 +1,4 @@
-// ProjectDetails.js - Final layout update: Logs in right section, tasks and meetings below
+// ProjectDetails.js - Edit and delete task support added
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -63,6 +63,11 @@ function ProjectDetails() {
     setNewTask((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleEditTaskInput = (e) => {
+    const { name, value } = e.target;
+    setEditTaskForm((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleAddTask = async (e) => {
     e.preventDefault();
     if (!newTask.description.trim()) return;
@@ -93,121 +98,15 @@ function ProjectDetails() {
     }
   };
 
+  const handleDeleteTask = async (taskId) => {
+    const { error } = await supabase.from('project_tasks').delete().eq('id', taskId);
+    if (!error) {
+      fetchProjectDetails();
+    }
+  };
+
   const activeTasks = tasks.filter(t => !['Completed', 'Cancelled/On-hold'].includes(t.status));
   const completedTasks = tasks.filter(t => ['Completed', 'Cancelled/On-hold'].includes(t.status));
 
-  if (loading) return <div className="loader">Loading project details...</div>;
-  if (!project) return <div className="not-found">Project not found.</div>;
 
-  return (
-    <div className="page-wrapper">
-      <div className="page-content wide">
-        <div className="back-link-container">
-          <Link to="/" className="back-btn">
-            <FaHome /> Back to Dashboard
-          </Link>
-        </div>
-
-        <div className="project-layout">
-          <div className="project-left">
-            <div className="project-header">
-              <h2 className="customer-name">{project.customer_name}</h2>
-              <span className="edit-link" onClick={() => setShowEditProjectModal(true)}>✏ Edit</span>
-            </div>
-            <div className="section-card">
-              <h3>Project Details</h3>
-              <p><strong>Country:</strong> {project.country}</p>
-              <p><strong>Account Manager:</strong> {project.account_manager}</p>
-              <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
-              <p><strong>Product:</strong> {project.product}</p>
-              <p><strong>Scope:</strong> {project.scope}</p>
-              <p><strong>Deal Value:</strong> {project.deal_value}</p>
-              <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
-              <p><strong>Remarks:</strong> {project.remarks}</p>
-            </div>
-          </div>
-
-          <div className="project-middle">
-            <div className="project-logs">
-              <h3><FaBookOpen /> Project Logs</h3>
-              <button onClick={() => setShowLogModal(true)}><FaPlus /> Add Log</button>
-              <ul className="logs-list">
-                {logs.map(log => (
-                  <li key={log.id}>{log.entry}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div className="project-tasks">
-          <h3><FaTasks /> Tasks</h3>
-          <button onClick={() => setShowTaskModal(true)}><FaPlus /> Add Task</button>
-          <button className="toggle-completed-btn" onClick={() => setShowCompleted(prev => !prev)}>
-            {showCompleted ? <><FaChevronUp /> Hide Completed</> : <><FaChevronDown /> Show Completed</>}
-          </button>
-          <div className="task-group">
-            <div className="task-headers">
-              <span>Task</span>
-              <span>Status</span>
-              <span>Due Date</span>
-              <span>Notes</span>
-              <span>Actions</span>
-            </div>
-            {activeTasks.map(task => (
-              <div className="task-row" key={task.id}>
-                <div className="task-desc">{task.description}</div>
-                <div className="task-status">
-                  <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
-                </div>
-                <div className="task-date">{task.due_date}</div>
-                <div className="task-notes">{task.notes}</div>
-                <div className="task-actions">
-                  <button onClick={() => handleEditTask(task)}><FaEdit /></button>
-                </div>
-              </div>
-            ))}
-          </div>
-          {showCompleted && (
-            <div className="task-group completed-task-group">
-              <h4>Completed / On-hold Tasks</h4>
-              {completedTasks.map(task => (
-                <div className="task-row" key={task.id}>
-                  <div className="task-desc">{task.description}</div>
-                  <div className="task-status">
-                    <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
-                  </div>
-                  <div className="task-date">{task.due_date}</div>
-                  <div className="task-notes">{task.notes}</div>
-                  <div className="task-actions">
-                    <button onClick={() => handleEditTask(task)}><FaEdit /></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="meeting-minutes-section">
-            <h3><FaBookOpen /> Linked Meeting Minutes</h3>
-            {linkedMeetingMinutes.length === 0 ? (
-              <p style={{ fontStyle: 'italic' }}>No meeting minutes linked to this project.</p>
-            ) : (
-              <ul className="logs-list">
-                {linkedMeetingMinutes.map(note => (
-                  <li key={note.id}>
-                    <strong>{note.title}</strong>
-                    <div className="task-actions" style={{ marginTop: '0.25rem' }}>
-                      <button onClick={() => setSelectedMeetingNote(note)}><FaEye /> View</button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default ProjectDetails;
+  export default ProjectDetails;
