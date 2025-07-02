@@ -75,6 +75,11 @@ body {
   margin: 0;
 }
 
+.customer-name.highlight-name {
+  font-size: 2rem;
+  color: #1d4ed8;
+}
+
 .edit-link {
   font-size: 0.95rem;
   color: #2563eb;
@@ -125,6 +130,12 @@ select:focus {
   outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.readonly {
+  background-color: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
 }
 
 .task-form,
@@ -286,7 +297,6 @@ button:hover {
     transform: translateY(0);
   }
 }
-
 
 .toggle-completed-btn {
   background-color: #e2e8f0;
