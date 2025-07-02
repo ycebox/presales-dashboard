@@ -1,4 +1,4 @@
-// ProjectDetails.js - Add Project Logs (top right), Meeting Minutes (below tasks)
+// ProjectDetails.js - Logs beside project details, tasks below, meeting minutes bottom
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -120,31 +120,36 @@ function ProjectDetails() {
           </Link>
         </div>
 
-        <div className="project-header">
-          <h2 className="customer-name">{project.customer_name}</h2>
-          <span className="edit-link" onClick={() => setShowEditProjectModal(true)}>✏ Edit</span>
-        </div>
+        <div className="project-layout">
+          <div className="project-left">
+            <div className="project-header">
+              <h2 className="customer-name">{project.customer_name}</h2>
+              <span className="edit-link" onClick={() => setShowEditProjectModal(true)}>✏ Edit</span>
+            </div>
+            <div className="section-card">
+              <h3>Project Details</h3>
+              <p><strong>Country:</strong> {project.country}</p>
+              <p><strong>Account Manager:</strong> {project.account_manager}</p>
+              <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
+              <p><strong>Product:</strong> {project.product}</p>
+              <p><strong>Scope:</strong> {project.scope}</p>
+              <p><strong>Deal Value:</strong> {project.deal_value}</p>
+              <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
+              <p><strong>Remarks:</strong> {project.remarks}</p>
+            </div>
+          </div>
 
-        <div className="section-card">
-          <h3>Project Details</h3>
-          <p><strong>Country:</strong> {project.country}</p>
-          <p><strong>Account Manager:</strong> {project.account_manager}</p>
-          <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
-          <p><strong>Product:</strong> {project.product}</p>
-          <p><strong>Scope:</strong> {project.scope}</p>
-          <p><strong>Deal Value:</strong> {project.deal_value}</p>
-          <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
-          <p><strong>Remarks:</strong> {project.remarks}</p>
-        </div>
-
-        <div className="project-logs">
-          <h3><FaBookOpen /> Project Logs</h3>
-          <button onClick={() => setShowLogModal(true)}><FaPlus /> Add Log</button>
-          <ul className="logs-list">
-            {logs.map(log => (
-              <li key={log.id}>{log.entry}</li>
-            ))}
-          </ul>
+          <div className="project-middle">
+            <div className="project-logs">
+              <h3><FaBookOpen /> Project Logs</h3>
+              <button onClick={() => setShowLogModal(true)}><FaPlus /> Add Log</button>
+              <ul className="logs-list">
+                {logs.map(log => (
+                  <li key={log.id}>{log.entry}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
 
         <div className="project-tasks">
