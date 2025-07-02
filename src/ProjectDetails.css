@@ -189,6 +189,12 @@ button:hover {
   font-size: 0.95rem;
 }
 
+/* ✅ Patch: Hover effect for task-row */
+.task-row:hover {
+  background-color: #f1f5f9;
+  transition: background-color 0.2s ease;
+}
+
 .task-status .status-badge {
   padding: 0.3rem 0.75rem;
   border-radius: 9999px;
