@@ -92,21 +92,24 @@ function ProjectDetails() {
         </div>
 
         <div className="project-layout">
-          <div className="project-left">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3><FaBookOpen /> Project Details</h3>
-              <button onClick={() => setShowEditProjectModal(true)}><FaEdit /> Edit</button>
-            </div>
-            <p><strong>Customer:</strong> {project.customer_name}</p>
-            <p><strong>Country:</strong> {project.country}</p>
-            <p><strong>Account Manager:</strong> {project.account_manager}</p>
-            <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
-            <p><strong>Product:</strong> {project.product}</p>
-            <p><strong>Scope:</strong> {project.scope}</p>
-            <p><strong>Deal Value:</strong> {project.deal_value}</p>
-            <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
-            <p><strong>Remarks:</strong> {project.remarks}</p>
-          </div>
+   <div className="project-left">
+  <div className="project-header">
+    <h2 className="customer-name">{project.customer_name}</h2>
+    <span className="edit-link" onClick={() => setShowEditProjectModal(true)}>✏ Edit</span>
+  </div>
+  <div className="section-card">
+    <h3>Project Details</h3>
+    <p><strong>Country:</strong> {project.country}</p>
+    <p><strong>Account Manager:</strong> {project.account_manager}</p>
+    <p><strong>Sales Stage:</strong> {project.sales_stage}</p>
+    <p><strong>Product:</strong> {project.product}</p>
+    <p><strong>Scope:</strong> {project.scope}</p>
+    <p><strong>Deal Value:</strong> {project.deal_value}</p>
+    <p><strong>Backup Presales:</strong> {project.backup_presales}</p>
+    <p><strong>Remarks:</strong> {project.remarks}</p>
+  </div>
+</div>
+
 
           <div className="project-middle">
             <h3><FaTasks /> Tasks</h3>
