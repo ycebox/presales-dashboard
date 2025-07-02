@@ -1,4 +1,4 @@
-// ProjectDetails.js - Edit and delete task support added
+// ProjectDetails.js - Add Project Logs (top right), Meeting Minutes (below tasks)
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -137,6 +137,16 @@ function ProjectDetails() {
           <p><strong>Remarks:</strong> {project.remarks}</p>
         </div>
 
+        <div className="project-logs">
+          <h3><FaBookOpen /> Project Logs</h3>
+          <button onClick={() => setShowLogModal(true)}><FaPlus /> Add Log</button>
+          <ul className="logs-list">
+            {logs.map(log => (
+              <li key={log.id}>{log.entry}</li>
+            ))}
+          </ul>
+        </div>
+
         <div className="project-tasks">
           <h3><FaTasks /> Tasks</h3>
           <button onClick={() => setShowTaskModal(true)}><FaPlus /> Add Task</button>
@@ -166,6 +176,24 @@ function ProjectDetails() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="meeting-minutes-section">
+          <h3><FaBookOpen /> Linked Meeting Minutes</h3>
+          {linkedMeetingMinutes.length === 0 ? (
+            <p style={{ fontStyle: 'italic' }}>No meeting minutes linked to this project.</p>
+          ) : (
+            <ul className="logs-list">
+              {linkedMeetingMinutes.map(note => (
+                <li key={note.id}>
+                  <strong>{note.title}</strong>
+                  <div className="task-actions" style={{ marginTop: '0.25rem' }}>
+                    <button onClick={() => setSelectedMeetingNote(note)}><FaEye /> View</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
