@@ -1,4 +1,4 @@
-// ProjectDetails.js - Logs beside project details, tasks below, meeting minutes bottom
+// ProjectDetails.js - With UI/UX polish: improved hierarchy, badges, buttons, readability
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -123,8 +123,8 @@ function ProjectDetails() {
         <div className="project-layout">
           <div className="project-left">
             <div className="project-header">
-              <h2 className="customer-name">{project.customer_name}</h2>
-              <span className="edit-link" onClick={() => setShowEditProjectModal(true)}>✏ Edit</span>
+              <h2 className="customer-name highlight-name">{project.customer_name}</h2>
+              <span className="edit-link" onClick={() => setShowEditProjectModal(true)}><FaEdit /> Edit</span>
             </div>
             <div className="section-card">
               <h3>Project Details</h3>
@@ -142,7 +142,7 @@ function ProjectDetails() {
           <div className="project-middle">
             <div className="project-logs">
               <h3><FaBookOpen /> Project Logs</h3>
-              <button onClick={() => setShowLogModal(true)}><FaPlus /> Add Log</button>
+              <button onClick={() => setShowLogModal(true)} className="flat-readonly"><FaPlus /> Add Log</button>
               <ul className="logs-list">
                 {logs.map(log => (
                   <li key={log.id}>{log.entry}</li>
@@ -154,10 +154,12 @@ function ProjectDetails() {
 
         <div className="project-tasks">
           <h3><FaTasks /> Tasks</h3>
-          <button onClick={() => setShowTaskModal(true)}><FaPlus /> Add Task</button>
-          <button className="toggle-completed-btn" onClick={() => setShowCompleted(prev => !prev)}>
-            {showCompleted ? <><FaChevronUp /> Hide Completed</> : <><FaChevronDown /> Show Completed</>}
-          </button>
+          <div className="form-actions">
+            <button onClick={() => setShowTaskModal(true)}><FaPlus /> Add Task</button>
+            <button className="toggle-completed-btn" onClick={() => setShowCompleted(prev => !prev)}>
+              {showCompleted ? <><FaChevronUp /> Hide Completed</> : <><FaChevronDown /> Show Completed</>}
+            </button>
+          </div>
           <div className="task-group">
             <div className="task-headers">
               <span>Task</span>
