@@ -286,3 +286,21 @@ button:hover {
     transform: translateY(0);
   }
 }
+
+
+.toggle-completed-btn {
+  background-color: #e2e8f0;
+  color: #1e293b;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  margin-left: 1rem;
+  transition: background-color 0.2s ease;
+}
+
+.toggle-completed-btn:hover {
+  background-color: #cbd5e1;
+}
