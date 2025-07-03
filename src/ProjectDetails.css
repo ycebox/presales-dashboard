@@ -316,6 +316,25 @@ button:hover {
   margin-left: 1rem;
   transition: background-color 0.2s ease;
 }
+.dropdown {
+  position: relative;
+  z-index: 10; /* allow dropdown to appear over other elements */
+  background-color: #fff;
+}
+
+.edit-form {
+  overflow: visible; /* ensure no cutoff */
+}
+
+.section-card,
+.project-left {
+  overflow: visible; /* fix for dropdown cutoff in small containers */
+}
+
+html, body {
+  height: auto;
+  overflow-y: auto;
+}
 
 
 .toggle-completed-btn:hover {
