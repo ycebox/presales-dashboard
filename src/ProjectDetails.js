@@ -205,9 +205,18 @@ function ProjectDetails() {
                 <input type="text" placeholder="New log entry..." value={newLogEntry} onChange={(e) => setNewLogEntry(e.target.value)} />
                 <button onClick={handleAddLog}><FaPlus /> Add Log</button>
               </div>
-              <ul className="logs-list">
-                {logs.map(log => <li key={log.id}>{log.entry}</li>)}
-              </ul>
+            <ul className="logs-list">
+  {logs.length === 0 ? (
+    <li className="log-empty">No project logs yet. Use the form above to add one.</li>
+  ) : (
+    logs.map(log => (
+      <li key={log.id} className="log-entry">
+        {log.entry}
+      </li>
+    ))
+  )}
+</ul>
+
             </div>
           </div>
         </div>
