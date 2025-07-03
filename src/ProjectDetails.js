@@ -206,15 +206,37 @@ function ProjectDetails() {
                 <button onClick={handleAddLog}><FaPlus /> Add Log</button>
               </div>
             <ul className="logs-list">
-  {logs.length === 0 ? (
-    <li className="log-empty">No project logs yet. Use the form above to add one.</li>
-  ) : (
-    logs.map(log => (
-      <li key={log.id} className="log-entry">
-        {log.entry}
-      </li>
-    ))
-  )}
+{logs.length === 0 ? (
+  <li className="log-empty">No project logs yet. Use the form above to add one.</li>
+) : (
+  logs.map((log) => (
+    <li key={log.id} className="log-entry">
+      {editLogId === log.id ? (
+        <>
+          <textarea
+            value={editedLogText}
+            onChange={(e) => setEditedLogText(e.target.value)}
+            className="log-textarea"
+            rows={3}
+          />
+          <div className="log-actions">
+            <button onClick={() => handleSaveLog(log.id)}><FaSave /> Save</button>
+            <button onClick={() => setEditLogId(null)}><FaTimes /> Cancel</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <span>{log.entry}</span>
+          <div className="log-icons">
+            <button onClick={() => handleEditLog(log)}><FaEdit /></button>
+            <button onClick={() => handleDeleteLog(log.id)}><FaTrash /></button>
+          </div>
+        </>
+      )}
+    </li>
+  ))
+)}
+
 </ul>
 
             </div>
