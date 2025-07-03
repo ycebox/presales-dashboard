@@ -134,22 +134,21 @@ function ProjectDetails() {
         <div className="back-link-container">
           <Link to="/" className="back-btn"><FaHome /> Back to Dashboard</Link>
         </div>
-   <div className="project-header">
               <h2 className="customer-name highlight-name">{editForm.customer_name}</h2>
-              <div className="form-actions">
-                {isEditingDetails ? (
-                  <>
-                    <button onClick={handleSaveProject}><FaSave /> Save</button>
-                    <button onClick={handleCancelEdit}><FaTimes /> Cancel</button>
-                  </>
-                ) : (
-                  <span className="edit-link" onClick={() => setIsEditingDetails(true)}><FaEdit /> Edit</span>
-                )}
-              </div>
-            </div>
-        <div className="project-layout">
+                     <div className="project-layout">
           <div className="project-left">
-         
+         <div className="project-header">
+  <div className="form-actions">
+    {isEditingDetails ? (
+      <>
+        <button onClick={handleSaveProject}><FaSave /> Save</button>
+        <button onClick={handleCancelEdit}><FaTimes /> Cancel</button>
+      </>
+    ) : (
+      <span className="edit-link" onClick={() => setIsEditingDetails(true)}><FaEdit /> Edit</span>
+    )}
+  </div>
+</div>
             <div className="section-card">
               <h3>Project Details</h3>
               <div className="edit-form">
