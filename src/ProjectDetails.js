@@ -134,10 +134,7 @@ function ProjectDetails() {
         <div className="back-link-container">
           <Link to="/" className="back-btn"><FaHome /> Back to Dashboard</Link>
         </div>
-
-        <div className="project-layout">
-          <div className="project-left">
-            <div className="project-header">
+   <div className="project-header">
               <h2 className="customer-name highlight-name">{editForm.customer_name}</h2>
               <div className="form-actions">
                 {isEditingDetails ? (
@@ -150,6 +147,9 @@ function ProjectDetails() {
                 )}
               </div>
             </div>
+        <div className="project-layout">
+          <div className="project-left">
+         
             <div className="section-card">
               <h3>Project Details</h3>
               <div className="edit-form">
