@@ -26,7 +26,7 @@ function ProjectDetails() {
   const [newLogEntry, setNewLogEntry] = useState('');
   const [showCompleted, setShowCompleted] = useState(false);
   const [editingLogId, setEditingLogId] = useState(null);
-  const [editingLogText, setEditingLogText] = useState('');
+  const [editingLogEntry, setEditingLogEntry] = useState('');
 
   const countryOptions = ["Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia", "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands", "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"];
   const salesStageOptions = ['Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery', 'PoC', 'RFI', 'RFP', 'SoW'];
@@ -60,61 +60,6 @@ function ProjectDetails() {
     setEditForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSaveProject = async () => {
-    const { error } = await supabase.from('projects').update(editForm).eq('id', id);
-    if (!error) {
-      setIsEditingDetails(false);
-      fetchProjectDetails();
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditingDetails(false);
-    setEditForm(project);
-  };
-
-  const handleTaskInput = (e) => {
-    const { name, value } = e.target;
-    setNewTask(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleEditTaskInput = (e) => {
-    const { name, value } = e.target;
-    setEditTaskForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleAddTask = async (e) => {
-    e.preventDefault();
-    if (!newTask.description.trim()) return;
-    const { error } = await supabase.from('project_tasks').insert([{ ...newTask, project_id: id }]);
-    if (!error) {
-      setNewTask({ description: '', status: 'Not Started', due_date: '', notes: '' });
-      setShowTaskModal(false);
-      fetchProjectDetails();
-    }
-  };
-
-  const handleEditTask = (task) => {
-    setEditTaskId(task.id);
-    setEditTaskForm(task);
-    setShowTaskModal(true);
-  };
-
-  const handleUpdateTask = async (e) => {
-    e.preventDefault();
-    const { error } = await supabase.from('project_tasks').update(editTaskForm).eq('id', editTaskId);
-    if (!error) {
-      setEditTaskId(null);
-      setShowTaskModal(false);
-      fetchProjectDetails();
-    }
-  };
-
-  const handleDeleteTask = async (taskId) => {
-    const { error } = await supabase.from('project_tasks').delete().eq('id', taskId);
-    if (!error) fetchProjectDetails();
-  };
-
   const handleAddLog = async () => {
     if (!newLogEntry.trim()) return;
     const { error } = await supabase.from('project_logs').insert([{ project_id: id, entry: newLogEntry }]);
@@ -126,19 +71,14 @@ function ProjectDetails() {
 
   const handleEditLog = (log) => {
     setEditingLogId(log.id);
-    setEditingLogText(log.entry);
+    setEditingLogEntry(log.entry);
   };
 
-  const handleCancelEditLog = () => {
-    setEditingLogId(null);
-    setEditingLogText('');
-  };
-
-  const handleSaveLog = async (logId) => {
-    const { error } = await supabase.from('project_logs').update({ entry: editingLogText }).eq('id', logId);
+  const handleUpdateLog = async (logId) => {
+    const { error } = await supabase.from('project_logs').update({ entry: editingLogEntry }).eq('id', logId);
     if (!error) {
       setEditingLogId(null);
-      setEditingLogText('');
+      setEditingLogEntry('');
       fetchProjectDetails();
     }
   };
@@ -147,9 +87,6 @@ function ProjectDetails() {
     const { error } = await supabase.from('project_logs').delete().eq('id', logId);
     if (!error) fetchProjectDetails();
   };
-
-  const activeTasks = tasks.filter(t => !['Completed', 'Cancelled/On-hold'].includes(t.status));
-  const completedTasks = tasks.filter(t => ['Completed', 'Cancelled/On-hold'].includes(t.status));
 
   if (loading) return <div className="loader">Loading project details...</div>;
   if (!project) return <div className="not-found">Project not found.</div>;
@@ -179,7 +116,9 @@ function ProjectDetails() {
             <div className="section-card">
               <h3>Project Details</h3>
               <div className="edit-form">
-                {/* Project detail fields here (unchanged) */}
+                <label>Country
+                  <input type="text" value={editForm.country || ''} readOnly className="readonly" />
+                </label>
               </div>
             </div>
           </div>
@@ -188,40 +127,46 @@ function ProjectDetails() {
             <div className="project-logs">
               <h3><FaBookOpen /> Project Logs</h3>
               <div className="form-actions">
-                <input type="text" placeholder="Describe progress, blockers, or decisions..." value={newLogEntry} onChange={(e) => setNewLogEntry(e.target.value)} />
+                <input
+                  type="text"
+                  placeholder="Describe progress, blockers, or decisions..."
+                  value={newLogEntry}
+                  onChange={(e) => setNewLogEntry(e.target.value)}
+                />
                 <button onClick={handleAddLog}><FaPlus /> Add Log</button>
               </div>
               <ul className="logs-list">
-                {logs.length === 0 ? (
-                  <p style={{ fontStyle: 'italic', marginTop: '1rem' }}>No project logs yet. Use the form above to add one.</p>
-                ) : (
-                  logs.map(log => (
-                    <li key={log.id} className="log-entry">
-                      {editingLogId === log.id ? (
-                        <div>
-                          <textarea
-                            rows="3"
-                            value={editingLogText}
-                            onChange={(e) => setEditingLogText(e.target.value)}
-                            style={{ width: '100%', marginBottom: '0.5rem' }}
-                          />
-                          <div className="form-actions">
-                            <button onClick={() => handleSaveLog(log.id)}><FaSave /> Save</button>
-                            <button onClick={handleCancelEditLog}><FaTimes /> Cancel</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="log-entry-content">
-                          <span>{log.entry}</span>
-                          <div className="task-actions">
-                            <button onClick={() => handleEditLog(log)}>✏️</button>
-                            <button onClick={() => handleDeleteLog(log.id)}>🗑️</button>
-                          </div>
-                        </div>
-                      )}
-                    </li>
-                  ))
+                {logs.length === 0 && (
+                  <li style={{ fontStyle: 'italic', padding: '0.75rem', color: '#64748b' }}>
+                    No project logs yet. Use the form above to add one.
+                  </li>
                 )}
+                {logs.map(log => (
+                  <li key={log.id} className="log-item">
+                    {editingLogId === log.id ? (
+                      <>
+                        <textarea
+                          rows="3"
+                          value={editingLogEntry}
+                          onChange={(e) => setEditingLogEntry(e.target.value)}
+                          style={{ width: '100%', marginBottom: '0.5rem' }}
+                        />
+                        <div className="form-actions">
+                          <button onClick={() => handleUpdateLog(log.id)}><FaSave /> Save</button>
+                          <button onClick={() => setEditingLogId(null)}><FaTimes /> Cancel</button>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{log.entry}</span>
+                        <div className="task-actions">
+                          <button onClick={() => handleEditLog(log)}>✏️</button>
+                          <button onClick={() => handleDeleteLog(log.id)}>🗑️</button>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
