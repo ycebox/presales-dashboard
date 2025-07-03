@@ -29,6 +29,7 @@ function ProjectDetails() {
   const countryOptions = ["Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia", "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands", "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"];
   const salesStageOptions = ['Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery', 'PoC', 'RFI', 'RFP', 'SoW'];
   const productOptions = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
+  
 
   useEffect(() => {
     fetchProjectDetails();
@@ -124,6 +125,30 @@ function ProjectDetails() {
 
   const activeTasks = tasks.filter(t => !['Completed', 'Cancelled/On-hold'].includes(t.status));
   const completedTasks = tasks.filter(t => ['Completed', 'Cancelled/On-hold'].includes(t.status));
+
+  const [editLogId, setEditLogId] = useState(null);
+const [editedLogText, setEditedLogText] = useState('');
+
+const handleEditLog = (log) => {
+  setEditLogId(log.id);
+  setEditedLogText(log.entry);
+};
+
+const handleSaveLog = async (logId) => {
+  const { error } = await supabase
+    .from('project_logs')
+    .update({ entry: editedLogText })
+    .eq('id', logId);
+  if (!error) {
+    setEditLogId(null);
+    fetchProjectDetails();
+  }
+};
+
+const handleDeleteLog = async (logId) => {
+  const { error } = await supabase.from('project_logs').delete().eq('id', logId);
+  if (!error) fetchProjectDetails();
+};
 
   if (loading) return <div className="loader">Loading project details...</div>;
   if (!project) return <div className="not-found">Project not found.</div>;
