@@ -41,8 +41,7 @@ body {
   flex-wrap: wrap;
 }
 
-.project-left,
-.project-middle {
+.project-left {
   flex: 1;
   min-width: 320px;
   background: white;
@@ -50,6 +49,12 @@ body {
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
+
+.project-middle {
+  flex: 1;
+  min-width: 320px;
+}
+
 
 .project-logs {
   width: 100%;
