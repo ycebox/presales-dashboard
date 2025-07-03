@@ -340,3 +340,20 @@ html, body {
 .toggle-completed-btn:hover {
   background-color: #cbd5e1;
 }
+
+.log-entry {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.log-empty {
+  font-style: italic;
+  color: #94a3b8;
+  padding: 1rem;
+}
+
