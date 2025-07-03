@@ -357,3 +357,54 @@ html, body {
   padding: 1rem;
 }
 
+.logs-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.log-entry {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  position: relative;
+}
+
+.log-icons {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.log-icons button {
+  background: none;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+}
+
+.log-icons button:hover {
+  color: #1d4ed8;
+}
+
+.log-textarea {
+  width: 100%;
+  padding: 0.6rem;
+  font-family: inherit;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  resize: vertical;
+}
+
+.log-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
