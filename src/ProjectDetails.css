@@ -53,18 +53,11 @@ body {
 .project-middle {
   flex: 1;
   min-width: 320px;
-}
-
-
-.project-logs {
-  width: 100%;
-  margin-top: 2rem;
   background: white;
   padding: 2rem;
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
-
 
 
 .project-header {
