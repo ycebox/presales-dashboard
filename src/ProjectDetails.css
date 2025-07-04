@@ -26,9 +26,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  background-color: #f8fafc;
+  background-color: #f1f5f9; 
   border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
   padding: 2rem;
 }
 
