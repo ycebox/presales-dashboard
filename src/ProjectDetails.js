@@ -162,7 +162,10 @@ const handleDeleteLog = async (logId) => {
               <h2 className="customer-name highlight-name">{editForm.customer_name}</h2>
                      <div className="project-layout">
           <div className="project-left">
-         <div className="project-header">
+         
+            <div className="section-card">
+              <h3>Project Details</h3>
+    <div className="project-header">
   <div className="form-actions">
     {isEditingDetails ? (
       <>
@@ -174,8 +177,6 @@ const handleDeleteLog = async (logId) => {
     )}
   </div>
 </div>
-            <div className="section-card">
-              <h3>Project Details</h3>
               <div className="edit-form">
                 <label>Country
                   {isEditingDetails ? (
