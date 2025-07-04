@@ -47,8 +47,9 @@ body {
   background: white;
   padding: 2rem;
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06); /* updated */
 }
+
 
 .project-middle {
   flex: 1;
@@ -56,7 +57,7 @@ body {
   background: white;
   padding: 2rem;
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06); /* updated */
 }
 
 
@@ -430,3 +431,18 @@ html, body {
   margin-bottom: 1rem;
 }
 
+.project-tasks,
+.meeting-minutes-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06); /* new if not yet present */
+}
+
+.project-left:hover,
+.project-middle:hover,
+.project-tasks:hover,
+.meeting-minutes-section:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.2s ease;
+}
