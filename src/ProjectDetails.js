@@ -8,6 +8,7 @@ import {
   FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
   FaPlus, FaTrash, FaEye, FaChevronDown, FaChevronUp
 } from 'react-icons/fa';
+import ReactMarkdown from 'react-markdown';
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -369,17 +370,16 @@ const handleDeleteLog = async (logId) => {
   <div className="modal-overlay">
     <div className="modal">
       <h3>{selectedMeetingNote.title}</h3>
-      <div style={{ 
-        whiteSpace: 'pre-wrap', 
-        lineHeight: '1.6', 
-        color: '#1e293b',
-        fontSize: '0.95rem',
-        padding: '0.5rem 0',
-        maxHeight: '60vh',
-        overflowY: 'auto'
-      }}>
-        {selectedMeetingNote.content || 'No content provided.'}
-      </div>
+  <div style={{ 
+  lineHeight: '1.6', 
+  color: '#1e293b',
+  fontSize: '0.95rem',
+  padding: '0.5rem 0',
+  maxHeight: '60vh',
+  overflowY: 'auto'
+}}>
+  <ReactMarkdown>{selectedMeetingNote.content || 'No content provided.'}</ReactMarkdown>
+</div>
       <div className="modal-actions">
         <button onClick={() => setSelectedMeetingNote(null)}><FaTimes /> Close</button>
       </div>
