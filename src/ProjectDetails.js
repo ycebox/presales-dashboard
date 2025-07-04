@@ -6,7 +6,7 @@ import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
 import {
   FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
-  FaPlus, FaTrash, FaEye, FaChevronDown, FaChevronUp
+  FaPlus, FaInfo, FaTrash, FaEye, FaChevronDown, FaChevronUp
 } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
 
@@ -165,7 +165,7 @@ const handleDeleteLog = async (logId) => {
           <div className="project-left">
          
             <div className="section-card">
-              <h3>Project Details</h3>
+            <h3 className="section-heading"><FaInfo /> Project Detail</h3>
     <div className="project-header">
   <div className="form-actions">
     {isEditingDetails ? (
