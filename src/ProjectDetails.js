@@ -372,12 +372,10 @@ const handleDeleteLog = async (logId) => {
       <h3>{selectedMeetingNote.title}</h3>
  <div
   style={{
+   <div style={{
     lineHeight: '1.6',
     color: '#1e293b',
-    fontSize: '0.95rem',
-    padding: '0.5rem 0',
-    maxHeight: '60vh',
-    overflowY: 'auto'
+    fontSize: '0.95rem'
   }}
   dangerouslySetInnerHTML={{ __html: selectedMeetingNote.content || 'No content provided.' }}
 />
