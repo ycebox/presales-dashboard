@@ -454,4 +454,13 @@ textarea:hover {
   transition: all 0.2s ease-in-out;
 }
 
+.section-heading {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
 
