@@ -370,7 +370,7 @@ const handleDeleteLog = async (logId) => {
   <div className="modal-overlay">
     <div className="modal">
       <h3>{selectedMeetingNote.title}</h3>
- <div
+</div>
   style={{
    <div style={{
     lineHeight: '1.6',
