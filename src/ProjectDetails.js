@@ -227,8 +227,7 @@ const handleDeleteLog = async (logId) => {
 
           <div className="project-middle">
             <div className="project-logs">
-              <hr className="section-divider" />
-                    <h3><FaBookOpen /> Project Logs</h3>
+                                 <h3><FaBookOpen /> Project Logs</h3>
               <div className="form-actions">
                 <input type="text" placeholder="New log entry..." value={newLogEntry} onChange={(e) => setNewLogEntry(e.target.value)} />
                 <button onClick={handleAddLog}><FaPlus /> Add Log</button>
