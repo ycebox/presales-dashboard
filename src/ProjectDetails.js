@@ -365,6 +365,20 @@ const handleDeleteLog = async (logId) => {
           )}
         </div>
 
+{selectedMeetingNote && (
+  <div className="modal-overlay">
+    <div className="modal">
+      <h3>{selectedMeetingNote.title}</h3>
+      <p style={{ whiteSpace: 'pre-wrap', marginBottom: '1rem' }}>
+        {selectedMeetingNote.content || 'No content provided.'}
+      </p>
+      <div className="modal-actions">
+        <button onClick={() => setSelectedMeetingNote(null)}><FaTimes /> Close</button>
+      </div>
+    </div>
+  </div>
+)}
+
         {showTaskModal && (
           <div className="modal-overlay">
             <div className="modal">
