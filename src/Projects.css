@@ -251,3 +251,15 @@
 .delete-btn:hover {
   color: #be123c;
 }
+
+.logs-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.logs-list li {
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
