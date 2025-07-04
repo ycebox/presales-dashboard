@@ -170,8 +170,12 @@ const handleDeleteLog = async (logId) => {
   <div className="form-actions">
     {isEditingDetails ? (
       <>
-        <button onClick={handleSaveProject}><FaSave /> Save</button>
-        <button onClick={handleCancelEdit}><FaTimes /> Cancel</button>
+     //   <button onClick={handleSaveProject}><FaSave /> Save</button>
+    <button className="primary" onClick={handleSaveProject}>
+
+    //    <button onClick={handleCancelEdit}><FaTimes /> Cancel</button>
+    <button className="secondary" onClick={handleCancelEdit}>
+
       </>
     ) : (
       <span className="edit-link" onClick={() => setIsEditingDetails(true)}><FaEdit /> Edit</span>
@@ -231,7 +235,9 @@ const handleDeleteLog = async (logId) => {
                                 <h3 className="section-heading"><FaBookOpen /> Project Logs</h3>
               <div className="form-actions">
                 <input type="text" placeholder="New log entry..." value={newLogEntry} onChange={(e) => setNewLogEntry(e.target.value)} />
-                <button onClick={handleAddLog}><FaPlus /> Add Log</button>
+            //    <button onClick={handleAddLog}><FaPlus /> Add Log</button>
+                    <button onClick={handleAddLog} className="primary">
+
               </div>
             <ul className="logs-list">
 {logs.length === 0 ? (
@@ -248,8 +254,10 @@ const handleDeleteLog = async (logId) => {
             rows={3}
           />
           <div className="log-actions">
-            <button onClick={() => handleSaveLog(log.id)}><FaSave /> Save</button>
-            <button onClick={() => setEditLogId(null)}><FaTimes /> Cancel</button>
+      //      <button onClick={() => handleSaveLog(log.id)}><FaSave /> Save</button>
+       //    <button onClick={() => setEditLogId(null)}><FaTimes /> Cancel</button>
+  <button onClick={() => handleSaveLog(log.id)} className="primary">
+<button onClick={() => setEditLogId(null)} className="secondary">
           </div>
         </>
       ) : (
