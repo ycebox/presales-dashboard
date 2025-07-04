@@ -227,7 +227,8 @@ const handleDeleteLog = async (logId) => {
 
           <div className="project-middle">
             <div className="project-logs">
-              <h3><FaBookOpen /> Project Logs</h3>
+              <hr className="section-divider" />
+                    <h3><FaBookOpen /> Project Logs</h3>
               <div className="form-actions">
                 <input type="text" placeholder="New log entry..." value={newLogEntry} onChange={(e) => setNewLogEntry(e.target.value)} />
                 <button onClick={handleAddLog}><FaPlus /> Add Log</button>
@@ -271,6 +272,7 @@ const handleDeleteLog = async (logId) => {
         </div>
 
         <div className="project-tasks">
+  <hr className="section-divider" />
           <h3><FaTasks /> Tasks</h3>
           <div className="form-actions">
             <button onClick={() => setShowTaskModal(true)}><FaPlus /> Add Task</button>
@@ -349,6 +351,7 @@ const handleDeleteLog = async (logId) => {
         </div>
 
         <div className="meeting-minutes-section">
+              <hr className="section-divider" />
           <h3><FaBookOpen /> Linked Meeting Minutes</h3>
           {linkedMeetingMinutes.length === 0 ? (
             <p style={{ fontStyle: 'italic' }}>No meeting minutes linked to this project.</p>
