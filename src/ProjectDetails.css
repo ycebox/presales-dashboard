@@ -481,3 +481,23 @@ textarea:hover {
   }
 }
 
+/* ✅ Patch 7: Button Variants */
+button.primary {
+  background-color: #2563eb;
+  color: white;
+}
+
+button.primary:hover {
+  background-color: #1d4ed8;
+}
+
+button.secondary {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+}
+
+button.secondary:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
