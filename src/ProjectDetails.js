@@ -164,7 +164,7 @@ const handleDeleteLog = async (logId) => {
                      <div className="project-layout">
           <div className="project-left">
          
-            <div className="section-card">
+            <div className="section-card fade-in-section">
             <h3 className="section-heading"><FaInfo /> Project Detail</h3>
     <div className="project-header">
   <div className="form-actions">
@@ -226,7 +226,8 @@ const handleDeleteLog = async (logId) => {
           </div>
 
           <div className="project-middle">
-            <div className="project-logs">
+            <div className="project-logs fade-in-section">
+
                                 <h3 className="section-heading"><FaBookOpen /> Project Logs</h3>
               <div className="form-actions">
                 <input type="text" placeholder="New log entry..." value={newLogEntry} onChange={(e) => setNewLogEntry(e.target.value)} />
@@ -270,7 +271,8 @@ const handleDeleteLog = async (logId) => {
           </div>
         </div>
 
-        <div className="project-tasks">
+    <div className="project-tasks fade-in-section">
+
   <hr className="section-divider" />
          <h3 className="section-heading"><FaTasks /> Tasks</h3>
           <div className="form-actions">
@@ -349,7 +351,8 @@ const handleDeleteLog = async (logId) => {
           </div>
         </div>
 
-        <div className="meeting-minutes-section">
+   <div className="meeting-minutes-section fade-in-section">
+
               <hr className="section-divider" />
          <h3 className="section-heading"><FaBookOpen /> Linked Meeting Minutes</h3>
           {linkedMeetingMinutes.length === 0 ? (
