@@ -446,3 +446,12 @@ html, body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   transition: box-shadow 0.2s ease;
 }
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: #93c5fd; /* light blue border */
+  background-color: #f0f9ff; /* subtle blue background */
+  transition: all 0.2s ease-in-out;
+}
+
+
