@@ -141,44 +141,74 @@ function Projects() {
 
   const handleAddCustomer = async (e) => {
     e.preventDefault();
-    const { data, error } = await supabase.from('customers').insert([newCustomer]).select();
     
-    if (!error && data) {
-      setShowCustomerModal(false);
-      setNewCustomer({
-        customer_name: '',
-        account_manager: '',
-        country: '',
-        industry_vertical: '',
-        customer_type: 'New',
-        year_first_closed: '',
-        company_size: '',
-        annual_revenue: '',
-        technical_complexity: 'Medium',
-        relationship_strength: 'Medium',
-        health_score: 7,
-        key_stakeholders: [],
-        competitors: [],
-        notes: ''
-      });
+    try {
+      // Debug: Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current user:', user);
       
-      // Refresh customers list without affecting projects
-      await fetchCustomers();
+      if (!user) {
+        alert('You must be logged in to add customers.');
+        return;
+      }
       
-      // Auto-select the new customer in project form
-      const newCustomerId = data[0].id;
-      setNewProject((prev) => ({
-        ...prev,
-        customer_id: newCustomerId.toString(),
-        customer_name: data[0].customer_name,
-        country: data[0].country,
-        account_manager: data[0].account_manager
-      }));
+      // Debug: Log the data being inserted
+      console.log('Inserting customer data:', newCustomer);
       
-      alert('Customer added successfully!');
-    } else {
-      console.error('Error adding customer:', error.message);
-      alert('Error adding customer. Please try again.');
+      const { data, error } = await supabase.from('customers').insert([newCustomer]).select();
+      
+      if (error) {
+        console.error('Full error object:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        console.error('Error details:', error.details);
+        
+        // Handle specific RLS error
+        if (error.message.includes('row-level security policy')) {
+          alert('Permission error: Unable to add customer. Please check with your administrator about database permissions.');
+        } else {
+          alert(`Error adding customer: ${error.message}`);
+        }
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        setShowCustomerModal(false);
+        setNewCustomer({
+          customer_name: '',
+          account_manager: '',
+          country: '',
+          industry_vertical: '',
+          customer_type: 'New',
+          year_first_closed: '',
+          company_size: '',
+          annual_revenue: '',
+          technical_complexity: 'Medium',
+          relationship_strength: 'Medium',
+          health_score: 7,
+          key_stakeholders: [],
+          competitors: [],
+          notes: ''
+        });
+        
+        // Refresh customers list without affecting projects
+        await fetchCustomers();
+        
+        // Auto-select the new customer in project form
+        const newCustomerId = data[0].id;
+        setNewProject((prev) => ({
+          ...prev,
+          customer_id: newCustomerId.toString(),
+          customer_name: data[0].customer_name,
+          country: data[0].country,
+          account_manager: data[0].account_manager
+        }));
+        
+        alert('Customer added successfully!');
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      alert('An unexpected error occurred. Please try again.');
     }
   };
 
