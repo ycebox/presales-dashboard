@@ -1,24 +1,22 @@
-// CustomerDetails.js
+// CustomerDetails.js - Fixed version without projects relationship
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './CustomerDetails.css';
 import {
-  FaHome, FaUsers, FaBriefcase, FaEdit, FaPlus
+  FaHome, FaUsers, FaEdit
 } from 'react-icons/fa';
 
 function CustomerDetails() {
   const { customerId } = useParams();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
-  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (customerId) {
       fetchCustomerDetails();
-      fetchCustomerProjects();
     }
   }, [customerId]);
 
@@ -41,71 +39,9 @@ function CustomerDetails() {
     }
   };
 
-  const fetchCustomerProjects = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('customer_id', customerId)
-        .eq('is_archived', false)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setProjects(data || []);
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-      setError('Failed to load customer projects');
-    }
-  };
-
-  const handleProjectClick = (projectId) => {
-    navigate(`/project/${projectId}`);
-  };
-
   const handleEditCustomer = () => {
-    // Navigate to customer edit page or open edit modal
     console.log('Edit customer:', customerId);
-  };
-
-  const handleAddProject = () => {
-    // Navigate to add project page with customer pre-selected
-    navigate(`/projects/new?customer_id=${customerId}`);
-  };
-
-  const getProjectTypeStyle = (type) => {
-    const baseStyle = "project-type-badge";
-    switch (type?.toLowerCase().replace(/\s+/g, '-')) {
-      case 'new-opportunity':
-        return `${baseStyle} type-new`;
-      case 'upsell':
-        return `${baseStyle} type-upsell`;
-      case 'change-request':
-        return `${baseStyle} type-change`;
-      case 'professional-services':
-        return `${baseStyle} type-services`;
-      default:
-        return `${baseStyle} type-default`;
-    }
-  };
-
-  const getSalesStageStyle = (stage) => {
-    const baseStyle = "sales-stage-badge";
-    switch (stage?.toLowerCase().replace(/\s+/g, '-')) {
-      case 'discovery':
-        return `${baseStyle} stage-discovery`;
-      case 'demo':
-        return `${baseStyle} stage-demo`;
-      case 'qualification':
-        return `${baseStyle} stage-qualification`;
-      case 'proposal':
-        return `${baseStyle} stage-proposal`;
-      case 'closed-won':
-        return `${baseStyle} stage-won`;
-      case 'closed-lost':
-        return `${baseStyle} stage-lost`;
-      default:
-        return `${baseStyle} stage-default`;
-    }
+    alert('Edit customer functionality coming soon!');
   };
 
   const getHealthScoreColor = (score) => {
@@ -172,14 +108,6 @@ function CustomerDetails() {
             <span className="health-text">
               Health: {customer.health_score || 'N/A'}/10
             </span>
-          </div>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="tab-navigation">
-          <div className="tab active">
-            <FaUsers />
-            Customer Overview
           </div>
         </div>
 
@@ -270,6 +198,12 @@ function CustomerDetails() {
                   )}
                 </div>
               </div>
+              <div className="info-field">
+                <label>Notes</label>
+                <div className="field-value">
+                  {customer.notes || 'No notes available'}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -289,57 +223,27 @@ function CustomerDetails() {
                   {customer.relationship_strength || 'Medium'}
                 </div>
               </div>
+              <div className="assessment-item">
+                <span className="assessment-label">Health Score</span>
+                <div className="assessment-value" style={{ color: getHealthScoreColor(customer.health_score) }}>
+                  {customer.health_score || 'N/A'}/10
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Active Projects Section */}
+        {/* Future Projects Section - Commented out until relationship is fixed */}
+        {/* 
         <div className="section-card">
           <div className="section-header">
-            <h3>
-              <FaBriefcase /> Active Projects
-            </h3>
-            <button onClick={handleAddProject} className="add-btn">
-              <FaPlus /> New Project
-            </button>
-          </div>
-
-          <div className="projects-list">
-            {projects.length > 0 ? (
-              projects.map((project) => (
-                <div key={project.id} className={`project-item ${project.is_current ? 'current-project' : ''}`}>
-                  <div className="project-main">
-                    <button
-                      onClick={() => handleProjectClick(project.id)}
-                      className="project-name-btn"
-                    >
-                      {project.customer_name || project.name}
-                    </button>
-                    {project.is_current && (
-                      <span className="current-badge">CURRENT</span>
-                    )}
-                  </div>
-
-                  <div className="project-badges">
-                    <span className={getProjectTypeStyle(project.project_type)}>
-                      {project.project_type || 'New Opportunity'}
-                    </span>
-                    <span className={getSalesStageStyle(project.sales_stage)}>
-                      {project.sales_stage || 'Discovery'}
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="no-projects">
-                <p>No active projects found for this customer.</p>
-                <button onClick={handleAddProject} className="add-first-project-btn">
-                  <FaPlus /> Add First Project
-                </button>
-              </div>
-            )}
+            <h3>Projects</h3>
+            <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+              Projects functionality coming soon...
+            </div>
           </div>
         </div>
+        */}
       </div>
     </div>
   );
