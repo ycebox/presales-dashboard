@@ -1,27 +1,31 @@
 /* ✅ Modal Backdrop (Popup Overlay Fix) */
 .modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(30, 41, 59, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: rgba(30, 41, 59, 0.5) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+  pointer-events: auto !important;
 }
 
 /* ✅ Modal Content Box */
 .modal-content {
-  background-color: #f8fafc;
-  padding: 2rem;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  background-color: #f8fafc !important;
+  padding: 2rem !important;
+  border-radius: 12px !important;
+  width: 100% !important;
+  max-width: 600px !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2) !important;
+  position: relative !important;
+  z-index: 10000 !important;
+  pointer-events: auto !important;
 }
 
 /* ✅ Modal Header */
@@ -246,6 +250,13 @@
   box-sizing: border-box;
   max-width: 1280px;
   margin: 0 auto;
+  position: relative;
+}
+
+/* ✅ Ensure no overflow issues with parent containers */
+.page-wrapper,
+.project-container {
+  overflow: visible !important;
 }
 
 /* ✅ Header Row */
