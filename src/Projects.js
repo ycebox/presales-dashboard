@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { Link } from 'react-router-dom';
-import { FaFolderOpen, FaPlus, FaTrash } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom'; // ✅ Added useNavigate
+import { FaFolderOpen, FaPlus, FaTrash, FaUser } from 'react-icons/fa'; // ✅ Added FaUser
 import './Projects.css';
 
 function Projects() {
+  const navigate = useNavigate(); // ✅ Navigation hook
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -32,9 +33,27 @@ function Projects() {
 
   const fetchProjects = async () => {
     setLoading(true);
-    let query = supabase.from('projects').select('*');
+    let query = supabase.from('projects').select(`
+      *,
+      customers!inner(
+        id,
+        customer_name,
+        account_manager,
+        country
+      )
+    `); // ✅ Join with customers table
+    
     Object.entries(filters).forEach(([key, value]) => {
-      if (value) query = query.eq(key, value);
+      if (value) {
+        // Handle customer-related filters
+        if (key === 'account_manager') {
+          query = query.eq('customers.account_manager', value);
+        } else if (key === 'country') {
+          query = query.eq('customers.country', value);
+        } else {
+          query = query.eq(key, value);
+        }
+      }
     });
 
     const { data, error } = await query.order('customer_name', { ascending: true });
@@ -85,6 +104,16 @@ function Projects() {
     else console.error('Delete error:', error.message);
   };
 
+  // ✅ New function to handle customer click
+  const handleCustomerClick = (customerId, customerName) => {
+    if (customerId) {
+      navigate(`/customer/${customerId}`);
+    } else {
+      // If no customer ID, could create customer first or show message
+      console.log('No customer ID found for:', customerName);
+    }
+  };
+
   const asiaPacificCountries = [
     "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
     "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
@@ -123,7 +152,7 @@ function Projects() {
           Account Manager
           <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
             <option value="">All AMs</option>
-            {[...new Set(projects.map(p => p.account_manager))].sort().map((c, i) => (
+            {[...new Set(projects.map(p => p.customers?.account_manager).filter(Boolean))].sort().map((c, i) => (
               <option key={i} value={c}>{c}</option>
             ))}
           </select>
@@ -168,12 +197,25 @@ function Projects() {
                 {projects.map((project) => (
                   <tr key={project.id} id={`project-${project.id}`}>
                     <td>
-                      <Link to={`/project/${project.id}`} className="project-link">
-                        {project.customer_name}
-                      </Link>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {/* ✅ Clickable customer name */}
+                        <button
+                          onClick={() => handleCustomerClick(project.customers?.id, project.customers?.customer_name || project.customer_name)}
+                          className="customer-link-btn"
+                          title="View customer details"
+                        >
+                          <FaUser size={12} />
+                          {project.customers?.customer_name || project.customer_name}
+                        </button>
+                        <span className="project-divider">•</span>
+                        {/* ✅ Project link */}
+                        <Link to={`/project/${project.id}`} className="project-link">
+                          {project.name || 'Project'}
+                        </Link>
+                      </div>
                     </td>
-                    <td>{project.country}</td>
-                    <td>{project.account_manager}</td>
+                    <td>{project.customers?.country || project.country}</td>
+                    <td>{project.customers?.account_manager || project.account_manager}</td>
                     <td>{project.sales_stage}</td>
                     <td>{project.product}</td>
                     <td style={{ textAlign: 'center' }}>
