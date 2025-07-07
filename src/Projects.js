@@ -242,366 +242,113 @@ function Projects() {
   ];
 
   return (
-    <section className="projects-wrapper">
-      <div className="projects-header-row">
-        <h2 className="projects-header">
-          <FaFolderOpen style={{ marginRight: '8px' }} /> Presales Projects
-        </h2>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button className="add-btn" style={{ backgroundColor: '#10b981' }} onClick={() => setShowCustomerModal(true)}>
-            <FaUserPlus /> Add Customer
-          </button>
-          <button className="add-btn" style={{ backgroundColor: '#a6b2d9' }} onClick={() => setShowProjectModal(true)}>
-            <FaPlus /> Add Project
-          </button>
+    <>
+      <section className="projects-wrapper">
+        <div className="projects-header-row">
+          <h2 className="projects-header">
+            <FaFolderOpen style={{ marginRight: '8px' }} /> Presales Projects
+          </h2>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="add-btn" style={{ backgroundColor: '#10b981' }} onClick={() => setShowCustomerModal(true)}>
+              <FaUserPlus /> Add Customer
+            </button>
+            <button className="add-btn" style={{ backgroundColor: '#a6b2d9' }} onClick={() => setShowProjectModal(true)}>
+              <FaPlus /> Add Project
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="filters updated-filters">
-        <label>
-          Country
-          <select name="country" value={filters.country} onChange={handleFilterChange}>
-            <option value="">All Countries</option>
-            {asiaPacificCountries.map((c, i) => (
-              <option key={i} value={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Account Manager
-          <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
-            <option value="">All AMs</option>
-            {[...new Set(projects.map(p => p.customers?.account_manager).filter(Boolean))].sort().map((c, i) => (
-              <option key={i} value={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Sales Stage
-          <select name="sales_stage" value={filters.sales_stage} onChange={handleFilterChange}>
-            <option value="">All Stages</option>
-            {salesStages.map((s, i) => (
-              <option key={i} value={s}>{s}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Product
-          <select name="product" value={filters.product} onChange={handleFilterChange}>
-            <option value="">All Products</option>
-            {products.map((p, i) => (
-              <option key={i} value={p}>{p}</option>
-            ))}
-          </select>
-        </label>
-      </div>
+        <div className="filters updated-filters">
+          <label>
+            Country
+            <select name="country" value={filters.country} onChange={handleFilterChange}>
+              <option value="">All Countries</option>
+              {asiaPacificCountries.map((c, i) => (
+                <option key={i} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Account Manager
+            <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
+              <option value="">All AMs</option>
+              {[...new Set(projects.map(p => p.customers?.account_manager).filter(Boolean))].sort().map((c, i) => (
+                <option key={i} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Sales Stage
+            <select name="sales_stage" value={filters.sales_stage} onChange={handleFilterChange}>
+              <option value="">All Stages</option>
+              {salesStages.map((s, i) => (
+                <option key={i} value={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Product
+            <select name="product" value={filters.product} onChange={handleFilterChange}>
+              <option value="">All Products</option>
+              {products.map((p, i) => (
+                <option key={i} value={p}>{p}</option>
+              ))}
+            </select>
+          </label>
+        </div>
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <div className="table-scroll-wrapper">
-          <div className="table-container">
-            <table className="modern-table project-table">
-              <thead>
-                <tr>
-                  <th>Customer</th>
-                  <th>Country</th>
-                  <th>Account Manager</th>
-                  <th>Sales Stage</th>
-                  <th>Product</th>
-                  <th style={{ textAlign: 'center' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {projects.map((project) => (
-                  <tr key={project.id} id={`project-${project.id}`}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <button
-                          onClick={() => handleCustomerClick(project.customers?.id, project.customers?.customer_name || project.customer_name)}
-                          className="customer-link-btn"
-                          title="View customer details"
-                        >
-                          <FaUser size={12} />
-                          {project.customers?.customer_name || project.customer_name}
-                        </button>
-                        <span className="project-divider">•</span>
-                        <Link to={`/project/${project.id}`} className="project-link">
-                          {project.name || 'Project'}
-                        </Link>
-                      </div>
-                    </td>
-                    <td>{project.customers?.country || project.country}</td>
-                    <td>{project.customers?.account_manager || project.account_manager}</td>
-                    <td>{project.sales_stage}</td>
-                    <td>{project.product}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button className="delete-btn" onClick={() => handleDeleteProject(project.id)}>
-                        <FaTrash />
-                      </button>
-                    </td>
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <div className="table-scroll-wrapper">
+            <div className="table-container">
+              <table className="modern-table project-table">
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Country</th>
+                    <th>Account Manager</th>
+                    <th>Sales Stage</th>
+                    <th>Product</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {projects.map((project) => (
+                    <tr key={project.id} id={`project-${project.id}`}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button
+                            onClick={() => handleCustomerClick(project.customers?.id, project.customers?.customer_name || project.customer_name)}
+                            className="customer-link-btn"
+                            title="View customer details"
+                          >
+                            <FaUser size={12} />
+                            {project.customers?.customer_name || project.customer_name}
+                          </button>
+                          <span className="project-divider">•</span>
+                          <Link to={`/project/${project.id}`} className="project-link">
+                            {project.name || 'Project'}
+                          </Link>
+                        </div>
+                      </td>
+                      <td>{project.customers?.country || project.country}</td>
+                      <td>{project.customers?.account_manager || project.account_manager}</td>
+                      <td>{project.sales_stage}</td>
+                      <td>{project.product}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button className="delete-btn" onClick={() => handleDeleteProject(project.id)}>
+                          <FaTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Add Customer Modal */}
-      {showCustomerModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content" style={{ maxWidth: '800px' }}>
-            <h3>Add New Customer</h3>
-            <form onSubmit={handleAddCustomer} className="modern-form">
-              <label>
-                Customer Name *
-                <input 
-                  name="customer_name" 
-                  value={newCustomer.customer_name} 
-                  onChange={handleNewCustomerChange} 
-                  required 
-                />
-              </label>
-              
-              <label>
-                Account Manager *
-                <input 
-                  name="account_manager" 
-                  value={newCustomer.account_manager} 
-                  onChange={handleNewCustomerChange} 
-                  required 
-                />
-              </label>
-              
-              <label>
-                Country *
-                <select 
-                  name="country" 
-                  value={newCustomer.country} 
-                  onChange={handleNewCustomerChange} 
-                  required
-                >
-                  <option value="">Select Country</option>
-                  {asiaPacificCountries.map((c, i) => (
-                    <option key={i} value={c}>{c}</option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Industry Vertical
-                <select 
-                  name="industry_vertical" 
-                  value={newCustomer.industry_vertical} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="">Select Industry</option>
-                  {industryVerticals.map((industry, i) => (
-                    <option key={i} value={industry}>{industry}</option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Customer Type
-                <select 
-                  name="customer_type" 
-                  value={newCustomer.customer_type} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="New">New</option>
-                  <option value="Existing">Existing</option>
-                </select>
-              </label>
-              
-              <label>
-                Year First Closed
-                <input 
-                  name="year_first_closed" 
-                  type="number"
-                  min="2000"
-                  max={new Date().getFullYear()}
-                  value={newCustomer.year_first_closed} 
-                  onChange={handleNewCustomerChange}
-                  placeholder="e.g., 2022"
-                />
-              </label>
-              
-              <label>
-                Company Size
-                <select 
-                  name="company_size" 
-                  value={newCustomer.company_size} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="">Select Size</option>
-                  {companySizes.map((size, i) => (
-                    <option key={i} value={size}>{size}</option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Annual Revenue
-                <select 
-                  name="annual_revenue" 
-                  value={newCustomer.annual_revenue} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="">Select Revenue Range</option>
-                  {revenueRanges.map((range, i) => (
-                    <option key={i} value={range}>{range}</option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Technical Complexity
-                <select 
-                  name="technical_complexity" 
-                  value={newCustomer.technical_complexity} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                </select>
-              </label>
-              
-              <label>
-                Relationship Strength
-                <select 
-                  name="relationship_strength" 
-                  value={newCustomer.relationship_strength} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="Weak">Weak</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Strong">Strong</option>
-                </select>
-              </label>
-              
-              <label>
-                Health Score (1-10)
-                <input 
-                  name="health_score" 
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={newCustomer.health_score} 
-                  onChange={handleNewCustomerChange}
-                />
-              </label>
-              
-              <label style={{ gridColumn: 'span 2' }}>
-                Key Stakeholders (comma-separated)
-                <input 
-                  name="key_stakeholders" 
-                  value={newCustomer.key_stakeholders.join(', ')} 
-                  onChange={handleNewCustomerChange}
-                  placeholder="John Smith, Jane Doe, etc."
-                />
-              </label>
-              
-              <label style={{ gridColumn: 'span 2' }}>
-                Main Competitors (comma-separated)
-                <input 
-                  name="competitors" 
-                  value={newCustomer.competitors.join(', ')} 
-                  onChange={handleNewCustomerChange}
-                  placeholder="Company A, Company B, etc."
-                />
-              </label>
-              
-              <label style={{ gridColumn: 'span 2' }}>
-                Notes
-                <textarea 
-                  name="notes" 
-                  value={newCustomer.notes} 
-                  onChange={handleNewCustomerChange}
-                  rows="3"
-                  style={{ resize: 'vertical' }}
-                />
-              </label>
-              
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowCustomerModal(false)}>Cancel</button>
-                <button type="submit">Save Customer</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Add Project Modal */}
-      {showProjectModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content">
-            <h3>Add New Project</h3>
-            <form onSubmit={handleAddProject} className="modern-form">
-              <label style={{ gridColumn: 'span 2' }}>
-                Customer
-                <select 
-                  name="customer_id" 
-                  value={newProject.customer_id} 
-                  onChange={handleNewProjectChange} 
-                  required
-                >
-                  <option value="">Select Customer</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.customer_name} ({customer.country})
-                    </option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Sales Stage
-                <select name="sales_stage" value={newProject.sales_stage} onChange={handleNewProjectChange} required>
-                  <option value="">Select Stage</option>
-                  {salesStages.map((s, i) => (
-                    <option key={i} value={s}>{s}</option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Product
-                <select name="product" value={newProject.product} onChange={handleNewProjectChange} required>
-                  <option value="">Select Product</option>
-                  {products.map((p, i) => (
-                    <option key={i} value={p}>{p}</option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Deal Value
-                <input name="deal_value" type="number" value={newProject.deal_value || ''} onChange={handleNewProjectChange} />
-              </label>
-              
-              <label>
-                Backup Presales
-                <input name="backup_presales" value={newProject.backup_presales || ''} onChange={handleNewProjectChange} />
-              </label>
-              
-              <label style={{ gridColumn: 'span 2' }}>
-                Remarks
-                <input name="remarks" value={newProject.remarks || ''} onChange={handleNewProjectChange} />
-              </label>
-           
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowProjectModal(false)}>Cancel</button>
-                <button type="submit">Save</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </section>
-  );
+        )}
+      </section>
 }
 
 export default Projects;
