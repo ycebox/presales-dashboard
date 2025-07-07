@@ -1,0 +1,546 @@
+/* CustomerDetails.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.page-wrapper {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background-color: #f1f5f9;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+}
+
+.page-content {
+  width: 70vw;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+/* Back Button */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #e2e8f0;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  color: #1e293b;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-decoration: none;
+}
+
+.back-btn:hover {
+  background-color: #cbd5e1;
+}
+
+/* Customer Header */
+.customer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.customer-name {
+  font-size: 2rem;
+  color: #1d4ed8;
+  margin: 0;
+  font-weight: 700;
+}
+
+.health-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.health-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.health-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Tab Navigation */
+.tab-navigation {
+  background-color: white;
+  border-radius: 12px;
+  padding: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1rem;
+}
+
+.tab {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.tab.active {
+  background-color: #2563eb;
+  color: white;
+}
+
+/* Section Cards */
+.section-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.section-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.section-header h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* Buttons */
+.edit-btn, .add-btn {
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s ease;
+}
+
+.edit-btn:hover {
+  background-color: #4b5563;
+}
+
+.add-btn {
+  background-color: #10b981;
+}
+
+.add-btn:hover {
+  background-color: #059669;
+}
+
+/* Customer Information Grid */
+.customer-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.info-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.info-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-field label {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.field-value {
+  font-size: 1rem;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+/* Customer Type Styling */
+.existing-customer {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.new-customer {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.year-info {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 400;
+}
+
+/* Complexity and Relationship Classes */
+.complexity-high, .relationship-weak {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.complexity-medium, .relationship-medium {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.complexity-low, .relationship-strong {
+  color: #10b981;
+  font-weight: 600;
+}
+
+/* Stakeholders and Competitors */
+.stakeholders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stakeholder-item {
+  font-size: 0.85rem;
+  color: #1e293b;
+  padding: 0.15rem 0;
+}
+
+.competitors-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.competitor-tag {
+  background-color: #fee2e2;
+  color: #dc2626;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.no-data {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Assessment Summary */
+.assessment-summary {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.assessment-summary h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.75rem 0;
+}
+
+.assessment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.assessment-item {
+  text-align: center;
+}
+
+.assessment-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.assessment-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Projects List */
+.projects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.project-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.project-item:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.project-item.current-project {
+  border: 2px solid #3b82f6;
+  background-color: #f0f9ff;
+}
+
+.project-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.project-name-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.project-name-btn:hover {
+  color: #1d4ed8;
+}
+
+.current-project .project-name-btn {
+  color: #1e40af;
+}
+
+.current-badge {
+  background-color: #3b82f6;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.project-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Project Type Badges */
+.project-type-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.type-new {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.type-upsell {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.type-change {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.type-services {
+  background-color: #f3e8ff;
+  color: #7c3aed;
+}
+
+.type-default {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+/* Sales Stage Badges */
+.sales-stage-badge {
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+  text-transform: capitalize;
+}
+
+.stage-discovery {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.stage-demo {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.stage-qualification {
+  background-color: #f3e8ff;
+  color: #7c3aed;
+}
+
+.stage-proposal {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.stage-won {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.stage-lost {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.stage-default {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+/* No Projects State */
+.no-projects {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+}
+
+.no-projects p {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.add-first-project-btn {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s ease;
+}
+
+.add-first-project-btn:hover {
+  background-color: #059669;
+}
+
+/* Loading and Error States */
+.loading-state, .error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+}
+
+.loading-state {
+  font-size: 1.2rem;
+  color: #64748b;
+}
+
+.error-state {
+  color: #dc2626;
+}
+
+.error-state p {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .page-content {
+    width: 95%;
+    padding: 1rem;
+  }
+  
+  .customer-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .customer-name {
+    font-size: 1.5rem;
+  }
+  
+  .customer-info-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .project-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .project-badges {
+    align-self: flex-end;
+  }
+  
+  .assessment-grid {
+    grid-template-columns: 1fr;
+  }
+}
