@@ -4,7 +4,9 @@ import Projects from './Projects';
 import TodayTasks from './TodayTasks';
 import TaskSummaryDashboard from './TaskSummaryDashboard';
 import ProjectDetails from './ProjectDetails';
-import MeetingMinutes from './MeetingMinutes'; // ✅ Import restored
+import CustomerDetails from './CustomerDetails'; // ✅ New import
+import MeetingMinutes from './MeetingMinutes';
+import './App.css';
 
 function App() {
   return (
@@ -16,6 +18,7 @@ function App() {
           </h1>
 
           <Routes>
+            {/* Main Dashboard Route */}
             <Route
               path="/"
               element={
@@ -43,7 +46,7 @@ function App() {
                       <TodayTasks />
                     </div>
                     <div className="section-card">
-                      <MeetingMinutes /> {/* ✅ Re-added below TodayTasks */}
+                      <MeetingMinutes />
                     </div>
                   </div>
 
@@ -62,9 +65,16 @@ function App() {
                 </div>
               }
             />
+            
+            {/* Individual Project Details */}
             <Route path="/project/:id" element={<ProjectDetails />} />
-            <Route path="/meeting-minutes" element={<MeetingMinutes />} /> {/* ✅ Handles direct nav to full list */}
-            <Route path="/meeting-minutes/*" element={<MeetingMinutes />} /> {/* ✅ Handles query string or unknown subpath */}
+            
+            {/* ✅ New Customer Details Route */}
+            <Route path="/customer/:customerId" element={<CustomerDetails />} />
+            
+            {/* Meeting Minutes Routes */}
+            <Route path="/meeting-minutes" element={<MeetingMinutes />} />
+            <Route path="/meeting-minutes/*" element={<MeetingMinutes />} />
           </Routes>
         </div>
       </div>
