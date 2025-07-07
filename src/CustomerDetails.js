@@ -1,22 +1,141 @@
-// CustomerDetails.js - Fixed version without projects relationship
+// CustomerDetails.js - Updated with projects functionality
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './CustomerDetails.css';
 import {
-  FaHome, FaUsers, FaEdit
+  FaHome, FaUsers, FaEdit, FaPlus, FaBriefcase, FaTrash
 } from 'react-icons/fa';
+
+function ProjectModal({ isOpen, onClose, onSave, customerId, customerName }) {
+  const [newProject, setNewProject] = useState({
+    customer_id: customerId,
+    customer_name: customerName,
+    sales_stage: '',
+    product: '',
+    deal_value: '',
+    backup_presales: '',
+    remarks: '',
+    is_archived: false
+  });
+
+  const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
+  const salesStages = [
+    'Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery',
+    'PoC', 'RFI', 'RFP', 'SoW'
+  ].sort();
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setNewProject(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const { data, error } = await supabase.from('projects').insert([newProject]).select();
+      if (error) throw error;
+      
+      onSave(data[0]);
+      setNewProject({
+        customer_id: customerId,
+        customer_name: customerName,
+        sales_stage: '',
+        product: '',
+        deal_value: '',
+        backup_presales: '',
+        remarks: '',
+        is_archived: false
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error adding project:', error);
+      alert('Error adding project: ' + error.message);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <h3>Add New Project for {customerName}</h3>
+        <form onSubmit={handleSubmit} className="modern-form">
+          <label>
+            Sales Stage *
+            <select name="sales_stage" value={newProject.sales_stage} onChange={handleChange} required>
+              <option value="">Select Stage</option>
+              {salesStages.map((stage, i) => (
+                <option key={i} value={stage}>{stage}</option>
+              ))}
+            </select>
+          </label>
+          
+          <label>
+            Product *
+            <select name="product" value={newProject.product} onChange={handleChange} required>
+              <option value="">Select Product</option>
+              {products.map((product, i) => (
+                <option key={i} value={product}>{product}</option>
+              ))}
+            </select>
+          </label>
+          
+          <label>
+            Deal Value
+            <input 
+              name="deal_value" 
+              type="number" 
+              value={newProject.deal_value} 
+              onChange={handleChange}
+              placeholder="Enter deal value"
+            />
+          </label>
+          
+          <label>
+            Backup Presales
+            <input 
+              name="backup_presales" 
+              value={newProject.backup_presales} 
+              onChange={handleChange}
+              placeholder="Backup presales contact"
+            />
+          </label>
+          
+          <label style={{ gridColumn: 'span 2' }}>
+            Remarks
+            <textarea 
+              name="remarks" 
+              value={newProject.remarks} 
+              onChange={handleChange}
+              rows="3"
+              placeholder="Project remarks or notes"
+            />
+          </label>
+          
+          <div className="modal-actions">
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="submit">Save Project</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 function CustomerDetails() {
   const { customerId } = useParams();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showProjectModal, setShowProjectModal] = useState(false);
 
   useEffect(() => {
     if (customerId) {
       fetchCustomerDetails();
+      fetchCustomerProjects();
     }
   }, [customerId]);
 
@@ -39,15 +158,55 @@ function CustomerDetails() {
     }
   };
 
+  const fetchCustomerProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('customer_id', customerId)
+        .eq('is_archived', false)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching projects:', error);
+        // Don't fail if projects can't be fetched
+        setProjects([]);
+      } else {
+        setProjects(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      setProjects([]);
+    }
+  };
+
   const handleEditCustomer = () => {
     console.log('Edit customer:', customerId);
     alert('Edit customer functionality coming soon!');
   };
 
-  const getHealthScoreColor = (score) => {
-    if (score >= 8) return '#10b981';
-    if (score >= 6) return '#f59e0b';
-    return '#ef4444';
+  const handleAddProject = () => {
+    setShowProjectModal(true);
+  };
+
+  const handleProjectSaved = (newProject) => {
+    setProjects(prev => [newProject, ...prev]);
+    alert('Project added successfully!');
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    if (!window.confirm('Are you sure you want to delete this project?')) return;
+    
+    try {
+      const { error } = await supabase.from('projects').delete().eq('id', projectId);
+      if (error) throw error;
+      
+      setProjects(prev => prev.filter(p => p.id !== projectId));
+      alert('Project deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('Error deleting project: ' + error.message);
+    }
   };
 
   const getComplexityClass = (complexity) => {
@@ -97,18 +256,9 @@ function CustomerDetails() {
           <FaHome /> Back to Dashboard
         </button>
 
-        {/* Customer Header */}
+        {/* Customer Header - Simplified */}
         <div className="customer-header">
           <h1 className="customer-name">{customer.customer_name}</h1>
-          <div className="health-indicator">
-            <div 
-              className="health-dot"
-              style={{ backgroundColor: getHealthScoreColor(customer.health_score) }}
-            ></div>
-            <span className="health-text">
-              Health: {customer.health_score || 'N/A'}/10
-            </span>
-          </div>
         </div>
 
         {/* Customer Information Section */}
@@ -206,45 +356,73 @@ function CustomerDetails() {
               </div>
             </div>
           </div>
-
-          {/* Customer Assessment Summary */}
-          <div className="assessment-summary">
-            <h4>Customer Assessment</h4>
-            <div className="assessment-grid">
-              <div className="assessment-item">
-                <span className="assessment-label">Complexity</span>
-                <div className={`assessment-value ${getComplexityClass(customer.technical_complexity)}`}>
-                  {customer.technical_complexity || 'Medium'}
-                </div>
-              </div>
-              <div className="assessment-item">
-                <span className="assessment-label">Relationship</span>
-                <div className={`assessment-value ${getRelationshipClass(customer.relationship_strength)}`}>
-                  {customer.relationship_strength || 'Medium'}
-                </div>
-              </div>
-              <div className="assessment-item">
-                <span className="assessment-label">Health Score</span>
-                <div className="assessment-value" style={{ color: getHealthScoreColor(customer.health_score) }}>
-                  {customer.health_score || 'N/A'}/10
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Future Projects Section - Commented out until relationship is fixed */}
-        {/* 
+        {/* Projects Section */}
         <div className="section-card">
           <div className="section-header">
-            <h3>Projects</h3>
-            <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>
-              Projects functionality coming soon...
-            </div>
+            <h3>
+              <FaBriefcase /> Projects ({projects.length})
+            </h3>
+            <button onClick={handleAddProject} className="add-btn" style={{ backgroundColor: '#3b82f6' }}>
+              <FaPlus /> Add Project
+            </button>
+          </div>
+
+          <div className="projects-list">
+            {projects.length > 0 ? (
+              <table className="modern-table">
+                <thead>
+                  <tr>
+                    <th>Sales Stage</th>
+                    <th>Product</th>
+                    <th>Deal Value</th>
+                    <th>Backup Presales</th>
+                    <th>Remarks</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projects.map((project) => (
+                    <tr key={project.id}>
+                      <td>{project.sales_stage}</td>
+                      <td>{project.product}</td>
+                      <td>{project.deal_value ? `${project.deal_value.toLocaleString()}` : '-'}</td>
+                      <td>{project.backup_presales || '-'}</td>
+                      <td>{project.remarks || '-'}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button 
+                          className="delete-btn" 
+                          onClick={() => handleDeleteProject(project.id)}
+                          title="Delete project"
+                        >
+                          <FaTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="no-projects">
+                <p>No projects found for this customer.</p>
+                <button onClick={handleAddProject} className="add-first-project-btn">
+                  <FaPlus /> Add First Project
+                </button>
+              </div>
+            )}
           </div>
         </div>
-        */}
       </div>
+
+      {/* Add Project Modal */}
+      <ProjectModal
+        isOpen={showProjectModal}
+        onClose={() => setShowProjectModal(false)}
+        onSave={handleProjectSaved}
+        customerId={customerId}
+        customerName={customer.customer_name}
+      />
     </div>
   );
 }
