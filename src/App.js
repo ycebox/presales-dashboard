@@ -14,8 +14,8 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check current session
-    checkUser();
+    // Auto-authenticate on app load
+    autoAuthenticate();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -29,242 +29,55 @@ function App() {
     return () => subscription?.unsubscribe();
   }, []);
 
-  const checkUser = async () => {
+  const autoAuthenticate = async () => {
     try {
+      // First check if there's an existing session
       const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error('Error checking user:', error);
+      
+      if (user) {
+        console.log('Existing user found:', user.email);
+        setUser(user);
+        setLoading(false);
+        return;
       }
-      setUser(user);
+
+      console.log('No existing user, creating automatic session...');
+      
+      // Try to sign in with a default user
+      const defaultEmail = 'admin@presales.com';
+      const defaultPassword = 'presales123';
+      
+      let { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: defaultEmail,
+        password: defaultPassword
+      });
+      
+      if (signInError && signInError.message.includes('Invalid login credentials')) {
+        console.log('Default user not found, creating one...');
+        
+        // Create the default user
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: defaultEmail,
+          password: defaultPassword
+        });
+        
+        if (signUpError) {
+          console.error('Could not create default user:', signUpError);
+        } else {
+          console.log('Default user created and signed in');
+          setUser(signUpData.user);
+        }
+      } else if (!signInError) {
+        console.log('Signed in with default user');
+        setUser(data.user);
+      } else {
+        console.error('Authentication error:', signInError);
+      }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error('Auto-authentication failed:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const signInWithEmail = async (email, password) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) throw error;
-      
-      return { success: true, data };
-    } catch (error) {
-      console.error('Sign in error:', error);
-      return { success: false, error: error.message };
-    }
-  };
-
-  const signUpWithEmail = async (email, password) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password
-      });
-      
-      if (error) throw error;
-      
-      return { success: true, data };
-    } catch (error) {
-      console.error('Sign up error:', error);
-      return { success: false, error: error.message };
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-    } catch (error) {
-      console.error('Sign out error:', error);
-    }
-  };
-
-  const createTestUser = async () => {
-    const result = await signUpWithEmail('test@example.com', 'test123456');
-    if (result.success) {
-      alert('Test user created successfully!');
-    } else if (result.error.includes('already registered')) {
-      // Try to sign in instead
-      const signInResult = await signInWithEmail('test@example.com', 'test123456');
-      if (signInResult.success) {
-        alert('Signed in with test user!');
-      } else {
-        alert('Error: ' + signInResult.error);
-      }
-    } else {
-      alert('Error creating test user: ' + result.error);
-    }
-  };
-
-  // Simple Login Component
-  const LoginForm = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [isSignUp, setIsSignUp] = useState(false);
-    const [authLoading, setAuthLoading] = useState(false);
-
-    const handleSubmit = async (e) => {
-      e.preventDefault();
-      setAuthLoading(true);
-
-      const result = isSignUp 
-        ? await signUpWithEmail(email, password)
-        : await signInWithEmail(email, password);
-
-      if (!result.success) {
-        alert(result.error);
-      }
-      
-      setAuthLoading(false);
-    };
-
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#f8fafc',
-        padding: '2rem'
-      }}>
-        <div style={{
-          backgroundColor: 'white',
-          padding: '2rem',
-          borderRadius: '12px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          width: '100%',
-          maxWidth: '400px'
-        }}>
-          <h1 style={{ 
-            textAlign: 'center', 
-            marginBottom: '2rem',
-            color: '#1e293b'
-          }}>
-            📋 Presales Dashboard
-          </h1>
-          
-          <form onSubmit={handleSubmit} style={{ marginBottom: '1rem' }}>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ 
-                display: 'block', 
-                marginBottom: '0.5rem',
-                fontWeight: '500',
-                color: '#374151'
-              }}>
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '1rem'
-                }}
-                placeholder="Enter your email"
-              />
-            </div>
-            
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ 
-                display: 'block', 
-                marginBottom: '0.5rem',
-                fontWeight: '500',
-                color: '#374151'
-              }}>
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '1rem'
-                }}
-                placeholder="Enter your password"
-              />
-            </div>
-            
-            <button
-              type="submit"
-              disabled={authLoading}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: '500',
-                cursor: authLoading ? 'not-allowed' : 'pointer',
-                opacity: authLoading ? 0.6 : 1
-              }}
-            >
-              {authLoading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
-            </button>
-          </form>
-          
-          <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-            <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#3b82f6',
-                cursor: 'pointer',
-                textDecoration: 'underline'
-              }}
-            >
-              {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
-            </button>
-          </div>
-
-          <div style={{ 
-            borderTop: '1px solid #e5e7eb',
-            paddingTop: '1rem',
-            textAlign: 'center'
-          }}>
-            <p style={{ 
-              fontSize: '0.9rem', 
-              color: '#6b7280',
-              marginBottom: '0.5rem'
-            }}>
-              For testing purposes:
-            </p>
-            <button
-              onClick={createTestUser}
-              style={{
-                padding: '0.5rem 1rem',
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.9rem',
-                cursor: 'pointer'
-              }}
-            >
-              Create/Use Test Account
-            </button>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   if (loading) {
@@ -276,57 +89,18 @@ function App() {
         height: '100vh',
         fontSize: '1.2rem'
       }}>
-        Loading...
+        Initializing dashboard...
       </div>
     );
   }
 
-  // If not authenticated, show login form
-  if (!user) {
-    return <LoginForm />;
-  }
-
-  // If authenticated, show the main app
   return (
     <Router basename="/presales-dashboard">
       <div className="page-wrapper">
         <div className="project-container">
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '1.5rem'
-          }}>
-            <h1 className="big-name">
-              📋 Jonathan's "It's Fine, Everything's Fine" Dashboard
-            </h1>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1rem'
-            }}>
-              <span style={{
-                fontSize: '0.9rem',
-                color: '#6b7280'
-              }}>
-                Welcome, {user.email}
-              </span>
-              <button
-                onClick={signOut}
-                style={{
-                  padding: '0.5rem 1rem',
-                  backgroundColor: '#ef4444',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.9rem',
-                  cursor: 'pointer'
-                }}
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
+          <h1 className="big-name" style={{ marginBottom: '1.5rem' }}>
+            📋 Jonathan's "It's Fine, Everything's Fine" Dashboard
+          </h1>
 
           <Routes>
             {/* Main Dashboard Route */}
