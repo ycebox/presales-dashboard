@@ -259,7 +259,50 @@ function Projects() {
     'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
   ];
 
-  const Modal = ({ isOpen, onClose, children }) => {
+  // Memoize dropdown options to prevent re-creation and focus loss
+  const customerOptions = React.useMemo(() => 
+    customers.map((customer) => (
+      <option key={customer.id} value={customer.id}>
+        {customer.customer_name} ({customer.country})
+      </option>
+    )), [customers]
+  );
+
+  const countryOptions = React.useMemo(() =>
+    asiaPacificCountries.map((c, i) => (
+      <option key={i} value={c}>{c}</option>
+    )), [asiaPacificCountries]
+  );
+
+  const industryOptions = React.useMemo(() =>
+    industryVerticals.map((industry, i) => (
+      <option key={i} value={industry}>{industry}</option>
+    )), [industryVerticals]
+  );
+
+  const companySizeOptions = React.useMemo(() =>
+    companySizes.map((size, i) => (
+      <option key={i} value={size}>{size}</option>
+    )), [companySizes]
+  );
+
+  const revenueOptions = React.useMemo(() =>
+    revenueRanges.map((range, i) => (
+      <option key={i} value={range}>{range}</option>
+    )), [revenueRanges]
+  );
+
+  const salesStageOptions = React.useMemo(() =>
+    salesStages.map((s, i) => (
+      <option key={i} value={s}>{s}</option>
+    )), [salesStages]
+  );
+
+  const productOptions = React.useMemo(() =>
+    products.map((p, i) => (
+      <option key={i} value={p}>{p}</option>
+    )), [products]
+  );
     if (!isOpen) return null;
     
     return ReactDOM.createPortal(
@@ -270,7 +313,7 @@ function Projects() {
       </div>,
       document.body
     );
-  };
+  }, []);
 
   return (
     <>
@@ -294,9 +337,7 @@ function Projects() {
             Country
             <select name="country" value={filters.country} onChange={handleFilterChange}>
               <option value="">All Countries</option>
-              {asiaPacificCountries.map((c, i) => (
-                <option key={i} value={c}>{c}</option>
-              ))}
+              {countryOptions}
             </select>
           </label>
           <label>
@@ -312,18 +353,14 @@ function Projects() {
             Sales Stage
             <select name="sales_stage" value={filters.sales_stage} onChange={handleFilterChange}>
               <option value="">All Stages</option>
-              {salesStages.map((s, i) => (
-                <option key={i} value={s}>{s}</option>
-              ))}
+              {salesStageOptions}
             </select>
           </label>
           <label>
             Product
             <select name="product" value={filters.product} onChange={handleFilterChange}>
               <option value="">All Products</option>
-              {products.map((p, i) => (
-                <option key={i} value={p}>{p}</option>
-              ))}
+              {productOptions}
             </select>
           </label>
         </div>
@@ -413,9 +450,7 @@ function Projects() {
               required
             >
               <option value="">Select Country</option>
-              {asiaPacificCountries.map((c, i) => (
-                <option key={i} value={c}>{c}</option>
-              ))}
+              {countryOptions}
             </select>
           </label>
           
@@ -427,9 +462,7 @@ function Projects() {
               onChange={handleNewCustomerChange}
             >
               <option value="">Select Industry</option>
-              {industryVerticals.map((industry, i) => (
-                <option key={i} value={industry}>{industry}</option>
-              ))}
+              {industryOptions}
             </select>
           </label>
           
@@ -466,9 +499,7 @@ function Projects() {
               onChange={handleNewCustomerChange}
             >
               <option value="">Select Size</option>
-              {companySizes.map((size, i) => (
-                <option key={i} value={size}>{size}</option>
-              ))}
+              {companySizeOptions}
             </select>
           </label>
           
@@ -480,9 +511,7 @@ function Projects() {
               onChange={handleNewCustomerChange}
             >
               <option value="">Select Revenue Range</option>
-              {revenueRanges.map((range, i) => (
-                <option key={i} value={range}>{range}</option>
-              ))}
+              {revenueOptions}
             </select>
           </label>
           
@@ -574,11 +603,7 @@ function Projects() {
               required
             >
               <option value="">Select Customer</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.customer_name} ({customer.country})
-                </option>
-              ))}
+              {customerOptions}
             </select>
           </label>
           
@@ -586,9 +611,7 @@ function Projects() {
             Sales Stage
             <select name="sales_stage" value={newProject.sales_stage} onChange={handleNewProjectChange} required>
               <option value="">Select Stage</option>
-              {salesStages.map((s, i) => (
-                <option key={i} value={s}>{s}</option>
-              ))}
+              {salesStageOptions}
             </select>
           </label>
           
@@ -596,9 +619,7 @@ function Projects() {
             Product
             <select name="product" value={newProject.product} onChange={handleNewProjectChange} required>
               <option value="">Select Product</option>
-              {products.map((p, i) => (
-                <option key={i} value={p}>{p}</option>
-              ))}
+              {productOptions}
             </select>
           </label>
           
