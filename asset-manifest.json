@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/presales-dashboard/static/css/main.ea5576e7.css",
-    "main.js": "/presales-dashboard/static/js/main.bc42737e.js",
+    "main.js": "/presales-dashboard/static/js/main.33cdd80f.js",
     "static/js/198.0c836705.chunk.js": "/presales-dashboard/static/js/198.0c836705.chunk.js",
     "index.html": "/presales-dashboard/index.html",
     "main.ea5576e7.css.map": "/presales-dashboard/static/css/main.ea5576e7.css.map",
-    "main.bc42737e.js.map": "/presales-dashboard/static/js/main.bc42737e.js.map",
+    "main.33cdd80f.js.map": "/presales-dashboard/static/js/main.33cdd80f.js.map",
     "198.0c836705.chunk.js.map": "/presales-dashboard/static/js/198.0c836705.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.ea5576e7.css",
-    "static/js/main.bc42737e.js"
+    "static/js/main.33cdd80f.js"
   ]
 }
