@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { Link, useNavigate } from 'react-router-dom'; // ✅ Added useNavigate
-import { FaFolderOpen, FaPlus, FaTrash, FaUser } from 'react-icons/fa'; // ✅ Added FaUser
+import { Link, useNavigate } from 'react-router-dom';
+import { FaFolderOpen, FaPlus, FaTrash, FaUser, FaUserPlus } from 'react-icons/fa';
 import './Projects.css';
 
 function Projects() {
-  const navigate = useNavigate(); // ✅ Navigation hook
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     country: '',
@@ -14,8 +15,10 @@ function Projects() {
     sales_stage: '',
     product: ''
   });
-  const [showModal, setShowModal] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [newProject, setNewProject] = useState({
+    customer_id: '',
     customer_name: '',
     country: '',
     account_manager: '',
@@ -26,10 +29,40 @@ function Projects() {
     remarks: '',
     is_archived: 'false'
   });
+  const [newCustomer, setNewCustomer] = useState({
+    customer_name: '',
+    account_manager: '',
+    country: '',
+    industry_vertical: '',
+    customer_type: 'New',
+    year_first_closed: '',
+    company_size: '',
+    annual_revenue: '',
+    technical_complexity: 'Medium',
+    relationship_strength: 'Medium',
+    health_score: 7,
+    key_stakeholders: [],
+    competitors: [],
+    notes: ''
+  });
 
   useEffect(() => {
     fetchProjects();
+    fetchCustomers();
   }, [filters]);
+
+  const fetchCustomers = async () => {
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .order('customer_name', { ascending: true });
+    
+    if (!error) {
+      setCustomers(data || []);
+    } else {
+      console.error('Error fetching customers:', error.message);
+    }
+  };
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -41,11 +74,10 @@ function Projects() {
         account_manager,
         country
       )
-    `); // ✅ Join with customers table
+    `);
     
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
-        // Handle customer-related filters
         if (key === 'account_manager') {
           query = query.eq('customers.account_manager', value);
         } else if (key === 'country') {
@@ -73,14 +105,85 @@ function Projects() {
   const handleNewProjectChange = (e) => {
     const { name, value } = e.target;
     setNewProject((prev) => ({ ...prev, [name]: value }));
+
+    // If customer is selected, auto-fill some fields
+    if (name === 'customer_id' && value) {
+      const selectedCustomer = customers.find(c => c.id === parseInt(value));
+      if (selectedCustomer) {
+        setNewProject((prev) => ({
+          ...prev,
+          customer_name: selectedCustomer.customer_name,
+          country: selectedCustomer.country,
+          account_manager: selectedCustomer.account_manager
+        }));
+      }
+    }
+  };
+
+  const handleNewCustomerChange = (e) => {
+    const { name, value, type } = e.target;
+    
+    if (name === 'key_stakeholders' || name === 'competitors') {
+      // Handle comma-separated lists
+      const arrayValue = value.split(',').map(item => item.trim()).filter(item => item);
+      setNewCustomer((prev) => ({ ...prev, [name]: arrayValue }));
+    } else if (type === 'number') {
+      setNewCustomer((prev) => ({ ...prev, [name]: parseFloat(value) || 0 }));
+    } else {
+      setNewCustomer((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleAddCustomer = async (e) => {
+    e.preventDefault();
+    const { data, error } = await supabase.from('customers').insert([newCustomer]).select();
+    
+    if (!error && data) {
+      setShowCustomerModal(false);
+      setNewCustomer({
+        customer_name: '',
+        account_manager: '',
+        country: '',
+        industry_vertical: '',
+        customer_type: 'New',
+        year_first_closed: '',
+        company_size: '',
+        annual_revenue: '',
+        technical_complexity: 'Medium',
+        relationship_strength: 'Medium',
+        health_score: 7,
+        key_stakeholders: [],
+        competitors: [],
+        notes: ''
+      });
+      
+      // Refresh customers list
+      await fetchCustomers();
+      
+      // Auto-select the new customer in project form
+      const newCustomerId = data[0].id;
+      setNewProject((prev) => ({
+        ...prev,
+        customer_id: newCustomerId.toString(),
+        customer_name: data[0].customer_name,
+        country: data[0].country,
+        account_manager: data[0].account_manager
+      }));
+      
+      alert('Customer added successfully!');
+    } else {
+      console.error('Error adding customer:', error.message);
+      alert('Error adding customer. Please try again.');
+    }
   };
 
   const handleAddProject = async (e) => {
     e.preventDefault();
     const { error } = await supabase.from('projects').insert([newProject]);
     if (!error) {
-      setShowModal(false);
+      setShowProjectModal(false);
       setNewProject({
+        customer_id: '',
         customer_name: '',
         country: '',
         account_manager: '',
@@ -104,12 +207,10 @@ function Projects() {
     else console.error('Delete error:', error.message);
   };
 
-  // ✅ New function to handle customer click
   const handleCustomerClick = (customerId, customerName) => {
     if (customerId) {
       navigate(`/customer/${customerId}`);
     } else {
-      // If no customer ID, could create customer first or show message
       console.log('No customer ID found for:', customerName);
     }
   };
@@ -127,15 +228,33 @@ function Projects() {
     'PoC', 'RFI', 'RFP', 'SoW'
   ].sort();
 
+  const industryVerticals = [
+    'Banking', 'Financial Services', 'Insurance', 'Government', 'Healthcare', 'Education', 
+    'Retail', 'Manufacturing', 'Telecommunications', 'Energy & Utilities', 'Transportation', 'Other'
+  ].sort();
+
+  const companySizes = [
+    'Startup (1-10)', 'Small (11-50)', 'Medium (51-200)', 'Large (201-1000)', 'Enterprise (1000+)'
+  ];
+
+  const revenueRanges = [
+    'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
+  ];
+
   return (
     <section className="projects-wrapper">
       <div className="projects-header-row">
         <h2 className="projects-header">
           <FaFolderOpen style={{ marginRight: '8px' }} /> Presales Projects
         </h2>
-        <button className="add-btn" style={{ backgroundColor: '#a6b2d9' }} onClick={() => setShowModal(true)}>
-          <FaPlus /> Add Project
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="add-btn" style={{ backgroundColor: '#10b981' }} onClick={() => setShowCustomerModal(true)}>
+            <FaUserPlus /> Add Customer
+          </button>
+          <button className="add-btn" style={{ backgroundColor: '#a6b2d9' }} onClick={() => setShowProjectModal(true)}>
+            <FaPlus /> Add Project
+          </button>
+        </div>
       </div>
 
       <div className="filters updated-filters">
@@ -198,7 +317,6 @@ function Projects() {
                   <tr key={project.id} id={`project-${project.id}`}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {/* ✅ Clickable customer name */}
                         <button
                           onClick={() => handleCustomerClick(project.customers?.id, project.customers?.customer_name || project.customer_name)}
                           className="customer-link-btn"
@@ -208,7 +326,6 @@ function Projects() {
                           {project.customers?.customer_name || project.customer_name}
                         </button>
                         <span className="project-divider">•</span>
-                        {/* ✅ Project link */}
                         <Link to={`/project/${project.id}`} className="project-link">
                           {project.name || 'Project'}
                         </Link>
@@ -231,28 +348,215 @@ function Projects() {
         </div>
       )}
 
-      {showModal && (
+      {/* Add Customer Modal */}
+      {showCustomerModal && (
         <div className="modal-backdrop">
-          <div className="modal-content">
-            <h3>Add New Project</h3>
-            <form onSubmit={handleAddProject} className="modern-form">
+          <div className="modal-content" style={{ maxWidth: '800px' }}>
+            <h3>Add New Customer</h3>
+            <form onSubmit={handleAddCustomer} className="modern-form">
               <label>
-                Customer Name
-                <input name="customer_name" value={newProject.customer_name} onChange={handleNewProjectChange} required />
+                Customer Name *
+                <input 
+                  name="customer_name" 
+                  value={newCustomer.customer_name} 
+                  onChange={handleNewCustomerChange} 
+                  required 
+                />
               </label>
+              
               <label>
-                Country
-                <select name="country" value={newProject.country} onChange={handleNewProjectChange} required>
+                Account Manager *
+                <input 
+                  name="account_manager" 
+                  value={newCustomer.account_manager} 
+                  onChange={handleNewCustomerChange} 
+                  required 
+                />
+              </label>
+              
+              <label>
+                Country *
+                <select 
+                  name="country" 
+                  value={newCustomer.country} 
+                  onChange={handleNewCustomerChange} 
+                  required
+                >
                   <option value="">Select Country</option>
                   {asiaPacificCountries.map((c, i) => (
                     <option key={i} value={c}>{c}</option>
                   ))}
                 </select>
               </label>
+              
               <label>
-                Account Manager
-                <input name="account_manager" value={newProject.account_manager} onChange={handleNewProjectChange} required />
+                Industry Vertical
+                <select 
+                  name="industry_vertical" 
+                  value={newCustomer.industry_vertical} 
+                  onChange={handleNewCustomerChange}
+                >
+                  <option value="">Select Industry</option>
+                  {industryVerticals.map((industry, i) => (
+                    <option key={i} value={industry}>{industry}</option>
+                  ))}
+                </select>
               </label>
+              
+              <label>
+                Customer Type
+                <select 
+                  name="customer_type" 
+                  value={newCustomer.customer_type} 
+                  onChange={handleNewCustomerChange}
+                >
+                  <option value="New">New</option>
+                  <option value="Existing">Existing</option>
+                </select>
+              </label>
+              
+              <label>
+                Year First Closed
+                <input 
+                  name="year_first_closed" 
+                  type="number"
+                  min="2000"
+                  max={new Date().getFullYear()}
+                  value={newCustomer.year_first_closed} 
+                  onChange={handleNewCustomerChange}
+                  placeholder="e.g., 2022"
+                />
+              </label>
+              
+              <label>
+                Company Size
+                <select 
+                  name="company_size" 
+                  value={newCustomer.company_size} 
+                  onChange={handleNewCustomerChange}
+                >
+                  <option value="">Select Size</option>
+                  {companySizes.map((size, i) => (
+                    <option key={i} value={size}>{size}</option>
+                  ))}
+                </select>
+              </label>
+              
+              <label>
+                Annual Revenue
+                <select 
+                  name="annual_revenue" 
+                  value={newCustomer.annual_revenue} 
+                  onChange={handleNewCustomerChange}
+                >
+                  <option value="">Select Revenue Range</option>
+                  {revenueRanges.map((range, i) => (
+                    <option key={i} value={range}>{range}</option>
+                  ))}
+                </select>
+              </label>
+              
+              <label>
+                Technical Complexity
+                <select 
+                  name="technical_complexity" 
+                  value={newCustomer.technical_complexity} 
+                  onChange={handleNewCustomerChange}
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </label>
+              
+              <label>
+                Relationship Strength
+                <select 
+                  name="relationship_strength" 
+                  value={newCustomer.relationship_strength} 
+                  onChange={handleNewCustomerChange}
+                >
+                  <option value="Weak">Weak</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Strong">Strong</option>
+                </select>
+              </label>
+              
+              <label>
+                Health Score (1-10)
+                <input 
+                  name="health_score" 
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={newCustomer.health_score} 
+                  onChange={handleNewCustomerChange}
+                />
+              </label>
+              
+              <label style={{ gridColumn: 'span 2' }}>
+                Key Stakeholders (comma-separated)
+                <input 
+                  name="key_stakeholders" 
+                  value={newCustomer.key_stakeholders.join(', ')} 
+                  onChange={handleNewCustomerChange}
+                  placeholder="John Smith, Jane Doe, etc."
+                />
+              </label>
+              
+              <label style={{ gridColumn: 'span 2' }}>
+                Main Competitors (comma-separated)
+                <input 
+                  name="competitors" 
+                  value={newCustomer.competitors.join(', ')} 
+                  onChange={handleNewCustomerChange}
+                  placeholder="Company A, Company B, etc."
+                />
+              </label>
+              
+              <label style={{ gridColumn: 'span 2' }}>
+                Notes
+                <textarea 
+                  name="notes" 
+                  value={newCustomer.notes} 
+                  onChange={handleNewCustomerChange}
+                  rows="3"
+                  style={{ resize: 'vertical' }}
+                />
+              </label>
+              
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowCustomerModal(false)}>Cancel</button>
+                <button type="submit">Save Customer</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Project Modal */}
+      {showProjectModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content">
+            <h3>Add New Project</h3>
+            <form onSubmit={handleAddProject} className="modern-form">
+              <label style={{ gridColumn: 'span 2' }}>
+                Customer
+                <select 
+                  name="customer_id" 
+                  value={newProject.customer_id} 
+                  onChange={handleNewProjectChange} 
+                  required
+                >
+                  <option value="">Select Customer</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.customer_name} ({customer.country})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              
               <label>
                 Sales Stage
                 <select name="sales_stage" value={newProject.sales_stage} onChange={handleNewProjectChange} required>
@@ -262,6 +566,7 @@ function Projects() {
                   ))}
                 </select>
               </label>
+              
               <label>
                 Product
                 <select name="product" value={newProject.product} onChange={handleNewProjectChange} required>
@@ -271,21 +576,24 @@ function Projects() {
                   ))}
                 </select>
               </label>
+              
               <label>
                 Deal Value
                 <input name="deal_value" type="number" value={newProject.deal_value || ''} onChange={handleNewProjectChange} />
               </label>
+              
               <label>
                 Backup Presales
                 <input name="backup_presales" value={newProject.backup_presales || ''} onChange={handleNewProjectChange} />
               </label>
+              
               <label style={{ gridColumn: 'span 2' }}>
                 Remarks
                 <input name="remarks" value={newProject.remarks || ''} onChange={handleNewProjectChange} />
               </label>
            
               <div className="modal-actions">
-                <button type="button" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="button" onClick={() => setShowProjectModal(false)}>Cancel</button>
                 <button type="submit">Save</button>
               </div>
             </form>
