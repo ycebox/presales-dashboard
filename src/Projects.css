@@ -19,6 +19,8 @@
   border-radius: 12px;
   width: 100%;
   max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
@@ -45,9 +47,10 @@
   font-weight: 500;
 }
 
-/* ✅ Inputs & Dropdowns */
+/* ✅ Inputs, Dropdowns & Textareas */
 .modern-form input,
-.modern-form select {
+.modern-form select,
+.modern-form textarea {
   padding: 0.6rem 0.75rem;
   font-size: 0.95rem;
   border: 1px solid #cbd5e1;
@@ -57,10 +60,18 @@
 }
 
 .modern-form input:focus,
-.modern-form select:focus {
+.modern-form select:focus,
+.modern-form textarea:focus {
   border-color: #94a3b8;
   box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
   outline: none;
+}
+
+/* ✅ Textarea specific styling */
+.modern-form textarea {
+  font-family: inherit;
+  min-height: 80px;
+  resize: vertical;
 }
 
 /* ✅ Modal Buttons Container */
@@ -154,7 +165,7 @@
   background-color: #f1f5f9;
 }
 
-/* ✅ NEW: Customer Link Button Styling */
+/* ✅ Customer Link Button Styling */
 .customer-link-btn {
   background: none;
   border: none;
@@ -210,10 +221,22 @@
   align-items: center;
   gap: 6px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
 }
 
 .add-btn:hover {
   background-color: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+/* ✅ Add Customer Button Styling */
+.add-btn[style*="background-color: #10b981"] {
+  color: white;
+}
+
+.add-btn[style*="background-color: #10b981"]:hover {
+  background-color: #059669 !important;
+  color: white;
 }
 
 /* ✅ Page Wrapper */
@@ -278,10 +301,12 @@
   cursor: pointer;
   font-size: 1rem;
   padding: 0.2rem;
+  transition: all 0.2s ease;
 }
 
 .delete-btn:hover {
   color: #be123c;
+  transform: scale(1.1);
 }
 
 .logs-list {
@@ -294,4 +319,78 @@
   word-wrap: break-word;
   white-space: pre-wrap;
   overflow-wrap: break-word;
+}
+
+/* ✅ Enhanced Modal Styling for Customer Form */
+.modal-content[style*="max-width: 800px"] {
+  max-width: 800px !important;
+}
+
+/* ✅ Form Field Grouping */
+.modern-form label span {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+/* ✅ Required Field Indicator */
+.modern-form label:has(input[required])::after,
+.modern-form label:has(select[required])::after {
+  content: " *";
+  color: #e11d48;
+  font-weight: 600;
+}
+
+/* ✅ Form Section Spacing */
+.modern-form label[style*="grid-column: span 2"] {
+  grid-column: span 2;
+}
+
+/* ✅ Number Input Styling */
+.modern-form input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.modern-form input[type="number"]::-webkit-outer-spin-button,
+.modern-form input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ✅ Responsive Modal */
+@media (max-width: 768px) {
+  .modal-content {
+    margin: 1rem;
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 2rem);
+  }
+  
+  .modern-form {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .modern-form label[style*="grid-column: span 2"] {
+    grid-column: span 1;
+  }
+}
+
+/* ✅ Success/Error States (for future use) */
+.form-success {
+  background-color: #ecfdf5;
+  border: 1px solid #10b981;
+  color: #047857;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.form-error {
+  background-color: #fef2f2;
+  border: 1px solid #ef4444;
+  color: #dc2626;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
 }
