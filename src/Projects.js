@@ -225,7 +225,10 @@ function Projects() {
       
       if (data && data.length > 0) {
         handleCloseCustomerModal();
-        fetchCustomers();
+        
+        // Refresh both the customer list and dropdown
+        await fetchCustomers(); // For the dropdown in project modal
+        await fetchProjects(); // For the main table display
         
         const newCustomerId = data[0].id;
         setNewProject((prev) => ({
@@ -395,7 +398,6 @@ function Projects() {
                     <th>Customer Name</th>
                     <th>Country</th>
                     <th>Account Manager</th>
-                    <th>Industry</th>
                     <th>Customer Type</th>
                     <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
@@ -417,7 +419,6 @@ function Projects() {
                       </td>
                       <td>{customer.country}</td>
                       <td>{customer.account_manager}</td>
-                      <td>{customer.industry_vertical || 'Not specified'}</td>
                       <td>
                         <span className={customer.customer_type === 'Existing' ? 'existing-customer' : 'new-customer'}>
                           {customer.customer_type || 'New'}
