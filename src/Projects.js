@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { supabase } from './supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaFolderOpen, FaPlus, FaTrash, FaUser, FaUserPlus } from 'react-icons/fa';
@@ -241,6 +242,23 @@ function Projects() {
     'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
   ];
 
+  // Create a portal target element
+  const modalRoot = document.getElementById('modal-root') || document.body;
+
+  // Modal Component using Portal
+  const Modal = ({ isOpen, onClose, children }) => {
+    if (!isOpen) return null;
+    
+    return ReactDOM.createPortal(
+      <div className="modal-backdrop" onClick={onClose}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          {children}
+        </div>
+      </div>,
+      modalRoot
+    );
+  };
+
   return (
     <>
       <section className="projects-wrapper">
@@ -350,258 +368,250 @@ function Projects() {
         )}
       </section>
       
-      {/* Add Customer Modal - Rendered outside main container */}
-      {showCustomerModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content" style={{ maxWidth: '800px' }}>
-            <h3>Add New Customer</h3>
-            <form onSubmit={handleAddCustomer} className="modern-form">
-              <label>
-                Customer Name *
-                <input 
-                  name="customer_name" 
-                  value={newCustomer.customer_name} 
-                  onChange={handleNewCustomerChange} 
-                  required 
-                />
-              </label>
-              
-              <label>
-                Account Manager *
-                <input 
-                  name="account_manager" 
-                  value={newCustomer.account_manager} 
-                  onChange={handleNewCustomerChange} 
-                  required 
-                />
-              </label>
-              
-              <label>
-                Country *
-                <select 
-                  name="country" 
-                  value={newCustomer.country} 
-                  onChange={handleNewCustomerChange} 
-                  required
-                >
-                  <option value="">Select Country</option>
-                  {asiaPacificCountries.map((c, i) => (
-                    <option key={i} value={c}>{c}</option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Industry Vertical
-                <select 
-                  name="industry_vertical" 
-                  value={newCustomer.industry_vertical} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="">Select Industry</option>
-                  {industryVerticals.map((industry, i) => (
-                    <option key={i} value={industry}>{industry}</option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Customer Type
-                <select 
-                  name="customer_type" 
-                  value={newCustomer.customer_type} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="New">New</option>
-                  <option value="Existing">Existing</option>
-                </select>
-              </label>
-              
-              <label>
-                Year First Closed
-                <input 
-                  name="year_first_closed" 
-                  type="number"
-                  min="2000"
-                  max={new Date().getFullYear()}
-                  value={newCustomer.year_first_closed} 
-                  onChange={handleNewCustomerChange}
-                  placeholder="e.g., 2022"
-                />
-              </label>
-              
-              <label>
-                Company Size
-                <select 
-                  name="company_size" 
-                  value={newCustomer.company_size} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="">Select Size</option>
-                  {companySizes.map((size, i) => (
-                    <option key={i} value={size}>{size}</option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Annual Revenue
-                <select 
-                  name="annual_revenue" 
-                  value={newCustomer.annual_revenue} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="">Select Revenue Range</option>
-                  {revenueRanges.map((range, i) => (
-                    <option key={i} value={range}>{range}</option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Technical Complexity
-                <select 
-                  name="technical_complexity" 
-                  value={newCustomer.technical_complexity} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                </select>
-              </label>
-              
-              <label>
-                Relationship Strength
-                <select 
-                  name="relationship_strength" 
-                  value={newCustomer.relationship_strength} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="Weak">Weak</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Strong">Strong</option>
-                </select>
-              </label>
-              
-              <label>
-                Health Score (1-10)
-                <input 
-                  name="health_score" 
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={newCustomer.health_score} 
-                  onChange={handleNewCustomerChange}
-                />
-              </label>
-              
-              <label style={{ gridColumn: 'span 2' }}>
-                Key Stakeholders (comma-separated)
-                <input 
-                  name="key_stakeholders" 
-                  value={newCustomer.key_stakeholders.join(', ')} 
-                  onChange={handleNewCustomerChange}
-                  placeholder="John Smith, Jane Doe, etc."
-                />
-              </label>
-              
-              <label style={{ gridColumn: 'span 2' }}>
-                Main Competitors (comma-separated)
-                <input 
-                  name="competitors" 
-                  value={newCustomer.competitors.join(', ')} 
-                  onChange={handleNewCustomerChange}
-                  placeholder="Company A, Company B, etc."
-                />
-              </label>
-              
-              <label style={{ gridColumn: 'span 2' }}>
-                Notes
-                <textarea 
-                  name="notes" 
-                  value={newCustomer.notes} 
-                  onChange={handleNewCustomerChange}
-                  rows="3"
-                  style={{ resize: 'vertical' }}
-                />
-              </label>
-              
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowCustomerModal(false)}>Cancel</button>
-                <button type="submit">Save Customer</button>
-              </div>
-            </form>
+      {/* Add Customer Modal using Portal */}
+      <Modal isOpen={showCustomerModal} onClose={() => setShowCustomerModal(false)}>
+        <h3>Add New Customer</h3>
+        <form onSubmit={handleAddCustomer} className="modern-form">
+          <label>
+            Customer Name *
+            <input 
+              name="customer_name" 
+              value={newCustomer.customer_name} 
+              onChange={handleNewCustomerChange} 
+              required 
+            />
+          </label>
+          
+          <label>
+            Account Manager *
+            <input 
+              name="account_manager" 
+              value={newCustomer.account_manager} 
+              onChange={handleNewCustomerChange} 
+              required 
+            />
+          </label>
+          
+          <label>
+            Country *
+            <select 
+              name="country" 
+              value={newCustomer.country} 
+              onChange={handleNewCustomerChange} 
+              required
+            >
+              <option value="">Select Country</option>
+              {asiaPacificCountries.map((c, i) => (
+                <option key={i} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+          
+          <label>
+            Industry Vertical
+            <select 
+              name="industry_vertical" 
+              value={newCustomer.industry_vertical} 
+              onChange={handleNewCustomerChange}
+            >
+              <option value="">Select Industry</option>
+              {industryVerticals.map((industry, i) => (
+                <option key={i} value={industry}>{industry}</option>
+              ))}
+            </select>
+          </label>
+          
+          <label>
+            Customer Type
+            <select 
+              name="customer_type" 
+              value={newCustomer.customer_type} 
+              onChange={handleNewCustomerChange}
+            >
+              <option value="New">New</option>
+              <option value="Existing">Existing</option>
+            </select>
+          </label>
+          
+          <label>
+            Year First Closed
+            <input 
+              name="year_first_closed" 
+              type="number"
+              min="2000"
+              max={new Date().getFullYear()}
+              value={newCustomer.year_first_closed} 
+              onChange={handleNewCustomerChange}
+              placeholder="e.g., 2022"
+            />
+          </label>
+          
+          <label>
+            Company Size
+            <select 
+              name="company_size" 
+              value={newCustomer.company_size} 
+              onChange={handleNewCustomerChange}
+            >
+              <option value="">Select Size</option>
+              {companySizes.map((size, i) => (
+                <option key={i} value={size}>{size}</option>
+              ))}
+            </select>
+          </label>
+          
+          <label>
+            Annual Revenue
+            <select 
+              name="annual_revenue" 
+              value={newCustomer.annual_revenue} 
+              onChange={handleNewCustomerChange}
+            >
+              <option value="">Select Revenue Range</option>
+              {revenueRanges.map((range, i) => (
+                <option key={i} value={range}>{range}</option>
+              ))}
+            </select>
+          </label>
+          
+          <label>
+            Technical Complexity
+            <select 
+              name="technical_complexity" 
+              value={newCustomer.technical_complexity} 
+              onChange={handleNewCustomerChange}
+            >
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </label>
+          
+          <label>
+            Relationship Strength
+            <select 
+              name="relationship_strength" 
+              value={newCustomer.relationship_strength} 
+              onChange={handleNewCustomerChange}
+            >
+              <option value="Weak">Weak</option>
+              <option value="Medium">Medium</option>
+              <option value="Strong">Strong</option>
+            </select>
+          </label>
+          
+          <label>
+            Health Score (1-10)
+            <input 
+              name="health_score" 
+              type="number"
+              min="1"
+              max="10"
+              value={newCustomer.health_score} 
+              onChange={handleNewCustomerChange}
+            />
+          </label>
+          
+          <label style={{ gridColumn: 'span 2' }}>
+            Key Stakeholders (comma-separated)
+            <input 
+              name="key_stakeholders" 
+              value={newCustomer.key_stakeholders.join(', ')} 
+              onChange={handleNewCustomerChange}
+              placeholder="John Smith, Jane Doe, etc."
+            />
+          </label>
+          
+          <label style={{ gridColumn: 'span 2' }}>
+            Main Competitors (comma-separated)
+            <input 
+              name="competitors" 
+              value={newCustomer.competitors.join(', ')} 
+              onChange={handleNewCustomerChange}
+              placeholder="Company A, Company B, etc."
+            />
+          </label>
+          
+          <label style={{ gridColumn: 'span 2' }}>
+            Notes
+            <textarea 
+              name="notes" 
+              value={newCustomer.notes} 
+              onChange={handleNewCustomerChange}
+              rows="3"
+              style={{ resize: 'vertical' }}
+            />
+          </label>
+          
+          <div className="modal-actions">
+            <button type="button" onClick={() => setShowCustomerModal(false)}>Cancel</button>
+            <button type="submit">Save Customer</button>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
 
-      {/* Add Project Modal - Rendered outside main container */}
-      {showProjectModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content">
-            <h3>Add New Project</h3>
-            <form onSubmit={handleAddProject} className="modern-form">
-              <label style={{ gridColumn: 'span 2' }}>
-                Customer
-                <select 
-                  name="customer_id" 
-                  value={newProject.customer_id} 
-                  onChange={handleNewProjectChange} 
-                  required
-                >
-                  <option value="">Select Customer</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.customer_name} ({customer.country})
-                    </option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Sales Stage
-                <select name="sales_stage" value={newProject.sales_stage} onChange={handleNewProjectChange} required>
-                  <option value="">Select Stage</option>
-                  {salesStages.map((s, i) => (
-                    <option key={i} value={s}>{s}</option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Product
-                <select name="product" value={newProject.product} onChange={handleNewProjectChange} required>
-                  <option value="">Select Product</option>
-                  {products.map((p, i) => (
-                    <option key={i} value={p}>{p}</option>
-                  ))}
-                </select>
-              </label>
-              
-              <label>
-                Deal Value
-                <input name="deal_value" type="number" value={newProject.deal_value || ''} onChange={handleNewProjectChange} />
-              </label>
-              
-              <label>
-                Backup Presales
-                <input name="backup_presales" value={newProject.backup_presales || ''} onChange={handleNewProjectChange} />
-              </label>
-              
-              <label style={{ gridColumn: 'span 2' }}>
-                Remarks
-                <input name="remarks" value={newProject.remarks || ''} onChange={handleNewProjectChange} />
-              </label>
-           
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowProjectModal(false)}>Cancel</button>
-                <button type="submit">Save</button>
-              </div>
-            </form>
+      {/* Add Project Modal using Portal */}
+      <Modal isOpen={showProjectModal} onClose={() => setShowProjectModal(false)}>
+        <h3>Add New Project</h3>
+        <form onSubmit={handleAddProject} className="modern-form">
+          <label style={{ gridColumn: 'span 2' }}>
+            Customer
+            <select 
+              name="customer_id" 
+              value={newProject.customer_id} 
+              onChange={handleNewProjectChange} 
+              required
+            >
+              <option value="">Select Customer</option>
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.customer_name} ({customer.country})
+                </option>
+              ))}
+            </select>
+          </label>
+          
+          <label>
+            Sales Stage
+            <select name="sales_stage" value={newProject.sales_stage} onChange={handleNewProjectChange} required>
+              <option value="">Select Stage</option>
+              {salesStages.map((s, i) => (
+                <option key={i} value={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+          
+          <label>
+            Product
+            <select name="product" value={newProject.product} onChange={handleNewProjectChange} required>
+              <option value="">Select Product</option>
+              {products.map((p, i) => (
+                <option key={i} value={p}>{p}</option>
+              ))}
+            </select>
+          </label>
+          
+          <label>
+            Deal Value
+            <input name="deal_value" type="number" value={newProject.deal_value || ''} onChange={handleNewProjectChange} />
+          </label>
+          
+          <label>
+            Backup Presales
+            <input name="backup_presales" value={newProject.backup_presales || ''} onChange={handleNewProjectChange} />
+          </label>
+          
+          <label style={{ gridColumn: 'span 2' }}>
+            Remarks
+            <input name="remarks" value={newProject.remarks || ''} onChange={handleNewProjectChange} />
+          </label>
+       
+          <div className="modal-actions">
+            <button type="button" onClick={() => setShowProjectModal(false)}>Cancel</button>
+            <button type="submit">Save</button>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </>
   );
 }
