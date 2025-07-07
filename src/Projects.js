@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { supabase } from './supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
@@ -46,6 +46,33 @@ function Projects() {
     competitors: [],
     notes: ''
   });
+
+  // Static data arrays
+  const asiaPacificCountries = [
+    "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
+    "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
+    "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
+  ].sort();
+
+  const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
+
+  const salesStages = [
+    'Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery',
+    'PoC', 'RFI', 'RFP', 'SoW'
+  ].sort();
+
+  const industryVerticals = [
+    'Banking', 'Financial Services', 'Insurance', 'Government', 'Healthcare', 'Education', 
+    'Retail', 'Manufacturing', 'Telecommunications', 'Energy & Utilities', 'Transportation', 'Other'
+  ].sort();
+
+  const companySizes = [
+    'Startup (1-10)', 'Small (11-50)', 'Medium (51-200)', 'Large (201-1000)', 'Enterprise (1000+)'
+  ];
+
+  const revenueRanges = [
+    'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
+  ];
 
   useEffect(() => {
     fetchProjects();
@@ -233,34 +260,8 @@ function Projects() {
     }
   };
 
-  const asiaPacificCountries = [
-    "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
-    "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
-    "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
-  ].sort();
-
-  const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
-
-  const salesStages = [
-    'Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery',
-    'PoC', 'RFI', 'RFP', 'SoW'
-  ].sort();
-
-  const industryVerticals = [
-    'Banking', 'Financial Services', 'Insurance', 'Government', 'Healthcare', 'Education', 
-    'Retail', 'Manufacturing', 'Telecommunications', 'Energy & Utilities', 'Transportation', 'Other'
-  ].sort();
-
-  const companySizes = [
-    'Startup (1-10)', 'Small (11-50)', 'Medium (51-200)', 'Large (201-1000)', 'Enterprise (1000+)'
-  ];
-
-  const revenueRanges = [
-    'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
-  ];
-
-  // Memoize dropdown options to prevent re-creation and focus loss
-  const customerOptions = React.useMemo(() => 
+  // Memoized dropdown options to prevent re-renders and focus loss
+  const customerOptions = useMemo(() => 
     customers.map((customer) => (
       <option key={customer.id} value={customer.id}>
         {customer.customer_name} ({customer.country})
@@ -268,41 +269,43 @@ function Projects() {
     )), [customers]
   );
 
-  const countryOptions = React.useMemo(() =>
+  const countryOptions = useMemo(() =>
     asiaPacificCountries.map((c, i) => (
       <option key={i} value={c}>{c}</option>
     )), [asiaPacificCountries]
   );
 
-  const industryOptions = React.useMemo(() =>
+  const industryOptions = useMemo(() =>
     industryVerticals.map((industry, i) => (
       <option key={i} value={industry}>{industry}</option>
     )), [industryVerticals]
   );
 
-  const companySizeOptions = React.useMemo(() =>
+  const companySizeOptions = useMemo(() =>
     companySizes.map((size, i) => (
       <option key={i} value={size}>{size}</option>
     )), [companySizes]
   );
 
-  const revenueOptions = React.useMemo(() =>
+  const revenueOptions = useMemo(() =>
     revenueRanges.map((range, i) => (
       <option key={i} value={range}>{range}</option>
     )), [revenueRanges]
   );
 
-  const salesStageOptions = React.useMemo(() =>
+  const salesStageOptions = useMemo(() =>
     salesStages.map((s, i) => (
       <option key={i} value={s}>{s}</option>
     )), [salesStages]
   );
 
-  const productOptions = React.useMemo(() =>
+  const productOptions = useMemo(() =>
     products.map((p, i) => (
       <option key={i} value={p}>{p}</option>
     )), [products]
   );
+
+  const Modal = useCallback(({ isOpen, onClose, children }) => {
     if (!isOpen) return null;
     
     return ReactDOM.createPortal(
