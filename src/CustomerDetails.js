@@ -10,6 +10,7 @@ import {
 function ProjectModal({ isOpen, onClose, onSave, customerName }) {
   const [newProject, setNewProject] = useState({
     customer_name: customerName,
+    project_name: '',
     account_manager: '',
     scope: '',
     deal_value: '',
@@ -18,8 +19,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
     sales_stage: '',
     remarks: '',
     due_date: '',
-    project_type: '',
-    smartvista_option: false
+    project_type: ''
   });
 
   const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
@@ -28,15 +28,11 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
     'PoC', 'RFI', 'RFP', 'SoW'
   ].sort();
 
-  const projectTypes = ['CR', 'New Module'].sort();
+  const projectTypes = ['RFP', 'CR'].sort();
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    if (type === 'checkbox') {
-      setNewProject(prev => ({ ...prev, [name]: checked }));
-    } else {
-      setNewProject(prev => ({ ...prev, [name]: value }));
-    }
+    const { name, value } = e.target;
+    setNewProject(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -45,6 +41,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
       // Convert deal_value to number if provided and remove fields not in your table
       const projectData = {
         customer_name: newProject.customer_name,
+        project_name: newProject.project_name,
         account_manager: newProject.account_manager,
         scope: newProject.scope,
         deal_value: newProject.deal_value ? parseFloat(newProject.deal_value) : null,
@@ -53,6 +50,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
         sales_stage: newProject.sales_stage,
         remarks: newProject.remarks,
         due_date: newProject.due_date || null,
+        project_type: newProject.project_type,
         created_at: new Date().toISOString().split('T')[0] // Auto-set today's date
       };
 
@@ -68,6 +66,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
       // Reset form
       setNewProject({
         customer_name: customerName,
+        project_name: '',
         account_manager: '',
         scope: '',
         deal_value: '',
@@ -76,8 +75,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
         sales_stage: '',
         remarks: '',
         due_date: '',
-        project_type: '',
-        smartvista_option: false
+        project_type: ''
       });
       onClose();
     } catch (error) {
@@ -93,6 +91,17 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
         <h3>Add New Project for {customerName}</h3>
         <form onSubmit={handleSubmit} className="modern-form">
+          <label style={{ gridColumn: 'span 2' }}>
+            Project Name *
+            <input 
+              name="project_name" 
+              value={newProject.project_name} 
+              onChange={handleChange}
+              placeholder="Enter project name"
+              required
+            />
+          </label>
+
           <label>
             Account Manager
             <input 
@@ -164,20 +173,6 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
               onChange={handleChange}
             />
           </label>
-
-          {/* SmartVista specific option - only show if SmartVista is selected */}
-          {newProject.product === 'SmartVista' && (
-            <label style={{ gridColumn: 'span 2' }}>
-              <input 
-                type="checkbox"
-                name="smartvista_option"
-                checked={newProject.smartvista_option}
-                onChange={handleChange}
-                style={{ marginRight: '0.5rem' }}
-              />
-              SmartVista Special Configuration Required
-            </label>
-          )}
           
           <label style={{ gridColumn: 'span 2' }}>
             Scope
@@ -287,7 +282,13 @@ function CustomerDetails() {
     alert('Project added successfully!');
   };
 
-  const handleDeleteProject = async (projectId) => {
+  const handleProjectClick = (projectId, projectName) => {
+    if (projectId) {
+      navigate(`/project/${projectId}`);
+    } else {
+      console.log('No project ID found for:', projectName);
+    }
+  };
     if (!window.confirm('Are you sure you want to delete this project?')) return;
     
     try {
@@ -478,33 +479,28 @@ function CustomerDetails() {
                 <table className="modern-table">
                   <thead>
                     <tr>
-                      <th>Account Manager</th>
+                      <th>Project Name</th>
                       <th>Sales Stage</th>
-                      <th>Product</th>
-                      <th>Deal Value</th>
                       <th>Scope</th>
-                      <th>Backup Presales</th>
-                      <th>Expected Closing Date</th>
-                      <th>Created At</th>
-                      <th>Remarks</th>
                       <th style={{ textAlign: 'center' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {projects.map((project) => (
                       <tr key={project.id}>
-                        <td>{project.account_manager || '-'}</td>
-                        <td>{project.sales_stage || '-'}</td>
-                        <td>{project.product || '-'}</td>
-                        <td>{formatCurrency(project.deal_value)}</td>
-                        <td style={{ maxWidth: '200px', wordWrap: 'break-word' }}>
-                          {project.scope || '-'}
+                        <td>
+                          <button
+                            onClick={() => handleProjectClick(project.id, project.project_name)}
+                            className="customer-link-btn"
+                            title="View project details"
+                            style={{ color: '#1e40af' }}
+                          >
+                            📁 {project.project_name || 'Unnamed Project'}
+                          </button>
                         </td>
-                        <td>{project.backup_presales || '-'}</td>
-                        <td>{formatDate(project.due_date)}</td>
-                        <td>{formatDate(project.created_at)}</td>
-                        <td style={{ maxWidth: '200px', wordWrap: 'break-word' }}>
-                          {project.remarks || '-'}
+                        <td>{project.sales_stage || '-'}</td>
+                        <td style={{ maxWidth: '300px', wordWrap: 'break-word' }}>
+                          {project.scope || '-'}
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           <button 
