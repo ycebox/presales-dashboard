@@ -52,7 +52,6 @@ function Projects() {
   }, [filters]);
 
   useEffect(() => {
-    // Fetch customers only once on component mount
     fetchCustomers();
   }, []);
 
@@ -111,7 +110,6 @@ function Projects() {
     const { name, value } = e.target;
     setNewProject((prev) => ({ ...prev, [name]: value }));
 
-    // If customer is selected, auto-fill some fields
     if (name === 'customer_id' && value) {
       const selectedCustomer = customers.find(c => c.id === parseInt(value));
       if (selectedCustomer) {
@@ -129,7 +127,6 @@ function Projects() {
     const { name, value, type } = e.target;
     
     if (name === 'key_stakeholders' || name === 'competitors') {
-      // Handle comma-separated lists
       const arrayValue = value.split(',').map(item => item.trim()).filter(item => item);
       setNewCustomer((prev) => ({ ...prev, [name]: arrayValue }));
     } else if (type === 'number') {
@@ -143,32 +140,13 @@ function Projects() {
     e.preventDefault();
     
     try {
-      // Debug: Check if user is authenticated
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('Current user:', user);
-      
-      if (!user) {
-        alert('You must be logged in to add customers.');
-        return;
-      }
-      
-      // Debug: Log the data being inserted
-      console.log('Inserting customer data:', newCustomer);
+      console.log('Adding customer:', newCustomer);
       
       const { data, error } = await supabase.from('customers').insert([newCustomer]).select();
       
       if (error) {
-        console.error('Full error object:', error);
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
-        console.error('Error details:', error.details);
-        
-        // Handle specific RLS error
-        if (error.message.includes('row-level security policy')) {
-          alert('Permission error: Unable to add customer. Please check with your administrator about database permissions.');
-        } else {
-          alert(`Error adding customer: ${error.message}`);
-        }
+        console.error('Error adding customer:', error);
+        alert(`Error adding customer: ${error.message}`);
         return;
       }
       
@@ -191,10 +169,8 @@ function Projects() {
           notes: ''
         });
         
-        // Refresh customers list without affecting projects
         await fetchCustomers();
         
-        // Auto-select the new customer in project form
         const newCustomerId = data[0].id;
         setNewProject((prev) => ({
           ...prev,
@@ -276,32 +252,8 @@ function Projects() {
     'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
   ];
 
-  // Memoize the dropdown options to prevent re-creation
-  const customerOptions = React.useMemo(() => 
-    customers.map((customer) => (
-      <option key={customer.id} value={customer.id}>
-        {customer.customer_name} ({customer.country})
-      </option>
-    )), [customers]
-  );
-
-  const salesStageOptions = React.useMemo(() => 
-    salesStages.map((s, i) => (
-      <option key={i} value={s}>{s}</option>
-    )), [salesStages]
-  );
-
-  const productOptions = React.useMemo(() => 
-    products.map((p, i) => (
-      <option key={i} value={p}>{p}</option>
-    )), [products]
-  );
-
-  // Create a portal target element
-  const modalRoot = document.getElementById('modal-root') || document.body;
-
-  // Modal Component using Portal - Moved outside to prevent re-creation
-  const Modal = React.useCallback(({ isOpen, onClose, children }) => {
+  // Modal Component using Portal
+  const Modal = ({ isOpen, onClose, children }) => {
     if (!isOpen) return null;
     
     return ReactDOM.createPortal(
@@ -310,9 +262,9 @@ function Projects() {
           {children}
         </div>
       </div>,
-      modalRoot
+      document.body
     );
-  }, [modalRoot]);
+  };
 
   return (
     <>
@@ -423,7 +375,7 @@ function Projects() {
         )}
       </section>
       
-      {/* Add Customer Modal using Portal */}
+      {/* Add Customer Modal */}
       <Modal isOpen={showCustomerModal} onClose={() => setShowCustomerModal(false)}>
         <h3>Add New Customer</h3>
         <form onSubmit={handleAddCustomer} className="modern-form">
@@ -605,7 +557,7 @@ function Projects() {
         </form>
       </Modal>
 
-      {/* Add Project Modal using Portal */}
+      {/* Add Project Modal */}
       <Modal isOpen={showProjectModal} onClose={() => setShowProjectModal(false)}>
         <h3>Add New Project</h3>
         <form onSubmit={handleAddProject} className="modern-form">
@@ -618,7 +570,11 @@ function Projects() {
               required
             >
               <option value="">Select Customer</option>
-              {customerOptions}
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.customer_name} ({customer.country})
+                </option>
+              ))}
             </select>
           </label>
           
@@ -626,7 +582,9 @@ function Projects() {
             Sales Stage
             <select name="sales_stage" value={newProject.sales_stage} onChange={handleNewProjectChange} required>
               <option value="">Select Stage</option>
-              {salesStageOptions}
+              {salesStages.map((s, i) => (
+                <option key={i} value={s}>{s}</option>
+              ))}
             </select>
           </label>
           
@@ -634,7 +592,9 @@ function Projects() {
             Product
             <select name="product" value={newProject.product} onChange={handleNewProjectChange} required>
               <option value="">Select Product</option>
-              {productOptions}
+              {products.map((p, i) => (
+                <option key={i} value={p}>{p}</option>
+              ))}
             </select>
           </label>
           
