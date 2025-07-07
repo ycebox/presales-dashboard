@@ -136,7 +136,44 @@ function Projects() {
     }
   };
 
-  const handleAddCustomer = async (e) => {
+  // Handle modal close and clear form data
+  const handleCloseCustomerModal = () => {
+    setShowCustomerModal(false);
+    // Clear all customer form fields
+    setNewCustomer({
+      customer_name: '',
+      account_manager: '',
+      country: '',
+      industry_vertical: '',
+      customer_type: 'New',
+      year_first_closed: '',
+      company_size: '',
+      annual_revenue: '',
+      technical_complexity: 'Medium',
+      relationship_strength: 'Medium',
+      health_score: 7,
+      key_stakeholders: [],
+      competitors: [],
+      notes: ''
+    });
+  };
+
+  const handleCloseProjectModal = () => {
+    setShowProjectModal(false);
+    // Clear all project form fields
+    setNewProject({
+      customer_id: '',
+      customer_name: '',
+      country: '',
+      account_manager: '',
+      sales_stage: '',
+      product: '',
+      deal_value: '',
+      backup_presales: '',
+      remarks: '',
+      is_archived: 'false'
+    });
+  };
     e.preventDefault();
     
     try {
@@ -192,19 +229,7 @@ function Projects() {
     e.preventDefault();
     const { error } = await supabase.from('projects').insert([newProject]);
     if (!error) {
-      setShowProjectModal(false);
-      setNewProject({
-        customer_id: '',
-        customer_name: '',
-        country: '',
-        account_manager: '',
-        sales_stage: '',
-        product: '',
-        deal_value: '',
-        backup_presales: '',
-        remarks: '',
-        is_archived: 'false'
-      });
+      handleCloseProjectModal(); // Use the new close handler
       fetchProjects();
     } else {
       console.error('Error adding project:', error.message);
@@ -376,7 +401,7 @@ function Projects() {
       </section>
       
       {/* Add Customer Modal */}
-      <Modal isOpen={showCustomerModal} onClose={() => setShowCustomerModal(false)}>
+      <Modal isOpen={showCustomerModal} onClose={handleCloseCustomerModal}>
         <h3>Add New Customer</h3>
         <form onSubmit={handleAddCustomer} className="modern-form">
           <label>
@@ -551,14 +576,14 @@ function Projects() {
           </label>
           
           <div className="modal-actions">
-            <button type="button" onClick={() => setShowCustomerModal(false)}>Cancel</button>
+            <button type="button" onClick={handleCloseCustomerModal}>Cancel</button>
             <button type="submit">Save Customer</button>
           </div>
         </form>
       </Modal>
 
       {/* Add Project Modal */}
-      <Modal isOpen={showProjectModal} onClose={() => setShowProjectModal(false)}>
+      <Modal isOpen={showProjectModal} onClose={handleCloseProjectModal}>
         <h3>Add New Project</h3>
         <form onSubmit={handleAddProject} className="modern-form">
           <label style={{ gridColumn: 'span 2' }}>
@@ -614,7 +639,7 @@ function Projects() {
           </label>
        
           <div className="modal-actions">
-            <button type="button" onClick={() => setShowProjectModal(false)}>Cancel</button>
+            <button type="button" onClick={handleCloseProjectModal}>Cancel</button>
             <button type="submit">Save</button>
           </div>
         </form>
