@@ -49,8 +49,12 @@ function Projects() {
 
   useEffect(() => {
     fetchProjects();
-    fetchCustomers();
   }, [filters]);
+
+  useEffect(() => {
+    // Fetch customers only once on component mount
+    fetchCustomers();
+  }, []);
 
   const fetchCustomers = async () => {
     const { data, error } = await supabase
@@ -158,7 +162,7 @@ function Projects() {
         notes: ''
       });
       
-      // Refresh customers list
+      // Refresh customers list without affecting projects
       await fetchCustomers();
       
       // Auto-select the new customer in project form
@@ -242,11 +246,32 @@ function Projects() {
     'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
   ];
 
+  // Memoize the dropdown options to prevent re-creation
+  const customerOptions = React.useMemo(() => 
+    customers.map((customer) => (
+      <option key={customer.id} value={customer.id}>
+        {customer.customer_name} ({customer.country})
+      </option>
+    )), [customers]
+  );
+
+  const salesStageOptions = React.useMemo(() => 
+    salesStages.map((s, i) => (
+      <option key={i} value={s}>{s}</option>
+    )), [salesStages]
+  );
+
+  const productOptions = React.useMemo(() => 
+    products.map((p, i) => (
+      <option key={i} value={p}>{p}</option>
+    )), [products]
+  );
+
   // Create a portal target element
   const modalRoot = document.getElementById('modal-root') || document.body;
 
-  // Modal Component using Portal
-  const Modal = ({ isOpen, onClose, children }) => {
+  // Modal Component using Portal - Moved outside to prevent re-creation
+  const Modal = React.useCallback(({ isOpen, onClose, children }) => {
     if (!isOpen) return null;
     
     return ReactDOM.createPortal(
@@ -257,7 +282,7 @@ function Projects() {
       </div>,
       modalRoot
     );
-  };
+  }, [modalRoot]);
 
   return (
     <>
@@ -563,11 +588,7 @@ function Projects() {
               required
             >
               <option value="">Select Customer</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.customer_name} ({customer.country})
-                </option>
-              ))}
+              {customerOptions}
             </select>
           </label>
           
@@ -575,9 +596,7 @@ function Projects() {
             Sales Stage
             <select name="sales_stage" value={newProject.sales_stage} onChange={handleNewProjectChange} required>
               <option value="">Select Stage</option>
-              {salesStages.map((s, i) => (
-                <option key={i} value={s}>{s}</option>
-              ))}
+              {salesStageOptions}
             </select>
           </label>
           
@@ -585,9 +604,7 @@ function Projects() {
             Product
             <select name="product" value={newProject.product} onChange={handleNewProjectChange} required>
               <option value="">Select Product</option>
-              {products.map((p, i) => (
-                <option key={i} value={p}>{p}</option>
-              ))}
+              {productOptions}
             </select>
           </label>
           
