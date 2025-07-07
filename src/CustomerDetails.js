@@ -1,10 +1,10 @@
-// CustomerDetails.js - Fixed potential errors and improved error handling
+// CustomerDetails.js - Changed from modal to inline editing
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './CustomerDetails.css';
 import {
-  FaHome, FaUsers, FaEdit, FaPlus, FaBriefcase, FaTrash
+  FaHome, FaUsers, FaEdit, FaPlus, FaBriefcase, FaTrash, FaSave, FaTimes
 } from 'react-icons/fa';
 
 function ProjectModal({ isOpen, onClose, onSave, customerName }) {
@@ -42,6 +42,27 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
     setNewProject(prev => ({ ...prev, [name]: value }));
   };
 
+  const clearForm = () => {
+    setNewProject({
+      customer_name: customerName || '',
+      project_name: '',
+      account_manager: '',
+      scope: '',
+      deal_value: '',
+      product: '',
+      backup_presales: '',
+      sales_stage: '',
+      remarks: '',
+      due_date: '',
+      project_type: ''
+    });
+  };
+
+  const handleClose = () => {
+    clearForm();
+    onClose();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -66,8 +87,6 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
       };
 
       // Add project_name and project_type if your table supports them
-      // Note: These fields might not exist in your current table schema
-      // Remove these lines if they cause errors
       if (newProject.project_name) {
         projectData.project_name = newProject.project_name;
       }
@@ -85,20 +104,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
       
       if (data && data.length > 0) {
         onSave(data[0]);
-        // Reset form
-        setNewProject({
-          customer_name: customerName,
-          project_name: '',
-          account_manager: '',
-          scope: '',
-          deal_value: '',
-          product: '',
-          backup_presales: '',
-          sales_stage: '',
-          remarks: '',
-          due_date: '',
-          project_type: ''
-        });
+        clearForm();
         onClose();
       }
     } catch (error) {
@@ -118,7 +124,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={handleClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
         <h3>Add New Project for {customerName || 'Customer'}</h3>
         <form onSubmit={handleSubmit} className="modern-form">
@@ -228,7 +234,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
           </label>
           
           <div className="modal-actions">
-            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="button" onClick={handleClose}>Cancel</button>
             <button type="submit">Save Project</button>
           </div>
         </form>
@@ -245,6 +251,11 @@ function CustomerDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
+  
+  // Inline editing states
+  const [isEditing, setIsEditing] = useState(false);
+  const [editCustomer, setEditCustomer] = useState({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (customerId) {
@@ -277,6 +288,8 @@ function CustomerDetails() {
       }
       
       setCustomer(data);
+      // Initialize edit state with current customer data
+      setEditCustomer(data);
     } catch (error) {
       console.error('Error fetching customer:', error);
       setError('Failed to load customer details: ' + error.message);
@@ -309,9 +322,65 @@ function CustomerDetails() {
     }
   };
 
-  const handleEditCustomer = () => {
-    console.log('Edit customer:', customerId);
-    alert('Edit customer functionality coming soon!');
+  // Inline editing handlers
+  const handleEditToggle = () => {
+    if (isEditing) {
+      // Cancel editing - reset to original values
+      setEditCustomer(customer);
+      setIsEditing(false);
+    } else {
+      // Start editing
+      setIsEditing(true);
+    }
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value, type } = e.target;
+    
+    if (name === 'key_stakeholders' || name === 'competitors') {
+      // Handle comma-separated lists
+      const arrayValue = value.split(',').map(item => item.trim()).filter(item => item);
+      setEditCustomer(prev => ({ ...prev, [name]: arrayValue }));
+    } else if (type === 'number') {
+      setEditCustomer(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
+    } else {
+      setEditCustomer(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSaveCustomer = async () => {
+    if (!customer?.id) {
+      alert('Customer ID is required');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      console.log('Updating customer:', editCustomer);
+      
+      const { data, error } = await supabase
+        .from('customers')
+        .update(editCustomer)
+        .eq('id', customer.id)
+        .select();
+      
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        setCustomer(data[0]);
+        setEditCustomer(data[0]);
+        setIsEditing(false);
+        alert('Customer updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error updating customer:', error);
+      alert('Error updating customer: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAddProject = () => {
@@ -351,6 +420,7 @@ function CustomerDetails() {
     }
   };
 
+  // Helper functions
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     try {
@@ -387,6 +457,26 @@ function CustomerDetails() {
     }
   };
 
+  // Data for dropdowns
+  const asiaPacificCountries = [
+    "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
+    "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
+    "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
+  ].sort();
+
+  const industryVerticals = [
+    'Banking', 'Financial Services', 'Insurance', 'Government', 'Healthcare', 'Education', 
+    'Retail', 'Manufacturing', 'Telecommunications', 'Energy & Utilities', 'Transportation', 'Other'
+  ].sort();
+
+  const companySizes = [
+    'Startup (1-10)', 'Small (11-50)', 'Medium (51-200)', 'Large (201-1000)', 'Enterprise (1000+)'
+  ];
+
+  const revenueRanges = [
+    'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
+  ];
+
   if (loading) {
     return (
       <div className="page-wrapper">
@@ -416,53 +506,192 @@ function CustomerDetails() {
           <FaHome /> Back to Dashboard
         </button>
 
-        {/* Customer Header - Simplified */}
+        {/* Customer Header */}
         <div className="customer-header">
           <h1 className="customer-name">{customer.customer_name}</h1>
         </div>
 
-        {/* Customer Information Section */}
+        {/* Customer Information Section with Inline Editing */}
         <div className="section-card">
           <div className="section-header">
             <h3>
               <FaUsers /> Customer Information
             </h3>
-            <button onClick={handleEditCustomer} className="edit-btn">
-              <FaEdit /> Edit Customer
-            </button>
+            <div className="edit-controls">
+              {isEditing ? (
+                <>
+                  <button 
+                    onClick={handleSaveCustomer} 
+                    className="save-btn"
+                    disabled={saving}
+                  >
+                    <FaSave /> {saving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button 
+                    onClick={handleEditToggle} 
+                    className="cancel-btn"
+                    disabled={saving}
+                  >
+                    <FaTimes /> Cancel
+                  </button>
+                </>
+              ) : (
+                <button onClick={handleEditToggle} className="edit-btn">
+                  <FaEdit /> Edit Customer
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="customer-info-grid">
             {/* Left Column */}
             <div className="info-column">
               <div className="info-field">
-                <label>Account Manager</label>
-                <div className="field-value">{customer.account_manager || 'Not assigned'}</div>
+                <label>Customer Name</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    name="customer_name"
+                    value={editCustomer.customer_name || ''}
+                    onChange={handleEditChange}
+                    className="inline-edit-input"
+                    required
+                  />
+                ) : (
+                  <div className="field-value">{customer.customer_name}</div>
+                )}
               </div>
+
+              <div className="info-field">
+                <label>Account Manager</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    name="account_manager"
+                    value={editCustomer.account_manager || ''}
+                    onChange={handleEditChange}
+                    className="inline-edit-input"
+                    placeholder="Account manager name"
+                  />
+                ) : (
+                  <div className="field-value">{customer.account_manager || 'Not assigned'}</div>
+                )}
+              </div>
+
               <div className="info-field">
                 <label>Country</label>
-                <div className="field-value">{customer.country || 'Not specified'}</div>
+                {isEditing ? (
+                  <select
+                    name="country"
+                    value={editCustomer.country || ''}
+                    onChange={handleEditChange}
+                    className="inline-edit-select"
+                  >
+                    <option value="">Select Country</option>
+                    {asiaPacificCountries.map((c, i) => (
+                      <option key={i} value={c}>{c}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="field-value">{customer.country || 'Not specified'}</div>
+                )}
               </div>
+
               <div className="info-field">
                 <label>Industry Vertical</label>
-                <div className="field-value">{customer.industry_vertical || 'Not specified'}</div>
+                {isEditing ? (
+                  <select
+                    name="industry_vertical"
+                    value={editCustomer.industry_vertical || ''}
+                    onChange={handleEditChange}
+                    className="inline-edit-select"
+                  >
+                    <option value="">Select Industry</option>
+                    {industryVerticals.map((industry, i) => (
+                      <option key={i} value={industry}>{industry}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="field-value">{customer.industry_vertical || 'Not specified'}</div>
+                )}
               </div>
+
               <div className="info-field">
                 <label>Customer Type</label>
-                <div className={`field-value ${customer.customer_type === 'Existing' ? 'existing-customer' : 'new-customer'}`}>
-                  {customer.customer_type || 'New'} Customer
-                  {customer.customer_type === 'Existing' && customer.year_first_closed && (
-                    <span className="year-info"> (since {customer.year_first_closed})</span>
-                  )}
-                </div>
+                {isEditing ? (
+                  <select
+                    name="customer_type"
+                    value={editCustomer.customer_type || 'New'}
+                    onChange={handleEditChange}
+                    className="inline-edit-select"
+                  >
+                    <option value="New">New</option>
+                    <option value="Existing">Existing</option>
+                  </select>
+                ) : (
+                  <div className={`field-value ${customer.customer_type === 'Existing' ? 'existing-customer' : 'new-customer'}`}>
+                    {customer.customer_type || 'New'} Customer
+                    {customer.customer_type === 'Existing' && customer.year_first_closed && (
+                      <span className="year-info"> (since {customer.year_first_closed})</span>
+                    )}
+                  </div>
+                )}
               </div>
+
+              <div className="info-field">
+                <label>Year First Closed</label>
+                {isEditing ? (
+                  <input
+                    type="number"
+                    name="year_first_closed"
+                    value={editCustomer.year_first_closed || ''}
+                    onChange={handleEditChange}
+                    className="inline-edit-input"
+                    min="2000"
+                    max={new Date().getFullYear()}
+                    placeholder="e.g., 2022"
+                  />
+                ) : (
+                  <div className="field-value">{customer.year_first_closed || 'Not specified'}</div>
+                )}
+              </div>
+
               <div className="info-field">
                 <label>Company Size</label>
-                <div className="field-value">{customer.company_size || 'Not specified'}</div>
+                {isEditing ? (
+                  <select
+                    name="company_size"
+                    value={editCustomer.company_size || ''}
+                    onChange={handleEditChange}
+                    className="inline-edit-select"
+                  >
+                    <option value="">Select Size</option>
+                    {companySizes.map((size, i) => (
+                      <option key={i} value={size}>{size}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="field-value">{customer.company_size || 'Not specified'}</div>
+                )}
               </div>
+
               <div className="info-field">
                 <label>Annual Revenue</label>
-                <div className="field-value">{customer.annual_revenue || 'Not specified'}</div>
+                {isEditing ? (
+                  <select
+                    name="annual_revenue"
+                    value={editCustomer.annual_revenue || ''}
+                    onChange={handleEditChange}
+                    className="inline-edit-select"
+                  >
+                    <option value="">Select Revenue Range</option>
+                    {revenueRanges.map((range, i) => (
+                      <option key={i} value={range}>{range}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="field-value">{customer.annual_revenue || 'Not specified'}</div>
+                )}
               </div>
             </div>
 
@@ -470,49 +699,129 @@ function CustomerDetails() {
             <div className="info-column">
               <div className="info-field">
                 <label>Technical Complexity</label>
-                <div className={`field-value ${getComplexityClass(customer.technical_complexity)}`}>
-                  {customer.technical_complexity || 'Medium'}
-                </div>
+                {isEditing ? (
+                  <select
+                    name="technical_complexity"
+                    value={editCustomer.technical_complexity || 'Medium'}
+                    onChange={handleEditChange}
+                    className="inline-edit-select"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                ) : (
+                  <div className={`field-value ${getComplexityClass(customer.technical_complexity)}`}>
+                    {customer.technical_complexity || 'Medium'}
+                  </div>
+                )}
               </div>
+
               <div className="info-field">
                 <label>Relationship Strength</label>
-                <div className={`field-value ${getRelationshipClass(customer.relationship_strength)}`}>
-                  {customer.relationship_strength || 'Medium'}
-                </div>
+                {isEditing ? (
+                  <select
+                    name="relationship_strength"
+                    value={editCustomer.relationship_strength || 'Medium'}
+                    onChange={handleEditChange}
+                    className="inline-edit-select"
+                  >
+                    <option value="Weak">Weak</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Strong">Strong</option>
+                  </select>
+                ) : (
+                  <div className={`field-value ${getRelationshipClass(customer.relationship_strength)}`}>
+                    {customer.relationship_strength || 'Medium'}
+                  </div>
+                )}
               </div>
+
+              <div className="info-field">
+                <label>Health Score (1-10)</label>
+                {isEditing ? (
+                  <input
+                    type="number"
+                    name="health_score"
+                    value={editCustomer.health_score || 7}
+                    onChange={handleEditChange}
+                    className="inline-edit-input"
+                    min="1"
+                    max="10"
+                  />
+                ) : (
+                  <div className="field-value">{customer.health_score || 7}</div>
+                )}
+              </div>
+
               <div className="info-field">
                 <label>Key Stakeholders</label>
-                <div className="stakeholders-list">
-                  {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
-                    customer.key_stakeholders.map((stakeholder, index) => (
-                      <div key={index} className="stakeholder-item">
-                        • {stakeholder}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="no-data">No stakeholders listed</div>
-                  )}
-                </div>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    name="key_stakeholders"
+                    value={editCustomer.key_stakeholders ? editCustomer.key_stakeholders.join(', ') : ''}
+                    onChange={handleEditChange}
+                    className="inline-edit-input"
+                    placeholder="John Smith, Jane Doe, etc."
+                  />
+                ) : (
+                  <div className="stakeholders-list">
+                    {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
+                      customer.key_stakeholders.map((stakeholder, index) => (
+                        <div key={index} className="stakeholder-item">
+                          • {stakeholder}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="no-data">No stakeholders listed</div>
+                    )}
+                  </div>
+                )}
               </div>
+
               <div className="info-field">
                 <label>Main Competitors</label>
-                <div className="competitors-list">
-                  {customer.competitors && customer.competitors.length > 0 ? (
-                    customer.competitors.map((competitor, index) => (
-                      <span key={index} className="competitor-tag">
-                        {competitor}
-                      </span>
-                    ))
-                  ) : (
-                    <div className="no-data">No competitors listed</div>
-                  )}
-                </div>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    name="competitors"
+                    value={editCustomer.competitors ? editCustomer.competitors.join(', ') : ''}
+                    onChange={handleEditChange}
+                    className="inline-edit-input"
+                    placeholder="Company A, Company B, etc."
+                  />
+                ) : (
+                  <div className="competitors-list">
+                    {customer.competitors && customer.competitors.length > 0 ? (
+                      customer.competitors.map((competitor, index) => (
+                        <span key={index} className="competitor-tag">
+                          {competitor}
+                        </span>
+                      ))
+                    ) : (
+                      <div className="no-data">No competitors listed</div>
+                    )}
+                  </div>
+                )}
               </div>
+
               <div className="info-field">
                 <label>Notes</label>
-                <div className="field-value">
-                  {customer.notes || 'No notes available'}
-                </div>
+                {isEditing ? (
+                  <textarea
+                    name="notes"
+                    value={editCustomer.notes || ''}
+                    onChange={handleEditChange}
+                    className="inline-edit-textarea"
+                    rows="3"
+                    placeholder="Customer notes..."
+                  />
+                ) : (
+                  <div className="field-value">
+                    {customer.notes || 'No notes available'}
+                  </div>
+                )}
               </div>
             </div>
           </div>
