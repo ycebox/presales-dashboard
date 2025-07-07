@@ -18,7 +18,8 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
     sales_stage: '',
     remarks: '',
     due_date: '',
-    created_at: new Date().toISOString().split('T')[0] // Today's date
+    project_type: '',
+    smartvista_option: false
   });
 
   const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
@@ -27,18 +28,32 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
     'PoC', 'RFI', 'RFP', 'SoW'
   ].sort();
 
+  const projectTypes = ['CR', 'New Module'].sort();
+
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setNewProject(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    if (type === 'checkbox') {
+      setNewProject(prev => ({ ...prev, [name]: checked }));
+    } else {
+      setNewProject(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Convert deal_value to number if provided
+      // Convert deal_value to number if provided and remove fields not in your table
       const projectData = {
-        ...newProject,
-        deal_value: newProject.deal_value ? parseFloat(newProject.deal_value) : null
+        customer_name: newProject.customer_name,
+        account_manager: newProject.account_manager,
+        scope: newProject.scope,
+        deal_value: newProject.deal_value ? parseFloat(newProject.deal_value) : null,
+        product: newProject.product,
+        backup_presales: newProject.backup_presales,
+        sales_stage: newProject.sales_stage,
+        remarks: newProject.remarks,
+        due_date: newProject.due_date || null,
+        created_at: new Date().toISOString().split('T')[0] // Auto-set today's date
       };
 
       console.log('Inserting project:', projectData);
@@ -61,7 +76,8 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
         sales_stage: '',
         remarks: '',
         due_date: '',
-        created_at: new Date().toISOString().split('T')[0]
+        project_type: '',
+        smartvista_option: false
       });
       onClose();
     } catch (error) {
@@ -106,6 +122,16 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
               ))}
             </select>
           </label>
+
+          <label>
+            Project Type
+            <select name="project_type" value={newProject.project_type} onChange={handleChange}>
+              <option value="">Select Type</option>
+              {projectTypes.map((type, i) => (
+                <option key={i} value={type}>{type}</option>
+              ))}
+            </select>
+          </label>
           
           <label>
             Deal Value
@@ -130,7 +156,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
           </label>
 
           <label>
-            Due Date
+            Expected Closing Date
             <input 
               name="due_date" 
               type="date"
@@ -139,15 +165,19 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
             />
           </label>
 
-          <label>
-            Created At
-            <input 
-              name="created_at" 
-              type="date"
-              value={newProject.created_at} 
-              onChange={handleChange}
-            />
-          </label>
+          {/* SmartVista specific option - only show if SmartVista is selected */}
+          {newProject.product === 'SmartVista' && (
+            <label style={{ gridColumn: 'span 2' }}>
+              <input 
+                type="checkbox"
+                name="smartvista_option"
+                checked={newProject.smartvista_option}
+                onChange={handleChange}
+                style={{ marginRight: '0.5rem' }}
+              />
+              SmartVista Special Configuration Required
+            </label>
+          )}
           
           <label style={{ gridColumn: 'span 2' }}>
             Scope
@@ -454,7 +484,7 @@ function CustomerDetails() {
                       <th>Deal Value</th>
                       <th>Scope</th>
                       <th>Backup Presales</th>
-                      <th>Due Date</th>
+                      <th>Expected Closing Date</th>
                       <th>Created At</th>
                       <th>Remarks</th>
                       <th style={{ textAlign: 'center' }}>Actions</th>
