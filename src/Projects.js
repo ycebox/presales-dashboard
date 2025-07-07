@@ -13,8 +13,8 @@ function Projects() {
   const [filters, setFilters] = useState({
     country: '',
     account_manager: '',
-    sales_stage: '',
-    product: ''
+    industry_vertical: '',
+    customer_type: ''
   });
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -79,51 +79,61 @@ function Projects() {
   }, [filters]);
 
   useEffect(() => {
+    console.log('Projects component mounted, fetching customers...');
     fetchCustomers();
   }, []);
 
   const fetchCustomers = async () => {
-    const { data, error } = await supabase
-      .from('customers')
-      .select('*')
-      .order('customer_name', { ascending: true });
-    
-    if (!error) {
+    try {
+      console.log('Fetching customers...');
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .order('customer_name', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching customers:', error);
+        return;
+      }
+      
+      console.log('Customers fetched:', data);
       setCustomers(data || []);
-    } else {
-      console.error('Error fetching customers:', error.message);
+    } catch (err) {
+      console.error('Unexpected error fetching customers:', err);
     }
   };
 
   const fetchProjects = async () => {
     setLoading(true);
-    let query = supabase.from('projects').select(`
-      *,
-      customers!inner(
-        id,
-        customer_name,
-        account_manager,
-        country
-      )
-    `);
-    
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value) {
-        if (key === 'account_manager') {
-          query = query.eq('customers.account_manager', value);
-        } else if (key === 'country') {
-          query = query.eq('customers.country', value);
-        } else {
+    try {
+      // Instead of joining, let's fetch customers with active projects
+      let query = supabase
+        .from('customers')
+        .select('*');
+      
+      // Apply filters to customers table
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) {
+          if (key === 'sales_stage' || key === 'product') {
+            // Skip project-specific filters for now
+            return;
+          }
           query = query.eq(key, value);
         }
-      }
-    });
+      });
 
-    const { data, error } = await query.order('customer_name', { ascending: true });
-    if (!error) {
-      setProjects(data);
-    } else {
-      console.error('Error fetching projects:', error.message);
+      const { data, error } = await query.order('customer_name', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching customers:', error);
+        setProjects([]);
+      } else {
+        console.log('Customers with projects:', data);
+        setProjects(data || []);
+      }
+    } catch (err) {
+      console.error('Unexpected error in fetchProjects:', err);
+      setProjects([]);
     }
     setLoading(false);
   };
@@ -245,11 +255,15 @@ function Projects() {
     }
   };
 
-  const handleDeleteProject = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this project?')) return;
-    const { error } = await supabase.from('projects').delete().eq('id', id);
-    if (!error) fetchProjects();
-    else console.error('Delete error:', error.message);
+  const handleDeleteCustomer = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this customer?')) return;
+    const { error } = await supabase.from('customers').delete().eq('id', id);
+    if (!error) {
+      fetchProjects(); // Refresh the customer list
+      fetchCustomers(); // Also refresh the customers dropdown
+    } else {
+      console.error('Delete error:', error.message);
+    }
   };
 
   const handleCustomerClick = (customerId, customerName) => {
@@ -261,13 +275,14 @@ function Projects() {
   };
 
   // Memoized dropdown options to prevent re-renders and focus loss
-  const customerOptions = useMemo(() => 
-    customers.map((customer) => (
+  const customerOptions = useMemo(() => {
+    console.log('Creating customer options from:', customers);
+    return customers.map((customer) => (
       <option key={customer.id} value={customer.id}>
         {customer.customer_name} ({customer.country})
       </option>
-    )), [customers]
-  );
+    ));
+  }, [customers]);
 
   const countryOptions = useMemo(() =>
     asiaPacificCountries.map((c, i) => (
@@ -323,7 +338,7 @@ function Projects() {
       <section className="projects-wrapper">
         <div className="projects-header-row">
           <h2 className="projects-header">
-            <FaFolderOpen style={{ marginRight: '8px' }} /> Presales Projects
+            <FaFolderOpen style={{ marginRight: '8px' }} /> Customers
           </h2>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button className="add-btn" style={{ backgroundColor: '#10b981' }} onClick={() => setShowCustomerModal(true)}>
@@ -347,23 +362,24 @@ function Projects() {
             Account Manager
             <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
               <option value="">All AMs</option>
-              {[...new Set(projects.map(p => p.customers?.account_manager).filter(Boolean))].sort().map((c, i) => (
+              {[...new Set(projects.map(p => p.account_manager).filter(Boolean))].sort().map((c, i) => (
                 <option key={i} value={c}>{c}</option>
               ))}
             </select>
           </label>
           <label>
-            Sales Stage
-            <select name="sales_stage" value={filters.sales_stage} onChange={handleFilterChange}>
-              <option value="">All Stages</option>
-              {salesStageOptions}
+            Industry Vertical
+            <select name="industry_vertical" value={filters.industry_vertical} onChange={handleFilterChange}>
+              <option value="">All Industries</option>
+              {industryOptions}
             </select>
           </label>
           <label>
-            Product
-            <select name="product" value={filters.product} onChange={handleFilterChange}>
-              <option value="">All Products</option>
-              {productOptions}
+            Customer Type
+            <select name="customer_type" value={filters.customer_type} onChange={handleFilterChange}>
+              <option value="">All Types</option>
+              <option value="New">New</option>
+              <option value="Existing">Existing</option>
             </select>
           </label>
         </div>
@@ -376,39 +392,43 @@ function Projects() {
               <table className="modern-table project-table">
                 <thead>
                   <tr>
-                    <th>Customer</th>
+                    <th>Customer Name</th>
                     <th>Country</th>
                     <th>Account Manager</th>
-                    <th>Sales Stage</th>
-                    <th>Product</th>
+                    <th>Industry</th>
+                    <th>Customer Type</th>
                     <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {projects.map((project) => (
-                    <tr key={project.id} id={`project-${project.id}`}>
+                  {projects.map((customer) => (
+                    <tr key={customer.id} id={`customer-${customer.id}`}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <button
-                            onClick={() => handleCustomerClick(project.customers?.id, project.customers?.customer_name || project.customer_name)}
+                            onClick={() => handleCustomerClick(customer.id, customer.customer_name)}
                             className="customer-link-btn"
                             title="View customer details"
                           >
                             <FaUser size={12} />
-                            {project.customers?.customer_name || project.customer_name}
+                            {customer.customer_name}
                           </button>
-                          <span className="project-divider">•</span>
-                          <Link to={`/project/${project.id}`} className="project-link">
-                            {project.name || 'Project'}
-                          </Link>
                         </div>
                       </td>
-                      <td>{project.customers?.country || project.country}</td>
-                      <td>{project.customers?.account_manager || project.account_manager}</td>
-                      <td>{project.sales_stage}</td>
-                      <td>{project.product}</td>
+                      <td>{customer.country}</td>
+                      <td>{customer.account_manager}</td>
+                      <td>{customer.industry_vertical || 'Not specified'}</td>
+                      <td>
+                        <span className={customer.customer_type === 'Existing' ? 'existing-customer' : 'new-customer'}>
+                          {customer.customer_type || 'New'}
+                        </span>
+                      </td>
                       <td style={{ textAlign: 'center' }}>
-                        <button className="delete-btn" onClick={() => handleDeleteProject(project.id)}>
+                        <button 
+                          className="delete-btn" 
+                          onClick={() => handleDeleteCustomer(customer.id)}
+                          title="Delete customer"
+                        >
                           <FaTrash />
                         </button>
                       </td>
@@ -598,16 +618,27 @@ function Projects() {
         <h3>Add New Project</h3>
         <form onSubmit={handleAddProject} className="modern-form">
           <label style={{ gridColumn: 'span 2' }}>
-            Customer
+            Customer ({customers.length} available)
             <select 
               name="customer_id" 
               value={newProject.customer_id} 
               onChange={handleNewProjectChange} 
               required
             >
-              <option value="">Select Customer</option>
+              <option value="">
+                {customers.length === 0 ? 'No customers available - Add one first!' : 'Select Customer'}
+              </option>
               {customerOptions}
             </select>
+            {customers.length === 0 && (
+              <div style={{ 
+                fontSize: '0.8rem', 
+                color: '#ef4444', 
+                marginTop: '0.5rem' 
+              }}>
+                No customers found. Please add a customer first using the "Add Customer" button.
+              </div>
+            )}
           </label>
           
           <label>
