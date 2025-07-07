@@ -136,10 +136,8 @@ function Projects() {
     }
   };
 
-  // Handle modal close and clear form data
   const handleCloseCustomerModal = () => {
     setShowCustomerModal(false);
-    // Clear all customer form fields
     setNewCustomer({
       customer_name: '',
       account_manager: '',
@@ -160,7 +158,6 @@ function Projects() {
 
   const handleCloseProjectModal = () => {
     setShowProjectModal(false);
-    // Clear all project form fields
     setNewProject({
       customer_id: '',
       customer_name: '',
@@ -174,6 +171,8 @@ function Projects() {
       is_archived: 'false'
     });
   };
+
+  const handleAddCustomer = async (e) => {
     e.preventDefault();
     
     try {
@@ -188,25 +187,8 @@ function Projects() {
       }
       
       if (data && data.length > 0) {
-        setShowCustomerModal(false);
-        setNewCustomer({
-          customer_name: '',
-          account_manager: '',
-          country: '',
-          industry_vertical: '',
-          customer_type: 'New',
-          year_first_closed: '',
-          company_size: '',
-          annual_revenue: '',
-          technical_complexity: 'Medium',
-          relationship_strength: 'Medium',
-          health_score: 7,
-          key_stakeholders: [],
-          competitors: [],
-          notes: ''
-        });
-        
-        await fetchCustomers();
+        handleCloseCustomerModal();
+        fetchCustomers();
         
         const newCustomerId = data[0].id;
         setNewProject((prev) => ({
@@ -229,7 +211,7 @@ function Projects() {
     e.preventDefault();
     const { error } = await supabase.from('projects').insert([newProject]);
     if (!error) {
-      handleCloseProjectModal(); // Use the new close handler
+      handleCloseProjectModal();
       fetchProjects();
     } else {
       console.error('Error adding project:', error.message);
@@ -277,7 +259,6 @@ function Projects() {
     'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
   ];
 
-  // Modal Component using Portal
   const Modal = ({ isOpen, onClose, children }) => {
     if (!isOpen) return null;
     
@@ -400,7 +381,6 @@ function Projects() {
         )}
       </section>
       
-      {/* Add Customer Modal */}
       <Modal isOpen={showCustomerModal} onClose={handleCloseCustomerModal}>
         <h3>Add New Customer</h3>
         <form onSubmit={handleAddCustomer} className="modern-form">
@@ -582,7 +562,6 @@ function Projects() {
         </form>
       </Modal>
 
-      {/* Add Project Modal */}
       <Modal isOpen={showProjectModal} onClose={handleCloseProjectModal}>
         <h3>Add New Project</h3>
         <form onSubmit={handleAddProject} className="modern-form">
