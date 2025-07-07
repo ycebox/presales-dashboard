@@ -1,4 +1,4 @@
-// CustomerDetails.js - Updated to use existing projects table structure
+// CustomerDetails.js - Fixed potential errors and improved error handling
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -9,7 +9,7 @@ import {
 
 function ProjectModal({ isOpen, onClose, onSave, customerName }) {
   const [newProject, setNewProject] = useState({
-    customer_name: customerName,
+    customer_name: customerName || '',
     project_name: '',
     account_manager: '',
     scope: '',
@@ -21,6 +21,13 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
     due_date: '',
     project_type: ''
   });
+
+  // Update customer_name when prop changes
+  useEffect(() => {
+    if (customerName) {
+      setNewProject(prev => ({ ...prev, customer_name: customerName }));
+    }
+  }, [customerName]);
 
   const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
   const salesStages = [
@@ -37,22 +44,36 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!customerName) {
+      alert('Customer name is required');
+      return;
+    }
+
     try {
-      // Convert deal_value to number if provided and remove fields not in your table
+      // Prepare project data with proper field mapping
       const projectData = {
-        customer_name: newProject.customer_name,
-        project_name: newProject.project_name,
-        account_manager: newProject.account_manager,
-        scope: newProject.scope,
+        customer_name: customerName,
+        account_manager: newProject.account_manager || null,
+        scope: newProject.scope || null,
         deal_value: newProject.deal_value ? parseFloat(newProject.deal_value) : null,
-        product: newProject.product,
-        backup_presales: newProject.backup_presales,
+        product: newProject.product || null,
+        backup_presales: newProject.backup_presales || null,
         sales_stage: newProject.sales_stage,
-        remarks: newProject.remarks,
+        remarks: newProject.remarks || null,
         due_date: newProject.due_date || null,
-        project_type: newProject.project_type,
-        created_at: new Date().toISOString().split('T')[0] // Auto-set today's date
+        created_at: new Date().toISOString().split('T')[0]
       };
+
+      // Add project_name and project_type if your table supports them
+      // Note: These fields might not exist in your current table schema
+      // Remove these lines if they cause errors
+      if (newProject.project_name) {
+        projectData.project_name = newProject.project_name;
+      }
+      if (newProject.project_type) {
+        projectData.project_type = newProject.project_type;
+      }
 
       console.log('Inserting project:', projectData);
       const { data, error } = await supabase.from('projects').insert([projectData]).select();
@@ -62,25 +83,35 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
         throw error;
       }
       
-      onSave(data[0]);
-      // Reset form
-      setNewProject({
-        customer_name: customerName,
-        project_name: '',
-        account_manager: '',
-        scope: '',
-        deal_value: '',
-        product: '',
-        backup_presales: '',
-        sales_stage: '',
-        remarks: '',
-        due_date: '',
-        project_type: ''
-      });
-      onClose();
+      if (data && data.length > 0) {
+        onSave(data[0]);
+        // Reset form
+        setNewProject({
+          customer_name: customerName,
+          project_name: '',
+          account_manager: '',
+          scope: '',
+          deal_value: '',
+          product: '',
+          backup_presales: '',
+          sales_stage: '',
+          remarks: '',
+          due_date: '',
+          project_type: ''
+        });
+        onClose();
+      }
     } catch (error) {
       console.error('Error adding project:', error);
-      alert('Error adding project: ' + error.message);
+      
+      // Handle specific database errors
+      if (error.message.includes('column') && error.message.includes('does not exist')) {
+        alert('Database schema error: Some fields may not exist in your projects table. Please check the console for details.');
+      } else if (error.message.includes('violates')) {
+        alert('Data validation error: Please check all required fields and try again.');
+      } else {
+        alert('Error adding project: ' + error.message);
+      }
     }
   };
 
@@ -89,7 +120,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
-        <h3>Add New Project for {customerName}</h3>
+        <h3>Add New Project for {customerName || 'Customer'}</h3>
         <form onSubmit={handleSubmit} className="modern-form">
           <label style={{ gridColumn: 'span 2' }}>
             Project Name *
@@ -230,6 +261,8 @@ function CustomerDetails() {
   const fetchCustomerDetails = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
       const { data, error } = await supabase
         .from('customers')
         .select('*')
@@ -237,16 +270,24 @@ function CustomerDetails() {
         .single();
 
       if (error) throw error;
+      
+      if (!data) {
+        setError('Customer not found');
+        return;
+      }
+      
       setCustomer(data);
     } catch (error) {
       console.error('Error fetching customer:', error);
-      setError('Failed to load customer details');
+      setError('Failed to load customer details: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchCustomerProjects = async () => {
+    if (!customer?.customer_name) return;
+    
     try {
       console.log('Fetching projects for customer:', customer.customer_name);
       const { data, error } = await supabase
@@ -274,6 +315,10 @@ function CustomerDetails() {
   };
 
   const handleAddProject = () => {
+    if (!customer?.customer_name) {
+      alert('Customer information not loaded. Please refresh the page.');
+      return;
+    }
     setShowProjectModal(true);
   };
 
@@ -287,8 +332,11 @@ function CustomerDetails() {
       navigate(`/project/${projectId}`);
     } else {
       console.log('No project ID found for:', projectName);
+      alert('Project details page is not yet available.');
     }
   };
+
+  const handleDeleteProject = async (projectId) => {
     if (!window.confirm('Are you sure you want to delete this project?')) return;
     
     try {
@@ -305,12 +353,20 @@ function CustomerDetails() {
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString();
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch (error) {
+      return '-';
+    }
   };
 
   const formatCurrency = (value) => {
     if (!value) return '-';
-    return `$${parseFloat(value).toLocaleString()}`;
+    try {
+      return `$${parseFloat(value).toLocaleString()}`;
+    } catch (error) {
+      return '-';
+    }
   };
 
   const getComplexityClass = (complexity) => {
@@ -495,7 +551,7 @@ function CustomerDetails() {
                             title="View project details"
                             style={{ color: '#1e40af' }}
                           >
-                            📁 {project.project_name || 'Unnamed Project'}
+                            📁 {project.project_name || project.customer_name || 'Unnamed Project'}
                           </button>
                         </td>
                         <td>{project.sales_stage || '-'}</td>
@@ -529,12 +585,14 @@ function CustomerDetails() {
       </div>
 
       {/* Add Project Modal */}
-      <ProjectModal
-        isOpen={showProjectModal}
-        onClose={() => setShowProjectModal(false)}
-        onSave={handleProjectSaved}
-        customerName={customer.customer_name}
-      />
+      {customer && (
+        <ProjectModal
+          isOpen={showProjectModal}
+          onClose={() => setShowProjectModal(false)}
+          onSave={handleProjectSaved}
+          customerName={customer.customer_name}
+        />
+      )}
     </div>
   );
 }
