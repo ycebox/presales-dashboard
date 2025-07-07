@@ -1,4 +1,4 @@
-// CustomerDetails.js - Updated with projects functionality
+// CustomerDetails.js - Updated to use existing projects table structure
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -7,16 +7,18 @@ import {
   FaHome, FaUsers, FaEdit, FaPlus, FaBriefcase, FaTrash
 } from 'react-icons/fa';
 
-function ProjectModal({ isOpen, onClose, onSave, customerId, customerName }) {
+function ProjectModal({ isOpen, onClose, onSave, customerName }) {
   const [newProject, setNewProject] = useState({
-    customer_id: customerId,
     customer_name: customerName,
-    sales_stage: '',
-    product: '',
+    account_manager: '',
+    scope: '',
     deal_value: '',
+    product: '',
     backup_presales: '',
+    sales_stage: '',
     remarks: '',
-    is_archived: false
+    due_date: '',
+    created_at: new Date().toISOString().split('T')[0] // Today's date
   });
 
   const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
@@ -33,19 +35,33 @@ function ProjectModal({ isOpen, onClose, onSave, customerId, customerName }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const { data, error } = await supabase.from('projects').insert([newProject]).select();
-      if (error) throw error;
+      // Convert deal_value to number if provided
+      const projectData = {
+        ...newProject,
+        deal_value: newProject.deal_value ? parseFloat(newProject.deal_value) : null
+      };
+
+      console.log('Inserting project:', projectData);
+      const { data, error } = await supabase.from('projects').insert([projectData]).select();
+      
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
       
       onSave(data[0]);
+      // Reset form
       setNewProject({
-        customer_id: customerId,
         customer_name: customerName,
-        sales_stage: '',
-        product: '',
+        account_manager: '',
+        scope: '',
         deal_value: '',
+        product: '',
         backup_presales: '',
+        sales_stage: '',
         remarks: '',
-        is_archived: false
+        due_date: '',
+        created_at: new Date().toISOString().split('T')[0]
       });
       onClose();
     } catch (error) {
@@ -58,9 +74,19 @@ function ProjectModal({ isOpen, onClose, onSave, customerId, customerName }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
         <h3>Add New Project for {customerName}</h3>
         <form onSubmit={handleSubmit} className="modern-form">
+          <label>
+            Account Manager
+            <input 
+              name="account_manager" 
+              value={newProject.account_manager} 
+              onChange={handleChange}
+              placeholder="Account manager name"
+            />
+          </label>
+
           <label>
             Sales Stage *
             <select name="sales_stage" value={newProject.sales_stage} onChange={handleChange} required>
@@ -86,9 +112,10 @@ function ProjectModal({ isOpen, onClose, onSave, customerId, customerName }) {
             <input 
               name="deal_value" 
               type="number" 
+              step="0.01"
               value={newProject.deal_value} 
               onChange={handleChange}
-              placeholder="Enter deal value"
+              placeholder="Enter deal value (e.g., 50000)"
             />
           </label>
           
@@ -99,6 +126,37 @@ function ProjectModal({ isOpen, onClose, onSave, customerId, customerName }) {
               value={newProject.backup_presales} 
               onChange={handleChange}
               placeholder="Backup presales contact"
+            />
+          </label>
+
+          <label>
+            Due Date
+            <input 
+              name="due_date" 
+              type="date"
+              value={newProject.due_date} 
+              onChange={handleChange}
+            />
+          </label>
+
+          <label>
+            Created At
+            <input 
+              name="created_at" 
+              type="date"
+              value={newProject.created_at} 
+              onChange={handleChange}
+            />
+          </label>
+          
+          <label style={{ gridColumn: 'span 2' }}>
+            Scope
+            <textarea 
+              name="scope" 
+              value={newProject.scope} 
+              onChange={handleChange}
+              rows="3"
+              placeholder="Project scope and objectives"
             />
           </label>
           
@@ -135,9 +193,14 @@ function CustomerDetails() {
   useEffect(() => {
     if (customerId) {
       fetchCustomerDetails();
-      fetchCustomerProjects();
     }
   }, [customerId]);
+
+  useEffect(() => {
+    if (customer?.customer_name) {
+      fetchCustomerProjects();
+    }
+  }, [customer]);
 
   const fetchCustomerDetails = async () => {
     try {
@@ -160,18 +223,18 @@ function CustomerDetails() {
 
   const fetchCustomerProjects = async () => {
     try {
+      console.log('Fetching projects for customer:', customer.customer_name);
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('customer_id', customerId)
-        .eq('is_archived', false)
+        .eq('customer_name', customer.customer_name)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching projects:', error);
-        // Don't fail if projects can't be fetched
         setProjects([]);
       } else {
+        console.log('Projects found:', data);
         setProjects(data || []);
       }
     } catch (error) {
@@ -207,6 +270,16 @@ function CustomerDetails() {
       console.error('Error deleting project:', error);
       alert('Error deleting project: ' + error.message);
     }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const formatCurrency = (value) => {
+    if (!value) return '-';
+    return `$${parseFloat(value).toLocaleString()}`;
   };
 
   const getComplexityClass = (complexity) => {
@@ -371,38 +444,52 @@ function CustomerDetails() {
 
           <div className="projects-list">
             {projects.length > 0 ? (
-              <table className="modern-table">
-                <thead>
-                  <tr>
-                    <th>Sales Stage</th>
-                    <th>Product</th>
-                    <th>Deal Value</th>
-                    <th>Backup Presales</th>
-                    <th>Remarks</th>
-                    <th style={{ textAlign: 'center' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {projects.map((project) => (
-                    <tr key={project.id}>
-                      <td>{project.sales_stage}</td>
-                      <td>{project.product}</td>
-                      <td>{project.deal_value ? `${project.deal_value.toLocaleString()}` : '-'}</td>
-                      <td>{project.backup_presales || '-'}</td>
-                      <td>{project.remarks || '-'}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button 
-                          className="delete-btn" 
-                          onClick={() => handleDeleteProject(project.id)}
-                          title="Delete project"
-                        >
-                          <FaTrash />
-                        </button>
-                      </td>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Account Manager</th>
+                      <th>Sales Stage</th>
+                      <th>Product</th>
+                      <th>Deal Value</th>
+                      <th>Scope</th>
+                      <th>Backup Presales</th>
+                      <th>Due Date</th>
+                      <th>Created At</th>
+                      <th>Remarks</th>
+                      <th style={{ textAlign: 'center' }}>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {projects.map((project) => (
+                      <tr key={project.id}>
+                        <td>{project.account_manager || '-'}</td>
+                        <td>{project.sales_stage || '-'}</td>
+                        <td>{project.product || '-'}</td>
+                        <td>{formatCurrency(project.deal_value)}</td>
+                        <td style={{ maxWidth: '200px', wordWrap: 'break-word' }}>
+                          {project.scope || '-'}
+                        </td>
+                        <td>{project.backup_presales || '-'}</td>
+                        <td>{formatDate(project.due_date)}</td>
+                        <td>{formatDate(project.created_at)}</td>
+                        <td style={{ maxWidth: '200px', wordWrap: 'break-word' }}>
+                          {project.remarks || '-'}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button 
+                            className="delete-btn" 
+                            onClick={() => handleDeleteProject(project.id)}
+                            title="Delete project"
+                          >
+                            <FaTrash />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <div className="no-projects">
                 <p>No projects found for this customer.</p>
@@ -420,7 +507,6 @@ function CustomerDetails() {
         isOpen={showProjectModal}
         onClose={() => setShowProjectModal(false)}
         onSave={handleProjectSaved}
-        customerId={customerId}
         customerName={customer.customer_name}
       />
     </div>
