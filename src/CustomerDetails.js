@@ -68,7 +68,74 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeh
     clearForm();
     onClose();
   };
+// Add these functions to your CustomerDetails.js component
+// Place them after your other helper functions but before the main component return
 
+// Activity logging function
+const logActivity = async (type, title, description = null, projectId = null) => {
+  try {
+    const { error } = await supabase
+      .from('activity_logs')
+      .insert([{
+        customer_name: customer.customer_name,
+        project_id: projectId,
+        activity_type: type,
+        activity_title: title,
+        activity_description: description,
+        created_by: 'Current User' // TODO: Replace with actual user from auth
+      }]);
+    
+    if (error) {
+      console.error('Error logging activity:', error);
+    }
+  } catch (error) {
+    console.error('Error logging activity:', error);
+  }
+};
+
+// Fetch recent activities
+const fetchRecentActivity = async () => {
+  if (!customer?.customer_name) return;
+  
+  try {
+    console.log('Fetching activities for customer:', customer.customer_name);
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .select(`
+        *,
+        projects(project_name)
+      `)
+      .eq('customer_name', customer.customer_name)
+      .order('created_at', { ascending: false })
+      .limit(10); // Get last 10 activities
+
+    if (error) throw error;
+    
+    console.log('Activities found:', data);
+    setActivities(data || []);
+  } catch (error) {
+    console.error('Error fetching activities:', error);
+    setActivities([]);
+  }
+};
+
+// Time formatting helper
+const formatTimeAgo = (dateString) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+  
+  if (diffInMinutes < 1) return 'Just now';
+  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+  
+  return formatDate(dateString);
+};
   if (!isOpen) return null;
 
   return (
