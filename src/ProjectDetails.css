@@ -1,5 +1,9 @@
 /* ProjectDetails.css - Enhanced version aligned with CustomerDetails */
 
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
 .page-wrapper {
   min-height: 100vh;
   padding: 20px;
@@ -11,20 +15,31 @@
   margin: 0 auto;
 }
 
-.back-btn {
+/* Navigation Buttons */
+.navigation-buttons {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.back-btn, .back-to-customer-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: #6366f1;
-  color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  margin-bottom: 24px;
   transition: all 0.2s;
   text-decoration: none;
+  font-weight: 500;
+}
+
+.back-btn {
+  background: #6366f1;
+  color: white;
 }
 
 .back-btn:hover {
@@ -32,7 +47,16 @@
   transform: translateY(-1px);
 }
 
-/* Project Header */
+.back-to-customer-btn {
+  background: #10b981;
+  color: white;
+}
+
+.back-to-customer-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
 .project-header {
   margin-bottom: 32px;
 }
@@ -44,10 +68,14 @@
   margin-bottom: 8px;
 }
 
+.project-breadcrumb {
+  font-size: 1rem;
+  color: #6b7280;
+}
+
 .customer-link {
   color: #3b82f6;
   text-decoration: none;
-  font-size: 1.1rem;
   font-weight: 500;
   transition: color 0.2s;
 }
