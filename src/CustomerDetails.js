@@ -583,93 +583,6 @@ function CustomerDetails() {
         <div className="main-content">
           {/* Left Column */}
           <div className="left-column">
-            {/* Projects Section with Filtering */}
-            <div className="section-card">
-              <div className="section-header">
-                <h3>
-                  <FaBriefcase /> Projects Portfolio
-                </h3>
-                <div className="section-controls">
-                  <button onClick={handleAddProject} className="add-btn">
-                    <FaPlus /> Add Project
-                  </button>
-                </div>
-              </div>
-
-              <div className="projects-tabs">
-                <button 
-                  className={`tab-button ${activeTab === 'active' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('active')}
-                >
-                  Active Projects ({getActiveProjectsCount()})
-                </button>
-                <button 
-                  className={`tab-button ${activeTab === 'closed' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('closed')}
-                >
-                  Closed Projects ({getClosedProjectsCount()})
-                </button>
-                <button 
-                  className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('all')}
-                >
-                  All Projects ({projects.length})
-                </button>
-              </div>
-
-              <div className="tab-content">
-                {filteredProjects.length > 0 ? (
-                  filteredProjects.map((project) => (
-                    <div key={project.id} className="project-item">
-                      <div className="project-header">
-                        <button
-                          onClick={() => handleProjectClick(project.id, project.project_name)}
-                          className="project-name"
-                        >
-                          📁 {project.project_name || project.customer_name || 'Unnamed Project'}
-                        </button>
-                        <span className={`project-stage stage-${project.sales_stage?.toLowerCase().replace(/[\s-]/g, '-')}`}>
-                          {project.sales_stage || 'No Stage'}
-                        </span>
-                      </div>
-                      <div className="project-details">
-                        <div className="project-meta">
-                          Due: {formatDate(project.due_date)} • Account Manager: {project.account_manager || 'Not assigned'}
-                        </div>
-                        <div className="project-value">
-                          {formatCurrency(project.deal_value)}
-                        </div>
-                      </div>
-                      {project.scope && (
-                        <div className="project-scope">
-                          {project.scope}
-                        </div>
-                      )}
-                      <div className="project-actions">
-                        <button 
-                          className="delete-btn" 
-                          onClick={() => handleDeleteProject(project.id)}
-                          title="Delete project"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty-state">
-                    <div className="empty-state-icon">📁</div>
-                    <p>No projects found for this filter.</p>
-                    {activeTab === 'active' && (
-                      <button onClick={handleAddProject} className="add-first-project-btn">
-                        <FaPlus /> Add First Project
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* Customer Information (Compact) */}
             <div className="section-card">
               <div className="section-header">
@@ -817,6 +730,116 @@ function CustomerDetails() {
                 </div>
               </div>
             </div>
+
+            {/* Key Stakeholders - moved under customer information */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>👤 Key Stakeholders</h3>
+                <button className="btn btn-secondary">Add Contact</button>
+              </div>
+              <div className="stakeholder-grid">
+                {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
+                  customer.key_stakeholders.map((stakeholder, index) => (
+                    <div key={index} className="stakeholder-card">
+                      <div className="stakeholder-name">{stakeholder}</div>
+                      <div className="stakeholder-role">Contact</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="stakeholder-card">
+                    <div className="stakeholder-name">No stakeholders added</div>
+                    <div className="stakeholder-role">Click "Add Contact" to add stakeholders</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Projects Section with Filtering */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>
+                  <FaBriefcase /> Projects Portfolio
+                </h3>
+                <div className="section-controls">
+                  <button onClick={handleAddProject} className="add-btn">
+                    <FaPlus /> Add Project
+                  </button>
+                </div>
+              </div>
+
+              <div className="projects-tabs">
+                <button 
+                  className={`tab-button ${activeTab === 'active' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('active')}
+                >
+                  Active Projects ({getActiveProjectsCount()})
+                </button>
+                <button 
+                  className={`tab-button ${activeTab === 'closed' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('closed')}
+                >
+                  Closed Projects ({getClosedProjectsCount()})
+                </button>
+                <button 
+                  className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('all')}
+                >
+                  All Projects ({projects.length})
+                </button>
+              </div>
+
+              <div className="tab-content">
+                {filteredProjects.length > 0 ? (
+                  filteredProjects.map((project) => (
+                    <div key={project.id} className="project-item">
+                      <div className="project-header">
+                        <button
+                          onClick={() => handleProjectClick(project.id, project.project_name)}
+                          className="project-name"
+                        >
+                          📁 {project.project_name || project.customer_name || 'Unnamed Project'}
+                        </button>
+                        <span className={`project-stage stage-${project.sales_stage?.toLowerCase().replace(/[\s-]/g, '-')}`}>
+                          {project.sales_stage || 'No Stage'}
+                        </span>
+                      </div>
+                      <div className="project-details">
+                        <div className="project-meta">
+                          Due: {formatDate(project.due_date)} • Account Manager: {project.account_manager || 'Not assigned'}
+                        </div>
+                        <div className="project-value">
+                          {formatCurrency(project.deal_value)}
+                        </div>
+                      </div>
+                      {project.scope && (
+                        <div className="project-scope">
+                          {project.scope}
+                        </div>
+                      )}
+                      <div className="project-actions">
+                        <button 
+                          className="delete-btn" 
+                          onClick={() => handleDeleteProject(project.id)}
+                          title="Delete project"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">📁</div>
+                    <p>No projects found for this filter.</p>
+                    {activeTab === 'active' && (
+                      <button onClick={handleAddProject} className="add-first-project-btn">
+                        <FaPlus /> Add First Project
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Right Column */}
@@ -845,29 +868,6 @@ function CustomerDetails() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Key Stakeholders */}
-            <div className="section-card">
-              <div className="section-header">
-                <h3>👤 Key Stakeholders</h3>
-                <button className="btn btn-secondary">Add Contact</button>
-              </div>
-              <div className="stakeholder-grid">
-                {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
-                  customer.key_stakeholders.map((stakeholder, index) => (
-                    <div key={index} className="stakeholder-card">
-                      <div className="stakeholder-name">{stakeholder}</div>
-                      <div className="stakeholder-role">Contact</div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="stakeholder-card">
-                    <div className="stakeholder-name">No stakeholders added</div>
-                    <div className="stakeholder-role">Click "Add Contact" to add stakeholders</div>
-                  </div>
-                )}
               </div>
             </div>
 
