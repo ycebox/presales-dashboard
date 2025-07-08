@@ -13,20 +13,23 @@ function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
     description: '',
     status: 'Not Started',
     due_date: '',
-    notes: '',
-    assigned_to: ''
+    notes: ''
   });
 
   useEffect(() => {
     if (editingTask) {
-      setTaskData(editingTask);
+      setTaskData({
+        description: editingTask.description || '',
+        status: editingTask.status || 'Not Started',
+        due_date: editingTask.due_date || '',
+        notes: editingTask.notes || ''
+      });
     } else {
       setTaskData({
         description: '',
         status: 'Not Started',
         due_date: '',
-        notes: '',
-        assigned_to: ''
+        notes: ''
       });
     }
   }, [editingTask, isOpen]);
@@ -49,7 +52,7 @@ function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
         <h3>{editingTask ? 'Edit Task' : 'Add New Task'}</h3>
         <form onSubmit={handleSubmit} className="modern-form">
           <label style={{ gridColumn: 'span 2' }}>
@@ -80,16 +83,6 @@ function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
               type="date"
               value={taskData.due_date} 
               onChange={handleChange}
-            />
-          </label>
-
-          <label>
-            Assigned To
-            <input 
-              name="assigned_to" 
-              value={taskData.assigned_to} 
-              onChange={handleChange}
-              placeholder="Assignee name"
             />
           </label>
 
@@ -525,10 +518,36 @@ function ProjectDetails() {
           </button>
           {project.customer_name && (
             <button 
-              onClick={() => navigate(`/customer/${project.customer_id || '#'}`)} 
+              onClick={() => {
+                // Find customer by name since we might not have customer_id
+                navigate('/'); // Go to dashboard first, then we can navigate to customer
+                // Alternatively, if you have customer_id in your projects table:
+                // navigate(`/customer/${project.customer_id}`);
+                // For now, let's try to find the customer ID from the customer name
+                const findAndNavigateToCustomer = async () => {
+                  try {
+                    const { data: customers } = await supabase
+                      .from('customers')
+                      .select('id')
+                      .eq('customer_name', project.customer_name)
+                      .single();
+                    
+                    if (customers) {
+                      navigate(`/customer/${customers.id}`);
+                    } else {
+                      // Fallback to dashboard if customer not found
+                      navigate('/');
+                    }
+                  } catch (error) {
+                    console.error('Error finding customer:', error);
+                    navigate('/');
+                  }
+                };
+                findAndNavigateToCustomer();
+              }} 
               className="back-to-customer-btn"
             >
-              <FaUsers /> Back to {project.customer_name}
+              <FaUsers /> {project.customer_name}
             </button>
           )}
         </div>
@@ -537,7 +556,29 @@ function ProjectDetails() {
         <div className="project-header">
           <h1 className="project-name">{project.project_name || 'Unnamed Project'}</h1>
           <div className="project-breadcrumb">
-            Project in <Link to={`/customer/${project.customer_id || '#'}`} className="customer-link">
+            Project in <Link to="#" onClick={(e) => {
+              e.preventDefault();
+              // Same navigation logic as the button above
+              const findAndNavigateToCustomer = async () => {
+                try {
+                  const { data: customers } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('customer_name', project.customer_name)
+                    .single();
+                  
+                  if (customers) {
+                    navigate(`/customer/${customers.id}`);
+                  } else {
+                    navigate('/');
+                  }
+                } catch (error) {
+                  console.error('Error finding customer:', error);
+                  navigate('/');
+                }
+              };
+              findAndNavigateToCustomer();
+            }} className="customer-link">
               {project.customer_name}
             </Link>
           </div>
