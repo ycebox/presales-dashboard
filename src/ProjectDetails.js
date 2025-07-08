@@ -260,97 +260,6 @@ function ProjectDetails() {
     }
   };
 
-  const handleTaskStatusChange = async (taskId, currentStatus) => {
-    try {
-      const newStatus = currentStatus === 'Completed' ? 'Not Started' : 'Completed';
-      
-      const { error } = await supabase
-        .from('project_tasks')
-        .update({ status: newStatus })
-        .eq('id', taskId);
-
-      if (error) throw error;
-      
-      // Refresh tasks to show updated status
-      await fetchCustomerTasks();
-    } catch (error) {
-      console.error('Error updating task status:', error);
-      alert('Error updating task status: ' + error.message);
-    }
-  };
-
-  const handleAddTask = () => {
-    setEditingTask(null);
-    setShowTaskModal(true);
-  };
-
-  const handleEditTask = (task) => {
-    setEditingTask(task);
-    setShowTaskModal(true);
-  };
-
-  const handleTaskSaved = async (taskData) => {
-    try {
-      if (editingTask) {
-        // Update existing task
-        const { error } = await supabase
-          .from('project_tasks')
-          .update(taskData)
-          .eq('id', editingTask.id);
-
-        if (error) throw error;
-        alert('Task updated successfully!');
-      } else {
-        // For new tasks, we need a project to assign it to
-        // For now, let's assign to the first active project, or show an error if none
-        const activeProjects = projects.filter(p => !p.sales_stage?.toLowerCase().startsWith('closed'));
-        
-        if (activeProjects.length === 0) {
-          alert('Please create a project first before adding tasks.');
-          return;
-        }
-
-        const taskWithProject = {
-          ...taskData,
-          project_id: activeProjects[0].id // Assign to first active project
-        };
-        
-        const { error } = await supabase
-          .from('project_tasks')
-          .insert([taskWithProject]);
-
-        if (error) throw error;
-        alert('Task added successfully!');
-      }
-
-      setShowTaskModal(false);
-      setEditingTask(null);
-      await fetchCustomerTasks(); // Refresh tasks
-    } catch (error) {
-      console.error('Error saving task:', error);
-      alert('Error saving task: ' + error.message);
-    }
-  };
-
-  const handleDeleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('project_tasks')
-        .delete()
-        .eq('id', taskId);
-
-      if (error) throw error;
-      
-      alert('Task deleted successfully!');
-      fetchCustomerTasks();
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      alert('Error deleting task: ' + error.message);
-    }
-  };
-
   // Inline editing handlers
   const handleEditToggle = () => {
     if (isEditing) {
@@ -400,7 +309,7 @@ function ProjectDetails() {
     }
   };
 
-  // Task status update handler
+  // Task handlers
   const handleTaskStatusChange = async (taskId, currentStatus) => {
     try {
       const newStatus = currentStatus === 'Completed' ? 'Not Started' : 'Completed';
@@ -420,7 +329,6 @@ function ProjectDetails() {
     }
   };
 
-  // Task handlers
   const handleAddTask = () => {
     setEditingTask(null);
     setShowTaskModal(true);
@@ -536,51 +444,6 @@ function ProjectDetails() {
     } catch (error) {
       console.error('Error deleting log:', error);
       alert('Error deleting log: ' + error.message);
-    }
-  };
-
-  const getTaskStatusClass = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'completed': return 'status-completed';
-      case 'in progress': return 'status-in-progress';
-      case 'not started': return 'status-not-started';
-      case 'cancelled/on-hold': return 'status-cancelled';
-      default: return 'status-not-started';
-    }
-  };
-
-  const getFilteredTasks = () => {
-    if (taskFilter === 'all') {
-      return tasks;
-    }
-    return tasks.filter(task => !['Completed', 'Cancelled/On-hold'].includes(task.status));
-  };
-
-  const getTaskDueStatus = (dueDate) => {
-    if (!dueDate) return '';
-    
-    const today = new Date();
-    const due = new Date(dueDate);
-    const diffTime = due - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) return 'overdue';
-    if (diffDays === 0) return 'today';
-    if (diffDays <= 3) return 'upcoming';
-    return 'future';
-  };
-
-  const formatTaskDueDate = (dueDate) => {
-    if (!dueDate) return '';
-    
-    const status = getTaskDueStatus(dueDate);
-    const diffDays = Math.ceil((new Date(dueDate) - new Date()) / (1000 * 60 * 60 * 24));
-    
-    switch (status) {
-      case 'overdue': return `${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''} overdue`;
-      case 'today': return 'Today';
-      case 'upcoming': return diffDays === 1 ? 'Tomorrow' : `${diffDays} days`;
-      default: return formatDate(dueDate);
     }
   };
 
