@@ -1,432 +1,885 @@
-// ProjectDetails.js - Fully working version with inline editing, tasks, logs, and meeting minutes
-
+// ProjectDetails.js - Enhanced version aligned with CustomerDetails UI/UX
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
 import {
   FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
-  FaPlus, FaInfo, FaTrash, FaEye, FaChevronDown, FaChevronUp
+  FaPlus, FaInfo, FaTrash, FaEye, FaChevronDown, FaChevronUp, FaUsers
 } from 'react-icons/fa';
-import ReactMarkdown from 'react-markdown';
 
-function ProjectDetails() {
-  const { id } = useParams();
-  const [project, setProject] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [logs, setLogs] = useState([]);
-  const [linkedMeetingMinutes, setLinkedMeetingMinutes] = useState([]);
-  const [selectedMeetingNote, setSelectedMeetingNote] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [editForm, setEditForm] = useState({});
-  const [isEditingDetails, setIsEditingDetails] = useState(false);
-  const [newTask, setNewTask] = useState({ description: '', status: 'Not Started', due_date: '', notes: '' });
-  const [editTaskId, setEditTaskId] = useState(null);
-  const [editTaskForm, setEditTaskForm] = useState({ description: '', status: '', due_date: '', notes: '' });
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [newLogEntry, setNewLogEntry] = useState('');
-  const [showCompleted, setShowCompleted] = useState(false);
-
-  const countryOptions = ["Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia", "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands", "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"];
-  const salesStageOptions = ['Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery', 'PoC', 'RFI', 'RFP', 'SoW'];
-  const productOptions = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
-  
+function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
+  const [taskData, setTaskData] = useState({
+    description: '',
+    status: 'Not Started',
+    due_date: '',
+    notes: '',
+    assigned_to: ''
+  });
 
   useEffect(() => {
-    fetchProjectDetails();
-    fetchLinkedMeetingMinutes();
-  }, [id]);
-
-  async function fetchProjectDetails() {
-    setLoading(true);
-    const { data: projectData } = await supabase.from('projects').select('*').eq('id', id).single();
-    const { data: taskData } = await supabase.from('project_tasks').select('*').eq('project_id', id);
-    const { data: logData } = await supabase.from('project_logs').select('*').eq('project_id', id).order('created_at', { ascending: false });
-
-    setProject(projectData);
-    setEditForm(projectData || {});
-    setTasks(taskData || []);
-    setLogs(logData || []);
-    setLoading(false);
-  }
-
-  async function fetchLinkedMeetingMinutes() {
-    const { data, error } = await supabase.from('meeting_minutes').select('*').eq('project_id', id).order('created_at', { ascending: false });
-    if (!error) setLinkedMeetingMinutes(data || []);
-  }
-
-  const handleEditFormChange = (e) => {
-    const { name, value } = e.target;
-    setEditForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSaveProject = async () => {
-    const { error } = await supabase.from('projects').update(editForm).eq('id', id);
-    if (!error) {
-      setIsEditingDetails(false);
-      fetchProjectDetails();
+    if (editingTask) {
+      setTaskData(editingTask);
+    } else {
+      setTaskData({
+        description: '',
+        status: 'Not Started',
+        due_date: '',
+        notes: '',
+        assigned_to: ''
+      });
     }
-  };
+  }, [editingTask, isOpen]);
 
-  const handleCancelEdit = () => {
-    setIsEditingDetails(false);
-    setEditForm(project);
-  };
-
-  const handleTaskInput = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setNewTask(prev => ({ ...prev, [name]: value }));
+    setTaskData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleEditTaskInput = (e) => {
-    const { name, value } = e.target;
-    setEditTaskForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleAddTask = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newTask.description.trim()) return;
-    const { error } = await supabase.from('project_tasks').insert([{ ...newTask, project_id: id }]);
-    if (!error) {
-      setNewTask({ description: '', status: 'Not Started', due_date: '', notes: '' });
-      setShowTaskModal(false);
-      fetchProjectDetails();
+    if (!taskData.description.trim()) {
+      alert('Task description is required');
+      return;
     }
+    onSave(taskData);
   };
 
-  const handleEditTask = (task) => {
-    setEditTaskId(task.id);
-    setEditTaskForm(task);
-    setShowTaskModal(true);
-  };
-
-  const handleUpdateTask = async (e) => {
-    e.preventDefault();
-    const { error } = await supabase.from('project_tasks').update(editTaskForm).eq('id', editTaskId);
-    if (!error) {
-      setEditTaskId(null);
-      setShowTaskModal(false);
-      fetchProjectDetails();
-    }
-  };
-
-  const handleDeleteTask = async (taskId) => {
-    const { error } = await supabase.from('project_tasks').delete().eq('id', taskId);
-    if (!error) fetchProjectDetails();
-  };
-
-  const handleAddLog = async () => {
-    if (!newLogEntry.trim()) return;
-    const { error } = await supabase.from('project_logs').insert([{ project_id: id, entry: newLogEntry }]);
-    if (!error) {
-      setNewLogEntry('');
-      fetchProjectDetails();
-    }
-  };
-
-  const activeTasks = tasks.filter(t => !['Completed', 'Cancelled/On-hold'].includes(t.status));
-  const completedTasks = tasks.filter(t => ['Completed', 'Cancelled/On-hold'].includes(t.status));
-
-  const [editLogId, setEditLogId] = useState(null);
-const [editedLogText, setEditedLogText] = useState('');
-
-const handleEditLog = (log) => {
-  setEditLogId(log.id);
-  setEditedLogText(log.entry);
-};
-
-const handleSaveLog = async (logId) => {
-  const { error } = await supabase
-    .from('project_logs')
-    .update({ entry: editedLogText })
-    .eq('id', logId);
-  if (!error) {
-    setEditLogId(null);
-    fetchProjectDetails();
-  }
-};
-
-const handleDeleteLog = async (logId) => {
-  const { error } = await supabase.from('project_logs').delete().eq('id', logId);
-  if (!error) fetchProjectDetails();
-};
-
-  if (loading) return <div className="loader">Loading project details...</div>;
-  if (!project) return <div className="not-found">Project not found.</div>;
+  if (!isOpen) return null;
 
   return (
-    <div className="page-wrapper">
-      <div className="page-content wide">
-        <div className="back-link-container">
-          <Link to="/" className="back-btn"><FaHome /> Back to Dashboard</Link>
-        </div>
-              <h2 className="customer-name highlight-name">{editForm.customer_name}</h2>
-                     <div className="project-layout">
-          <div className="project-left">
-         
-            <div className="section-card fade-in-section">
-            <h3 className="section-heading"><FaInfo /> Project Detail</h3>
-    <div className="project-header">
-  <div className="form-actions">
-    {isEditingDetails ? (
-      <>
-        <button onClick={handleSaveProject}><FaSave /> Save</button>
-    
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+        <h3>{editingTask ? 'Edit Task' : 'Add New Task'}</h3>
+        <form onSubmit={handleSubmit} className="modern-form">
+          <label style={{ gridColumn: 'span 2' }}>
+            Task Description *
+            <input 
+              name="description" 
+              value={taskData.description} 
+              onChange={handleChange}
+              placeholder="Enter task description"
+              required
+            />
+          </label>
 
-      <button onClick={handleCancelEdit}><FaTimes /> Cancel</button>
-   
+          <label>
+            Status
+            <select name="status" value={taskData.status} onChange={handleChange}>
+              <option value="Not Started">Not Started</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+            </select>
+          </label>
 
-      </>
-    ) : (
-      <span className="edit-link" onClick={() => setIsEditingDetails(true)}><FaEdit /> Edit</span>
-    )}
-  </div>
-</div>
-              <div className="edit-form">
-                <label>Country
-                  {isEditingDetails ? (
-                    <select name="country" value={editForm.country || ''} onChange={handleEditFormChange} className="dropdown">
-                      {countryOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                  ) : (
-                    <input type="text" value={editForm.country || ''} readOnly className="readonly" />
-                  )}
-                </label>
-                <label>Account Manager
-                  <input name="account_manager" value={editForm.account_manager || ''} onChange={handleEditFormChange} readOnly={!isEditingDetails} className={!isEditingDetails ? 'readonly' : ''} />
-                </label>
-                <label>Sales Stage
-                  {isEditingDetails ? (
-                    <select name="sales_stage" value={editForm.sales_stage || ''} onChange={handleEditFormChange} className="dropdown">
-                      {salesStageOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                  ) : (
-                    <input type="text" value={editForm.sales_stage || ''} readOnly className="readonly" />
-                  )}
-                </label>
-                <label>Product
-                  {isEditingDetails ? (
-                    <select name="product" value={editForm.product || ''} onChange={handleEditFormChange} className="dropdown">
-                      {productOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                  ) : (
-                    <input type="text" value={editForm.product || ''} readOnly className="readonly" />
-                  )}
-                </label>
-                <label>Scope
-                  <input name="scope" value={editForm.scope || ''} onChange={handleEditFormChange} readOnly={!isEditingDetails} className={!isEditingDetails ? 'readonly' : ''} />
-                </label>
-                <label>Deal Value
-                  <input name="deal_value" value={editForm.deal_value || ''} onChange={handleEditFormChange} readOnly={!isEditingDetails} className={!isEditingDetails ? 'readonly' : ''} />
-                </label>
-                <label>Backup Presales
-                  <input name="backup_presales" value={editForm.backup_presales || ''} onChange={handleEditFormChange} readOnly={!isEditingDetails} className={!isEditingDetails ? 'readonly' : ''} />
-                </label>
-                <label style={{ gridColumn: '1 / -1' }}>Remarks
-                  <textarea name="remarks" rows="3" value={editForm.remarks || ''} onChange={handleEditFormChange} readOnly={!isEditingDetails} className={!isEditingDetails ? 'readonly' : ''} />
-                </label>
-              </div>
-            </div>
+          <label>
+            Due Date
+            <input 
+              name="due_date" 
+              type="date"
+              value={taskData.due_date} 
+              onChange={handleChange}
+            />
+          </label>
+
+          <label>
+            Assigned To
+            <input 
+              name="assigned_to" 
+              value={taskData.assigned_to} 
+              onChange={handleChange}
+              placeholder="Assignee name"
+            />
+          </label>
+
+          <label style={{ gridColumn: 'span 2' }}>
+            Notes
+            <textarea 
+              name="notes" 
+              value={taskData.notes} 
+              onChange={handleChange}
+              rows="3"
+              placeholder="Additional notes or details"
+            />
+          </label>
+          
+          <div className="modal-actions">
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="submit">{editingTask ? 'Update Task' : 'Add Task'}</button>
           </div>
-
-          <div className="project-middle">
-            <div className="project-logs fade-in-section">
-
-                                <h3 className="section-heading"><FaBookOpen /> Project Logs</h3>
-              <div className="form-actions">
-                <input type="text" placeholder="New log entry..." value={newLogEntry} onChange={(e) => setNewLogEntry(e.target.value)} />
-                <button onClick={handleAddLog}><FaPlus /> Add Log</button>
-                
-
-              </div>
-            <ul className="logs-list">
-{logs.length === 0 ? (
-  <li className="log-empty">No project logs yet. Use the form above to add one.</li>
-) : (
-  logs.map((log) => (
-    <li key={log.id} className="log-entry">
-      {editLogId === log.id ? (
-        <>
-          <textarea
-            value={editedLogText}
-            onChange={(e) => setEditedLogText(e.target.value)}
-            className="log-textarea"
-            rows={3}
-          />
-          <div className="log-actions">
-           <button onClick={() => handleSaveLog(log.id)}><FaSave /> Save</button>
-          <button onClick={() => setEditLogId(null)}><FaTimes /> Cancel</button>
-  
-          </div>
-        </>
-      ) : (
-        <>
-          <span>{log.entry}</span>
-          <div className="log-icons">
-            <button onClick={() => handleEditLog(log)}><FaEdit /></button>
-            <button onClick={() => handleDeleteLog(log.id)}><FaTrash /></button>
-          </div>
-        </>
-      )}
-    </li>
-  ))
-)}
-
-</ul>
-
-            </div>
-          </div>
-        </div>
-
-    <div className="project-tasks fade-in-section">
-
-  <hr className="section-divider" />
-         <h3 className="section-heading"><FaTasks /> Tasks</h3>
-          <div className="form-actions">
-            <button onClick={() => setShowTaskModal(true)}><FaPlus /> Add Task</button>
-            <button className="toggle-completed-btn" onClick={() => setShowCompleted(prev => !prev)}>
-              {showCompleted ? <><FaChevronUp /> Hide Completed</> : <><FaChevronDown /> Show Completed</>}
-            </button>
-          </div>
-
-          <div className="task-group">
-            <div className="task-headers">
-              <span>Task</span>
-              <span>Status</span>
-              <span>Due Date</span>
-              <span>Notes</span>
-              <span>Actions</span>
-            </div>
-
-            {activeTasks.map(task => (
-              <div className="task-row" key={task.id}>
-                <div className="task-desc">{task.description}</div>
-                <div className="task-status">
-                  <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
-                </div>
-                <div className="task-date">{task.due_date}</div>
-                <div className="task-notes">{task.notes}</div>
-                <div className="task-actions">
-                  <button onClick={() => handleEditTask(task)}><FaEdit /></button>
-                  <button onClick={() => handleDeleteTask(task.id)}><FaTrash /></button>
-                </div>
-              </div>
-            ))}
-
-            {showCompleted && (
-              <>
-                {completedTasks.filter(task => task.status === 'Completed').length > 0 && (
-                  <>
-                    <h4>Completed Tasks</h4>
-                    {completedTasks.filter(task => task.status === 'Completed').map(task => (
-                      <div className="task-row" key={task.id}>
-                        <div className="task-desc">{task.description}</div>
-                        <div className="task-status">
-                          <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
-                        </div>
-                        <div className="task-date">{task.due_date}</div>
-                        <div className="task-notes">{task.notes}</div>
-                        <div className="task-actions">
-                          <button onClick={() => handleEditTask(task)}><FaEdit /></button>
-                          <button onClick={() => handleDeleteTask(task.id)}><FaTrash /></button>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-                {completedTasks.filter(task => task.status === 'Cancelled/On-hold').length > 0 && (
-                  <>
-                    <h4>On-hold / Cancelled Tasks</h4>
-                    {completedTasks.filter(task => task.status === 'Cancelled/On-hold').map(task => (
-                      <div className="task-row" key={task.id}>
-                        <div className="task-desc">{task.description}</div>
-                        <div className="task-status">
-                          <span className={`status-badge ${task.status.replace(/\s+/g, '-').toLowerCase()}`}>{task.status}</span>
-                        </div>
-                        <div className="task-date">{task.due_date}</div>
-                        <div className="task-notes">{task.notes}</div>
-                        <div className="task-actions">
-                          <button onClick={() => handleEditTask(task)}><FaEdit /></button>
-                          <button onClick={() => handleDeleteTask(task.id)}><FaTrash /></button>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-   <div className="meeting-minutes-section fade-in-section">
-
-              <hr className="section-divider" />
-         <h3 className="section-heading"><FaBookOpen /> Linked Meeting Minutes</h3>
-          {linkedMeetingMinutes.length === 0 ? (
-            <p style={{ fontStyle: 'italic' }}>No meeting minutes linked to this project.</p>
-          ) : (
-            <ul className="logs-list">
-              {linkedMeetingMinutes.map(note => (
-                <li key={note.id}>
-                  <strong>{note.title}</strong>
-                  <div className="task-actions" style={{ marginTop: '0.25rem' }}>
-                    <button onClick={() => setSelectedMeetingNote(note)}><FaEye /> View</button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-{selectedMeetingNote && (
-  <div className="modal-overlay">
-    <div className="modal">
-      <h3>{selectedMeetingNote.title}</h3>
-      <div
-        style={{
-          lineHeight: '1.6',
-          color: '#1e293b',
-          fontSize: '0.95rem',
-          padding: '0.5rem 0',
-          maxHeight: '60vh',
-          overflowY: 'auto'
-        }}
-        dangerouslySetInnerHTML={{ __html: selectedMeetingNote.content || 'No content provided.' }}
-      ></div>
-      <div className="modal-actions">
-        <button onClick={() => setSelectedMeetingNote(null)}><FaTimes /> Close</button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-
-        {showTaskModal && (
-          <div className="modal-overlay">
-            <div className="modal">
-              <h3>{editTaskId ? 'Edit Task' : 'Add Task'}</h3>
-              <form onSubmit={editTaskId ? handleUpdateTask : handleAddTask} className="task-form">
-                <input name="description" placeholder="Task Description" value={(editTaskId ? editTaskForm.description : newTask.description)} onChange={editTaskId ? handleEditTaskInput : handleTaskInput} required />
-                <select name="status" value={(editTaskId ? editTaskForm.status : newTask.status)} onChange={editTaskId ? handleEditTaskInput : handleTaskInput}>
-                  <option value="Not Started">Not Started</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-                </select>
-                <input type="date" name="due_date" value={(editTaskId ? editTaskForm.due_date : newTask.due_date)} onChange={editTaskId ? handleEditTaskInput : handleTaskInput} />
-                <input name="notes" placeholder="Notes" value={(editTaskId ? editTaskForm.notes : newTask.notes)} onChange={editTaskId ? handleEditTaskInput : handleTaskInput} />
-                <div className="modal-actions">
-                  <button type="submit"><FaSave /> Save</button>
-                  <button type="button" onClick={() => { setShowTaskModal(false); setEditTaskId(null); }}><FaTimes /> Cancel</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        </form>
       </div>
     </div>
   );
 }
 
-export default ProjectDetails;
+function LogModal({ isOpen, onClose, onSave }) {
+  const [logEntry, setLogEntry] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!logEntry.trim()) {
+      alert('Log entry is required');
+      return;
+    }
+    onSave(logEntry);
+    setLogEntry('');
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+        <h3>Add Project Log</h3>
+        <form onSubmit={handleSubmit} className="modern-form">
+          <label style={{ gridColumn: 'span 2' }}>
+            Log Entry *
+            <textarea 
+              value={logEntry} 
+              onChange={(e) => setLogEntry(e.target.value)}
+              rows="4"
+              placeholder="Enter log entry details..."
+              required
+            />
+          </label>
+          
+          <div className="modal-actions">
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="submit">Add Log</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ProjectDetails() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [project, setProject] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [linkedMeetingMinutes, setLinkedMeetingMinutes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Editing states
+  const [isEditing, setIsEditing] = useState(false);
+  const [editProject, setEditProject] = useState({});
+  const [saving, setSaving] = useState(false);
+  
+  // Modal states
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [selectedMeetingNote, setSelectedMeetingNote] = useState(null);
+
+  const salesStageOptions = ['Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery', 'PoC', 'RFI', 'RFP', 'SoW'];
+  const productOptions = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
+
+  useEffect(() => {
+    if (id) {
+      fetchProjectDetails();
+    }
+  }, [id]);
+
+  const fetchProjectDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (projectError) throw projectError;
+
+      if (!projectData) {
+        setError('Project not found');
+        return;
+      }
+
+      setProject(projectData);
+      setEditProject(projectData);
+
+      // Fetch related data
+      await Promise.all([
+        fetchTasks(),
+        fetchLogs(),
+        fetchLinkedMeetingMinutes()
+      ]);
+
+    } catch (error) {
+      console.error('Error fetching project:', error);
+      setError('Failed to load project details: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTasks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('project_tasks')
+        .select('*')
+        .eq('project_id', id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    }
+  };
+
+  const fetchLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('project_logs')
+        .select('*')
+        .eq('project_id', id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setLogs(data || []);
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+    }
+  };
+
+  const fetchLinkedMeetingMinutes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('meeting_minutes')
+        .select('*')
+        .eq('project_id', id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setLinkedMeetingMinutes(data || []);
+    } catch (error) {
+      console.error('Error fetching meeting minutes:', error);
+    }
+  };
+
+  // Inline editing handlers
+  const handleEditToggle = () => {
+    if (isEditing) {
+      setEditProject(project);
+      setIsEditing(false);
+    } else {
+      setIsEditing(true);
+    }
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value, type } = e.target;
+    if (type === 'number') {
+      setEditProject(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
+    } else {
+      setEditProject(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSaveProject = async () => {
+    if (!project?.id) {
+      alert('Project ID is required');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const { data, error } = await supabase
+        .from('projects')
+        .update(editProject)
+        .eq('id', project.id)
+        .select();
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setProject(data[0]);
+        setEditProject(data[0]);
+        setIsEditing(false);
+        alert('Project updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error updating project:', error);
+      alert('Error updating project: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Task handlers
+  const handleAddTask = () => {
+    setEditingTask(null);
+    setShowTaskModal(true);
+  };
+
+  const handleEditTask = (task) => {
+    setEditingTask(task);
+    setShowTaskModal(true);
+  };
+
+  const handleTaskSaved = async (taskData) => {
+    try {
+      if (editingTask) {
+        // Update existing task
+        const { error } = await supabase
+          .from('project_tasks')
+          .update(taskData)
+          .eq('id', editingTask.id);
+
+        if (error) throw error;
+        alert('Task updated successfully!');
+      } else {
+        // Add new task
+        const { error } = await supabase
+          .from('project_tasks')
+          .insert([{ ...taskData, project_id: id }]);
+
+        if (error) throw error;
+        alert('Task added successfully!');
+      }
+
+      setShowTaskModal(false);
+      setEditingTask(null);
+      fetchTasks();
+    } catch (error) {
+      console.error('Error saving task:', error);
+      alert('Error saving task: ' + error.message);
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('project_tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      alert('Task deleted successfully!');
+      fetchTasks();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Error deleting task: ' + error.message);
+    }
+  };
+
+  // Log handlers
+  const handleAddLog = () => {
+    setShowLogModal(true);
+  };
+
+  const handleLogSaved = async (logEntry) => {
+    try {
+      const { error } = await supabase
+        .from('project_logs')
+        .insert([{ project_id: id, entry: logEntry }]);
+
+      if (error) throw error;
+
+      alert('Log added successfully!');
+      setShowLogModal(false);
+      fetchLogs();
+    } catch (error) {
+      console.error('Error adding log:', error);
+      alert('Error adding log: ' + error.message);
+    }
+  };
+
+  const handleDeleteLog = async (logId) => {
+    if (!window.confirm('Are you sure you want to delete this log entry?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('project_logs')
+        .delete()
+        .eq('id', logId);
+
+      if (error) throw error;
+      
+      alert('Log deleted successfully!');
+      fetchLogs();
+    } catch (error) {
+      console.error('Error deleting log:', error);
+      alert('Error deleting log: ' + error.message);
+    }
+  };
+
+  // Helper functions
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch (error) {
+      return '-';
+    }
+  };
+
+  const formatCurrency = (value) => {
+    if (!value) return '-';
+    try {
+      return `$${parseFloat(value).toLocaleString()}`;
+    } catch (error) {
+      return '-';
+    }
+  };
+
+  const getTaskStatusClass = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'completed': return 'status-completed';
+      case 'in progress': return 'status-in-progress';
+      case 'not started': return 'status-not-started';
+      case 'cancelled/on-hold': return 'status-cancelled';
+      default: return 'status-not-started';
+    }
+  };
+
+  const getFilteredTasks = () => {
+    if (showCompleted) {
+      return tasks;
+    }
+    return tasks.filter(task => !['Completed', 'Cancelled/On-hold'].includes(task.status));
+  };
+
+  const getActiveTasksCount = () => {
+    return tasks.filter(task => !['Completed', 'Cancelled/On-hold'].includes(task.status)).length;
+  };
+
+  const getCompletedTasksCount = () => {
+    return tasks.filter(task => task.status === 'Completed').length;
+  };
+
+  const getProgressPercentage = () => {
+    if (tasks.length === 0) return 0;
+    const completed = getCompletedTasksCount();
+    return Math.round((completed / tasks.length) * 100);
+  };
+
+  const getDaysRemaining = () => {
+    if (!project?.due_date) return '-';
+    const today = new Date();
+    const dueDate = new Date(project.due_date);
+    const diffTime = dueDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
+
+  if (loading) {
+    return (
+      <div className="page-wrapper">
+        <div className="loading-state">Loading project details...</div>
+      </div>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <div className="page-wrapper">
+        <div className="error-state">
+          <p>{error || 'Project not found'}</p>
+          <button onClick={() => navigate('/')} className="back-btn">
+            <FaHome /> Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="page-wrapper">
+      <div className="page-content">
+        {/* Back Button */}
+        <button onClick={() => navigate('/')} className="back-btn">
+          <FaHome /> Back to Dashboard
+        </button>
+
+        {/* Project Header */}
+        <div className="project-header">
+          <h1 className="project-name">{project.project_name || 'Unnamed Project'}</h1>
+          <Link to={`/customer/${project.customer_id || '#'}`} className="customer-link">
+            → {project.customer_name}
+          </Link>
+        </div>
+
+        {/* Project Overview */}
+        <div className="project-overview">
+          <div className="overview-card">
+            <div className="overview-content">
+              <div className="metric-item">
+                <div className="metric-value">{getActiveTasksCount()}</div>
+                <div className="metric-label">Active Tasks</div>
+                <div className="metric-trend trend-up">↗ {getCompletedTasksCount()} completed</div>
+              </div>
+              <div className="metric-item">
+                <div className="metric-value">{getProgressPercentage()}%</div>
+                <div className="metric-label">Progress</div>
+                <div className="metric-trend trend-up">↗ On track</div>
+              </div>
+              <div className="metric-item">
+                <div className="metric-value">{getDaysRemaining()}</div>
+                <div className="metric-label">Days Remaining</div>
+                <div className="metric-trend">📅 Due {formatDate(project.due_date)}</div>
+              </div>
+              <div className="metric-item">
+                <div className="metric-value">{formatCurrency(project.deal_value)}</div>
+                <div className="metric-label">Deal Value</div>
+                <div className="metric-trend">💰 {project.sales_stage}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="main-content">
+          {/* Left Column */}
+          <div className="left-column">
+            {/* Project Details */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>
+                  <FaInfo /> Project Details
+                </h3>
+                <div className="edit-controls">
+                  {isEditing ? (
+                    <>
+                      <button 
+                        onClick={handleSaveProject} 
+                        className="save-btn"
+                        disabled={saving}
+                      >
+                        <FaSave /> {saving ? 'Saving...' : 'Save'}
+                      </button>
+                      <button 
+                        onClick={handleEditToggle} 
+                        className="cancel-btn"
+                        disabled={saving}
+                      >
+                        <FaTimes /> Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={handleEditToggle} className="edit-btn">
+                      <FaEdit /> Edit Project
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isEditing && (
+                <div className="editing-indicator">
+                  📝 Currently editing - Click Save to confirm changes or Cancel to discard
+                </div>
+              )}
+
+              <div className="project-details-content">
+                <div className="project-details-grid">
+                  <div className="info-item">
+                    <div className="info-label">Sales Stage</div>
+                    {isEditing ? (
+                      <select
+                        name="sales_stage"
+                        value={editProject.sales_stage || ''}
+                        onChange={handleEditChange}
+                        className="inline-edit-select"
+                      >
+                        <option value="">Select Stage</option>
+                        {salesStageOptions.map((stage, i) => (
+                          <option key={i} value={stage}>{stage}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="info-value">{project.sales_stage || 'Not specified'}</div>
+                    )}
+                  </div>
+
+                  <div className="info-item">
+                    <div className="info-label">Product</div>
+                    {isEditing ? (
+                      <select
+                        name="product"
+                        value={editProject.product || ''}
+                        onChange={handleEditChange}
+                        className="inline-edit-select"
+                      >
+                        <option value="">Select Product</option>
+                        {productOptions.map((product, i) => (
+                          <option key={i} value={product}>{product}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="info-value">{project.product || 'Not specified'}</div>
+                    )}
+                  </div>
+
+                  <div className="info-item">
+                    <div className="info-label">Account Manager</div>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="account_manager"
+                        value={editProject.account_manager || ''}
+                        onChange={handleEditChange}
+                        className="inline-edit-input"
+                        placeholder="Account manager name"
+                      />
+                    ) : (
+                      <div className="info-value">{project.account_manager || 'Not assigned'}</div>
+                    )}
+                  </div>
+
+                  <div className="info-item">
+                    <div className="info-label">Due Date</div>
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        name="due_date"
+                        value={editProject.due_date || ''}
+                        onChange={handleEditChange}
+                        className="inline-edit-input"
+                      />
+                    ) : (
+                      <div className="info-value">{formatDate(project.due_date)}</div>
+                    )}
+                  </div>
+
+                  <div className="info-item">
+                    <div className="info-label">Deal Value</div>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        name="deal_value"
+                        value={editProject.deal_value || ''}
+                        onChange={handleEditChange}
+                        className="inline-edit-input"
+                        placeholder="Deal value"
+                      />
+                    ) : (
+                      <div className="info-value">{formatCurrency(project.deal_value)}</div>
+                    )}
+                  </div>
+
+                  <div className="info-item">
+                    <div className="info-label">Backup Presales</div>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="backup_presales"
+                        value={editProject.backup_presales || ''}
+                        onChange={handleEditChange}
+                        className="inline-edit-input"
+                        placeholder="Backup presales contact"
+                      />
+                    ) : (
+                      <div className="info-value">{project.backup_presales || 'Not assigned'}</div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '20px' }}>
+                  <div className="info-label">Scope</div>
+                  {isEditing ? (
+                    <textarea
+                      name="scope"
+                      value={editProject.scope || ''}
+                      onChange={handleEditChange}
+                      className="inline-edit-textarea"
+                      rows="3"
+                      placeholder="Project scope and objectives"
+                      style={{ marginTop: '8px' }}
+                    />
+                  ) : (
+                    <div className="info-value" style={{ marginTop: '8px', lineHeight: '1.5' }}>
+                      {project.scope || 'No scope defined'}
+                    </div>
+                  )}
+                </div>
+
+                {(project.remarks || isEditing) && (
+                  <div style={{ marginTop: '20px' }}>
+                    <div className="info-label">Remarks</div>
+                    {isEditing ? (
+                      <textarea
+                        name="remarks"
+                        value={editProject.remarks || ''}
+                        onChange={handleEditChange}
+                        className="inline-edit-textarea"
+                        rows="3"
+                        placeholder="Project remarks or notes"
+                        style={{ marginTop: '8px' }}
+                      />
+                    ) : (
+                      <div className="info-value" style={{ marginTop: '8px', lineHeight: '1.5' }}>
+                        {project.remarks || 'No remarks'}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Tasks Section */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>
+                  <FaTasks /> Project Tasks
+                </h3>
+                <div className="section-controls">
+                  <button onClick={handleAddTask} className="add-btn">
+                    <FaPlus /> Add Task
+                  </button>
+                  <button 
+                    className="toggle-btn"
+                    onClick={() => setShowCompleted(!showCompleted)}
+                  >
+                    {showCompleted ? <FaChevronUp /> : <FaChevronDown />}
+                    {showCompleted ? 'Hide Completed' : 'Show Completed'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="task-list">
+                {getFilteredTasks().length > 0 ? (
+                  getFilteredTasks().map((task) => (
+                    <div key={task.id} className="task-item">
+                      <input 
+                        type="checkbox" 
+                        className="task-checkbox"
+                        checked={task.status === 'Completed'}
+                        readOnly
+                      />
+                      <div className="task-content">
+                        <div className="task-name">{task.description}</div>
+                        <div className="task-meta">
+                          {task.due_date && `Due: ${formatDate(task.due_date)}`}
+                          {task.assigned_to && ` • Assigned to: ${task.assigned_to}`}
+                          {task.notes && ` • ${task.notes}`}
+                        </div>
+                      </div>
+                      <span className={`task-status ${getTaskStatusClass(task.status)}`}>
+                        {task.status}
+                      </span>
+                      <div className="task-actions">
+                        <button 
+                          className="task-action-btn edit-action"
+                          onClick={() => handleEditTask(task)}
+                          title="Edit task"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="m18.5 2.5 a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                        <button 
+                          className="task-action-btn delete-action"
+                          onClick={() => handleDeleteTask(task.id)}
+                          title="Delete task"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3,6 5,6 21,6"/>
+                            <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                            <line x1="10" y1="11" x2="10" y2="17"/>
+                            <line x1="14" y1="11" x2="14" y2="17"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">✓</div>
+                    <p>No tasks found.</p>
+                    <button onClick={handleAddTask} className="add-first-task-btn">
+                      <FaPlus /> Add First Task
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="right-column">
+            {/* Project Logs */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>
+                  <FaBookOpen /> Project Logs
+                </h3>
+                <button onClick={handleAddLog} className="add-btn">
+                  <FaPlus /> Add Log
+                </button>
+              </div>
+
+              <div className="log-list">
+                {logs.length > 0 ? (
+                  logs.map((log) => (
+                    <div key={log.id} className="log-item">
+                      <div className="log-content">{log.entry}</div>
+                      <div className="log-meta">
+                        {formatDate(log.created_at)}
+                        <button 
+                          className="log-delete-btn"
+                          onClick={() => handleDeleteLog(log.id)}
+                          title="Delete log"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">📝</div>
+                    <p>No project logs yet.</p>
+                    <button onClick={handleAddLog} className="add-first-log-btn">
+                      <FaPlus /> Add First Log
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Meeting Minutes */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>
+                  <FaBookOpen /> Meeting Minutes
+                </h3>
+                <button className="btn btn-secondary">View All</button>
+              </div>
+
+              <div className="meeting-list">
+                {linkedMeetingMinutes.length > 0 ? (
+                  linkedMeetingMinutes.map((meeting) => (
+                    <div key={meeting.id} className="meeting-item">
+                      <div className="meeting-content">
+                        <div className="meeting-title">{meeting.title}</div>
+                        <div className="meeting-date">{formatDate(meeting.created_at)}</div>
+                      </div>
+                      <button 
+                        className="btn btn-secondary"
+                        onClick={() => setSelectedMeetingNote(meeting)}
+                      >
+                        <FaEye /> View
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">📄</div>
+                    <p>No meeting minutes linked to this project.</p>
+                  </div>
+                )}
+              </div>
