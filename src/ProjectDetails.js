@@ -850,4 +850,189 @@ function ProjectDetails() {
                         <div className="task-name">{task.description}</div>
                         <div className="task-meta">
                           {task.due_date && `Due: ${formatDate(task.due_date)}`}
-                          {
+                          {task.due_date && task.status && ' • '}
+                          <span className={`task-status ${getTaskStatusClass(task.status)}`}>
+                            {task.status}
+                          </span>
+                        </div>
+                        {task.notes && <div className="task-notes">{task.notes}</div>}
+                      </div>
+                      <div className="task-actions">
+                        <button 
+                          onClick={() => handleEditTask(task)}
+                          className="edit-task-btn"
+                          title="Edit task"
+                        >
+                          <FaEdit />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="delete-task-btn"
+                          title="Delete task"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <FaTasks />
+                    <p>No {showCompleted ? '' : 'active '}tasks found</p>
+                    <button onClick={handleAddTask} className="add-first-btn">
+                      Add your first task
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="right-column">
+            {/* Project Log */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>
+                  <FaBookOpen /> Project Log
+                </h3>
+                <button onClick={handleAddLog} className="add-btn">
+                  <FaPlus /> Add Log
+                </button>
+              </div>
+
+              <div className="log-list">
+                {logs.length > 0 ? (
+                  logs.map((log) => (
+                    <div key={log.id} className="log-item">
+                      <div className="log-content">
+                        <div className="log-entry">{log.entry}</div>
+                        <div className="log-date">{formatDate(log.created_at)}</div>
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteLog(log.id)}
+                        className="delete-log-btn"
+                        title="Delete log entry"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <FaBookOpen />
+                    <p>No log entries yet</p>
+                    <button onClick={handleAddLog} className="add-first-btn">
+                      Add your first log entry
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Meeting Minutes */}
+            {linkedMeetingMinutes.length > 0 && (
+              <div className="section-card">
+                <div className="section-header">
+                  <h3>
+                    <FaBookOpen /> Linked Meeting Minutes
+                  </h3>
+                </div>
+
+                <div className="meeting-list">
+                  {linkedMeetingMinutes.map((meeting) => (
+                    <div key={meeting.id} className="meeting-item">
+                      <div className="meeting-content">
+                        <div className="meeting-title">{meeting.title || 'Untitled Meeting'}</div>
+                        <div className="meeting-date">{formatDate(meeting.meeting_date)}</div>
+                        {meeting.participants && (
+                          <div className="meeting-participants">
+                            Participants: {meeting.participants}
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => setSelectedMeetingNote(meeting)}
+                        className="view-meeting-btn"
+                        title="View meeting details"
+                      >
+                        <FaEye />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Task Modal */}
+        <TaskModal
+          isOpen={showTaskModal}
+          onClose={() => {
+            setShowTaskModal(false);
+            setEditingTask(null);
+          }}
+          onSave={handleTaskSaved}
+          editingTask={editingTask}
+        />
+
+        {/* Log Modal */}
+        <LogModal
+          isOpen={showLogModal}
+          onClose={() => setShowLogModal(false)}
+          onSave={handleLogSaved}
+        />
+
+        {/* Meeting Note Modal */}
+        {selectedMeetingNote && (
+          <div className="modal-backdrop" onClick={() => setSelectedMeetingNote(null)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
+              <div className="modal-header">
+                <h3>{selectedMeetingNote.title || 'Meeting Notes'}</h3>
+                <button 
+                  onClick={() => setSelectedMeetingNote(null)}
+                  className="close-modal-btn"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="meeting-detail-grid">
+                  <div><strong>Date:</strong> {formatDate(selectedMeetingNote.meeting_date)}</div>
+                  <div><strong>Participants:</strong> {selectedMeetingNote.participants || 'Not specified'}</div>
+                </div>
+                {selectedMeetingNote.agenda && (
+                  <div style={{ marginTop: '20px' }}>
+                    <strong>Agenda:</strong>
+                    <div style={{ marginTop: '8px', whiteSpace: 'pre-wrap' }}>
+                      {selectedMeetingNote.agenda}
+                    </div>
+                  </div>
+                )}
+                {selectedMeetingNote.notes && (
+                  <div style={{ marginTop: '20px' }}>
+                    <strong>Notes:</strong>
+                    <div style={{ marginTop: '8px', whiteSpace: 'pre-wrap' }}>
+                      {selectedMeetingNote.notes}
+                    </div>
+                  </div>
+                )}
+                {selectedMeetingNote.action_items && (
+                  <div style={{ marginTop: '20px' }}>
+                    <strong>Action Items:</strong>
+                    <div style={{ marginTop: '8px', whiteSpace: 'pre-wrap' }}>
+                      {selectedMeetingNote.action_items}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default ProjectDetails;
