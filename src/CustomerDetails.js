@@ -42,10 +42,13 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName }) {
       return;
     }
 
-    // Format the stakeholder info
-    const stakeholderInfo = newStakeholder.role 
-      ? `${newStakeholder.name} - ${newStakeholder.role}`
-      : newStakeholder.name;
+    // Create stakeholder object with all information
+    const stakeholderInfo = {
+      name: newStakeholder.name,
+      role: newStakeholder.role || '',
+      email: newStakeholder.email || '',
+      phone: newStakeholder.phone || ''
+    };
 
     onSave(stakeholderInfo);
     clearForm();
@@ -911,27 +914,44 @@ function CustomerDetails() {
               </div>
               <div className="stakeholder-grid">
                 {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
-                  customer.key_stakeholders.map((stakeholder, index) => (
-                    <div key={index} className="stakeholder-card">
-                      <div className="stakeholder-header">
-                        <div className="stakeholder-info">
-                          <div className="stakeholder-name">
-                            {stakeholder.includes(' - ') ? stakeholder.split(' - ')[0] : stakeholder}
+                  customer.key_stakeholders.map((stakeholder, index) => {
+                    // Handle both old string format and new object format
+                    const isObject = typeof stakeholder === 'object';
+                    const name = isObject ? stakeholder.name : (stakeholder.includes(' - ') ? stakeholder.split(' - ')[0] : stakeholder);
+                    const role = isObject ? stakeholder.role : (stakeholder.includes(' - ') ? stakeholder.split(' - ')[1] : 'Contact');
+                    const email = isObject ? stakeholder.email : '';
+                    const phone = isObject ? stakeholder.phone : '';
+
+                    return (
+                      <div key={index} className="stakeholder-card">
+                        <div className="stakeholder-header">
+                          <div className="stakeholder-info">
+                            <div className="stakeholder-name">{name}</div>
+                            <div className="stakeholder-role">{role || 'Contact'}</div>
+                            {email && (
+                              <div className="stakeholder-contact">
+                                <span className="contact-icon">✉️</span>
+                                <a href={`mailto:${email}`} className="stakeholder-email">{email}</a>
+                              </div>
+                            )}
+                            {phone && (
+                              <div className="stakeholder-contact">
+                                <span className="contact-icon">📞</span>
+                                <a href={`tel:${phone}`} className="stakeholder-phone">{phone}</a>
+                              </div>
+                            )}
                           </div>
-                          <div className="stakeholder-role">
-                            {stakeholder.includes(' - ') ? stakeholder.split(' - ')[1] : 'Contact'}
-                          </div>
+                          <button 
+                            className="stakeholder-delete-btn"
+                            onClick={() => handleDeleteStakeholder(index)}
+                            title="Remove stakeholder"
+                          >
+                            ×
+                          </button>
                         </div>
-                        <button 
-                          className="stakeholder-delete-btn"
-                          onClick={() => handleDeleteStakeholder(index)}
-                          title="Remove stakeholder"
-                        >
-                          ×
-                        </button>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="stakeholder-card stakeholder-empty">
                     <div className="stakeholder-name">No stakeholders added</div>
