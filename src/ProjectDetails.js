@@ -562,6 +562,12 @@ function ProjectDetails() {
                 findAndNavigateToCustomer();
               }} 
               className="back-to-customer-btn"
+              style={{ 
+                height: '40px',
+                minHeight: '40px',
+                fontSize: '14px',
+                padding: '8px 16px'
+              }}
             >
               <FaUsers /> Back to {project.customer_name}
             </button>
@@ -570,8 +576,10 @@ function ProjectDetails() {
 
         {/* Project Header */}
         <div className="project-header">
-          <h1 className="project-name">{project.project_name || 'Unnamed Project'}</h1>
-          <div className="project-breadcrumb">
+          <h1 className="project-name" style={{ fontSize: '2.5rem', fontWeight: '700', marginBottom: '0.5rem' }}>
+            {project.project_name || 'Unnamed Project'}
+          </h1>
+          <div className="project-breadcrumb" style={{ fontSize: '1rem', color: '#6b7280' }}>
             Project in <Link to="#" onClick={(e) => {
               e.preventDefault();
               // Same navigation logic as the button above
