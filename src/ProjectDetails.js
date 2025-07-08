@@ -339,21 +339,39 @@ function ProjectDetails() {
         if (error) throw error;
         alert('Task updated successfully!');
       } else {
-        // Add new task
+        // Add new task - make sure we have the project_id
+        const taskWithProject = {
+          ...taskData,
+          project_id: id // Make sure project_id is included
+        };
+        
+        console.log('Adding task with data:', taskWithProject);
+        
         const { error } = await supabase
           .from('project_tasks')
-          .insert([{ ...taskData, project_id: id }]);
+          .insert([taskWithProject]);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error adding task:', error);
+          throw error;
+        }
+        
         alert('Task added successfully!');
       }
 
       setShowTaskModal(false);
       setEditingTask(null);
-      fetchTasks();
+      await fetchTasks(); // Refresh tasks
     } catch (error) {
       console.error('Error saving task:', error);
-      alert('Error saving task: ' + error.message);
+      // More specific error messages
+      if (error.message.includes('column') && error.message.includes('does not exist')) {
+        alert('Database schema error: Some fields may not exist in your project_tasks table. Please check the console for details.');
+      } else if (error.message.includes('violates')) {
+        alert('Data validation error: Please check all required fields and try again.');
+      } else {
+        alert('Error saving task: ' + error.message);
+      }
     }
   };
 
@@ -500,17 +518,29 @@ function ProjectDetails() {
   return (
     <div className="page-wrapper">
       <div className="page-content">
-        {/* Back Button */}
-        <button onClick={() => navigate('/')} className="back-btn">
-          <FaHome /> Back to Dashboard
-        </button>
+        {/* Navigation Buttons */}
+        <div className="navigation-buttons">
+          <button onClick={() => navigate('/')} className="back-btn">
+            <FaHome /> Back to Dashboard
+          </button>
+          {project.customer_name && (
+            <button 
+              onClick={() => navigate(`/customer/${project.customer_id || '#'}`)} 
+              className="back-to-customer-btn"
+            >
+              <FaUsers /> Back to {project.customer_name}
+            </button>
+          )}
+        </div>
 
         {/* Project Header */}
         <div className="project-header">
           <h1 className="project-name">{project.project_name || 'Unnamed Project'}</h1>
-          <Link to={`/customer/${project.customer_id || '#'}`} className="customer-link">
-            → {project.customer_name}
-          </Link>
+          <div className="project-breadcrumb">
+            Project in <Link to={`/customer/${project.customer_id || '#'}`} className="customer-link">
+              {project.customer_name}
+            </Link>
+          </div>
         </div>
 
         {/* Project Overview */}
