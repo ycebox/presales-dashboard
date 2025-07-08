@@ -1,4 +1,4 @@
-// CustomerDetails.js - Changed from modal to inline editing
+// CustomerDetails.js - Enhanced version with inline editing and improved layout
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -256,6 +256,9 @@ function CustomerDetails() {
   const [isEditing, setIsEditing] = useState(false);
   const [editCustomer, setEditCustomer] = useState({});
   const [saving, setSaving] = useState(false);
+  
+  // Project filtering state
+  const [activeTab, setActiveTab] = useState('active');
 
   useEffect(() => {
     if (customerId) {
@@ -457,6 +460,44 @@ function CustomerDetails() {
     }
   };
 
+  // Project filtering
+  const getFilteredProjects = () => {
+    switch (activeTab) {
+      case 'active':
+        return projects.filter(p => !p.sales_stage?.toLowerCase().startsWith('closed'));
+      case 'closed':
+        return projects.filter(p => p.sales_stage?.toLowerCase().startsWith('closed'));
+      case 'all':
+      default:
+        return projects;
+    }
+  };
+
+  const getActiveProjectsCount = () => {
+    return projects.filter(p => !p.sales_stage?.toLowerCase().startsWith('closed')).length;
+  };
+
+  const getClosedProjectsCount = () => {
+    return projects.filter(p => p.sales_stage?.toLowerCase().startsWith('closed')).length;
+  };
+
+  // Mock data for tasks and activities (you can replace with actual data)
+  const mockTasks = [
+    { id: 1, name: 'Prepare technical demo', project: 'Mobile Banking Platform', dueDate: 'today' },
+    { id: 2, name: 'Review contract terms', project: 'Payment Processing Upgrade', dueDate: 'overdue' },
+    { id: 3, name: 'Schedule stakeholder meeting', project: 'Data Analytics Solution', dueDate: 'upcoming' },
+    { id: 4, name: 'Update project timeline', project: 'Security Framework', dueDate: 'upcoming' },
+    { id: 5, name: 'Prepare PoC results presentation', project: 'Mobile Banking Platform', dueDate: 'upcoming' }
+  ];
+
+  const mockActivities = [
+    { id: 1, type: 'project', title: 'Project moved to Contracting', meta: 'Payment Processing Upgrade • 2 hours ago' },
+    { id: 2, type: 'meeting', title: 'Demo completed successfully', meta: 'Mobile Banking Platform • Yesterday' },
+    { id: 3, type: 'email', title: 'Proposal sent to customer', meta: 'Security Framework • 3 days ago' },
+    { id: 4, type: 'task', title: 'Task completed: Requirements gathering', meta: 'Data Analytics Solution • 5 days ago' },
+    { id: 5, type: 'project', title: 'New project created', meta: 'API Integration Suite • 1 week ago' }
+  ];
+
   // Data for dropdowns
   const asiaPacificCountries = [
     "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
@@ -498,6 +539,10 @@ function CustomerDetails() {
     );
   }
 
+  const filteredProjects = getFilteredProjects();
+  const pendingTasksCount = mockTasks.length;
+  const overdueTasksCount = mockTasks.filter(t => t.dueDate === 'overdue').length;
+
   return (
     <div className="page-wrapper">
       <div className="page-content">
@@ -511,384 +556,344 @@ function CustomerDetails() {
           <h1 className="customer-name">{customer.customer_name}</h1>
         </div>
 
-        {/* Customer Information Section with Inline Editing */}
-        <div className="section-card">
-          <div className="section-header">
-            <h3>
-              <FaUsers /> Customer Information
-            </h3>
-            <div className="edit-controls">
-              {isEditing ? (
-                <>
-                  <button 
-                    onClick={handleSaveCustomer} 
-                    className="save-btn"
-                    disabled={saving}
-                  >
-                    <FaSave /> {saving ? 'Saving...' : 'Save'}
-                  </button>
-                  <button 
-                    onClick={handleEditToggle} 
-                    className="cancel-btn"
-                    disabled={saving}
-                  >
-                    <FaTimes /> Cancel
-                  </button>
-                </>
-              ) : (
-                <button onClick={handleEditToggle} className="edit-btn">
-                  <FaEdit /> Edit Customer
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="customer-info-grid">
-            {/* Left Column */}
-            <div className="info-column">
-              <div className="info-field">
-                <label>Customer Name</label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    name="customer_name"
-                    value={editCustomer.customer_name || ''}
-                    onChange={handleEditChange}
-                    className="inline-edit-input"
-                    required
-                  />
-                ) : (
-                  <div className="field-value">{customer.customer_name}</div>
-                )}
+        {/* Dashboard Overview */}
+        <div className="dashboard-overview">
+          <div className="overview-card">
+            <div className="overview-content">
+              <div className="metric-item">
+                <div className="metric-value">{getActiveProjectsCount()}</div>
+                <div className="metric-label">Active Projects</div>
+                <div className="metric-trend trend-up">↗ +2 this quarter</div>
               </div>
-
-              <div className="info-field">
-                <label>Account Manager</label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    name="account_manager"
-                    value={editCustomer.account_manager || ''}
-                    onChange={handleEditChange}
-                    className="inline-edit-input"
-                    placeholder="Account manager name"
-                  />
-                ) : (
-                  <div className="field-value">{customer.account_manager || 'Not assigned'}</div>
-                )}
+              <div className="metric-item">
+                <div className="metric-value">{pendingTasksCount}</div>
+                <div className="metric-label">Pending Tasks</div>
+                <div className="metric-trend">📅 3 due today</div>
               </div>
-
-              <div className="info-field">
-                <label>Country</label>
-                {isEditing ? (
-                  <select
-                    name="country"
-                    value={editCustomer.country || ''}
-                    onChange={handleEditChange}
-                    className="inline-edit-select"
-                  >
-                    <option value="">Select Country</option>
-                    {asiaPacificCountries.map((c, i) => (
-                      <option key={i} value={c}>{c}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="field-value">{customer.country || 'Not specified'}</div>
-                )}
-              </div>
-
-              <div className="info-field">
-                <label>Industry Vertical</label>
-                {isEditing ? (
-                  <select
-                    name="industry_vertical"
-                    value={editCustomer.industry_vertical || ''}
-                    onChange={handleEditChange}
-                    className="inline-edit-select"
-                  >
-                    <option value="">Select Industry</option>
-                    {industryVerticals.map((industry, i) => (
-                      <option key={i} value={industry}>{industry}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="field-value">{customer.industry_vertical || 'Not specified'}</div>
-                )}
-              </div>
-
-              <div className="info-field">
-                <label>Customer Type</label>
-                {isEditing ? (
-                  <select
-                    name="customer_type"
-                    value={editCustomer.customer_type || 'New'}
-                    onChange={handleEditChange}
-                    className="inline-edit-select"
-                  >
-                    <option value="New">New</option>
-                    <option value="Existing">Existing</option>
-                  </select>
-                ) : (
-                  <div className={`field-value ${customer.customer_type === 'Existing' ? 'existing-customer' : 'new-customer'}`}>
-                    {customer.customer_type || 'New'} Customer
-                    {customer.customer_type === 'Existing' && customer.year_first_closed && (
-                      <span className="year-info"> (since {customer.year_first_closed})</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="info-field">
-                <label>Year First Closed</label>
-                {isEditing ? (
-                  <input
-                    type="number"
-                    name="year_first_closed"
-                    value={editCustomer.year_first_closed || ''}
-                    onChange={handleEditChange}
-                    className="inline-edit-input"
-                    min="2000"
-                    max={new Date().getFullYear()}
-                    placeholder="e.g., 2022"
-                  />
-                ) : (
-                  <div className="field-value">{customer.year_first_closed || 'Not specified'}</div>
-                )}
-              </div>
-
-              <div className="info-field">
-                <label>Company Size</label>
-                {isEditing ? (
-                  <select
-                    name="company_size"
-                    value={editCustomer.company_size || ''}
-                    onChange={handleEditChange}
-                    className="inline-edit-select"
-                  >
-                    <option value="">Select Size</option>
-                    {companySizes.map((size, i) => (
-                      <option key={i} value={size}>{size}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="field-value">{customer.company_size || 'Not specified'}</div>
-                )}
-              </div>
-
-              <div className="info-field">
-                <label>Annual Revenue</label>
-                {isEditing ? (
-                  <select
-                    name="annual_revenue"
-                    value={editCustomer.annual_revenue || ''}
-                    onChange={handleEditChange}
-                    className="inline-edit-select"
-                  >
-                    <option value="">Select Revenue Range</option>
-                    {revenueRanges.map((range, i) => (
-                      <option key={i} value={range}>{range}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="field-value">{customer.annual_revenue || 'Not specified'}</div>
-                )}
-              </div>
-            </div>
-
-            {/* Right Column */}
-            <div className="info-column">
-              <div className="info-field">
-                <label>Technical Complexity</label>
-                {isEditing ? (
-                  <select
-                    name="technical_complexity"
-                    value={editCustomer.technical_complexity || 'Medium'}
-                    onChange={handleEditChange}
-                    className="inline-edit-select"
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                  </select>
-                ) : (
-                  <div className={`field-value ${getComplexityClass(customer.technical_complexity)}`}>
-                    {customer.technical_complexity || 'Medium'}
-                  </div>
-                )}
-              </div>
-
-              <div className="info-field">
-                <label>Relationship Strength</label>
-                {isEditing ? (
-                  <select
-                    name="relationship_strength"
-                    value={editCustomer.relationship_strength || 'Medium'}
-                    onChange={handleEditChange}
-                    className="inline-edit-select"
-                  >
-                    <option value="Weak">Weak</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Strong">Strong</option>
-                  </select>
-                ) : (
-                  <div className={`field-value ${getRelationshipClass(customer.relationship_strength)}`}>
-                    {customer.relationship_strength || 'Medium'}
-                  </div>
-                )}
-              </div>
-
-              <div className="info-field">
-                <label>Health Score (1-10)</label>
-                {isEditing ? (
-                  <input
-                    type="number"
-                    name="health_score"
-                    value={editCustomer.health_score || 7}
-                    onChange={handleEditChange}
-                    className="inline-edit-input"
-                    min="1"
-                    max="10"
-                  />
-                ) : (
-                  <div className="field-value">{customer.health_score || 7}</div>
-                )}
-              </div>
-
-              <div className="info-field">
-                <label>Key Stakeholders</label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    name="key_stakeholders"
-                    value={editCustomer.key_stakeholders ? editCustomer.key_stakeholders.join(', ') : ''}
-                    onChange={handleEditChange}
-                    className="inline-edit-input"
-                    placeholder="John Smith, Jane Doe, etc."
-                  />
-                ) : (
-                  <div className="stakeholders-list">
-                    {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
-                      customer.key_stakeholders.map((stakeholder, index) => (
-                        <div key={index} className="stakeholder-item">
-                          • {stakeholder}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="no-data">No stakeholders listed</div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="info-field">
-                <label>Main Competitors</label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    name="competitors"
-                    value={editCustomer.competitors ? editCustomer.competitors.join(', ') : ''}
-                    onChange={handleEditChange}
-                    className="inline-edit-input"
-                    placeholder="Company A, Company B, etc."
-                  />
-                ) : (
-                  <div className="competitors-list">
-                    {customer.competitors && customer.competitors.length > 0 ? (
-                      customer.competitors.map((competitor, index) => (
-                        <span key={index} className="competitor-tag">
-                          {competitor}
-                        </span>
-                      ))
-                    ) : (
-                      <div className="no-data">No competitors listed</div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="info-field">
-                <label>Notes</label>
-                {isEditing ? (
-                  <textarea
-                    name="notes"
-                    value={editCustomer.notes || ''}
-                    onChange={handleEditChange}
-                    className="inline-edit-textarea"
-                    rows="3"
-                    placeholder="Customer notes..."
-                  />
-                ) : (
-                  <div className="field-value">
-                    {customer.notes || 'No notes available'}
-                  </div>
-                )}
+              <div className="metric-item">
+                <div className="metric-value">{overdueTasksCount}</div>
+                <div className="metric-label">Overdue Items</div>
+                <div className="metric-trend trend-down">⚠️ Needs attention</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Projects Section */}
-        <div className="section-card">
-          <div className="section-header">
-            <h3>
-              <FaBriefcase /> Projects ({projects.length})
-            </h3>
-            <button onClick={handleAddProject} className="add-btn" style={{ backgroundColor: '#3b82f6' }}>
-              <FaPlus /> Add Project
-            </button>
-          </div>
-
-          <div className="projects-list">
-            {projects.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
-                <table className="modern-table">
-                  <thead>
-                    <tr>
-                      <th>Project Name</th>
-                      <th>Sales Stage</th>
-                      <th>Scope</th>
-                      <th style={{ textAlign: 'center' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {projects.map((project) => (
-                      <tr key={project.id}>
-                        <td>
-                          <button
-                            onClick={() => handleProjectClick(project.id, project.project_name)}
-                            className="customer-link-btn"
-                            title="View project details"
-                            style={{ color: '#1e40af' }}
-                          >
-                            📁 {project.project_name || project.customer_name || 'Unnamed Project'}
-                          </button>
-                        </td>
-                        <td>{project.sales_stage || '-'}</td>
-                        <td style={{ maxWidth: '300px', wordWrap: 'break-word' }}>
-                          {project.scope || '-'}
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <button 
-                            className="delete-btn" 
-                            onClick={() => handleDeleteProject(project.id)}
-                            title="Delete project"
-                          >
-                            <FaTrash />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        {/* Main Content Grid */}
+        <div className="main-content">
+          {/* Left Column */}
+          <div className="left-column">
+            {/* Projects Section with Filtering */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>
+                  <FaBriefcase /> Projects Portfolio
+                </h3>
+                <div className="section-controls">
+                  <button onClick={handleAddProject} className="add-btn">
+                    <FaPlus /> Add Project
+                  </button>
+                </div>
               </div>
-            ) : (
-              <div className="no-projects">
-                <p>No projects found for this customer.</p>
-                <button onClick={handleAddProject} className="add-first-project-btn">
-                  <FaPlus /> Add First Project
+
+              <div className="projects-tabs">
+                <button 
+                  className={`tab-button ${activeTab === 'active' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('active')}
+                >
+                  Active Projects ({getActiveProjectsCount()})
+                </button>
+                <button 
+                  className={`tab-button ${activeTab === 'closed' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('closed')}
+                >
+                  Closed Projects ({getClosedProjectsCount()})
+                </button>
+                <button 
+                  className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('all')}
+                >
+                  All Projects ({projects.length})
                 </button>
               </div>
-            )}
+
+              <div className="tab-content">
+                {filteredProjects.length > 0 ? (
+                  filteredProjects.map((project) => (
+                    <div key={project.id} className="project-item">
+                      <div className="project-header">
+                        <button
+                          onClick={() => handleProjectClick(project.id, project.project_name)}
+                          className="project-name"
+                        >
+                          📁 {project.project_name || project.customer_name || 'Unnamed Project'}
+                        </button>
+                        <span className={`project-stage stage-${project.sales_stage?.toLowerCase().replace(/[\s-]/g, '-')}`}>
+                          {project.sales_stage || 'No Stage'}
+                        </span>
+                      </div>
+                      <div className="project-details">
+                        <div className="project-meta">
+                          Due: {formatDate(project.due_date)} • Account Manager: {project.account_manager || 'Not assigned'}
+                        </div>
+                        <div className="project-value">
+                          {formatCurrency(project.deal_value)}
+                        </div>
+                      </div>
+                      {project.scope && (
+                        <div className="project-scope">
+                          {project.scope}
+                        </div>
+                      )}
+                      <div className="project-actions">
+                        <button 
+                          className="delete-btn" 
+                          onClick={() => handleDeleteProject(project.id)}
+                          title="Delete project"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">📁</div>
+                    <p>No projects found for this filter.</p>
+                    {activeTab === 'active' && (
+                      <button onClick={handleAddProject} className="add-first-project-btn">
+                        <FaPlus /> Add First Project
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Customer Information (Compact) */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>
+                  <FaUsers /> Customer Information
+                </h3>
+                <div className="edit-controls">
+                  {isEditing ? (
+                    <>
+                      <button 
+                        onClick={handleSaveCustomer} 
+                        className="save-btn"
+                        disabled={saving}
+                      >
+                        <FaSave /> {saving ? 'Saving...' : 'Save'}
+                      </button>
+                      <button 
+                        onClick={handleEditToggle} 
+                        className="cancel-btn"
+                        disabled={saving}
+                      >
+                        <FaTimes /> Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={handleEditToggle} className="edit-btn">
+                      <FaEdit /> Edit Customer
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isEditing && (
+                <div className="editing-indicator">
+                  📝 Currently editing - Click Save to confirm changes or Cancel to discard
+                </div>
+              )}
+
+              <div className="customer-info-compact">
+                <div className="info-item">
+                  <div className="info-label">Customer Name</div>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      name="customer_name"
+                      value={editCustomer.customer_name || ''}
+                      onChange={handleEditChange}
+                      className="inline-edit-input"
+                      required
+                    />
+                  ) : (
+                    <div className="info-value">{customer.customer_name}</div>
+                  )}
+                </div>
+
+                <div className="info-item">
+                  <div className="info-label">Account Manager</div>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      name="account_manager"
+                      value={editCustomer.account_manager || ''}
+                      onChange={handleEditChange}
+                      className="inline-edit-input"
+                      placeholder="Account manager name"
+                    />
+                  ) : (
+                    <div className="info-value">{customer.account_manager || 'Not assigned'}</div>
+                  )}
+                </div>
+
+                <div className="info-item">
+                  <div className="info-label">Country</div>
+                  {isEditing ? (
+                    <select
+                      name="country"
+                      value={editCustomer.country || ''}
+                      onChange={handleEditChange}
+                      className="inline-edit-select"
+                    >
+                      <option value="">Select Country</option>
+                      {asiaPacificCountries.map((c, i) => (
+                        <option key={i} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="info-value">{customer.country || 'Not specified'}</div>
+                  )}
+                </div>
+
+                <div className="info-item">
+                  <div className="info-label">Industry</div>
+                  {isEditing ? (
+                    <select
+                      name="industry_vertical"
+                      value={editCustomer.industry_vertical || ''}
+                      onChange={handleEditChange}
+                      className="inline-edit-select"
+                    >
+                      <option value="">Select Industry</option>
+                      {industryVerticals.map((industry, i) => (
+                        <option key={i} value={industry}>{industry}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="info-value">{customer.industry_vertical || 'Not specified'}</div>
+                  )}
+                </div>
+
+                <div className="info-item">
+                  <div className="info-label">Company Size</div>
+                  {isEditing ? (
+                    <select
+                      name="company_size"
+                      value={editCustomer.company_size || ''}
+                      onChange={handleEditChange}
+                      className="inline-edit-select"
+                    >
+                      <option value="">Select Size</option>
+                      {companySizes.map((size, i) => (
+                        <option key={i} value={size}>{size}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="info-value">{customer.company_size || 'Not specified'}</div>
+                  )}
+                </div>
+
+                <div className="info-item">
+                  <div className="info-label">Customer Since</div>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      name="year_first_closed"
+                      value={editCustomer.year_first_closed || ''}
+                      onChange={handleEditChange}
+                      className="inline-edit-input"
+                      min="2000"
+                      max={new Date().getFullYear()}
+                      placeholder="e.g., 2022"
+                    />
+                  ) : (
+                    <div className="info-value">{customer.year_first_closed || 'Not specified'}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="right-column">
+            {/* Task List */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>✓ Active Tasks</h3>
+                <div className="filter-toggle">
+                  <button className="active">My Tasks</button>
+                  <button>All Tasks</button>
+                </div>
+              </div>
+              <div className="tasks-content">
+                {mockTasks.map((task) => (
+                  <div key={task.id} className="task-item">
+                    <input type="checkbox" className="task-checkbox" />
+                    <div className="task-content">
+                      <div className="task-name">{task.name}</div>
+                      <div className="task-project">{task.project}</div>
+                    </div>
+                    <div className={`task-due due-${task.dueDate}`}>
+                      {task.dueDate === 'today' ? 'Today' : 
+                       task.dueDate === 'overdue' ? '2 days overdue' : 
+                       task.dueDate === 'upcoming' ? 'Tomorrow' : task.dueDate}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Key Stakeholders */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>👤 Key Stakeholders</h3>
+                <button className="btn btn-secondary">Add Contact</button>
+              </div>
+              <div className="stakeholder-grid">
+                {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
+                  customer.key_stakeholders.map((stakeholder, index) => (
+                    <div key={index} className="stakeholder-card">
+                      <div className="stakeholder-name">{stakeholder}</div>
+                      <div className="stakeholder-role">Contact</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="stakeholder-card">
+                    <div className="stakeholder-name">No stakeholders added</div>
+                    <div className="stakeholder-role">Click "Add Contact" to add stakeholders</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>📈 Recent Activity</h3>
+                <button className="btn btn-secondary">View All</button>
+              </div>
+              <div className="activity-content">
+                {mockActivities.map((activity) => (
+                  <div key={activity.id} className="timeline-item">
+                    <div className={`timeline-icon ${activity.type}`}>
+                      {activity.type === 'project' ? '📁' : 
+                       activity.type === 'meeting' ? '📅' : 
+                       activity.type === 'email' ? '✉️' : 
+                       activity.type === 'task' ? '✓' : '📝'}
+                    </div>
+                    <div className="timeline-content">
+                      <div className="timeline-title">{activity.title}</div>
+                      <div className="timeline-meta">{activity.meta}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
