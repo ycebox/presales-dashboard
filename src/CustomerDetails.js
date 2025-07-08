@@ -7,13 +7,27 @@ import {
   FaHome, FaUsers, FaEdit, FaPlus, FaBriefcase, FaTrash, FaSave, FaTimes
 } from 'react-icons/fa';
 
-function StakeholderModal({ isOpen, onClose, onSave, customerName }) {
+function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeholder = null, editingIndex = null }) {
   const [newStakeholder, setNewStakeholder] = useState({
     name: '',
     role: '',
     email: '',
     phone: ''
   });
+
+  // Initialize form with editing data when editing
+  useEffect(() => {
+    if (editingStakeholder) {
+      setNewStakeholder({
+        name: editingStakeholder.name || '',
+        role: editingStakeholder.role || '',
+        email: editingStakeholder.email || '',
+        phone: editingStakeholder.phone || ''
+      });
+    } else {
+      clearForm();
+    }
+  }, [editingStakeholder, isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -50,7 +64,7 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName }) {
       phone: newStakeholder.phone || ''
     };
 
-    onSave(stakeholderInfo);
+    onSave(stakeholderInfo, editingIndex);
     clearForm();
     onClose();
   };
@@ -60,7 +74,7 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName }) {
   return (
     <div className="modal-backdrop" onClick={handleClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-        <h3>Add New Stakeholder</h3>
+        <h3>{editingStakeholder ? 'Edit Stakeholder' : 'Add New Stakeholder'}</h3>
         <form onSubmit={handleSubmit} className="modern-form">
           <label style={{ gridColumn: 'span 2' }}>
             Name *
@@ -107,7 +121,7 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName }) {
           
           <div className="modal-actions">
             <button type="button" onClick={handleClose}>Cancel</button>
-            <button type="submit">Add Stakeholder</button>
+            <button type="submit">{editingStakeholder ? 'Update Stakeholder' : 'Add Stakeholder'}</button>
           </div>
         </form>
       </div>
@@ -360,6 +374,8 @@ function CustomerDetails() {
   const [error, setError] = useState(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showStakeholderModal, setShowStakeholderModal] = useState(false);
+  const [editingStakeholder, setEditingStakeholder] = useState(null);
+  const [editingStakeholderIndex, setEditingStakeholderIndex] = useState(null);
   
   // Inline editing states
   const [isEditing, setIsEditing] = useState(false);
@@ -496,16 +512,33 @@ function CustomerDetails() {
   };
 
   const handleAddStakeholder = () => {
+    setEditingStakeholder(null);
+    setEditingStakeholderIndex(null);
     setShowStakeholderModal(true);
   };
 
-  const handleStakeholderSaved = async (stakeholderInfo) => {
+  const handleEditStakeholder = (stakeholder, index) => {
+    setEditingStakeholder(stakeholder);
+    setEditingStakeholderIndex(index);
+    setShowStakeholderModal(true);
+  };
+
+  const handleStakeholderSaved = async (stakeholderInfo, editingIndex = null) => {
     try {
       // Get current stakeholders or initialize as empty array
       const currentStakeholders = customer.key_stakeholders || [];
-      const updatedStakeholders = [...currentStakeholders, stakeholderInfo];
+      let updatedStakeholders;
+
+      if (editingIndex !== null) {
+        // Update existing stakeholder
+        updatedStakeholders = [...currentStakeholders];
+        updatedStakeholders[editingIndex] = stakeholderInfo;
+      } else {
+        // Add new stakeholder
+        updatedStakeholders = [...currentStakeholders, stakeholderInfo];
+      }
       
-      // Update customer with new stakeholder
+      // Update customer with new/updated stakeholder
       const { data, error } = await supabase
         .from('customers')
         .update({ key_stakeholders: updatedStakeholders })
@@ -520,11 +553,11 @@ function CustomerDetails() {
       if (data && data.length > 0) {
         setCustomer(data[0]);
         setEditCustomer(data[0]);
-        alert('Stakeholder added successfully!');
+        alert(editingIndex !== null ? 'Stakeholder updated successfully!' : 'Stakeholder added successfully!');
       }
     } catch (error) {
-      console.error('Error adding stakeholder:', error);
-      alert('Error adding stakeholder: ' + error.message);
+      console.error('Error saving stakeholder:', error);
+      alert('Error saving stakeholder: ' + error.message);
     }
   };
 
@@ -654,7 +687,7 @@ function CustomerDetails() {
     return projects.filter(p => p.sales_stage?.toLowerCase().startsWith('closed')).length;
   };
 
-  // Mock data for tasks and activities (you can replace with actual data)
+  // Data for dropdowns
   const mockTasks = [
     { id: 1, name: 'Prepare technical demo', project: 'Mobile Banking Platform', dueDate: 'today' },
     { id: 2, name: 'Review contract terms', project: 'Payment Processing Upgrade', dueDate: 'overdue' },
@@ -671,8 +704,35 @@ function CustomerDetails() {
     { id: 5, type: 'project', title: 'New project created', meta: 'API Integration Suite • 1 week ago' }
   ];
 
-  // Data for dropdowns
-  const asiaPacificCountries = [
+  // Helper function to parse stakeholder data
+  const parseStakeholder = (stakeholder) => {
+    // If it's already an object, return it
+    if (typeof stakeholder === 'object' && stakeholder !== null) {
+      return stakeholder;
+    }
+    
+    // If it's a string, try to parse it as JSON first
+    if (typeof stakeholder === 'string') {
+      try {
+        const parsed = JSON.parse(stakeholder);
+        if (typeof parsed === 'object' && parsed !== null) {
+          return parsed;
+        }
+      } catch (e) {
+        // If JSON parsing fails, treat as old format string
+        if (stakeholder.includes(' - ')) {
+          const [name, role] = stakeholder.split(' - ');
+          return { name, role, email: '', phone: '' };
+        } else {
+          return { name: stakeholder, role: 'Contact', email: '', phone: '' };
+        }
+      }
+    }
+    
+    // Fallback
+    return { name: 'Unknown', role: 'Contact', email: '', phone: '' };
+  };
+  // Mock data for tasks and activities (you can replace with actual data)
     "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
     "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
     "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
@@ -915,12 +975,8 @@ function CustomerDetails() {
               <div className="stakeholder-grid">
                 {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
                   customer.key_stakeholders.map((stakeholder, index) => {
-                    // Handle both old string format and new object format
-                    const isObject = typeof stakeholder === 'object';
-                    const name = isObject ? stakeholder.name : (stakeholder.includes(' - ') ? stakeholder.split(' - ')[0] : stakeholder);
-                    const role = isObject ? stakeholder.role : (stakeholder.includes(' - ') ? stakeholder.split(' - ')[1] : 'Contact');
-                    const email = isObject ? stakeholder.email : '';
-                    const phone = isObject ? stakeholder.phone : '';
+                    const parsedStakeholder = parseStakeholder(stakeholder);
+                    const { name, role, email, phone } = parsedStakeholder;
 
                     return (
                       <div key={index} className="stakeholder-card">
@@ -941,13 +997,22 @@ function CustomerDetails() {
                               </div>
                             )}
                           </div>
-                          <button 
-                            className="stakeholder-delete-btn"
-                            onClick={() => handleDeleteStakeholder(index)}
-                            title="Remove stakeholder"
-                          >
-                            ×
-                          </button>
+                          <div className="stakeholder-actions">
+                            <button 
+                              className="stakeholder-edit-btn"
+                              onClick={() => handleEditStakeholder(parsedStakeholder, index)}
+                              title="Edit stakeholder"
+                            >
+                              ✏️
+                            </button>
+                            <button 
+                              className="stakeholder-delete-btn"
+                              onClick={() => handleDeleteStakeholder(index)}
+                              title="Remove stakeholder"
+                            >
+                              ×
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1109,9 +1174,15 @@ function CustomerDetails() {
       {customer && (
         <StakeholderModal
           isOpen={showStakeholderModal}
-          onClose={() => setShowStakeholderModal(false)}
+          onClose={() => {
+            setShowStakeholderModal(false);
+            setEditingStakeholder(null);
+            setEditingStakeholderIndex(null);
+          }}
           onSave={handleStakeholderSaved}
           customerName={customer.customer_name}
+          editingStakeholder={editingStakeholder}
+          editingIndex={editingStakeholderIndex}
         />
       )}
 
