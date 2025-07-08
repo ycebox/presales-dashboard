@@ -309,8 +309,26 @@ function ProjectDetails() {
     }
   };
 
+  // Task status update handler
+  const handleTaskStatusChange = async (taskId, currentStatus) => {
+    try {
+      const newStatus = currentStatus === 'Completed' ? 'Not Started' : 'Completed';
+      
+      const { error } = await supabase
+        .from('project_tasks')
+        .update({ status: newStatus })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      // Refresh tasks to show updated status
+      await fetchTasks();
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      alert('Error updating task status: ' + error.message);
+    }
+  };
   // Task handlers
-  const handleAddTask = () => {
     setEditingTask(null);
     setShowTaskModal(true);
   };
@@ -520,10 +538,6 @@ function ProjectDetails() {
             <button 
               onClick={() => {
                 // Find customer by name since we might not have customer_id
-                navigate('/'); // Go to dashboard first, then we can navigate to customer
-                // Alternatively, if you have customer_id in your projects table:
-                // navigate(`/customer/${project.customer_id}`);
-                // For now, let's try to find the customer ID from the customer name
                 const findAndNavigateToCustomer = async () => {
                   try {
                     const { data: customers } = await supabase
@@ -547,7 +561,7 @@ function ProjectDetails() {
               }} 
               className="back-to-customer-btn"
             >
-              <FaUsers /> {project.customer_name}
+              <FaUsers /> Back to {project.customer_name}
             </button>
           )}
         </div>
