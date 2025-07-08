@@ -35,6 +35,7 @@ body {
   transition: all 0.2s;
   text-decoration: none;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .back-btn {
@@ -57,12 +58,13 @@ body {
   transform: translateY(-1px);
 }
 
+/* Project Header */
 .project-header {
   margin-bottom: 32px;
 }
 
 .project-name {
-  font-size: 2.5rem;
+  font-size: 3rem;
   font-weight: 700;
   color: #1e293b;
   margin-bottom: 8px;
