@@ -328,7 +328,9 @@ function ProjectDetails() {
       alert('Error updating task status: ' + error.message);
     }
   };
+
   // Task handlers
+  const handleAddTask = () => {
     setEditingTask(null);
     setShowTaskModal(true);
   };
@@ -842,174 +844,10 @@ function ProjectDetails() {
                         type="checkbox" 
                         className="task-checkbox"
                         checked={task.status === 'Completed'}
-                        readOnly
+                        onChange={() => handleTaskStatusChange(task.id, task.status)}
                       />
                       <div className="task-content">
                         <div className="task-name">{task.description}</div>
                         <div className="task-meta">
                           {task.due_date && `Due: ${formatDate(task.due_date)}`}
-                          {task.assigned_to && ` • Assigned to: ${task.assigned_to}`}
-                          {task.notes && ` • ${task.notes}`}
-                        </div>
-                      </div>
-                      <span className={`task-status ${getTaskStatusClass(task.status)}`}>
-                        {task.status}
-                      </span>
-                      <div className="task-actions">
-                        <button 
-                          className="task-action-btn edit-action"
-                          onClick={() => handleEditTask(task)}
-                          title="Edit task"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                            <path d="m18.5 2.5 a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                          </svg>
-                        </button>
-                        <button 
-                          className="task-action-btn delete-action"
-                          onClick={() => handleDeleteTask(task.id)}
-                          title="Delete task"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3,6 5,6 21,6"/>
-                            <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
-                            <line x1="10" y1="11" x2="10" y2="17"/>
-                            <line x1="14" y1="11" x2="14" y2="17"/>
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty-state">
-                    <div className="empty-state-icon">✓</div>
-                    <p>No tasks found.</p>
-                    <button onClick={handleAddTask} className="add-first-task-btn">
-                      <FaPlus /> Add First Task
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="right-column">
-            {/* Project Logs */}
-            <div className="section-card">
-              <div className="section-header">
-                <h3>
-                  <FaBookOpen /> Project Logs
-                </h3>
-                <button onClick={handleAddLog} className="add-btn">
-                  <FaPlus /> Add Log
-                </button>
-              </div>
-
-              <div className="log-list">
-                {logs.length > 0 ? (
-                  logs.map((log) => (
-                    <div key={log.id} className="log-item">
-                      <div className="log-content">{log.entry}</div>
-                      <div className="log-meta">
-                        {formatDate(log.created_at)}
-                        <button 
-                          className="log-delete-btn"
-                          onClick={() => handleDeleteLog(log.id)}
-                          title="Delete log"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty-state">
-                    <div className="empty-state-icon">📝</div>
-                    <p>No project logs yet.</p>
-                    <button onClick={handleAddLog} className="add-first-log-btn">
-                      <FaPlus /> Add First Log
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Meeting Minutes */}
-            <div className="section-card">
-              <div className="section-header">
-                <h3>
-                  <FaBookOpen /> Meeting Minutes
-                </h3>
-                <button className="btn btn-secondary">View All</button>
-              </div>
-
-              <div className="meeting-list">
-                {linkedMeetingMinutes.length > 0 ? (
-                  linkedMeetingMinutes.map((meeting) => (
-                    <div key={meeting.id} className="meeting-item">
-                      <div className="meeting-content">
-                        <div className="meeting-title">{meeting.title}</div>
-                        <div className="meeting-date">{formatDate(meeting.created_at)}</div>
-                      </div>
-                      <button 
-                        className="btn btn-secondary"
-                        onClick={() => setSelectedMeetingNote(meeting)}
-                      >
-                        <FaEye /> View
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty-state">
-                    <div className="empty-state-icon">📄</div>
-                    <p>No meeting minutes linked to this project.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Task Modal */}
-      <TaskModal
-        isOpen={showTaskModal}
-        onClose={() => {
-          setShowTaskModal(false);
-          setEditingTask(null);
-        }}
-        onSave={handleTaskSaved}
-        editingTask={editingTask}
-      />
-
-      {/* Log Modal */}
-      <LogModal
-        isOpen={showLogModal}
-        onClose={() => setShowLogModal(false)}
-        onSave={handleLogSaved}
-      />
-
-      {/* Meeting Minutes Modal */}
-      {selectedMeetingNote && (
-        <div className="modal-backdrop" onClick={() => setSelectedMeetingNote(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '80vh' }}>
-            <h3>{selectedMeetingNote.title}</h3>
-            <div 
-              className="meeting-content-display"
-              dangerouslySetInnerHTML={{ __html: selectedMeetingNote.content || 'No content provided.' }}
-            />
-            <div className="modal-actions">
-              <button onClick={() => setSelectedMeetingNote(null)}>
-                <FaTimes /> Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default ProjectDetails;
+                          {
