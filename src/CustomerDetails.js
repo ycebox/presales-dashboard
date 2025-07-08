@@ -629,6 +629,35 @@ function CustomerDetails() {
     }
   };
 
+  // Helper function to parse stakeholder data
+  const parseStakeholder = (stakeholder) => {
+    // If it's already an object, return it
+    if (typeof stakeholder === 'object' && stakeholder !== null) {
+      return stakeholder;
+    }
+    
+    // If it's a string, try to parse it as JSON first
+    if (typeof stakeholder === 'string') {
+      try {
+        const parsed = JSON.parse(stakeholder);
+        if (typeof parsed === 'object' && parsed !== null) {
+          return parsed;
+        }
+      } catch (e) {
+        // If JSON parsing fails, treat as old format string
+        if (stakeholder.includes(' - ')) {
+          const [name, role] = stakeholder.split(' - ');
+          return { name, role, email: '', phone: '' };
+        } else {
+          return { name: stakeholder, role: 'Contact', email: '', phone: '' };
+        }
+      }
+    }
+    
+    // Fallback
+    return { name: 'Unknown', role: 'Contact', email: '', phone: '' };
+  };
+
   // Helper functions
   const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -687,7 +716,7 @@ function CustomerDetails() {
     return projects.filter(p => p.sales_stage?.toLowerCase().startsWith('closed')).length;
   };
 
-  // Data for dropdowns
+  // Mock data for tasks and activities (you can replace with actual data)
   const mockTasks = [
     { id: 1, name: 'Prepare technical demo', project: 'Mobile Banking Platform', dueDate: 'today' },
     { id: 2, name: 'Review contract terms', project: 'Payment Processing Upgrade', dueDate: 'overdue' },
@@ -704,35 +733,8 @@ function CustomerDetails() {
     { id: 5, type: 'project', title: 'New project created', meta: 'API Integration Suite • 1 week ago' }
   ];
 
-  // Helper function to parse stakeholder data
-  const parseStakeholder = (stakeholder) => {
-    // If it's already an object, return it
-    if (typeof stakeholder === 'object' && stakeholder !== null) {
-      return stakeholder;
-    }
-    
-    // If it's a string, try to parse it as JSON first
-    if (typeof stakeholder === 'string') {
-      try {
-        const parsed = JSON.parse(stakeholder);
-        if (typeof parsed === 'object' && parsed !== null) {
-          return parsed;
-        }
-      } catch (e) {
-        // If JSON parsing fails, treat as old format string
-        if (stakeholder.includes(' - ')) {
-          const [name, role] = stakeholder.split(' - ');
-          return { name, role, email: '', phone: '' };
-        } else {
-          return { name: stakeholder, role: 'Contact', email: '', phone: '' };
-        }
-      }
-    }
-    
-    // Fallback
-    return { name: 'Unknown', role: 'Contact', email: '', phone: '' };
-  };
-  // Mock data for tasks and activities (you can replace with actual data)
+  // Data for dropdowns
+  const asiaPacificCountries = [
     "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
     "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
     "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
@@ -896,307 +898,4 @@ function CustomerDetails() {
                       onChange={handleEditChange}
                       className="inline-edit-select"
                     >
-                      <option value="">Select Country</option>
-                      {asiaPacificCountries.map((c, i) => (
-                        <option key={i} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="info-value">{customer.country || 'Not specified'}</div>
-                  )}
-                </div>
-
-                <div className="info-item">
-                  <div className="info-label">Industry</div>
-                  {isEditing ? (
-                    <select
-                      name="industry_vertical"
-                      value={editCustomer.industry_vertical || ''}
-                      onChange={handleEditChange}
-                      className="inline-edit-select"
-                    >
-                      <option value="">Select Industry</option>
-                      {industryVerticals.map((industry, i) => (
-                        <option key={i} value={industry}>{industry}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="info-value">{customer.industry_vertical || 'Not specified'}</div>
-                  )}
-                </div>
-
-                <div className="info-item">
-                  <div className="info-label">Company Size</div>
-                  {isEditing ? (
-                    <select
-                      name="company_size"
-                      value={editCustomer.company_size || ''}
-                      onChange={handleEditChange}
-                      className="inline-edit-select"
-                    >
-                      <option value="">Select Size</option>
-                      {companySizes.map((size, i) => (
-                        <option key={i} value={size}>{size}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="info-value">{customer.company_size || 'Not specified'}</div>
-                  )}
-                </div>
-
-                <div className="info-item">
-                  <div className="info-label">Customer Since</div>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      name="year_first_closed"
-                      value={editCustomer.year_first_closed || ''}
-                      onChange={handleEditChange}
-                      className="inline-edit-input"
-                      min="2000"
-                      max={new Date().getFullYear()}
-                      placeholder="e.g., 2022"
-                    />
-                  ) : (
-                    <div className="info-value">{customer.year_first_closed || 'Not specified'}</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Key Stakeholders - moved under customer information */}
-            <div className="section-card">
-              <div className="section-header">
-                <h3>👤 Key Stakeholders</h3>
-                <button className="btn btn-secondary" onClick={handleAddStakeholder}>
-                  Add Contact
-                </button>
-              </div>
-              <div className="stakeholder-grid">
-                {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
-                  customer.key_stakeholders.map((stakeholder, index) => {
-                    const parsedStakeholder = parseStakeholder(stakeholder);
-                    const { name, role, email, phone } = parsedStakeholder;
-
-                    return (
-                      <div key={index} className="stakeholder-card">
-                        <div className="stakeholder-header">
-                          <div className="stakeholder-info">
-                            <div className="stakeholder-name">{name}</div>
-                            <div className="stakeholder-role">{role || 'Contact'}</div>
-                            {email && (
-                              <div className="stakeholder-contact">
-                                <span className="contact-icon">✉️</span>
-                                <a href={`mailto:${email}`} className="stakeholder-email">{email}</a>
-                              </div>
-                            )}
-                            {phone && (
-                              <div className="stakeholder-contact">
-                                <span className="contact-icon">📞</span>
-                                <a href={`tel:${phone}`} className="stakeholder-phone">{phone}</a>
-                              </div>
-                            )}
-                          </div>
-                          <div className="stakeholder-actions">
-                            <button 
-                              className="stakeholder-edit-btn"
-                              onClick={() => handleEditStakeholder(parsedStakeholder, index)}
-                              title="Edit stakeholder"
-                            >
-                              ✏️
-                            </button>
-                            <button 
-                              className="stakeholder-delete-btn"
-                              onClick={() => handleDeleteStakeholder(index)}
-                              title="Remove stakeholder"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="stakeholder-card stakeholder-empty">
-                    <div className="stakeholder-name">No stakeholders added</div>
-                    <div className="stakeholder-role">Click "Add Contact" to add stakeholders</div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Projects Section with Filtering */}
-            <div className="section-card">
-              <div className="section-header">
-                <h3>
-                  <FaBriefcase /> Projects Portfolio
-                </h3>
-                <div className="section-controls">
-                  <button onClick={handleAddProject} className="add-btn">
-                    <FaPlus /> Add Project
-                  </button>
-                </div>
-              </div>
-
-              <div className="projects-tabs">
-                <button 
-                  className={`tab-button ${activeTab === 'active' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('active')}
-                >
-                  Active Projects ({getActiveProjectsCount()})
-                </button>
-                <button 
-                  className={`tab-button ${activeTab === 'closed' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('closed')}
-                >
-                  Closed Projects ({getClosedProjectsCount()})
-                </button>
-                <button 
-                  className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('all')}
-                >
-                  All Projects ({projects.length})
-                </button>
-              </div>
-
-              <div className="tab-content">
-                {filteredProjects.length > 0 ? (
-                  filteredProjects.map((project) => (
-                    <div key={project.id} className="project-item">
-                      <div className="project-header">
-                        <button
-                          onClick={() => handleProjectClick(project.id, project.project_name)}
-                          className="project-name"
-                        >
-                          📁 {project.project_name || project.customer_name || 'Unnamed Project'}
-                        </button>
-                        <span className={`project-stage stage-${project.sales_stage?.toLowerCase().replace(/[\s-]/g, '-')}`}>
-                          {project.sales_stage || 'No Stage'}
-                        </span>
-                      </div>
-                      <div className="project-details">
-                        <div className="project-meta">
-                          Due: {formatDate(project.due_date)} • Account Manager: {project.account_manager || 'Not assigned'}
-                        </div>
-                        <div className="project-value">
-                          {formatCurrency(project.deal_value)}
-                        </div>
-                      </div>
-                      {project.scope && (
-                        <div className="project-scope">
-                          {project.scope}
-                        </div>
-                      )}
-                      <div className="project-actions">
-                        <button 
-                          className="delete-btn" 
-                          onClick={() => handleDeleteProject(project.id)}
-                          title="Delete project"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty-state">
-                    <div className="empty-state-icon">📁</div>
-                    <p>No projects found for this filter.</p>
-                    {activeTab === 'active' && (
-                      <button onClick={handleAddProject} className="add-first-project-btn">
-                        <FaPlus /> Add First Project
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="right-column">
-            {/* Task List */}
-            <div className="section-card">
-              <div className="section-header">
-                <h3>✓ Active Tasks</h3>
-                <div className="filter-toggle">
-                  <button className="active">My Tasks</button>
-                  <button>All Tasks</button>
-                </div>
-              </div>
-              <div className="tasks-content">
-                {mockTasks.map((task) => (
-                  <div key={task.id} className="task-item">
-                    <input type="checkbox" className="task-checkbox" />
-                    <div className="task-content">
-                      <div className="task-name">{task.name}</div>
-                      <div className="task-project">{task.project}</div>
-                    </div>
-                    <div className={`task-due due-${task.dueDate}`}>
-                      {task.dueDate === 'today' ? 'Today' : 
-                       task.dueDate === 'overdue' ? '2 days overdue' : 
-                       task.dueDate === 'upcoming' ? 'Tomorrow' : task.dueDate}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="section-card">
-              <div className="section-header">
-                <h3>📈 Recent Activity</h3>
-                <button className="btn btn-secondary">View All</button>
-              </div>
-              <div className="activity-content">
-                {mockActivities.map((activity) => (
-                  <div key={activity.id} className="timeline-item">
-                    <div className={`timeline-icon ${activity.type}`}>
-                      {activity.type === 'project' ? '📁' : 
-                       activity.type === 'meeting' ? '📅' : 
-                       activity.type === 'email' ? '✉️' : 
-                       activity.type === 'task' ? '✓' : '📝'}
-                    </div>
-                    <div className="timeline-content">
-                      <div className="timeline-title">{activity.title}</div>
-                      <div className="timeline-meta">{activity.meta}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Add Stakeholder Modal */}
-      {customer && (
-        <StakeholderModal
-          isOpen={showStakeholderModal}
-          onClose={() => {
-            setShowStakeholderModal(false);
-            setEditingStakeholder(null);
-            setEditingStakeholderIndex(null);
-          }}
-          onSave={handleStakeholderSaved}
-          customerName={customer.customer_name}
-          editingStakeholder={editingStakeholder}
-          editingIndex={editingStakeholderIndex}
-        />
-      )}
-
-      {/* Add Project Modal */}
-      {customer && (
-        <ProjectModal
-          isOpen={showProjectModal}
-          onClose={() => setShowProjectModal(false)}
-          onSave={handleProjectSaved}
-          customerName={customer.customer_name}
-        />
-      )}
-    </div>
-  );
-}
-
-export default CustomerDetails;
+                      <option value="">Select
