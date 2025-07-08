@@ -7,7 +7,110 @@ import {
   FaHome, FaUsers, FaEdit, FaPlus, FaBriefcase, FaTrash, FaSave, FaTimes
 } from 'react-icons/fa';
 
-function ProjectModal({ isOpen, onClose, onSave, customerName }) {
+function StakeholderModal({ isOpen, onClose, onSave, customerName }) {
+  const [newStakeholder, setNewStakeholder] = useState({
+    name: '',
+    role: '',
+    email: '',
+    phone: ''
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setNewStakeholder(prev => ({ ...prev, [name]: value }));
+  };
+
+  const clearForm = () => {
+    setNewStakeholder({
+      name: '',
+      role: '',
+      email: '',
+      phone: ''
+    });
+  };
+
+  const handleClose = () => {
+    clearForm();
+    onClose();
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!newStakeholder.name) {
+      alert('Stakeholder name is required');
+      return;
+    }
+
+    // Format the stakeholder info
+    const stakeholderInfo = newStakeholder.role 
+      ? `${newStakeholder.name} - ${newStakeholder.role}`
+      : newStakeholder.name;
+
+    onSave(stakeholderInfo);
+    clearForm();
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-backdrop" onClick={handleClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+        <h3>Add New Stakeholder</h3>
+        <form onSubmit={handleSubmit} className="modern-form">
+          <label style={{ gridColumn: 'span 2' }}>
+            Name *
+            <input 
+              name="name" 
+              value={newStakeholder.name} 
+              onChange={handleChange}
+              placeholder="Enter stakeholder name"
+              required
+            />
+          </label>
+
+          <label style={{ gridColumn: 'span 2' }}>
+            Role/Title
+            <input 
+              name="role" 
+              value={newStakeholder.role} 
+              onChange={handleChange}
+              placeholder="e.g., CTO, Project Manager, etc."
+            />
+          </label>
+
+          <label>
+            Email
+            <input 
+              name="email" 
+              type="email"
+              value={newStakeholder.email} 
+              onChange={handleChange}
+              placeholder="email@company.com"
+            />
+          </label>
+
+          <label>
+            Phone
+            <input 
+              name="phone" 
+              type="tel"
+              value={newStakeholder.phone} 
+              onChange={handleChange}
+              placeholder="+65 1234 5678"
+            />
+          </label>
+          
+          <div className="modal-actions">
+            <button type="button" onClick={handleClose}>Cancel</button>
+            <button type="submit">Add Stakeholder</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
   const [newProject, setNewProject] = useState({
     customer_name: customerName || '',
     project_name: '',
@@ -243,7 +346,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
   );
 }
 
-function CustomerDetails() {
+function ProjectModal({ isOpen, onClose, onSave, customerName }) {
   const { customerId } = useParams();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
@@ -386,7 +489,69 @@ function CustomerDetails() {
     }
   };
 
-  const handleAddProject = () => {
+  const handleAddStakeholder = () => {
+    setShowStakeholderModal(true);
+  };
+
+  const handleStakeholderSaved = async (stakeholderInfo) => {
+    try {
+      // Get current stakeholders or initialize as empty array
+      const currentStakeholders = customer.key_stakeholders || [];
+      const updatedStakeholders = [...currentStakeholders, stakeholderInfo];
+      
+      // Update customer with new stakeholder
+      const { data, error } = await supabase
+        .from('customers')
+        .update({ key_stakeholders: updatedStakeholders })
+        .eq('id', customer.id)
+        .select();
+      
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        setCustomer(data[0]);
+        setEditCustomer(data[0]);
+        alert('Stakeholder added successfully!');
+      }
+    } catch (error) {
+      console.error('Error adding stakeholder:', error);
+      alert('Error adding stakeholder: ' + error.message);
+    }
+  };
+
+  const handleDeleteStakeholder = async (stakeholderIndex) => {
+    if (!window.confirm('Are you sure you want to remove this stakeholder?')) return;
+    
+    try {
+      // Get current stakeholders and remove the one at the specified index
+      const currentStakeholders = customer.key_stakeholders || [];
+      const updatedStakeholders = currentStakeholders.filter((_, index) => index !== stakeholderIndex);
+      
+      // Update customer with updated stakeholders list
+      const { data, error } = await supabase
+        .from('customers')
+        .update({ key_stakeholders: updatedStakeholders })
+        .eq('id', customer.id)
+        .select();
+      
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        setCustomer(data[0]);
+        setEditCustomer(data[0]);
+        alert('Stakeholder removed successfully!');
+      }
+    } catch (error) {
+      console.error('Error removing stakeholder:', error);
+      alert('Error removing stakeholder: ' + error.message);
+    }
+  };
     if (!customer?.customer_name) {
       alert('Customer information not loaded. Please refresh the page.');
       return;
@@ -735,18 +900,35 @@ function CustomerDetails() {
             <div className="section-card">
               <div className="section-header">
                 <h3>👤 Key Stakeholders</h3>
-                <button className="btn btn-secondary">Add Contact</button>
+                <button className="btn btn-secondary" onClick={handleAddStakeholder}>
+                  Add Contact
+                </button>
               </div>
               <div className="stakeholder-grid">
                 {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
                   customer.key_stakeholders.map((stakeholder, index) => (
                     <div key={index} className="stakeholder-card">
-                      <div className="stakeholder-name">{stakeholder}</div>
-                      <div className="stakeholder-role">Contact</div>
+                      <div className="stakeholder-header">
+                        <div className="stakeholder-info">
+                          <div className="stakeholder-name">
+                            {stakeholder.includes(' - ') ? stakeholder.split(' - ')[0] : stakeholder}
+                          </div>
+                          <div className="stakeholder-role">
+                            {stakeholder.includes(' - ') ? stakeholder.split(' - ')[1] : 'Contact'}
+                          </div>
+                        </div>
+                        <button 
+                          className="stakeholder-delete-btn"
+                          onClick={() => handleDeleteStakeholder(index)}
+                          title="Remove stakeholder"
+                        >
+                          ×
+                        </button>
+                      </div>
                     </div>
                   ))
                 ) : (
-                  <div className="stakeholder-card">
+                  <div className="stakeholder-card stakeholder-empty">
                     <div className="stakeholder-name">No stakeholders added</div>
                     <div className="stakeholder-role">Click "Add Contact" to add stakeholders</div>
                   </div>
@@ -897,6 +1079,16 @@ function CustomerDetails() {
           </div>
         </div>
       </div>
+
+      {/* Add Stakeholder Modal */}
+      {customer && (
+        <StakeholderModal
+          isOpen={showStakeholderModal}
+          onClose={() => setShowStakeholderModal(false)}
+          onSave={handleStakeholderSaved}
+          customerName={customer.customer_name}
+        />
+      )}
 
       {/* Add Project Modal */}
       {customer && (
