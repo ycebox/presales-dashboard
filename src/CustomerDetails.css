@@ -479,6 +479,27 @@
   border-radius: 8px;
   padding: 16px;
   border-left: 3px solid #3b82f6;
+  transition: all 0.2s;
+}
+
+.stakeholder-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stakeholder-card.stakeholder-empty {
+  border-left-color: #e5e7eb;
+  background: #f9fafb;
+}
+
+.stakeholder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.stakeholder-info {
+  flex: 1;
 }
 
 .stakeholder-name {
@@ -490,6 +511,32 @@
 .stakeholder-role {
   font-size: 14px;
   color: #6b7280;
+}
+
+.stakeholder-delete-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s;
+}
+
+.stakeholder-card:hover .stakeholder-delete-btn {
+  opacity: 1;
+}
+
+.stakeholder-delete-btn:hover {
+  background: #dc2626;
+  transform: scale(1.1);
 }
 
 /* Buttons */
