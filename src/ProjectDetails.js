@@ -883,3 +883,48 @@ function ProjectDetails() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Task Modal */}
+      <TaskModal
+        isOpen={showTaskModal}
+        onClose={() => {
+          setShowTaskModal(false);
+          setEditingTask(null);
+        }}
+        onSave={handleTaskSaved}
+        editingTask={editingTask}
+      />
+
+      {/* Log Modal */}
+      <LogModal
+        isOpen={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        onSave={handleLogSaved}
+      />
+
+      {/* Meeting Minutes Modal */}
+      {selectedMeetingNote && (
+        <div className="modal-backdrop" onClick={() => setSelectedMeetingNote(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '80vh' }}>
+            <h3>{selectedMeetingNote.title}</h3>
+            <div 
+              className="meeting-content-display"
+              dangerouslySetInnerHTML={{ __html: selectedMeetingNote.content || 'No content provided.' }}
+            />
+            <div className="modal-actions">
+              <button onClick={() => setSelectedMeetingNote(null)}>
+                <FaTimes /> Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default ProjectDetails;
