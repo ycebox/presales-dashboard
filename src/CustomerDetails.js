@@ -111,6 +111,8 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName }) {
     </div>
   );
 }
+
+function ProjectModal({ isOpen, onClose, onSave, customerName }) {
   const [newProject, setNewProject] = useState({
     customer_name: customerName || '',
     project_name: '',
@@ -346,7 +348,7 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName }) {
   );
 }
 
-function ProjectModal({ isOpen, onClose, onSave, customerName }) {
+function CustomerDetails() {
   const { customerId } = useParams();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
@@ -354,6 +356,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showStakeholderModal, setShowStakeholderModal] = useState(false);
   
   // Inline editing states
   const [isEditing, setIsEditing] = useState(false);
@@ -552,6 +555,8 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
       alert('Error removing stakeholder: ' + error.message);
     }
   };
+
+  const handleAddProject = () => {
     if (!customer?.customer_name) {
       alert('Customer information not loaded. Please refresh the page.');
       return;
