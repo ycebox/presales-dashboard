@@ -1,4 +1,4 @@
-// CustomerDetails.js - Enhanced version with inline editing and improved layout
+// CustomerDetails.js - Enhanced version with real task management
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -365,17 +365,119 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
   );
 }
 
+function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
+  const [taskData, setTaskData] = useState({
+    description: '',
+    status: 'Not Started',
+    due_date: '',
+    notes: ''
+  });
+
+  useEffect(() => {
+    if (editingTask) {
+      setTaskData({
+        description: editingTask.description || '',
+        status: editingTask.status || 'Not Started',
+        due_date: editingTask.due_date || '',
+        notes: editingTask.notes || ''
+      });
+    } else {
+      setTaskData({
+        description: '',
+        status: 'Not Started',
+        due_date: '',
+        notes: ''
+      });
+    }
+  }, [editingTask, isOpen]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setTaskData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!taskData.description.trim()) {
+      alert('Task description is required');
+      return;
+    }
+    onSave(taskData);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+        <h3>{editingTask ? 'Edit Task' : 'Add New Task'}</h3>
+        <form onSubmit={handleSubmit} className="modern-form">
+          <label style={{ gridColumn: 'span 2' }}>
+            Task Description *
+            <input 
+              name="description" 
+              value={taskData.description} 
+              onChange={handleChange}
+              placeholder="Enter task description"
+              required
+            />
+          </label>
+
+          <label>
+            Status
+            <select name="status" value={taskData.status} onChange={handleChange}>
+              <option value="Not Started">Not Started</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+            </select>
+          </label>
+
+          <label>
+            Due Date
+            <input 
+              name="due_date" 
+              type="date"
+              value={taskData.due_date} 
+              onChange={handleChange}
+            />
+          </label>
+
+          <label style={{ gridColumn: 'span 2' }}>
+            Notes
+            <textarea 
+              name="notes" 
+              value={taskData.notes} 
+              onChange={handleChange}
+              rows="3"
+              placeholder="Additional notes or details"
+            />
+          </label>
+          
+          <div className="modal-actions">
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="submit">{editingTask ? 'Update Task' : 'Add Task'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function CustomerDetails() {
   const { customerId } = useParams();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showStakeholderModal, setShowStakeholderModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingStakeholder, setEditingStakeholder] = useState(null);
   const [editingStakeholderIndex, setEditingStakeholderIndex] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
   
   // Inline editing states
   const [isEditing, setIsEditing] = useState(false);
@@ -384,6 +486,9 @@ function CustomerDetails() {
   
   // Project filtering state
   const [activeTab, setActiveTab] = useState('active');
+  
+  // Task filtering state
+  const [taskFilter, setTaskFilter] = useState('active'); // 'active' or 'all'
 
   useEffect(() => {
     if (customerId) {
@@ -394,6 +499,7 @@ function CustomerDetails() {
   useEffect(() => {
     if (customer?.customer_name) {
       fetchCustomerProjects();
+      fetchCustomerTasks();
     }
   }, [customer]);
 
@@ -447,6 +553,126 @@ function CustomerDetails() {
     } catch (error) {
       console.error('Error fetching projects:', error);
       setProjects([]);
+    }
+  };
+
+  const fetchCustomerTasks = async () => {
+    if (!customer?.customer_name) return;
+    
+    try {
+      console.log('Fetching tasks for customer:', customer.customer_name);
+      
+      // First get all projects for this customer
+      const { data: customerProjects, error: projectsError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('customer_name', customer.customer_name);
+
+      if (projectsError) {
+        console.error('Error fetching customer projects for tasks:', projectsError);
+        setTasks([]);
+        return;
+      }
+
+      if (!customerProjects || customerProjects.length === 0) {
+        setTasks([]);
+        return;
+      }
+
+      // Get project IDs
+      const projectIds = customerProjects.map(p => p.id);
+
+      // Fetch tasks for all customer projects
+      const { data: customerTasks, error: tasksError } = await supabase
+        .from('project_tasks')
+        .select(`
+          *,
+          projects!inner(project_name, customer_name)
+        `)
+        .in('project_id', projectIds)
+        .order('created_at', { ascending: false });
+
+      if (tasksError) {
+        console.error('Error fetching tasks:', tasksError);
+        setTasks([]);
+      } else {
+        console.log('Tasks found:', customerTasks);
+        setTasks(customerTasks || []);
+      }
+    } catch (error) {
+      console.error('Error fetching customer tasks:', error);
+      setTasks([]);
+    }
+  };
+
+  // Task handlers
+  const handleTaskStatusChange = async (taskId, currentStatus) => {
+    try {
+      const newStatus = currentStatus === 'Completed' ? 'Not Started' : 'Completed';
+      
+      const { error } = await supabase
+        .from('project_tasks')
+        .update({ status: newStatus })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      // Refresh tasks to show updated status
+      await fetchCustomerTasks();
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      alert('Error updating task status: ' + error.message);
+    }
+  };
+
+  const handleEditTask = (task) => {
+    setEditingTask(task);
+    setShowTaskModal(true);
+  };
+
+  const handleTaskSaved = async (taskData) => {
+    try {
+      if (editingTask) {
+        // Update existing task
+        const { error } = await supabase
+          .from('project_tasks')
+          .update(taskData)
+          .eq('id', editingTask.id);
+
+        if (error) throw error;
+        alert('Task updated successfully!');
+      } else {
+        // This shouldn't happen in CustomerDetails since we don't create tasks here
+        // But keeping for consistency
+        alert('Task creation not available from customer view. Please use project details.');
+        return;
+      }
+
+      setShowTaskModal(false);
+      setEditingTask(null);
+      await fetchCustomerTasks(); // Refresh tasks
+    } catch (error) {
+      console.error('Error saving task:', error);
+      alert('Error saving task: ' + error.message);
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('project_tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      alert('Task deleted successfully!');
+      await fetchCustomerTasks();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Error deleting task: ' + error.message);
     }
   };
 
@@ -708,6 +934,14 @@ function CustomerDetails() {
     }
   };
 
+  // Task filtering and helpers
+  const getFilteredTasks = () => {
+    if (taskFilter === 'all') {
+      return tasks;
+    }
+    return tasks.filter(task => !['Completed', 'Cancelled/On-hold'].includes(task.status));
+  };
+
   const getActiveProjectsCount = () => {
     return projects.filter(p => !p.sales_stage?.toLowerCase().startsWith('closed')).length;
   };
@@ -716,22 +950,68 @@ function CustomerDetails() {
     return projects.filter(p => p.sales_stage?.toLowerCase().startsWith('closed')).length;
   };
 
-  // Mock data for tasks and activities (you can replace with actual data)
-  const mockTasks = [
-    { id: 1, name: 'Prepare technical demo', project: 'Mobile Banking Platform', dueDate: 'today' },
-    { id: 2, name: 'Review contract terms', project: 'Payment Processing Upgrade', dueDate: 'overdue' },
-    { id: 3, name: 'Schedule stakeholder meeting', project: 'Data Analytics Solution', dueDate: 'upcoming' },
-    { id: 4, name: 'Update project timeline', project: 'Security Framework', dueDate: 'upcoming' },
-    { id: 5, name: 'Prepare PoC results presentation', project: 'Mobile Banking Platform', dueDate: 'upcoming' }
-  ];
+  const getActiveTasksCount = () => {
+    return tasks.filter(task => !['Completed', 'Cancelled/On-hold'].includes(task.status)).length;
+  };
 
-  const mockActivities = [
-    { id: 1, type: 'project', title: 'Project moved to Contracting', meta: 'Payment Processing Upgrade • 2 hours ago' },
-    { id: 2, type: 'meeting', title: 'Demo completed successfully', meta: 'Mobile Banking Platform • Yesterday' },
-    { id: 3, type: 'email', title: 'Proposal sent to customer', meta: 'Security Framework • 3 days ago' },
-    { id: 4, type: 'task', title: 'Task completed: Requirements gathering', meta: 'Data Analytics Solution • 5 days ago' },
-    { id: 5, type: 'project', title: 'New project created', meta: 'API Integration Suite • 1 week ago' }
-  ];
+  const getOverdueTasksCount = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return tasks.filter(task => {
+      if (!task.due_date || ['Completed', 'Cancelled/On-hold'].includes(task.status)) return false;
+      const dueDate = new Date(task.due_date);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate < today;
+    }).length;
+  };
+
+  const getTaskStatusClass = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'completed': return 'status-completed';
+      case 'in progress': return 'status-in-progress';
+      case 'not started': return 'status-not-started';
+      case 'cancelled/on-hold': return 'status-cancelled';
+      default: return 'status-not-started';
+    }
+  };
+
+  const getTaskDueStatus = (dueDate, status) => {
+    if (!dueDate || ['Completed', 'Cancelled/On-hold'].includes(status)) return null;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(dueDate);
+    due.setHours(0, 0, 0, 0);
+    
+    const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'overdue';
+    if (diffDays === 0) return 'today';
+    if (diffDays <= 3) return 'upcoming';
+    return null;
+  };
+
+  const formatTaskDueDate = (dueDate, status) => {
+    if (!dueDate) return '';
+    
+    const dueStatus = getTaskDueStatus(dueDate, status);
+    const formattedDate = formatDate(dueDate);
+    
+    switch (dueStatus) {
+      case 'overdue':
+        const today = new Date();
+        const due = new Date(dueDate);
+        const diffDays = Math.ceil((today - due) / (1000 * 60 * 60 * 24));
+        return `${diffDays} day${diffDays > 1 ? 's' : ''} overdue`;
+      case 'today':
+        return 'Due today';
+      case 'upcoming':
+        return `Due ${formattedDate}`;
+      default:
+        return `Due ${formattedDate}`;
+    }
+  };
 
   // Data for dropdowns
   const asiaPacificCountries = [
@@ -775,8 +1055,18 @@ function CustomerDetails() {
   }
 
   const filteredProjects = getFilteredProjects();
-  const pendingTasksCount = mockTasks.length;
-  const overdueTasksCount = mockTasks.filter(t => t.dueDate === 'overdue').length;
+  const filteredTasks = getFilteredTasks();
+  const pendingTasksCount = getActiveTasksCount();
+  const overdueTasksCount = getOverdueTasksCount();
+
+  // Mock data for activities (you can replace with actual data)
+  const mockActivities = [
+    { id: 1, type: 'project', title: 'Project moved to Contracting', meta: 'Payment Processing Upgrade • 2 hours ago' },
+    { id: 2, type: 'meeting', title: 'Demo completed successfully', meta: 'Mobile Banking Platform • Yesterday' },
+    { id: 3, type: 'email', title: 'Proposal sent to customer', meta: 'Security Framework • 3 days ago' },
+    { id: 4, type: 'task', title: 'Task completed: Requirements gathering', meta: 'Data Analytics Solution • 5 days ago' },
+    { id: 5, type: 'project', title: 'New project created', meta: 'API Integration Suite • 1 week ago' }
+  ];
 
   return (
     <div className="page-wrapper">
@@ -803,12 +1093,12 @@ function CustomerDetails() {
               <div className="metric-item">
                 <div className="metric-value">{pendingTasksCount}</div>
                 <div className="metric-label">Pending Tasks</div>
-                <div className="metric-trend">📅 3 due today</div>
+                <div className="metric-trend">📅 {tasks.filter(t => getTaskDueStatus(t.due_date, t.status) === 'today').length} due today</div>
               </div>
               <div className="metric-item">
                 <div className="metric-value">{overdueTasksCount}</div>
                 <div className="metric-label">Overdue Items</div>
-                <div className="metric-trend trend-down">⚠️ Needs attention</div>
+                <div className="metric-trend trend-down">{overdueTasksCount > 0 ? '⚠️ Needs attention' : '✅ All current'}</div>
               </div>
             </div>
           </div>
@@ -1131,25 +1421,96 @@ function CustomerDetails() {
               <div className="section-header">
                 <h3>✓ Active Tasks</h3>
                 <div className="filter-toggle">
-                  <button className="active">My Tasks</button>
-                  <button>All Tasks</button>
+                  <button 
+                    className={taskFilter === 'active' ? 'active' : ''}
+                    onClick={() => setTaskFilter('active')}
+                  >
+                    Active Tasks
+                  </button>
+                  <button 
+                    className={taskFilter === 'all' ? 'active' : ''}
+                    onClick={() => setTaskFilter('all')}
+                  >
+                    All Tasks
+                  </button>
                 </div>
               </div>
               <div className="tasks-content">
-                {mockTasks.map((task) => (
-                  <div key={task.id} className="task-item">
-                    <input type="checkbox" className="task-checkbox" />
-                    <div className="task-content">
-                      <div className="task-name">{task.name}</div>
-                      <div className="task-project">{task.project}</div>
+                {filteredTasks.length > 0 ? (
+                  filteredTasks.map((task) => (
+                    <div key={task.id} className="task-item">
+                      <input 
+                        type="checkbox" 
+                        className="task-checkbox"
+                        checked={task.status === 'Completed'}
+                        onChange={() => handleTaskStatusChange(task.id, task.status)}
+                      />
+                      <div className="task-content">
+                        <div className="task-name">{task.description}</div>
+                        <div className="task-project">
+                          {task.projects?.project_name || 'Unknown Project'} • 
+                          <span className={`task-status ${getTaskStatusClass(task.status)}`}>
+                            {task.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className={`task-due due-${getTaskDueStatus(task.due_date, task.status) || 'normal'}`}>
+                        {formatTaskDueDate(task.due_date, task.status)}
+                      </div>
+                      <div className="task-actions" style={{ opacity: 0, transition: 'opacity 0.2s', marginLeft: '8px' }}>
+                        <button 
+                          onClick={() => handleEditTask(task)}
+                          className="edit-task-btn"
+                          title="Edit task"
+                          style={{ 
+                            background: '#f59e0b', 
+                            color: 'white', 
+                            border: 'none', 
+                            borderRadius: '4px', 
+                            width: '24px', 
+                            height: '24px', 
+                            cursor: 'pointer',
+                            marginRight: '4px',
+                            fontSize: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <FaEdit />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="delete-task-btn"
+                          title="Delete task"
+                          style={{ 
+                            background: '#ef4444', 
+                            color: 'white', 
+                            border: 'none', 
+                            borderRadius: '4px', 
+                            width: '24px', 
+                            height: '24px', 
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
                     </div>
-                    <div className={`task-due due-${task.dueDate}`}>
-                      {task.dueDate === 'today' ? 'Today' : 
-                       task.dueDate === 'overdue' ? '2 days overdue' : 
-                       task.dueDate === 'upcoming' ? 'Tomorrow' : task.dueDate}
-                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">✓</div>
+                    <p>No {taskFilter === 'active' ? 'active ' : ''}tasks found for this customer.</p>
+                    <p style={{ fontSize: '14px', color: '#6b7280' }}>
+                      Tasks are managed from individual project pages.
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
@@ -1205,6 +1566,17 @@ function CustomerDetails() {
           customerName={customer.customer_name}
         />
       )}
+
+      {/* Task Modal */}
+      <TaskModal
+        isOpen={showTaskModal}
+        onClose={() => {
+          setShowTaskModal(false);
+          setEditingTask(null);
+        }}
+        onSave={handleTaskSaved}
+        editingTask={editingTask}
+      />
     </div>
   );
 }
