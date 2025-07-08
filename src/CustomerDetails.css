@@ -469,7 +469,7 @@
 /* Stakeholder Cards */
 .stakeholder-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
   padding: 24px;
 }
@@ -506,11 +506,40 @@
   font-weight: 600;
   color: #1e293b;
   margin-bottom: 4px;
+  font-size: 16px;
 }
 
 .stakeholder-role {
   font-size: 14px;
   color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.stakeholder-contact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.contact-icon {
+  font-size: 12px;
+  width: 16px;
+  text-align: center;
+}
+
+.stakeholder-email,
+.stakeholder-phone {
+  font-size: 13px;
+  color: #3b82f6;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.stakeholder-email:hover,
+.stakeholder-phone:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
 }
 
 .stakeholder-delete-btn {
@@ -528,6 +557,7 @@
   justify-content: center;
   opacity: 0;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .stakeholder-card:hover .stakeholder-delete-btn {
