@@ -1476,7 +1476,7 @@ const formatTimeAgo = (dateString) => {
             </div>
           </div>
 
-          {/* Right Column */}
+         {/* Right Column */}
           <div className="right-column">
             {/* Task List */}
             <div className="section-card">
@@ -1576,52 +1576,42 @@ const formatTimeAgo = (dateString) => {
               </div>
             </div>
 
-                
-   {/* Recent Activity */}
-<div className="section-card">
-  <div className="section-header">
-    <h3>📈 Recent Activity</h3>
-    <button className="btn btn-secondary">View All</button>
-  </div>
-  <div className="activity-content">
-    {activities.length > 0 ? activities.map((activity) => (
-      <div key={activity.id} className="timeline-item">
-        <div className={`timeline-icon ${activity.activity_type || 'general'}`}>
-          {activity.activity_type === 'project' ? '📁' : 
-           activity.activity_type === 'meeting' ? '📅' : 
-           activity.activity_type === 'email' ? '✉️' : 
-           activity.activity_type === 'task' ? '✓' : '📝'}
-        </div>
-        <div className="timeline-content">
-          <div className="timeline-title">{activity.activity_title}</div>
-          <div className="timeline-meta">
-            {activity.projects?.project_name && `${activity.projects.project_name} • `}
-            {formatTimeAgo(activity.created_at)}
-            {activity.created_by && ` • by ${activity.created_by}`}
-          </div>
-          {activity.activity_description && (
-            <div className="timeline-description">{activity.activity_description}</div>
-          )}
-        </div>
-      </div>
-    )) : (
-      <div className="empty-state">
-        <div className="empty-state-icon">📈</div>
-        <p>No recent activity found.</p>
-      </div>
-    )}
-  </div>
-</div>
-)}
-                                    
+            {/* Recent Activity */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>📈 Recent Activity</h3>
+                <button className="btn btn-secondary">View All</button>
+              </div>
+              <div className="activity-content">
+                {activities.length > 0 ? activities.map((activity) => (
+                  <div key={activity.id} className="timeline-item">
+                    <div className={`timeline-icon ${activity.activity_type || 'general'}`}>
+                      {activity.activity_type === 'project' ? '📁' : 
+                       activity.activity_type === 'meeting' ? '📅' : 
+                       activity.activity_type === 'email' ? '✉️' : 
+                       activity.activity_type === 'task' ? '✓' : '📝'}
+                    </div>
+                    <div className="timeline-content">
+                      <div className="timeline-title">{activity.activity_title}</div>
+                      <div className="timeline-meta">
+                        {activity.projects?.project_name && `${activity.projects.project_name} • `}
+                        {formatTimeAgo(activity.created_at)}
+                        {activity.created_by && ` • by ${activity.created_by}`}
+                      </div>
+                      {activity.activity_description && (
+                        <div className="timeline-description">{activity.activity_description}</div>
+                      )}
+                    </div>
                   </div>
-                ))}
-                  
+                )) : (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">📈</div>
+                    <p>No recent activity found.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
       {/* Add Stakeholder Modal */}
       {customer && (
