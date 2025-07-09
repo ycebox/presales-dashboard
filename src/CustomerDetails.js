@@ -71,71 +71,7 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeh
 // Add these functions to your CustomerDetails.js component
 // Place them after your other helper functions but before the main component return
 
-// Activity logging function
-const logActivity = async (type, title, description = null, projectId = null) => {
-  try {
-    const { error } = await supabase
-      .from('activity_logs')
-      .insert([{
-        customer_name: customer.customer_name,
-        project_id: projectId,
-        activity_type: type,
-        activity_title: title,
-        activity_description: description,
-        created_by: 'Current User' // TODO: Replace with actual user from auth
-      }]);
-    
-    if (error) {
-      console.error('Error logging activity:', error);
-    }
-  } catch (error) {
-    console.error('Error logging activity:', error);
-  }
-};
 
-// Fetch recent activities
-const fetchRecentActivity = async () => {
-  if (!customer?.customer_name) return;
-  
-  try {
-    console.log('Fetching activities for customer:', customer.customer_name);
-    const { data, error } = await supabase
-      .from('activity_logs')
-      .select(`
-        *,
-        projects(project_name)
-      `)
-      .eq('customer_name', customer.customer_name)
-      .order('created_at', { ascending: false })
-      .limit(10); // Get last 10 activities
-
-    if (error) throw error;
-    
-    console.log('Activities found:', data);
-    setActivities(data || []);
-  } catch (error) {
-    console.error('Error fetching activities:', error);
-    setActivities([]);
-  }
-};
-
-// Time formatting helper
-const formatTimeAgo = (dateString) => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffInMinutes = Math.floor((now - date) / (1000 * 60));
-  
-  if (diffInMinutes < 1) return 'Just now';
-  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
-  
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-  
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
-  
-  return formatDate(dateString);
-};
   if (!isOpen) return null;
 
   return (
@@ -545,6 +481,7 @@ function CustomerDetails() {
   const [editingStakeholder, setEditingStakeholder] = useState(null);
   const [editingStakeholderIndex, setEditingStakeholderIndex] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
+  const [activities, setActivities] = useState([]);
   
   // Inline editing states
   const [isEditing, setIsEditing] = useState(false);
@@ -564,11 +501,13 @@ function CustomerDetails() {
   }, [customerId]);
 
   useEffect(() => {
-    if (customer?.customer_name) {
-      fetchCustomerProjects();
-      fetchCustomerTasks();
-    }
-  }, [customer]);
+useEffect(() => {
+  if (customer?.customer_name) {
+    fetchCustomerProjects();
+    fetchCustomerTasks();
+    fetchRecentActivity();
+  }
+}, [customer]);
 
   const fetchCustomerDetails = async () => {
     try {
@@ -1043,6 +982,71 @@ function CustomerDetails() {
     }
   };
 
+  // Activity logging function
+const logActivity = async (type, title, description = null, projectId = null) => {
+  try {
+    const { error } = await supabase
+      .from('activity_logs')
+      .insert([{
+        customer_name: customer.customer_name,
+        project_id: projectId,
+        activity_type: type,
+        activity_title: title,
+        activity_description: description,
+        created_by: 'Current User' // TODO: Replace with actual user from auth
+      }]);
+    
+    if (error) {
+      console.error('Error logging activity:', error);
+    }
+  } catch (error) {
+    console.error('Error logging activity:', error);
+  }
+};
+
+// Fetch recent activities
+const fetchRecentActivity = async () => {
+  if (!customer?.customer_name) return;
+  
+  try {
+    console.log('Fetching activities for customer:', customer.customer_name);
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .select(`
+        *,
+        projects(project_name)
+      `)
+      .eq('customer_name', customer.customer_name)
+      .order('created_at', { ascending: false })
+      .limit(10); // Get last 10 activities
+
+    if (error) throw error;
+    
+    console.log('Activities found:', data);
+    setActivities(data || []);
+  } catch (error) {
+    console.error('Error fetching activities:', error);
+    setActivities([]);
+  }
+};
+
+// Time formatting helper
+const formatTimeAgo = (dateString) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+  
+  if (diffInMinutes < 1) return 'Just now';
+  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+  
+  return formatDate(dateString);
+};
   const getTaskDueStatus = (dueDate, status) => {
     if (!dueDate || ['Completed', 'Cancelled/On-hold'].includes(status)) return null;
     
@@ -1587,21 +1591,40 @@ function CustomerDetails() {
                 <h3>📈 Recent Activity</h3>
                 <button className="btn btn-secondary">View All</button>
               </div>
+           
               <div className="activity-content">
                 {mockActivities.map((activity) => (
-                  <div key={activity.id} className="timeline-item">
-                    <div className={`timeline-icon ${activity.type}`}>
-                      {activity.type === 'project' ? '📁' : 
-                       activity.type === 'meeting' ? '📅' : 
-                       activity.type === 'email' ? '✉️' : 
-                       activity.type === 'task' ? '✓' : '📝'}
-                    </div>
-                    <div className="timeline-content">
-                      <div className="timeline-title">{activity.title}</div>
-                      <div className="timeline-meta">{activity.meta}</div>
-                    </div>
+                  
+                  {activities.length > 0 ? activities.map((activity) => (
+  <div key={activity.id} className="timeline-item">
+    <div className={`timeline-icon ${activity.activity_type || 'general'}`}>
+      {activity.activity_type === 'project' ? '📁' : 
+       activity.activity_type === 'meeting' ? '📅' : 
+       activity.activity_type === 'email' ? '✉️' : 
+       activity.activity_type === 'task' ? '✓' : '📝'}
+    </div>
+    <div className="timeline-content">
+      <div className="timeline-title">{activity.activity_title}</div>
+      <div className="timeline-meta">
+        {activity.projects?.project_name && `${activity.projects.project_name} • `}
+        {formatTimeAgo(activity.created_at)}
+        {activity.created_by && ` • by ${activity.created_by}`}
+      </div>
+      {activity.activity_description && (
+        <div className="timeline-description">{activity.activity_description}</div>
+      )}
+    </div>
+  </div>
+)) : (
+  <div className="empty-state">
+    <div className="empty-state-icon">📈</div>
+    <p>No recent activity found.</p>
+  </div>
+)}
+                                    
                   </div>
                 ))}
+                  
               </div>
             </div>
           </div>
