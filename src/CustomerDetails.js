@@ -1576,13 +1576,7 @@ const formatTimeAgo = (dateString) => {
               </div>
             </div>
 
-            {/* Recent Activity */}
-            <div className="section-card">
-              <div className="section-header">
-                <h3>📈 Recent Activity</h3>
-                <button className="btn btn-secondary">View All</button>
-              </div>
-           
+                
    {/* Recent Activity */}
 <div className="section-card">
   <div className="section-header">
