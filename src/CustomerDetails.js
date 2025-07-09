@@ -1658,4 +1658,3 @@ const formatTimeAgo = (dateString) => {
 }
 
 export default CustomerDetails;
-
