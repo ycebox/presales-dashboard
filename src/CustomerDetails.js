@@ -500,8 +500,7 @@ function CustomerDetails() {
     }
   }, [customerId]);
 
-  useEffect(() => {
-useEffect(() => {
+ useEffect(() => {
   if (customer?.customer_name) {
     fetchCustomerProjects();
     fetchCustomerTasks();
@@ -1130,14 +1129,6 @@ const formatTimeAgo = (dateString) => {
   const pendingTasksCount = getActiveTasksCount();
   const overdueTasksCount = getOverdueTasksCount();
 
-  // Mock data for activities (you can replace with actual data)
-  const mockActivities = [
-    { id: 1, type: 'project', title: 'Project moved to Contracting', meta: 'Payment Processing Upgrade • 2 hours ago' },
-    { id: 2, type: 'meeting', title: 'Demo completed successfully', meta: 'Mobile Banking Platform • Yesterday' },
-    { id: 3, type: 'email', title: 'Proposal sent to customer', meta: 'Security Framework • 3 days ago' },
-    { id: 4, type: 'task', title: 'Task completed: Requirements gathering', meta: 'Data Analytics Solution • 5 days ago' },
-    { id: 5, type: 'project', title: 'New project created', meta: 'API Integration Suite • 1 week ago' }
-  ];
 
   return (
     <div className="page-wrapper">
@@ -1592,34 +1583,41 @@ const formatTimeAgo = (dateString) => {
                 <button className="btn btn-secondary">View All</button>
               </div>
            
-              <div className="activity-content">
-                {mockActivities.map((activity) => (
-                  
-                  {activities.length > 0 ? activities.map((activity) => (
-  <div key={activity.id} className="timeline-item">
-    <div className={`timeline-icon ${activity.activity_type || 'general'}`}>
-      {activity.activity_type === 'project' ? '📁' : 
-       activity.activity_type === 'meeting' ? '📅' : 
-       activity.activity_type === 'email' ? '✉️' : 
-       activity.activity_type === 'task' ? '✓' : '📝'}
-    </div>
-    <div className="timeline-content">
-      <div className="timeline-title">{activity.activity_title}</div>
-      <div className="timeline-meta">
-        {activity.projects?.project_name && `${activity.projects.project_name} • `}
-        {formatTimeAgo(activity.created_at)}
-        {activity.created_by && ` • by ${activity.created_by}`}
+   {/* Recent Activity */}
+<div className="section-card">
+  <div className="section-header">
+    <h3>📈 Recent Activity</h3>
+    <button className="btn btn-secondary">View All</button>
+  </div>
+  <div className="activity-content">
+    {activities.length > 0 ? activities.map((activity) => (
+      <div key={activity.id} className="timeline-item">
+        <div className={`timeline-icon ${activity.activity_type || 'general'}`}>
+          {activity.activity_type === 'project' ? '📁' : 
+           activity.activity_type === 'meeting' ? '📅' : 
+           activity.activity_type === 'email' ? '✉️' : 
+           activity.activity_type === 'task' ? '✓' : '📝'}
+        </div>
+        <div className="timeline-content">
+          <div className="timeline-title">{activity.activity_title}</div>
+          <div className="timeline-meta">
+            {activity.projects?.project_name && `${activity.projects.project_name} • `}
+            {formatTimeAgo(activity.created_at)}
+            {activity.created_by && ` • by ${activity.created_by}`}
+          </div>
+          {activity.activity_description && (
+            <div className="timeline-description">{activity.activity_description}</div>
+          )}
+        </div>
       </div>
-      {activity.activity_description && (
-        <div className="timeline-description">{activity.activity_description}</div>
-      )}
-    </div>
+    )) : (
+      <div className="empty-state">
+        <div className="empty-state-icon">📈</div>
+        <p>No recent activity found.</p>
+      </div>
+    )}
   </div>
-)) : (
-  <div className="empty-state">
-    <div className="empty-state-icon">📈</div>
-    <p>No recent activity found.</p>
-  </div>
+</div>
 )}
                                     
                   </div>
