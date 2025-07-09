@@ -1615,7 +1615,7 @@ const formatTimeAgo = (dateString) => {
                   </div>
                 )}
               </div>
-        
+          </div>
 
       {/* Add Stakeholder Modal */}
       {customer && (
@@ -1656,5 +1656,7 @@ const formatTimeAgo = (dateString) => {
     </div>
   );
 }
+
+export default CustomerDetails;
 
 export default CustomerDetails;
