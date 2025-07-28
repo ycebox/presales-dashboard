@@ -24,45 +24,58 @@ export default function TodayTasks() {
     setIsLoading(true);
     try {
       const today = new Date().toISOString().split("T")[0];
+      console.log("Fetching tasks for today and before:", today);
 
       // Get both project tasks and personal tasks for today and overdue
       const [projectTasksData, personalTasksData] = await Promise.all([
         supabase
           .from("project_tasks")
-          .select("id, description, status, due_date, project_id, priority, projects(customer_name)")
+          .select("id, description, status, due_date, project_id, projects(customer_name)")
           .lte("due_date", today)
           .eq("is_archived", false)
-          .not("status", "in", '("Done","Completed","Cancelled/On-hold")')
           .order("due_date", { ascending: true }),
         supabase
           .from("personal_tasks")
           .select("id, description, status, due_date, priority")
           .lte("due_date", today)
           .eq("is_archived", false)
-          .not("status", "in", '("Done","Completed","Cancelled/On-hold")')
           .order("due_date", { ascending: true })
       ]);
 
+      console.log("Project tasks raw data:", projectTasksData);
+      console.log("Personal tasks raw data:", personalTasksData);
+
       let allTasks = [];
 
-      // Add project tasks
-      if (projectTasksData.data) {
-        allTasks = [...allTasks, ...projectTasksData.data.map(task => ({
-          ...task,
-          task_type: 'project',
-          customer_name: task.projects?.customer_name || `Project ${task.project_id}`
-        }))];
+      // Add project tasks (no priority field)
+      if (projectTasksData.data && projectTasksData.data.length > 0) {
+        const projectTasks = projectTasksData.data
+          .filter(task => !["Done", "Completed", "Cancelled/On-hold"].includes(task.status))
+          .map(task => ({
+            ...task,
+            task_type: 'project',
+            priority: 'Medium', // Default priority for project tasks
+            customer_name: task.projects?.customer_name || `Project ${task.project_id}`
+          }));
+        allTasks = [...allTasks, ...projectTasks];
+        console.log("Processed project tasks:", projectTasks);
       }
 
-      // Add personal tasks
-      if (personalTasksData.data) {
-        allTasks = [...allTasks, ...personalTasksData.data.map(task => ({
-          ...task,
-          task_type: 'personal',
-          customer_name: 'Personal Task',
-          project_id: null
-        }))];
+      // Add personal tasks (has priority field)
+      if (personalTasksData.data && personalTasksData.data.length > 0) {
+        const personalTasks = personalTasksData.data
+          .filter(task => !["Done", "Completed", "Cancelled/On-hold"].includes(task.status))
+          .map(task => ({
+            ...task,
+            task_type: 'personal',
+            customer_name: 'Personal Task',
+            project_id: null
+          }));
+        allTasks = [...allTasks, ...personalTasks];
+        console.log("Processed personal tasks:", personalTasks);
       }
+
+      console.log("All tasks before sorting:", allTasks);
 
       // Sort tasks: overdue first, then by priority, then by due date
       allTasks.sort((a, b) => {
@@ -75,14 +88,15 @@ export default function TodayTasks() {
         
         // Then by priority
         const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
-        const aPriority = priorityOrder[a.priority] || 1;
-        const bPriority = priorityOrder[b.priority] || 1;
+        const aPriority = priorityOrder[a.priority] || 2; // Default to Medium
+        const bPriority = priorityOrder[b.priority] || 2; // Default to Medium
         if (aPriority !== bPriority) return bPriority - aPriority;
         
         // Finally by due date
         return a.due_date.localeCompare(b.due_date);
       });
 
+      console.log("Final sorted tasks:", allTasks);
       setTasks(allTasks);
 
       if (projectTasksData.error) {
