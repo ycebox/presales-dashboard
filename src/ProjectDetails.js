@@ -1,11 +1,13 @@
-// ProjectDetails.js - Enhanced version aligned with CustomerDetails UI/UX
+// ProjectDetails.js - Enhanced version with improved aesthetics and typography
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
 import {
   FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
-  FaPlus, FaInfo, FaTrash, FaEye, FaChevronDown, FaChevronUp, FaUsers
+  FaPlus, FaInfo, FaTrash, FaChevronDown, FaChevronUp, 
+  FaUsers, FaCalendarAlt, FaDollarSign, FaChartLine,
+  FaCheckCircle, FaClock, FaExclamationTriangle, FaEllipsisV
 } from 'react-icons/fa';
 
 function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
@@ -52,54 +54,76 @@ function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-        <h3>{editingTask ? 'Edit Task' : 'Add New Task'}</h3>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>{editingTask ? 'Edit Task' : 'Add New Task'}</h3>
+          <button className="modal-close-btn" onClick={onClose}>
+            <FaTimes />
+          </button>
+        </div>
         <form onSubmit={handleSubmit} className="modern-form">
-          <label style={{ gridColumn: 'span 2' }}>
-            Task Description *
-            <input 
-              name="description" 
-              value={taskData.description} 
-              onChange={handleChange}
-              placeholder="Enter task description"
-              required
-            />
-          </label>
+          <div className="form-group full-width">
+            <label>
+              <FaTasks className="field-icon" />
+              Task Description *
+              <input 
+                name="description" 
+                value={taskData.description} 
+                onChange={handleChange}
+                placeholder="What needs to be done?"
+                required
+              />
+            </label>
+          </div>
 
-          <label>
-            Status
-            <select name="status" value={taskData.status} onChange={handleChange}>
-              <option value="Not Started">Not Started</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-            </select>
-          </label>
+          <div className="form-group">
+            <label>
+              <FaChartLine className="field-icon" />
+              Status
+              <select name="status" value={taskData.status} onChange={handleChange}>
+                <option value="Not Started">Not Started</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+              </select>
+            </label>
+          </div>
 
-          <label>
-            Due Date
-            <input 
-              name="due_date" 
-              type="date"
-              value={taskData.due_date} 
-              onChange={handleChange}
-            />
-          </label>
+          <div className="form-group">
+            <label>
+              <FaCalendarAlt className="field-icon" />
+              Due Date
+              <input 
+                name="due_date" 
+                type="date"
+                value={taskData.due_date} 
+                onChange={handleChange}
+              />
+            </label>
+          </div>
 
-          <label style={{ gridColumn: 'span 2' }}>
-            Notes
-            <textarea 
-              name="notes" 
-              value={taskData.notes} 
-              onChange={handleChange}
-              rows="3"
-              placeholder="Additional notes or details"
-            />
-          </label>
+          <div className="form-group full-width">
+            <label>
+              <FaEdit className="field-icon" />
+              Notes
+              <textarea 
+                name="notes" 
+                value={taskData.notes} 
+                onChange={handleChange}
+                rows="3"
+                placeholder="Additional details or context..."
+              />
+            </label>
+          </div>
           
           <div className="modal-actions">
-            <button type="button" onClick={onClose}>Cancel</button>
-            <button type="submit">{editingTask ? 'Update Task' : 'Add Task'}</button>
+            <button type="button" onClick={onClose} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              <FaSave />
+              {editingTask ? 'Update Task' : 'Add Task'}
+            </button>
           </div>
         </form>
       </div>
@@ -124,23 +148,36 @@ function LogModal({ isOpen, onClose, onSave }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-        <h3>Add Project Log</h3>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Add Project Log</h3>
+          <button className="modal-close-btn" onClick={onClose}>
+            <FaTimes />
+          </button>
+        </div>
         <form onSubmit={handleSubmit} className="modern-form">
-          <label style={{ gridColumn: 'span 2' }}>
-            Log Entry *
-            <textarea 
-              value={logEntry} 
-              onChange={(e) => setLogEntry(e.target.value)}
-              rows="4"
-              placeholder="Enter log entry details..."
-              required
-            />
-          </label>
+          <div className="form-group full-width">
+            <label>
+              <FaBookOpen className="field-icon" />
+              Log Entry *
+              <textarea 
+                value={logEntry} 
+                onChange={(e) => setLogEntry(e.target.value)}
+                rows="4"
+                placeholder="Document progress, decisions, or important updates..."
+                required
+              />
+            </label>
+          </div>
           
           <div className="modal-actions">
-            <button type="button" onClick={onClose}>Cancel</button>
-            <button type="submit">Add Log</button>
+            <button type="button" onClick={onClose} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              <FaPlus />
+              Add Log Entry
+            </button>
           </div>
         </form>
       </div>
@@ -154,7 +191,6 @@ function ProjectDetails() {
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [logs, setLogs] = useState([]);
-  const [linkedMeetingMinutes, setLinkedMeetingMinutes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -168,9 +204,11 @@ function ProjectDetails() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [selectedMeetingNote, setSelectedMeetingNote] = useState(null);
 
-  const salesStageOptions = ['Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery', 'PoC', 'RFI', 'RFP', 'SoW'];
+  const salesStageOptions = [
+    'Discovery', 'Demo', 'PoC', 'RFI', 'RFP', 'SoW', 
+    'Contracting', 'Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold'
+  ];
   const productOptions = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
 
   useEffect(() => {
@@ -203,8 +241,7 @@ function ProjectDetails() {
       // Fetch related data
       await Promise.all([
         fetchTasks(),
-        fetchLogs(),
-        fetchLinkedMeetingMinutes()
+        fetchLogs()
       ]);
 
     } catch (error) {
@@ -242,21 +279,6 @@ function ProjectDetails() {
       setLogs(data || []);
     } catch (error) {
       console.error('Error fetching logs:', error);
-    }
-  };
-
-  const fetchLinkedMeetingMinutes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('meeting_minutes')
-        .select('*')
-        .eq('project_id', id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setLinkedMeetingMinutes(data || []);
-    } catch (error) {
-      console.error('Error fetching meeting minutes:', error);
     }
   };
 
@@ -321,7 +343,6 @@ function ProjectDetails() {
 
       if (error) throw error;
       
-      // Refresh tasks to show updated status
       await fetchTasks();
     } catch (error) {
       console.error('Error updating task status:', error);
@@ -342,7 +363,6 @@ function ProjectDetails() {
   const handleTaskSaved = async (taskData) => {
     try {
       if (editingTask) {
-        // Update existing task
         const { error } = await supabase
           .from('project_tasks')
           .update(taskData)
@@ -351,39 +371,25 @@ function ProjectDetails() {
         if (error) throw error;
         alert('Task updated successfully!');
       } else {
-        // Add new task - make sure we have the project_id
         const taskWithProject = {
           ...taskData,
-          project_id: id // Make sure project_id is included
+          project_id: id
         };
-        
-        console.log('Adding task with data:', taskWithProject);
         
         const { error } = await supabase
           .from('project_tasks')
           .insert([taskWithProject]);
 
-        if (error) {
-          console.error('Error adding task:', error);
-          throw error;
-        }
-        
+        if (error) throw error;
         alert('Task added successfully!');
       }
 
       setShowTaskModal(false);
       setEditingTask(null);
-      await fetchTasks(); // Refresh tasks
+      await fetchTasks();
     } catch (error) {
       console.error('Error saving task:', error);
-      // More specific error messages
-      if (error.message.includes('column') && error.message.includes('does not exist')) {
-        alert('Database schema error: Some fields may not exist in your project_tasks table. Please check the console for details.');
-      } else if (error.message.includes('violates')) {
-        alert('Data validation error: Please check all required fields and try again.');
-      } else {
-        alert('Error saving task: ' + error.message);
-      }
+      alert('Error saving task: ' + error.message);
     }
   };
 
@@ -451,7 +457,11 @@ function ProjectDetails() {
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     try {
-      return new Date(dateString).toLocaleDateString();
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
     } catch (error) {
       return '-';
     }
@@ -460,7 +470,12 @@ function ProjectDetails() {
   const formatCurrency = (value) => {
     if (!value) return '-';
     try {
-      return `$${parseFloat(value).toLocaleString()}`;
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(parseFloat(value));
     } catch (error) {
       return '-';
     }
@@ -474,6 +489,22 @@ function ProjectDetails() {
       case 'cancelled/on-hold': return 'status-cancelled';
       default: return 'status-not-started';
     }
+  };
+
+  const getTaskStatusIcon = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'completed': return <FaCheckCircle />;
+      case 'in progress': return <FaClock />;
+      case 'cancelled/on-hold': return <FaExclamationTriangle />;
+      default: return <FaClock />;
+    }
+  };
+
+  const getSalesStageIcon = (stage) => {
+    if (stage?.toLowerCase().includes('closed-won')) return <FaCheckCircle className="stage-won" />;
+    if (stage?.toLowerCase().includes('closed-lost')) return <FaExclamationTriangle className="stage-lost" />;
+    if (stage?.toLowerCase().includes('closed-cancelled')) return <FaTimes className="stage-cancelled" />;
+    return <FaChartLine className="stage-active" />;
   };
 
   const getFilteredTasks = () => {
@@ -498,18 +529,38 @@ function ProjectDetails() {
   };
 
   const getDaysRemaining = () => {
-    if (!project?.due_date) return '-';
+    if (!project?.due_date) return null;
     const today = new Date();
     const dueDate = new Date(project.due_date);
     const diffTime = dueDate - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
+    return diffDays;
+  };
+
+  const getDaysRemainingText = () => {
+    const days = getDaysRemaining();
+    if (days === null) return 'No due date';
+    if (days > 0) return `${days} days left`;
+    if (days === 0) return 'Due today';
+    return `${Math.abs(days)} days overdue`;
+  };
+
+  const getDaysRemainingClass = () => {
+    const days = getDaysRemaining();
+    if (days === null) return '';
+    if (days < 0) return 'overdue';
+    if (days <= 3) return 'urgent';
+    if (days <= 7) return 'warning';
+    return 'normal';
   };
 
   if (loading) {
     return (
       <div className="page-wrapper">
-        <div className="loading-state">Loading project details...</div>
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading project details...</p>
+        </div>
       </div>
     );
   }
@@ -518,8 +569,10 @@ function ProjectDetails() {
     return (
       <div className="page-wrapper">
         <div className="error-state">
+          <FaExclamationTriangle className="error-icon" />
+          <h2>Oops! Something went wrong</h2>
           <p>{error || 'Project not found'}</p>
-          <button onClick={() => navigate('/')} className="back-btn">
+          <button onClick={() => navigate('/')} className="btn-primary">
             <FaHome /> Back to Dashboard
           </button>
         </div>
@@ -532,13 +585,13 @@ function ProjectDetails() {
       <div className="page-content">
         {/* Navigation Buttons */}
         <div className="navigation-buttons">
-          <button onClick={() => navigate('/')} className="back-btn">
-            <FaHome /> Back to Dashboard
+          <button onClick={() => navigate('/')} className="nav-btn primary">
+            <FaHome />
+            Dashboard
           </button>
           {project.customer_name && (
             <button 
               onClick={() => {
-                // Find customer by name since we might not have customer_id
                 const findAndNavigateToCustomer = async () => {
                   try {
                     const { data: customers } = await supabase
@@ -550,7 +603,6 @@ function ProjectDetails() {
                     if (customers) {
                       navigate(`/customer/${customers.id}`);
                     } else {
-                      // Fallback to dashboard if customer not found
                       navigate('/');
                     }
                   } catch (error) {
@@ -560,133 +612,152 @@ function ProjectDetails() {
                 };
                 findAndNavigateToCustomer();
               }} 
-              className="back-to-customer-btn"
-              style={{ 
-                height: '40px',
-                minHeight: '40px',
-                fontSize: '14px',
-                padding: '8px 16px'
-              }}
+              className="nav-btn secondary"
             >
-              <FaUsers /> Back to {project.customer_name}
+              <FaUsers />
+              {project.customer_name}
             </button>
           )}
         </div>
 
         {/* Project Header */}
         <div className="project-header">
-          <h1 className="project-name" style={{ fontSize: '2.5rem', fontWeight: '700', marginBottom: '0.5rem' }}>
-            {project.project_name || 'Unnamed Project'}
-          </h1>
-          <div className="project-breadcrumb" style={{ fontSize: '1rem', color: '#6b7280' }}>
-            Project in <Link to="#" onClick={(e) => {
-              e.preventDefault();
-              // Same navigation logic as the button above
-              const findAndNavigateToCustomer = async () => {
-                try {
-                  const { data: customers } = await supabase
-                    .from('customers')
-                    .select('id')
-                    .eq('customer_name', project.customer_name)
-                    .single();
-                  
-                  if (customers) {
-                    navigate(`/customer/${customers.id}`);
-                  } else {
-                    navigate('/');
-                  }
-                } catch (error) {
-                  console.error('Error finding customer:', error);
-                  navigate('/');
-                }
-              };
-              findAndNavigateToCustomer();
-            }} className="customer-link">
-              {project.customer_name}
-            </Link>
+          <div className="project-title-section">
+            <h1 className="project-title">
+              {project.project_name || 'Unnamed Project'}
+            </h1>
+            <div className="project-subtitle">
+              <span className="customer-badge">
+                <FaUsers />
+                {project.customer_name}
+              </span>
+              <span className="stage-badge">
+                {getSalesStageIcon(project.sales_stage)}
+                {project.sales_stage || 'No Stage'}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Project Overview */}
-        <div className="project-overview">
-          <div className="overview-card">
-            <div className="overview-content">
-              <div className="metric-item">
-                <div className="metric-value">{getActiveTasksCount()}</div>
-                <div className="metric-label">Active Tasks</div>
-                <div className="metric-trend trend-up">↗ {getCompletedTasksCount()} completed</div>
+        {/* Project Overview Cards */}
+        <div className="overview-grid">
+          <div className="overview-card primary">
+            <div className="card-icon">
+              <FaTasks />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{getActiveTasksCount()}</div>
+              <div className="card-label">Active Tasks</div>
+              <div className="card-trend">
+                <FaCheckCircle />
+                {getCompletedTasksCount()} completed
               </div>
-              <div className="metric-item">
-                <div className="metric-value">{getProgressPercentage()}%</div>
-                <div className="metric-label">Progress</div>
-                <div className="metric-trend trend-up">↗ On track</div>
+            </div>
+          </div>
+
+          <div className="overview-card success">
+            <div className="card-icon">
+              <FaChartLine />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{getProgressPercentage()}%</div>
+              <div className="card-label">Progress</div>
+              <div className="card-trend">
+                <FaChartLine />
+                On track
               </div>
-              <div className="metric-item">
-                <div className="metric-value">{getDaysRemaining()}</div>
-                <div className="metric-label">Days Remaining</div>
-                <div className="metric-trend">📅 Due {formatDate(project.due_date)}</div>
+            </div>
+          </div>
+
+          <div className={`overview-card ${getDaysRemainingClass()}`}>
+            <div className="card-icon">
+              <FaCalendarAlt />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{getDaysRemaining() || '-'}</div>
+              <div className="card-label">Days Remaining</div>
+              <div className="card-trend">
+                <FaCalendarAlt />
+                {getDaysRemainingText()}
               </div>
-              <div className="metric-item">
-                <div className="metric-value">{formatCurrency(project.deal_value)}</div>
-                <div className="metric-label">Deal Value</div>
-                <div className="metric-trend">💰 {project.sales_stage}</div>
+            </div>
+          </div>
+
+          <div className="overview-card warning">
+            <div className="card-icon">
+              <FaDollarSign />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{formatCurrency(project.deal_value)}</div>
+              <div className="card-label">Deal Value</div>
+              <div className="card-trend">
+                {getSalesStageIcon(project.sales_stage)}
+                {project.sales_stage}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Main Content Grid */}
+        {/* Main Content */}
         <div className="main-content">
           {/* Left Column */}
           <div className="left-column">
             {/* Project Details */}
             <div className="section-card">
               <div className="section-header">
-                <h3>
-                  <FaInfo /> Project Details
-                </h3>
-                <div className="edit-controls">
+                <div className="section-title">
+                  <FaInfo className="section-icon" />
+                  <h3>Project Details</h3>
+                </div>
+                <div className="section-actions">
                   {isEditing ? (
                     <>
                       <button 
                         onClick={handleSaveProject} 
-                        className="save-btn"
+                        className="btn-success"
                         disabled={saving}
                       >
-                        <FaSave /> {saving ? 'Saving...' : 'Save'}
+                        <FaSave />
+                        {saving ? 'Saving...' : 'Save'}
                       </button>
                       <button 
                         onClick={handleEditToggle} 
-                        className="cancel-btn"
+                        className="btn-secondary"
                         disabled={saving}
                       >
-                        <FaTimes /> Cancel
+                        <FaTimes />
+                        Cancel
                       </button>
                     </>
                   ) : (
-                    <button onClick={handleEditToggle} className="edit-btn">
-                      <FaEdit /> Edit Project
+                    <button onClick={handleEditToggle} className="btn-primary">
+                      <FaEdit />
+                      Edit
                     </button>
                   )}
                 </div>
               </div>
 
               {isEditing && (
-                <div className="editing-indicator">
-                  📝 Currently editing - Click Save to confirm changes or Cancel to discard
+                <div className="edit-banner">
+                  <FaEdit />
+                  <span>Editing mode - Make your changes and click Save</span>
                 </div>
               )}
 
-              <div className="project-details-content">
-                <div className="project-details-grid">
-                  <div className="info-item">
-                    <div className="info-label">Sales Stage</div>
+              <div className="section-content">
+                <div className="details-grid">
+                  <div className="detail-item">
+                    <label className="detail-label">
+                      <FaChartLine />
+                      Sales Stage
+                    </label>
                     {isEditing ? (
                       <select
                         name="sales_stage"
                         value={editProject.sales_stage || ''}
                         onChange={handleEditChange}
-                        className="inline-edit-select"
+                        className="detail-input"
                       >
                         <option value="">Select Stage</option>
                         {salesStageOptions.map((stage, i) => (
@@ -694,18 +765,24 @@ function ProjectDetails() {
                         ))}
                       </select>
                     ) : (
-                      <div className="info-value">{project.sales_stage || 'Not specified'}</div>
+                      <div className="detail-value">
+                        {getSalesStageIcon(project.sales_stage)}
+                        {project.sales_stage || 'Not specified'}
+                      </div>
                     )}
                   </div>
 
-                  <div className="info-item">
-                    <div className="info-label">Product</div>
+                  <div className="detail-item">
+                    <label className="detail-label">
+                      <FaInfo />
+                      Product
+                    </label>
                     {isEditing ? (
                       <select
                         name="product"
                         value={editProject.product || ''}
                         onChange={handleEditChange}
-                        className="inline-edit-select"
+                        className="detail-input"
                       >
                         <option value="">Select Product</option>
                         {productOptions.map((product, i) => (
@@ -713,108 +790,124 @@ function ProjectDetails() {
                         ))}
                       </select>
                     ) : (
-                      <div className="info-value">{project.product || 'Not specified'}</div>
+                      <div className="detail-value">{project.product || 'Not specified'}</div>
                     )}
                   </div>
 
-                  <div className="info-item">
-                    <div className="info-label">Account Manager</div>
+                  <div className="detail-item">
+                    <label className="detail-label">
+                      <FaUsers />
+                      Account Manager
+                    </label>
                     {isEditing ? (
                       <input
                         type="text"
                         name="account_manager"
                         value={editProject.account_manager || ''}
                         onChange={handleEditChange}
-                        className="inline-edit-input"
+                        className="detail-input"
                         placeholder="Account manager name"
                       />
                     ) : (
-                      <div className="info-value">{project.account_manager || 'Not assigned'}</div>
+                      <div className="detail-value">{project.account_manager || 'Not assigned'}</div>
                     )}
                   </div>
 
-                  <div className="info-item">
-                    <div className="info-label">Due Date</div>
+                  <div className="detail-item">
+                    <label className="detail-label">
+                      <FaCalendarAlt />
+                      Due Date
+                    </label>
                     {isEditing ? (
                       <input
                         type="date"
                         name="due_date"
                         value={editProject.due_date || ''}
                         onChange={handleEditChange}
-                        className="inline-edit-input"
+                        className="detail-input"
                       />
                     ) : (
-                      <div className="info-value">{formatDate(project.due_date)}</div>
+                      <div className="detail-value">{formatDate(project.due_date)}</div>
                     )}
                   </div>
 
-                  <div className="info-item">
-                    <div className="info-label">Deal Value</div>
+                  <div className="detail-item">
+                    <label className="detail-label">
+                      <FaDollarSign />
+                      Deal Value
+                    </label>
                     {isEditing ? (
                       <input
                         type="number"
                         name="deal_value"
                         value={editProject.deal_value || ''}
                         onChange={handleEditChange}
-                        className="inline-edit-input"
+                        className="detail-input"
                         placeholder="Deal value"
                       />
                     ) : (
-                      <div className="info-value">{formatCurrency(project.deal_value)}</div>
+                      <div className="detail-value">{formatCurrency(project.deal_value)}</div>
                     )}
                   </div>
 
-                  <div className="info-item">
-                    <div className="info-label">Backup Presales</div>
+                  <div className="detail-item">
+                    <label className="detail-label">
+                      <FaUsers />
+                      Backup Presales
+                    </label>
                     {isEditing ? (
                       <input
                         type="text"
                         name="backup_presales"
                         value={editProject.backup_presales || ''}
                         onChange={handleEditChange}
-                        className="inline-edit-input"
+                        className="detail-input"
                         placeholder="Backup presales contact"
                       />
                     ) : (
-                      <div className="info-value">{project.backup_presales || 'Not assigned'}</div>
+                      <div className="detail-value">{project.backup_presales || 'Not assigned'}</div>
                     )}
                   </div>
                 </div>
 
-                <div style={{ marginTop: '20px' }}>
-                  <div className="info-label">Scope</div>
+                <div className="detail-item full-width">
+                  <label className="detail-label">
+                    <FaInfo />
+                    Scope
+                  </label>
                   {isEditing ? (
                     <textarea
                       name="scope"
                       value={editProject.scope || ''}
                       onChange={handleEditChange}
-                      className="inline-edit-textarea"
+                      className="detail-textarea"
                       rows="3"
                       placeholder="Project scope and objectives"
-                      style={{ marginTop: '8px' }}
                     />
                   ) : (
-                    <div className="info-value" style={{ marginTop: '8px', lineHeight: '1.5' }}>
+                    <div className="detail-value scope-text">
                       {project.scope || 'No scope defined'}
                     </div>
                   )}
                 </div>
 
                 {(project.remarks || isEditing) && (
-                  <div style={{ marginTop: '20px' }}>
-                    <div className="info-label">Remarks</div>
+                  <div className="detail-item full-width">
+                    <label className="detail-label">
+                      <FaEdit />
+                      Remarks
+                    </label>
                     {isEditing ? (
                       <textarea
                         name="remarks"
                         value={editProject.remarks || ''}
                         onChange={handleEditChange}
-                        className="inline-edit-textarea"
+                        className="detail-textarea"
                         rows="3"
                         placeholder="Project remarks or notes"
-                        style={{ marginTop: '8px' }}
                       />
                     ) : (
-                      <div className="info-value" style={{ marginTop: '8px', lineHeight: '1.5' }}>
+                      <div className="detail-value scope-text">
                         {project.remarks || 'No remarks'}
                       </div>
                     )}
@@ -826,68 +919,93 @@ function ProjectDetails() {
             {/* Tasks Section */}
             <div className="section-card">
               <div className="section-header">
-                <h3>
-                  <FaTasks /> Project Tasks
-                </h3>
-                <div className="section-controls">
-                  <button onClick={handleAddTask} className="add-btn">
-                    <FaPlus /> Add Task
+                <div className="section-title">
+                  <FaTasks className="section-icon" />
+                  <h3>Project Tasks</h3>
+                  <span className="task-counter">
+                    {getActiveTasksCount()} active, {getCompletedTasksCount()} completed
+                  </span>
+                </div>
+                <div className="section-actions">
+                  <button onClick={handleAddTask} className="btn-primary">
+                    <FaPlus />
+                    Add Task
                   </button>
                   <button 
-                    className="toggle-btn"
+                    className={`btn-secondary ${showCompleted ? 'active' : ''}`}
                     onClick={() => setShowCompleted(!showCompleted)}
                   >
                     {showCompleted ? <FaChevronUp /> : <FaChevronDown />}
-                    {showCompleted ? 'Hide Completed' : 'Show Completed'}
+                    {showCompleted ? 'Hide Completed' : 'Show All'}
                   </button>
                 </div>
               </div>
 
-              <div className="task-list">
+              <div className="section-content">
                 {getFilteredTasks().length > 0 ? (
-                  getFilteredTasks().map((task) => (
-                    <div key={task.id} className="task-item">
-                      <input 
-                        type="checkbox" 
-                        className="task-checkbox"
-                        checked={task.status === 'Completed'}
-                        onChange={() => handleTaskStatusChange(task.id, task.status)}
-                      />
-                      <div className="task-content">
-                        <div className="task-name">{task.description}</div>
-                        <div className="task-meta">
-                          {task.due_date && `Due: ${formatDate(task.due_date)}`}
-                          {task.due_date && task.status && ' • '}
-                          <span className={`task-status ${getTaskStatusClass(task.status)}`}>
-                            {task.status}
-                          </span>
+                  <div className="task-list">
+                    {getFilteredTasks().map((task) => (
+                      <div key={task.id} className="task-item">
+                        <div className="task-checkbox-container">
+                          <input 
+                            type="checkbox" 
+                            className="task-checkbox"
+                            checked={task.status === 'Completed'}
+                            onChange={() => handleTaskStatusChange(task.id, task.status)}
+                          />
                         </div>
-                        {task.notes && <div className="task-notes">{task.notes}</div>}
+                        <div className="task-main-content">
+                          <div className="task-header">
+                            <h4 className="task-title">{task.description}</h4>
+                            <div className="task-status-badge">
+                              {getTaskStatusIcon(task.status)}
+                              <span className={`status-text ${getTaskStatusClass(task.status)}`}>
+                                {task.status}
+                              </span>
+                            </div>
+                          </div>
+                          {task.due_date && (
+                            <div className="task-meta">
+                              <FaCalendarAlt />
+                              <span>Due {formatDate(task.due_date)}</span>
+                            </div>
+                          )}
+                          {task.notes && (
+                            <div className="task-notes">
+                              <FaEdit />
+                              {task.notes}
+                            </div>
+                          )}
+                        </div>
+                        <div className="task-actions">
+                          <button 
+                            onClick={() => handleEditTask(task)}
+                            className="task-action-btn edit"
+                            title="Edit task"
+                          >
+                            <FaEdit />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="task-action-btn delete"
+                            title="Delete task"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
                       </div>
-                      <div className="task-actions">
-                        <button 
-                          onClick={() => handleEditTask(task)}
-                          className="edit-task-btn"
-                          title="Edit task"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="delete-task-btn"
-                          title="Delete task"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 ) : (
                   <div className="empty-state">
-                    <FaTasks />
-                    <p>No {showCompleted ? '' : 'active '}tasks found</p>
-                    <button onClick={handleAddTask} className="add-first-btn">
-                      Add your first task
+                    <div className="empty-icon">
+                      <FaTasks />
+                    </div>
+                    <h4>No {showCompleted ? '' : 'active '}tasks yet</h4>
+                    <p>Create your first task to start tracking project progress</p>
+                    <button onClick={handleAddTask} className="btn-primary">
+                      <FaPlus />
+                      Add Task
                     </button>
                   </div>
                 )}
@@ -900,80 +1018,65 @@ function ProjectDetails() {
             {/* Project Log */}
             <div className="section-card">
               <div className="section-header">
-                <h3>
-                  <FaBookOpen /> Project Log
-                </h3>
-                <button onClick={handleAddLog} className="add-btn">
-                  <FaPlus /> Add Log
-                </button>
+                <div className="section-title">
+                  <FaBookOpen className="section-icon" />
+                  <h3>Project Log</h3>
+                  <span className="log-counter">
+                    {logs.length} {logs.length === 1 ? 'entry' : 'entries'}
+                  </span>
+                </div>
+                <div className="section-actions">
+                  <button onClick={handleAddLog} className="btn-primary">
+                    <FaPlus />
+                    Add Entry
+                  </button>
+                </div>
               </div>
 
-              <div className="log-list">
+              <div className="section-content">
                 {logs.length > 0 ? (
-                  logs.map((log) => (
-                    <div key={log.id} className="log-item">
-                      <div className="log-content">
-                        <div className="log-entry">{log.entry}</div>
-                        <div className="log-date">{formatDate(log.created_at)}</div>
+                  <div className="log-list">
+                    {logs.map((log) => (
+                      <div key={log.id} className="log-item">
+                        <div className="log-header">
+                          <div className="log-date">
+                            <FaCalendarAlt />
+                            {formatDate(log.created_at)}
+                          </div>
+                          <button 
+                            onClick={() => handleDeleteLog(log.id)}
+                            className="log-action-btn delete"
+                            title="Delete log entry"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
+                        <div className="log-content">
+                          <FaBookOpen className="log-icon" />
+                          <p>{log.entry}</p>
+                        </div>
                       </div>
-                      <button 
-                        onClick={() => handleDeleteLog(log.id)}
-                        className="delete-log-btn"
-                        title="Delete log entry"
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 ) : (
                   <div className="empty-state">
-                    <FaBookOpen />
-                    <p>No log entries yet</p>
-                    <button onClick={handleAddLog} className="add-first-btn">
-                      Add your first log entry
+                    <div className="empty-icon">
+                      <FaBookOpen />
+                    </div>
+                    <h4>No log entries yet</h4>
+                    <p>Start documenting project progress and important updates</p>
+                    <button onClick={handleAddLog} className="btn-primary">
+                      <FaPlus />
+                      Add Entry
                     </button>
                   </div>
                 )}
               </div>
             </div>
-
-            {/* Meeting Minutes */}
-            {linkedMeetingMinutes.length > 0 && (
-              <div className="section-card">
-                <div className="section-header">
-                  <h3>
-                    <FaBookOpen /> Linked Meeting Minutes
-                  </h3>
-                </div>
-
-                <div className="meeting-list">
-                  {linkedMeetingMinutes.map((meeting) => (
-                    <div key={meeting.id} className="meeting-item">
-                      <div className="meeting-content">
-                        <div className="meeting-title">{meeting.title || 'Untitled Meeting'}</div>
-                        <div className="meeting-date">{formatDate(meeting.meeting_date)}</div>
-                        {meeting.participants && (
-                          <div className="meeting-participants">
-                            Participants: {meeting.participants}
-                          </div>
-                        )}
-                      </div>
-                      <button 
-                        onClick={() => setSelectedMeetingNote(meeting)}
-                        className="view-meeting-btn"
-                        title="View meeting details"
-                      >
-                        <FaEye />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Task Modal */}
+        {/* Modals */}
         <TaskModal
           isOpen={showTaskModal}
           onClose={() => {
@@ -984,59 +1087,11 @@ function ProjectDetails() {
           editingTask={editingTask}
         />
 
-        {/* Log Modal */}
         <LogModal
           isOpen={showLogModal}
           onClose={() => setShowLogModal(false)}
           onSave={handleLogSaved}
         />
-
-        {/* Meeting Note Modal */}
-        {selectedMeetingNote && (
-          <div className="modal-backdrop" onClick={() => setSelectedMeetingNote(null)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
-              <div className="modal-header">
-                <h3>{selectedMeetingNote.title || 'Meeting Notes'}</h3>
-                <button 
-                  onClick={() => setSelectedMeetingNote(null)}
-                  className="close-modal-btn"
-                >
-                  <FaTimes />
-                </button>
-              </div>
-              <div className="modal-body">
-                <div className="meeting-detail-grid">
-                  <div><strong>Date:</strong> {formatDate(selectedMeetingNote.meeting_date)}</div>
-                  <div><strong>Participants:</strong> {selectedMeetingNote.participants || 'Not specified'}</div>
-                </div>
-                {selectedMeetingNote.agenda && (
-                  <div style={{ marginTop: '20px' }}>
-                    <strong>Agenda:</strong>
-                    <div style={{ marginTop: '8px', whiteSpace: 'pre-wrap' }}>
-                      {selectedMeetingNote.agenda}
-                    </div>
-                  </div>
-                )}
-                {selectedMeetingNote.notes && (
-                  <div style={{ marginTop: '20px' }}>
-                    <strong>Notes:</strong>
-                    <div style={{ marginTop: '8px', whiteSpace: 'pre-wrap' }}>
-                      {selectedMeetingNote.notes}
-                    </div>
-                  </div>
-                )}
-                {selectedMeetingNote.action_items && (
-                  <div style={{ marginTop: '20px' }}>
-                    <strong>Action Items:</strong>
-                    <div style={{ marginTop: '8px', whiteSpace: 'pre-wrap' }}>
-                      {selectedMeetingNote.action_items}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
