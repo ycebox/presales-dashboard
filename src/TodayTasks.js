@@ -8,22 +8,13 @@ import {
   FaPlay, 
   FaCheckCircle,
   FaArrowRight,
-  FaFlag,
-  FaCalendarAlt,
-  FaFireAlt
+  FaUser,
+  FaBuilding
 } from "react-icons/fa";
-import { 
-  HiOutlineFire, 
-  HiOutlineCalendar, 
-  HiOutlineClipboardList,
-  HiOutlineSparkles,
-  HiOutlineLightningBolt
-} from "react-icons/hi";
 
 export default function TodayTasks() {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'overdue', 'today'
 
   useEffect(() => {
     fetchTasks();
@@ -33,7 +24,6 @@ export default function TodayTasks() {
     setIsLoading(true);
     try {
       const today = new Date().toISOString().split("T")[0];
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
       // Get both project tasks and personal tasks for today and overdue
       const [projectTasksData, personalTasksData] = await Promise.all([
@@ -60,8 +50,7 @@ export default function TodayTasks() {
         allTasks = [...allTasks, ...projectTasksData.data.map(task => ({
           ...task,
           task_type: 'project',
-          customer_name: task.projects?.customer_name || `Project ${task.project_id}`,
-          urgency: calculateUrgency(task.due_date, task.priority)
+          customer_name: task.projects?.customer_name || `Project ${task.project_id}`
         }))];
       }
 
@@ -71,18 +60,26 @@ export default function TodayTasks() {
           ...task,
           task_type: 'personal',
           customer_name: 'Personal Task',
-          project_id: null,
-          urgency: calculateUrgency(task.due_date, task.priority)
+          project_id: null
         }))];
       }
 
-      // Sort all tasks by urgency (overdue + high priority first)
+      // Sort tasks: overdue first, then by priority, then by due date
       allTasks.sort((a, b) => {
-        // First by urgency score (higher = more urgent)
-        if (a.urgency !== b.urgency) {
-          return b.urgency - a.urgency;
-        }
-        // Then by due date (earlier first)
+        const aOverdue = a.due_date < today;
+        const bOverdue = b.due_date < today;
+        
+        // Overdue tasks first
+        if (aOverdue && !bOverdue) return -1;
+        if (!aOverdue && bOverdue) return 1;
+        
+        // Then by priority
+        const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+        const aPriority = priorityOrder[a.priority] || 1;
+        const bPriority = priorityOrder[b.priority] || 1;
+        if (aPriority !== bPriority) return bPriority - aPriority;
+        
+        // Finally by due date
         return a.due_date.localeCompare(b.due_date);
       });
 
@@ -101,49 +98,15 @@ export default function TodayTasks() {
     }
   };
 
-  const calculateUrgency = (dueDate, priority) => {
-    const today = new Date().toISOString().split("T")[0];
-    const isOverdue = dueDate < today;
-    const isToday = dueDate === today;
-    
-    let urgencyScore = 0;
-    
-    // Base urgency on due date
-    if (isOverdue) urgencyScore += 100;
-    else if (isToday) urgencyScore += 50;
-    
-    // Add priority weight
-    const priorityWeight = { 'High': 30, 'Medium': 20, 'Low': 10 };
-    urgencyScore += priorityWeight[priority] || 10;
-    
-    // Add days overdue penalty
-    if (isOverdue) {
-      const daysDiff = Math.floor((new Date(today) - new Date(dueDate)) / (1000 * 60 * 60 * 24));
-      urgencyScore += daysDiff * 5;
-    }
-    
-    return urgencyScore;
-  };
-
   const today = new Date().toISOString().split("T")[0];
   const isOverdue = (due) => due && due < today;
   const isToday = (due) => due === today;
 
-  const overdueTasks = tasks.filter((t) => isOverdue(t.due_date));
-  const todayTasks = tasks.filter((t) => isToday(t.due_date));
-  const highPriorityTasks = tasks.filter((t) => t.priority === 'High');
-
-  const getDisplayTasks = () => {
-    switch (activeTab) {
-      case 'overdue': return overdueTasks;
-      case 'today': return todayTasks;
-      default: return tasks;
-    }
-  };
+  const overdueTasks = tasks.filter(t => isOverdue(t.due_date));
+  const todayTasks = tasks.filter(t => isToday(t.due_date));
 
   const scrollToProject = (projectId, taskType) => {
     if (taskType === 'personal' || !projectId) {
-      // Could show a message or navigate to personal tasks section
       return;
     }
     const el = document.getElementById(`project-${projectId}`);
@@ -152,72 +115,43 @@ export default function TodayTasks() {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case "In Progress": return <FaPlay className="status-icon in-progress" />;
-      case "Open": return <FaClock className="status-icon open" />;
+      case "In Progress": return <FaPlay className="text-blue-500" />;
+      case "Open": return <FaClock className="text-gray-500" />;
       case "Done": 
-      case "Completed": return <FaCheckCircle className="status-icon completed" />;
-      default: return <FaTasks className="status-icon default" />;
+      case "Completed": return <FaCheckCircle className="text-green-500" />;
+      default: return <FaTasks className="text-gray-400" />;
     }
   };
 
-  const getPriorityConfig = (priority) => {
+  const getPriorityColor = (priority) => {
     switch (priority?.toLowerCase()) {
-      case "high": return { color: "#ef4444", bg: "rgba(239, 68, 68, 0.1)", icon: <FaFireAlt /> };
-      case "medium": return { color: "#f59e0b", bg: "rgba(245, 158, 11, 0.1)", icon: <FaFlag /> };
-      case "low": return { color: "#10b981", bg: "rgba(16, 185, 129, 0.1)", icon: <FaCalendarAlt /> };
-      default: return { color: "#6b7280", bg: "rgba(107, 114, 128, 0.1)", icon: <FaTasks /> };
+      case "high": return "text-red-600 bg-red-50 border-red-200";
+      case "medium": return "text-yellow-600 bg-yellow-50 border-yellow-200";
+      case "low": return "text-green-600 bg-green-50 border-green-200";
+      default: return "text-gray-600 bg-gray-50 border-gray-200";
     }
   };
 
-  const getTaskCardStyle = (task) => {
-    if (isOverdue(task.due_date)) {
-      return {
-        background: "linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)",
-        borderColor: "#ef4444",
-        boxShadow: "0 4px 12px rgba(239, 68, 68, 0.15)"
-      };
-    } else if (isToday(task.due_date)) {
-      return {
-        background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
-        borderColor: "#f59e0b",
-        boxShadow: "0 4px 12px rgba(245, 158, 11, 0.15)"
-      };
-    }
-    return {
-      background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-      borderColor: "#e2e8f0",
-      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)"
-    };
-  };
-
-  const getDaysOverdue = (dueDate) => {
-    const today = new Date();
-    const due = new Date(dueDate);
-    const diffTime = today - due;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   if (isLoading) {
     return (
       <div className="today-tasks-container">
         <div className="tasks-header">
-          <div className="header-content">
-            <div className="header-icon-wrapper loading">
-              <HiOutlineClipboardList className="header-icon" />
-            </div>
-            <div className="header-text">
-              <h2 className="tasks-title">Today's Priorities</h2>
-              <p className="tasks-subtitle">Loading your tasks...</p>
-            </div>
-          </div>
+          <h2 className="tasks-title">Today's Tasks</h2>
+          <p className="text-gray-500">Loading tasks...</p>
         </div>
-        <div className="loading-content">
+        <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="task-card-skeleton">
-              <div className="skeleton-header"></div>
-              <div className="skeleton-content"></div>
-              <div className="skeleton-footer"></div>
+            <div key={i} className="task-skeleton">
+              <div className="skeleton-line w-3/4"></div>
+              <div className="skeleton-line w-1/2"></div>
             </div>
           ))}
         </div>
@@ -227,969 +161,422 @@ export default function TodayTasks() {
 
   return (
     <div className="today-tasks-container">
-      {/* Enhanced Header with Stats */}
+      {/* Header */}
       <div className="tasks-header">
-        <div className="header-content">
-          <div className="header-icon-wrapper">
-            <HiOutlineClipboardList className="header-icon" />
-            {(overdueTasks.length > 0 || todayTasks.length > 0) && (
-              <div className="urgency-indicator">
-                {overdueTasks.length > 0 ? (
-                  <HiOutlineLightningBolt className="urgency-icon critical" />
-                ) : (
-                  <HiOutlineSparkles className="urgency-icon normal" />
-                )}
-              </div>
-            )}
-          </div>
-          <div className="header-text">
-            <h2 className="tasks-title">Today's Priorities</h2>
-            <p className="tasks-subtitle">
-              {overdueTasks.length > 0 && (
-                <span className="urgent-text">
-                  <FaExclamationTriangle /> {overdueTasks.length} overdue
-                </span>
-              )}
-              {overdueTasks.length > 0 && todayTasks.length > 0 && <span className="separator">•</span>}
-              {todayTasks.length > 0 && (
-                <span className="today-text">
-                  <FaCalendarDay /> {todayTasks.length} due today
-                </span>
-              )}
-              {overdueTasks.length === 0 && todayTasks.length === 0 && (
-                <span className="clear-text">All caught up! 🎉</span>
-              )}
-            </p>
-          </div>
+        <h2 className="tasks-title">Today's Tasks</h2>
+        <div className="task-summary">
+          {overdueTasks.length > 0 && (
+            <span className="summary-item overdue">
+              <FaExclamationTriangle className="w-4 h-4" />
+              {overdueTasks.length} overdue
+            </span>
+          )}
+          {todayTasks.length > 0 && (
+            <span className="summary-item today">
+              <FaCalendarDay className="w-4 h-4" />
+              {todayTasks.length} due today
+            </span>
+          )}
+          {tasks.length === 0 && (
+            <span className="summary-item clear">
+              All caught up! 🎉
+            </span>
+          )}
         </div>
-
-        {/* Quick Stats */}
-        {tasks.length > 0 && (
-          <div className="quick-stats">
-            <div className="stat-card overdue">
-              <div className="stat-number">{overdueTasks.length}</div>
-              <div className="stat-label">Overdue</div>
-            </div>
-            <div className="stat-card today">
-              <div className="stat-number">{todayTasks.length}</div>
-              <div className="stat-label">Due Today</div>
-            </div>
-            <div className="stat-card priority">
-              <div className="stat-number">{highPriorityTasks.length}</div>
-              <div className="stat-label">High Priority</div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Tab Navigation */}
-      {tasks.length > 0 && (
-        <div className="tab-navigation">
-          <button
-            className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
-          >
-            <HiOutlineClipboardList className="tab-icon" />
-            <span>All ({tasks.length})</span>
-          </button>
-          <button
-            className={`tab-button ${activeTab === 'overdue' ? 'active' : ''} ${overdueTasks.length > 0 ? 'has-items' : ''}`}
-            onClick={() => setActiveTab('overdue')}
-          >
-            <HiOutlineFire className="tab-icon" />
-            <span>Overdue ({overdueTasks.length})</span>
-          </button>
-          <button
-            className={`tab-button ${activeTab === 'today' ? 'active' : ''} ${todayTasks.length > 0 ? 'has-items' : ''}`}
-            onClick={() => setActiveTab('today')}
-          >
-            <HiOutlineCalendar className="tab-icon" />
-            <span>Today ({todayTasks.length})</span>
-          </button>
-        </div>
-      )}
-
       {/* Tasks List */}
-      {getDisplayTasks().length > 0 ? (
+      {tasks.length > 0 ? (
         <div className="tasks-list">
-          {getDisplayTasks().map((task, index) => {
-            const priorityConfig = getPriorityConfig(task.priority);
-            const cardStyle = getTaskCardStyle(task);
-            const daysOverdue = isOverdue(task.due_date) ? getDaysOverdue(task.due_date) : 0;
-
-            return (
-              <div
-                key={`${task.task_type}-${task.id}`}
-                className={`task-card ${isOverdue(task.due_date) ? 'overdue' : ''} ${isToday(task.due_date) ? 'today' : ''}`}
-                style={{
-                  ...cardStyle,
-                  animationDelay: `${index * 0.1}s`
-                }}
-                onClick={() => scrollToProject(task.project_id, task.task_type)}
-              >
-                {/* Urgency Indicator */}
-                {task.urgency > 120 && (
-                  <div className="urgency-badge critical">
-                    <HiOutlineLightningBolt />
-                    Critical
-                  </div>
-                )}
-
-                {/* Task Header */}
-                <div className="task-header">
-                  <div className="task-status-group">
-                    {getStatusIcon(task.status)}
-                    <span className="status-text">{task.status}</span>
-                  </div>
-                  
-                  <div className="task-meta">
-                    {/* Priority Badge */}
-                    <div 
-                      className="priority-badge"
-                      style={{ 
-                        backgroundColor: priorityConfig.bg,
-                        color: priorityConfig.color,
-                        border: `1px solid ${priorityConfig.color}30`
-                      }}
-                    >
-                      {priorityConfig.icon}
-                      <span>{task.priority}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Task Description */}
-                <div className="task-description">
-                  {task.description}
-                </div>
-
-                {/* Task Details */}
-                <div className="task-details">
-                  <div className="detail-item">
-                    <span className="detail-label">
-                      {task.task_type === 'personal' ? 'Category:' : 'Project:'}
-                    </span>
-                    <span className="detail-value">{task.customer_name}</span>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <span className="detail-label">Due Date:</span>
-                    <div className={`due-date ${isOverdue(task.due_date) ? 'overdue' : isToday(task.due_date) ? 'today' : ''}`}>
-                      {isOverdue(task.due_date) && (
-                        <>
-                          <FaExclamationTriangle className="date-icon" />
-                          <span className="overdue-days">{daysOverdue} days overdue</span>
-                        </>
-                      )}
-                      {isToday(task.due_date) && (
-                        <>
-                          <FaCalendarDay className="date-icon" />
-                          <span>Due today</span>
-                        </>
-                      )}
-                      <span className="date-text">
-                        {new Date(task.due_date).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: new Date(task.due_date).getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Task Action */}
-                {task.task_type === 'project' && task.project_id ? (
-                  <div className="task-action">
-                    <FaArrowRight className="action-icon" />
-                    <span>View in Project</span>
-                  </div>
-                ) : (
-                  <div className="task-action personal">
-                    <div className="personal-indicator">
-                      <span>Personal Task</span>
-                    </div>
-                  </div>
-                )}
+          {/* Overdue Section */}
+          {overdueTasks.length > 0 && (
+            <>
+              <div className="section-header overdue">
+                <FaExclamationTriangle className="w-4 h-4" />
+                <span>Overdue ({overdueTasks.length})</span>
               </div>
-            );
-          })}
+              {overdueTasks.map((task) => (
+                <div
+                  key={`overdue-${task.task_type}-${task.id}`}
+                  className="task-item overdue"
+                  onClick={() => scrollToProject(task.project_id, task.task_type)}
+                >
+                  <div className="task-content">
+                    <div className="task-main">
+                      <div className="task-status">
+                        {getStatusIcon(task.status)}
+                        <span className="task-description">{task.description}</span>
+                      </div>
+                      <div className="task-meta">
+                        <span className={`priority-badge ${getPriorityColor(task.priority)}`}>
+                          {task.priority}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="task-details">
+                      <div className="task-project">
+                        {task.task_type === 'personal' ? (
+                          <><FaUser className="w-3 h-3" /> Personal</>
+                        ) : (
+                          <><FaBuilding className="w-3 h-3" /> {task.customer_name}</>
+                        )}
+                      </div>
+                      <div className="task-due overdue">
+                        Due {formatDate(task.due_date)}
+                      </div>
+                    </div>
+                  </div>
+                  {task.task_type === 'project' && (
+                    <div className="task-action">
+                      <FaArrowRight className="w-3 h-3" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* Today Section */}
+          {todayTasks.length > 0 && (
+            <>
+              <div className="section-header today">
+                <FaCalendarDay className="w-4 h-4" />
+                <span>Due Today ({todayTasks.length})</span>
+              </div>
+              {todayTasks.map((task) => (
+                <div
+                  key={`today-${task.task_type}-${task.id}`}
+                  className="task-item today"
+                  onClick={() => scrollToProject(task.project_id, task.task_type)}
+                >
+                  <div className="task-content">
+                    <div className="task-main">
+                      <div className="task-status">
+                        {getStatusIcon(task.status)}
+                        <span className="task-description">{task.description}</span>
+                      </div>
+                      <div className="task-meta">
+                        <span className={`priority-badge ${getPriorityColor(task.priority)}`}>
+                          {task.priority}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="task-details">
+                      <div className="task-project">
+                        {task.task_type === 'personal' ? (
+                          <><FaUser className="w-3 h-3" /> Personal</>
+                        ) : (
+                          <><FaBuilding className="w-3 h-3" /> {task.customer_name}</>
+                        )}
+                      </div>
+                      <div className="task-due today">
+                        Due today
+                      </div>
+                    </div>
+                  </div>
+                  {task.task_type === 'project' && (
+                    <div className="task-action">
+                      <FaArrowRight className="w-3 h-3" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
         </div>
       ) : (
         <div className="empty-state">
-          <div className="empty-icon">
-            {activeTab === 'overdue' ? (
-              <HiOutlineFire style={{ color: '#ef4444' }} />
-            ) : activeTab === 'today' ? (
-              <HiOutlineCalendar style={{ color: '#f59e0b' }} />
-            ) : (
-              <FaCheckCircle style={{ color: '#10b981' }} />
-            )}
-          </div>
-          <h3 className="empty-title">
-            {activeTab === 'overdue' ? 'No Overdue Tasks' : 
-             activeTab === 'today' ? 'Nothing Due Today' : 
-             'All Clear!'}
-          </h3>
-          <p className="empty-message">
-            {activeTab === 'overdue' ? 
-              "Great job staying on top of your deadlines!" :
-              activeTab === 'today' ? 
-              "You're all caught up for today. Time to plan ahead!" :
-              "No urgent tasks requiring your attention right now."}
-          </p>
+          <FaCheckCircle className="empty-icon" />
+          <h3>All clear!</h3>
+          <p>No urgent tasks for today. Great job staying on top of things!</p>
         </div>
       )}
 
       <style jsx>{`
         .today-tasks-container {
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
-          border-radius: 1.25rem;
-          padding: 2rem;
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(226, 232, 240, 0.3);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+          background: white;
+          border-radius: 12px;
+          padding: 1.5rem;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .tasks-header {
-          margin-bottom: 2rem;
-        }
-
-        .header-content {
-          display: flex;
-          align-items: center;
-          gap: 1.25rem;
           margin-bottom: 1.5rem;
         }
 
-        .header-icon-wrapper {
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 3.5rem;
-          height: 3.5rem;
-          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-          border-radius: 1rem;
-          box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-        }
-
-        .header-icon-wrapper.loading {
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        .header-icon {
-          font-size: 1.5rem;
-          color: white;
-        }
-
-        .urgency-indicator {
-          position: absolute;
-          top: -0.375rem;
-          right: -0.375rem;
-          width: 1.5rem;
-          height: 1.5rem;
-          background: white;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-
-        .urgency-icon {
-          font-size: 0.875rem;
-        }
-
-        .urgency-icon.critical {
-          color: #ef4444;
-          animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        .urgency-icon.normal {
-          color: #f59e0b;
-          animation: sparkle 2s ease-in-out infinite;
-        }
-
-        .header-text {
-          flex: 1;
-        }
-
         .tasks-title {
-          font-size: 1.875rem;
-          font-weight: 800;
-          color: #1e293b;
-          margin: 0;
-          letter-spacing: -0.025em;
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #111827;
+          margin: 0 0 0.5rem 0;
         }
 
-        .tasks-subtitle {
-          font-size: 1rem;
-          color: #64748b;
-          margin: 0.5rem 0 0 0;
-          font-weight: 500;
+        .task-summary {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
-        }
-
-        .urgent-text {
-          display: flex;
-          align-items: center;
-          gap: 0.375rem;
-          color: #dc2626;
-          font-weight: 600;
-        }
-
-        .today-text {
-          display: flex;
-          align-items: center;
-          gap: 0.375rem;
-          color: #d97706;
-          font-weight: 600;
-        }
-
-        .clear-text {
-          color: #059669;
-          font-weight: 600;
-        }
-
-        .separator {
-          color: #cbd5e1;
-          font-weight: 400;
-        }
-
-        .quick-stats {
-          display: flex;
           gap: 1rem;
+          flex-wrap: wrap;
         }
 
-        .stat-card {
-          background: white;
-          padding: 1rem 1.25rem;
-          border-radius: 0.875rem;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-          border: 1px solid rgba(226, 232, 240, 0.5);
-          min-width: 5rem;
-          text-align: center;
-        }
-
-        .stat-card.overdue {
-          border-left: 3px solid #ef4444;
-        }
-
-        .stat-card.today {
-          border-left: 3px solid #f59e0b;
-        }
-
-        .stat-card.priority {
-          border-left: 3px solid #8b5cf6;
-        }
-
-        .stat-number {
-          font-size: 1.75rem;
-          font-weight: 800;
-          color: #1e293b;
-          line-height: 1;
-        }
-
-        .stat-label {
-          font-size: 0.75rem;
-          color: #64748b;
+        .summary-item {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          font-size: 0.875rem;
           font-weight: 600;
+        }
+
+        .summary-item.overdue {
+          color: #dc2626;
+        }
+
+        .summary-item.today {
+          color: #d97706;
+        }
+
+        .summary-item.clear {
+          color: #059669;
+        }
+
+        .section-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+          font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.05em;
-          margin-top: 0.25rem;
+          margin: 1.5rem 0 0.75rem 0;
+          padding-bottom: 0.5rem;
+          border-bottom: 2px solid;
         }
 
-        .tab-navigation {
-          display: flex;
-          gap: 0.5rem;
-          margin-bottom: 2rem;
-          background: rgba(248, 250, 252, 0.8);
-          padding: 0.5rem;
-          border-radius: 1rem;
-          border: 1px solid rgba(226, 232, 240, 0.5);
+        .section-header.overdue {
+          color: #dc2626;
+          border-color: #dc2626;
         }
 
-        .tab-button {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1rem;
-          border: none;
-          background: transparent;
-          border-radius: 0.75rem;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: #64748b;
-          position: relative;
+        .section-header.today {
+          color: #d97706;
+          border-color: #d97706;
         }
 
-        .tab-button:hover {
-          background: rgba(255, 255, 255, 0.8);
-          color: #1e293b;
-        }
-
-        .tab-button.active {
-          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-          color: white;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-
-        .tab-button.has-items::after {
-          content: '';
-          position: absolute;
-          top: 0.5rem;
-          right: 0.5rem;
-          width: 0.5rem;
-          height: 0.5rem;
-          background: #ef4444;
-          border-radius: 50%;
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        .tab-button.active.has-items::after {
-          background: rgba(255, 255, 255, 0.8);
-        }
-
-        .tab-icon {
-          font-size: 1rem;
+        .section-header:first-child {
+          margin-top: 0;
         }
 
         .tasks-list {
           display: flex;
           flex-direction: column;
-          gap: 1.25rem;
         }
 
-        .task-card {
-          background: white;
-          border-radius: 1rem;
-          padding: 1.5rem;
-          border: 1px solid #e2e8f0;
-          cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          animation: slideInUp 0.6s ease-out forwards;
-          opacity: 0;
-          transform: translateY(20px);
-          position: relative;
-          overflow: hidden;
-        }
-
-        .task-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12) !important;
-        }
-
-        .task-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
-          opacity: 0;
-          transition: opacity 0.3s ease;
-          pointer-events: none;
-        }
-
-        .task-card:hover::before {
-          opacity: 1;
-        }
-
-        .urgency-badge {
-          position: absolute;
-          top: 1rem;
-          right: 1rem;
-          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-          color: white;
-          padding: 0.25rem 0.5rem;
-          border-radius: 0.5rem;
-          font-size: 0.75rem;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-        }
-
-        .urgency-badge.critical {
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        .task-header {
+        .task-item {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 1rem;
+          padding: 1rem;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          margin-bottom: 0.75rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          background: white;
         }
 
-        .task-status-group {
+        .task-item:hover {
+          border-color: #d1d5db;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          transform: translateY(-1px);
+        }
+
+        .task-item.overdue {
+          border-left: 4px solid #dc2626;
+          background: #fef2f2;
+        }
+
+        .task-item.today {
+          border-left: 4px solid #d97706;
+          background: #fffbeb;
+        }
+
+        .task-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .task-main {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .task-status {
           display: flex;
           align-items: center;
           gap: 0.5rem;
         }
 
-        .status-icon {
-          font-size: 1rem;
-        }
-
-        .status-icon.in-progress {
-          color: #0ea5e9;
-        }
-
-        .status-icon.open {
-          color: #64748b;
-        }
-
-        .status-icon.completed {
-          color: #10b981;
-        }
-
-        .status-icon.default {
-          color: #6b7280;
-        }
-
-        .status-text {
-          font-size: 0.875rem;
+        .task-description {
           font-weight: 600;
-          color: #475569;
+          color: #111827;
+          font-size: 0.95rem;
         }
 
         .task-meta {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
+          gap: 0.5rem;
         }
 
         .priority-badge {
-          display: flex;
-          align-items: center;
-          gap: 0.375rem;
-          padding: 0.375rem 0.75rem;
-          border-radius: 0.75rem;
+          padding: 0.25rem 0.5rem;
+          border-radius: 6px;
           font-size: 0.75rem;
-          font-weight: 700;
+          font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.05em;
-        }
-
-        .task-description {
-          font-size: 1.125rem;
-          font-weight: 600;
-          color: #1e293b;
-          line-height: 1.5;
-          margin-bottom: 1.25rem;
-          word-wrap: break-word;
-          overflow-wrap: break-word;
+          border: 1px solid;
         }
 
         .task-details {
           display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-          margin-bottom: 1.25rem;
-        }
-
-        .detail-item {
-          display: flex;
           align-items: center;
           justify-content: space-between;
           font-size: 0.875rem;
+          color: #6b7280;
         }
 
-        .detail-label {
-          font-weight: 600;
-          color: #64748b;
-        }
-
-        .detail-value {
-          color: #475569;
-          font-weight: 500;
-        }
-
-        .due-date {
+        .task-project {
           display: flex;
           align-items: center;
           gap: 0.375rem;
+          font-weight: 500;
+        }
+
+        .task-due {
           font-weight: 600;
         }
 
-        .due-date.overdue {
+        .task-due.overdue {
           color: #dc2626;
         }
 
-        .due-date.today {
+        .task-due.today {
           color: #d97706;
-        }
-
-        .date-icon {
-          font-size: 0.75rem;
-        }
-
-        .overdue-days {
-          background: rgba(239, 68, 68, 0.1);
-          color: #dc2626;
-          padding: 0.125rem 0.5rem;
-          border-radius: 0.5rem;
-          font-size: 0.75rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
-        .date-text {
-          color: #64748b;
-          font-weight: 500;
         }
 
         .task-action {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          color: #3b82f6;
-          font-size: 0.875rem;
-          font-weight: 600;
-          opacity: 0.7;
-          transition: all 0.3s ease;
+          color: #6b7280;
+          margin-left: 1rem;
+          opacity: 0.6;
+          transition: all 0.2s ease;
         }
 
-        .task-card:hover .task-action {
+        .task-item:hover .task-action {
           opacity: 1;
+          color: #374151;
+          transform: translateX(2px);
         }
 
-        .action-icon {
-          font-size: 0.75rem;
-          transition: transform 0.3s ease;
+        .task-skeleton {
+          padding: 1rem;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          margin-bottom: 0.75rem;
+          background: #f9fafb;
         }
 
-        .task-card:hover .action-icon {
-          transform: translateX(3px);
-        }
-
-        .task-action.personal {
-          justify-content: flex-end;
-        }
-
-        .personal-indicator {
-          background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-          color: white;
-          padding: 0.375rem 0.875rem;
-          border-radius: 1rem;
-          font-size: 0.75rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
-        }
-
-        .loading-content {
-          display: flex;
-          flex-direction: column;
-          gap: 1.25rem;
-        }
-
-        .task-card-skeleton {
-          background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-          border: 1px solid #e2e8f0;
-          border-radius: 1rem;
-          padding: 1.5rem;
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        .skeleton-header {
-          height: 1.5rem;
-          background: linear-gradient(90deg, #cbd5e1, #e2e8f0, #cbd5e1);
-          background-size: 200% 100%;
-          animation: shimmer 2s ease-in-out infinite;
-          border-radius: 0.5rem;
-          margin-bottom: 1rem;
-        }
-
-        .skeleton-content {
-          height: 4rem;
-          background: linear-gradient(90deg, #cbd5e1, #e2e8f0, #cbd5e1);
-          background-size: 200% 100%;
-          animation: shimmer 2s ease-in-out infinite;
-          border-radius: 0.5rem;
-          margin-bottom: 1rem;
-        }
-
-        .skeleton-footer {
+        .skeleton-line {
           height: 1rem;
-          background: linear-gradient(90deg, #cbd5e1, #e2e8f0, #cbd5e1);
-          background-size: 200% 100%;
-          animation: shimmer 2s ease-in-out infinite;
-          border-radius: 0.5rem;
-          width: 60%;
+          background: #e5e7eb;
+          border-radius: 4px;
+          margin-bottom: 0.5rem;
+          animation: pulse 2s ease-in-out infinite;
         }
 
         .empty-state {
           text-align: center;
-          padding: 4rem 2rem;
-          color: #64748b;
+          padding: 3rem 1rem;
+          color: #6b7280;
         }
 
         .empty-icon {
-          font-size: 4rem;
-          margin-bottom: 1.5rem;
-          opacity: 0.8;
+          font-size: 3rem;
+          color: #10b981;
+          margin-bottom: 1rem;
         }
 
-        .empty-title {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #1e293b;
-          margin-bottom: 0.75rem;
+        .empty-state h3 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #111827;
+          margin-bottom: 0.5rem;
         }
 
-        .empty-message {
-          font-size: 1rem;
+        .empty-state p {
+          font-size: 0.875rem;
           line-height: 1.6;
-          max-width: 400px;
-          margin: 0 auto;
-          color: #64748b;
-        }
-
-        @keyframes slideInUp {
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
         }
 
         @keyframes pulse {
-          0%, 100% { 
-            opacity: 1; 
-            transform: scale(1); 
-          }
-          50% { 
-            opacity: 0.8; 
-            transform: scale(1.05); 
-          }
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
 
-        @keyframes sparkle {
-          0%, 100% { 
-            transform: scale(1) rotate(0deg); 
-            opacity: 1; 
-          }
-          50% { 
-            transform: scale(1.2) rotate(180deg); 
-            opacity: 0.8; 
-          }
-        }
+        /* Utilities */
+        .w-3 { width: 0.75rem; }
+        .h-3 { height: 0.75rem; }
+        .w-4 { width: 1rem; }
+        .h-4 { height: 1rem; }
+        .text-blue-500 { color: #3b82f6; }
+        .text-gray-500 { color: #6b7280; }
+        .text-green-500 { color: #10b981; }
+        .text-gray-400 { color: #9ca3af; }
+        .text-red-600 { color: #dc2626; }
+        .text-yellow-600 { color: #d97706; }
+        .text-green-600 { color: #059669; }
+        .text-gray-600 { color: #4b5563; }
+        .bg-red-50 { background-color: #fef2f2; }
+        .bg-yellow-50 { background-color: #fffbeb; }
+        .bg-green-50 { background-color: #f0fdf4; }
+        .bg-gray-50 { background-color: #f9fafb; }
+        .border-red-200 { border-color: #fecaca; }
+        .border-yellow-200 { border-color: #fde68a; }
+        .border-green-200 { border-color: #bbf7d0; }
+        .border-gray-200 { border-color: #e5e7eb; }
 
-        @keyframes shimmer {
-          0% { 
-            background-position: -200% 0; 
-          }
-          100% { 
-            background-position: 200% 0; 
-          }
-        }
-
-        /* Mobile Responsive */
         @media (max-width: 768px) {
           .today-tasks-container {
-            padding: 1.5rem;
-            border-radius: 1rem;
-          }
-
-          .header-content {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
-          }
-
-          .header-icon-wrapper {
-            width: 3rem;
-            height: 3rem;
-          }
-
-          .header-icon {
-            font-size: 1.25rem;
-          }
-
-          .tasks-title {
-            font-size: 1.5rem;
-          }
-
-          .tasks-subtitle {
-            font-size: 0.875rem;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.5rem;
-          }
-
-          .quick-stats {
-            flex-direction: row;
-            justify-content: space-between;
-            width: 100%;
-          }
-
-          .stat-card {
-            flex: 1;
-            min-width: auto;
-          }
-
-          .tab-navigation {
-            flex-direction: column;
-            gap: 0.25rem;
-          }
-
-          .tab-button {
-            justify-content: space-between;
             padding: 1rem;
           }
 
-          .task-card {
-            padding: 1.25rem;
+          .task-item {
+            padding: 0.75rem;
           }
 
-          .task-header {
+          .task-main {
             flex-direction: column;
             align-items: flex-start;
-            gap: 0.75rem;
+            gap: 0.5rem;
           }
 
           .task-meta {
             align-self: flex-end;
           }
 
-          .urgency-badge {
-            position: relative;
-            top: auto;
-            right: auto;
-            align-self: flex-start;
-          }
-
-          .task-description {
-            font-size: 1rem;
-          }
-
-          .detail-item {
+          .task-details {
             flex-direction: column;
             align-items: flex-start;
             gap: 0.25rem;
           }
 
-          .due-date {
-            align-self: flex-end;
-          }
-
-          .empty-state {
-            padding: 3rem 1rem;
-          }
-
-          .empty-icon {
-            font-size: 3rem;
-          }
-
-          .empty-title {
-            font-size: 1.25rem;
-          }
-
-          .empty-message {
-            font-size: 0.875rem;
-          }
-        }
-
-        /* Reduced Motion */
-        @media (prefers-reduced-motion: reduce) {
-          *,
-          *::before,
-          *::after {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-          }
-        }
-
-        /* High Contrast Mode */
-        @media (prefers-contrast: high) {
-          .today-tasks-container {
-            background: white;
-            border: 2px solid #000;
-          }
-
-          .task-card {
-            background: white;
-            border: 1px solid #000;
-          }
-
-          .tasks-title {
-            color: #000;
-          }
-        }
-
-        /* Dark Mode Support */
-        @media (prefers-color-scheme: dark) {
-          .today-tasks-container {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
-            border-color: rgba(51, 65, 85, 0.3);
-          }
-
-          .tasks-title {
-            color: #f1f5f9;
-          }
-
-          .tasks-subtitle {
-            color: #94a3b8;
-          }
-
-          .task-card {
-            background: rgba(30, 41, 59, 0.8);
-            border-color: rgba(51, 65, 85, 0.5);
-          }
-
-          .task-description {
-            color: #e2e8f0;
-          }
-
-          .detail-label {
-            color: #94a3b8;
-          }
-
-          .detail-value {
-            color: #cbd5e1;
-          }
-
-          .stat-card {
-            background: rgba(30, 41, 59, 0.8);
-            border-color: rgba(51, 65, 85, 0.5);
-          }
-
-          .stat-number {
-            color: #f1f5f9;
-          }
-
-          .tab-navigation {
-            background: rgba(15, 23, 42, 0.8);
-            border-color: rgba(51, 65, 85, 0.5);
-          }
-
-          .tab-button {
-            color: #94a3b8;
-          }
-
-          .tab-button:hover {
-            background: rgba(51, 65, 85, 0.5);
-            color: #f1f5f9;
-          }
-
-          .empty-title {
-            color: #f1f5f9;
-          }
-
-          .empty-message {
-            color: #94a3b8;
+          .task-action {
+            margin-left: 0.5rem;
           }
         }
       `}</style>
