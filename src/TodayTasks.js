@@ -8,19 +8,22 @@ import {
   FaPlay, 
   FaCheckCircle,
   FaArrowRight,
-  FaFilter
+  FaFlag,
+  FaCalendarAlt,
+  FaFireAlt
 } from "react-icons/fa";
 import { 
   HiOutlineFire, 
   HiOutlineCalendar, 
   HiOutlineClipboardList,
-  HiOutlineSparkles
+  HiOutlineSparkles,
+  HiOutlineLightningBolt
 } from "react-icons/hi";
 
 export default function TodayTasks() {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // 'all', 'overdue', 'today'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'overdue', 'today'
 
   useEffect(() => {
     fetchTasks();
@@ -30,6 +33,7 @@ export default function TodayTasks() {
     setIsLoading(true);
     try {
       const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
       // Get both project tasks and personal tasks for today and overdue
       const [projectTasksData, personalTasksData] = await Promise.all([
@@ -38,12 +42,14 @@ export default function TodayTasks() {
           .select("id, description, status, due_date, project_id, priority, projects(customer_name)")
           .lte("due_date", today)
           .eq("is_archived", false)
+          .not("status", "in", '("Done","Completed","Cancelled/On-hold")')
           .order("due_date", { ascending: true }),
         supabase
           .from("personal_tasks")
           .select("id, description, status, due_date, priority")
           .lte("due_date", today)
           .eq("is_archived", false)
+          .not("status", "in", '("Done","Completed","Cancelled/On-hold")')
           .order("due_date", { ascending: true })
       ]);
 
@@ -54,7 +60,8 @@ export default function TodayTasks() {
         allTasks = [...allTasks, ...projectTasksData.data.map(task => ({
           ...task,
           task_type: 'project',
-          customer_name: task.projects?.customer_name || `Project ${task.project_id}`
+          customer_name: task.projects?.customer_name || `Project ${task.project_id}`,
+          urgency: calculateUrgency(task.due_date, task.priority)
         }))];
       }
 
@@ -64,21 +71,19 @@ export default function TodayTasks() {
           ...task,
           task_type: 'personal',
           customer_name: 'Personal Task',
-          project_id: null
+          project_id: null,
+          urgency: calculateUrgency(task.due_date, task.priority)
         }))];
       }
 
-      // Sort all tasks by due date and priority
+      // Sort all tasks by urgency (overdue + high priority first)
       allTasks.sort((a, b) => {
-        // First sort by due date
-        if (a.due_date !== b.due_date) {
-          return a.due_date.localeCompare(b.due_date);
+        // First by urgency score (higher = more urgent)
+        if (a.urgency !== b.urgency) {
+          return b.urgency - a.urgency;
         }
-        // Then by priority (High > Medium > Low)
-        const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
-        const aPriority = priorityOrder[a.priority] || 0;
-        const bPriority = priorityOrder[b.priority] || 0;
-        return bPriority - aPriority;
+        // Then by due date (earlier first)
+        return a.due_date.localeCompare(b.due_date);
       });
 
       setTasks(allTasks);
@@ -96,28 +101,49 @@ export default function TodayTasks() {
     }
   };
 
+  const calculateUrgency = (dueDate, priority) => {
+    const today = new Date().toISOString().split("T")[0];
+    const isOverdue = dueDate < today;
+    const isToday = dueDate === today;
+    
+    let urgencyScore = 0;
+    
+    // Base urgency on due date
+    if (isOverdue) urgencyScore += 100;
+    else if (isToday) urgencyScore += 50;
+    
+    // Add priority weight
+    const priorityWeight = { 'High': 30, 'Medium': 20, 'Low': 10 };
+    urgencyScore += priorityWeight[priority] || 10;
+    
+    // Add days overdue penalty
+    if (isOverdue) {
+      const daysDiff = Math.floor((new Date(today) - new Date(dueDate)) / (1000 * 60 * 60 * 24));
+      urgencyScore += daysDiff * 5;
+    }
+    
+    return urgencyScore;
+  };
+
   const today = new Date().toISOString().split("T")[0];
   const isOverdue = (due) => due && due < today;
   const isToday = (due) => due === today;
 
-  const openCount = tasks.filter((t) => !["Done", "Completed", "Cancelled/On-hold"].includes(t.status)).length;
-  const doneCount = tasks.filter((t) => ["Done", "Completed"].includes(t.status)).length;
-  const overdueCount = tasks.filter((t) => isOverdue(t.due_date) && !["Done", "Completed", "Cancelled/On-hold"].includes(t.status)).length;
-  const todayCount = tasks.filter((t) => isToday(t.due_date)).length;
+  const overdueTasks = tasks.filter((t) => isOverdue(t.due_date));
+  const todayTasks = tasks.filter((t) => isToday(t.due_date));
+  const highPriorityTasks = tasks.filter((t) => t.priority === 'High');
 
-  const grouped = {
-    overdue: tasks.filter((t) => isOverdue(t.due_date)),
-    today: tasks.filter((t) => isToday(t.due_date)),
+  const getDisplayTasks = () => {
+    switch (activeTab) {
+      case 'overdue': return overdueTasks;
+      case 'today': return todayTasks;
+      default: return tasks;
+    }
   };
-
-  const filteredTasks = filter === 'all' ? 
-    [...grouped.overdue, ...grouped.today] :
-    grouped[filter] || [];
 
   const scrollToProject = (projectId, taskType) => {
     if (taskType === 'personal' || !projectId) {
-      // For personal tasks, could scroll to a personal tasks section if it exists
-      // or show a message that it's a personal task
+      // Could show a message or navigate to personal tasks section
       return;
     }
     const el = document.getElementById(`project-${projectId}`);
@@ -134,52 +160,64 @@ export default function TodayTasks() {
     }
   };
 
-  const getPriorityColor = (priority) => {
+  const getPriorityConfig = (priority) => {
     switch (priority?.toLowerCase()) {
-      case "high": return "#ef4444";
-      case "medium": return "#f59e0b";
-      case "low": return "#10b981";
-      default: return "#6b7280";
+      case "high": return { color: "#ef4444", bg: "rgba(239, 68, 68, 0.1)", icon: <FaFireAlt /> };
+      case "medium": return { color: "#f59e0b", bg: "rgba(245, 158, 11, 0.1)", icon: <FaFlag /> };
+      case "low": return { color: "#10b981", bg: "rgba(16, 185, 129, 0.1)", icon: <FaCalendarAlt /> };
+      default: return { color: "#6b7280", bg: "rgba(107, 114, 128, 0.1)", icon: <FaTasks /> };
     }
   };
 
-  const getTaskTypeGradient = (dueDate) => {
-    if (isOverdue(dueDate)) {
-      return "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)";
-    } else if (isToday(dueDate)) {
-      return "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)";
+  const getTaskCardStyle = (task) => {
+    if (isOverdue(task.due_date)) {
+      return {
+        background: "linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)",
+        borderColor: "#ef4444",
+        boxShadow: "0 4px 12px rgba(239, 68, 68, 0.15)"
+      };
+    } else if (isToday(task.due_date)) {
+      return {
+        background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
+        borderColor: "#f59e0b",
+        boxShadow: "0 4px 12px rgba(245, 158, 11, 0.15)"
+      };
     }
-    return "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)";
+    return {
+      background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+      borderColor: "#e2e8f0",
+      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)"
+    };
   };
 
-  const getTaskTypeBorder = (dueDate) => {
-    if (isOverdue(dueDate)) return "#ef4444";
-    if (isToday(dueDate)) return "#f59e0b";
-    return "#0ea5e9";
+  const getDaysOverdue = (dueDate) => {
+    const today = new Date();
+    const due = new Date(dueDate);
+    const diffTime = today - due;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   };
-
-  const filterOptions = [
-    { key: 'all', label: 'All Tasks', icon: <FaTasks />, count: filteredTasks.length },
-    { key: 'overdue', label: 'Overdue', icon: <HiOutlineFire />, count: overdueCount },
-    { key: 'today', label: 'Due Today', icon: <HiOutlineCalendar />, count: todayCount }
-  ];
 
   if (isLoading) {
     return (
       <div className="today-tasks-container">
-        <div className="tasks-header loading">
-          <div className="header-icon-wrapper">
-            <HiOutlineClipboardList className="header-icon" />
-          </div>
-          <div className="header-text">
-            <h2 className="tasks-title">Today's Focus</h2>
-            <p className="tasks-subtitle">Loading your priorities...</p>
+        <div className="tasks-header">
+          <div className="header-content">
+            <div className="header-icon-wrapper loading">
+              <HiOutlineClipboardList className="header-icon" />
+            </div>
+            <div className="header-text">
+              <h2 className="tasks-title">Today's Priorities</h2>
+              <p className="tasks-subtitle">Loading your tasks...</p>
+            </div>
           </div>
         </div>
         <div className="loading-content">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="task-card loading">
-              <div className="loading-shimmer"></div>
+            <div key={i} className="task-card-skeleton">
+              <div className="skeleton-header"></div>
+              <div className="skeleton-content"></div>
+              <div className="skeleton-footer"></div>
             </div>
           ))}
         </div>
@@ -189,152 +227,239 @@ export default function TodayTasks() {
 
   return (
     <div className="today-tasks-container">
-      {/* Enhanced Header */}
+      {/* Enhanced Header with Stats */}
       <div className="tasks-header">
-        <div className="header-icon-wrapper">
-          <HiOutlineClipboardList className="header-icon" />
-          {(overdueCount > 0 || todayCount > 0) && (
-            <HiOutlineSparkles className="sparkle-icon" />
-          )}
+        <div className="header-content">
+          <div className="header-icon-wrapper">
+            <HiOutlineClipboardList className="header-icon" />
+            {(overdueTasks.length > 0 || todayTasks.length > 0) && (
+              <div className="urgency-indicator">
+                {overdueTasks.length > 0 ? (
+                  <HiOutlineLightningBolt className="urgency-icon critical" />
+                ) : (
+                  <HiOutlineSparkles className="urgency-icon normal" />
+                )}
+              </div>
+            )}
+          </div>
+          <div className="header-text">
+            <h2 className="tasks-title">Today's Priorities</h2>
+            <p className="tasks-subtitle">
+              {overdueTasks.length > 0 && (
+                <span className="urgent-text">
+                  <FaExclamationTriangle /> {overdueTasks.length} overdue
+                </span>
+              )}
+              {overdueTasks.length > 0 && todayTasks.length > 0 && <span className="separator">•</span>}
+              {todayTasks.length > 0 && (
+                <span className="today-text">
+                  <FaCalendarDay /> {todayTasks.length} due today
+                </span>
+              )}
+              {overdueTasks.length === 0 && todayTasks.length === 0 && (
+                <span className="clear-text">All caught up! 🎉</span>
+              )}
+            </p>
+          </div>
         </div>
-        <div className="header-text">
-          <h2 className="tasks-title">Today's Focus</h2>
-          <p className="tasks-subtitle">
-            {overdueCount > 0 ? `${overdueCount} overdue, ` : ''}
-            {todayCount > 0 ? `${todayCount} due today` : 'All caught up!'}
-          </p>
-        </div>
+
+        {/* Quick Stats */}
         {tasks.length > 0 && (
-          <div className="tasks-stats">
-            <div className="stat-item">
-              <span className="stat-value">{openCount}</span>
-              <span className="stat-label">Open</span>
+          <div className="quick-stats">
+            <div className="stat-card overdue">
+              <div className="stat-number">{overdueTasks.length}</div>
+              <div className="stat-label">Overdue</div>
             </div>
-            <div className="stat-divider"></div>
-            <div className="stat-item">
-              <span className="stat-value">{doneCount}</span>
-              <span className="stat-label">Done</span>
+            <div className="stat-card today">
+              <div className="stat-number">{todayTasks.length}</div>
+              <div className="stat-label">Due Today</div>
+            </div>
+            <div className="stat-card priority">
+              <div className="stat-number">{highPriorityTasks.length}</div>
+              <div className="stat-label">High Priority</div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Filter Tabs */}
+      {/* Tab Navigation */}
       {tasks.length > 0 && (
-        <div className="filter-tabs">
-          {filterOptions.map((option) => (
-            <button
-              key={option.key}
-              className={`filter-tab ${filter === option.key ? 'active' : ''}`}
-              onClick={() => setFilter(option.key)}
-            >
-              <span className="filter-icon">{option.icon}</span>
-              <span className="filter-label">{option.label}</span>
-              <span className="filter-count">{option.count}</span>
-            </button>
-          ))}
+        <div className="tab-navigation">
+          <button
+            className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            <HiOutlineClipboardList className="tab-icon" />
+            <span>All ({tasks.length})</span>
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'overdue' ? 'active' : ''} ${overdueTasks.length > 0 ? 'has-items' : ''}`}
+            onClick={() => setActiveTab('overdue')}
+          >
+            <HiOutlineFire className="tab-icon" />
+            <span>Overdue ({overdueTasks.length})</span>
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'today' ? 'active' : ''} ${todayTasks.length > 0 ? 'has-items' : ''}`}
+            onClick={() => setActiveTab('today')}
+          >
+            <HiOutlineCalendar className="tab-icon" />
+            <span>Today ({todayTasks.length})</span>
+          </button>
         </div>
       )}
 
-      {/* Tasks Grid */}
-      {filteredTasks.length > 0 ? (
-        <div className="tasks-grid">
-          {filteredTasks.map((task, index) => (
-            <div
-              key={task.id}
-              className={`task-card ${isOverdue(task.due_date) ? 'overdue' : isToday(task.due_date) ? 'today' : ''} ${['Done', 'Completed'].includes(task.status) ? 'completed' : ''}`}
-              onClick={() => scrollToProject(task.project_id, task.task_type)}
-              style={{
-                background: getTaskTypeGradient(task.due_date),
-                borderLeftColor: getTaskTypeBorder(task.due_date),
-                animationDelay: `${index * 0.1}s`
-              }}
-            >
-              <div className="task-card-header">
-                <div className="task-status">
-                  {getStatusIcon(task.status)}
-                  <span className="status-text">{task.status}</span>
+      {/* Tasks List */}
+      {getDisplayTasks().length > 0 ? (
+        <div className="tasks-list">
+          {getDisplayTasks().map((task, index) => {
+            const priorityConfig = getPriorityConfig(task.priority);
+            const cardStyle = getTaskCardStyle(task);
+            const daysOverdue = isOverdue(task.due_date) ? getDaysOverdue(task.due_date) : 0;
+
+            return (
+              <div
+                key={`${task.task_type}-${task.id}`}
+                className={`task-card ${isOverdue(task.due_date) ? 'overdue' : ''} ${isToday(task.due_date) ? 'today' : ''}`}
+                style={{
+                  ...cardStyle,
+                  animationDelay: `${index * 0.1}s`
+                }}
+                onClick={() => scrollToProject(task.project_id, task.task_type)}
+              >
+                {/* Urgency Indicator */}
+                {task.urgency > 120 && (
+                  <div className="urgency-badge critical">
+                    <HiOutlineLightningBolt />
+                    Critical
+                  </div>
+                )}
+
+                {/* Task Header */}
+                <div className="task-header">
+                  <div className="task-status-group">
+                    {getStatusIcon(task.status)}
+                    <span className="status-text">{task.status}</span>
+                  </div>
+                  
+                  <div className="task-meta">
+                    {/* Priority Badge */}
+                    <div 
+                      className="priority-badge"
+                      style={{ 
+                        backgroundColor: priorityConfig.bg,
+                        color: priorityConfig.color,
+                        border: `1px solid ${priorityConfig.color}30`
+                      }}
+                    >
+                      {priorityConfig.icon}
+                      <span>{task.priority}</span>
+                    </div>
+                  </div>
                 </div>
-                {task.priority && (
-                  <div 
-                    className="priority-badge"
-                    style={{ backgroundColor: getPriorityColor(task.priority) }}
-                  >
-                    {task.priority}
+
+                {/* Task Description */}
+                <div className="task-description">
+                  {task.description}
+                </div>
+
+                {/* Task Details */}
+                <div className="task-details">
+                  <div className="detail-item">
+                    <span className="detail-label">
+                      {task.task_type === 'personal' ? 'Category:' : 'Project:'}
+                    </span>
+                    <span className="detail-value">{task.customer_name}</span>
+                  </div>
+                  
+                  <div className="detail-item">
+                    <span className="detail-label">Due Date:</span>
+                    <div className={`due-date ${isOverdue(task.due_date) ? 'overdue' : isToday(task.due_date) ? 'today' : ''}`}>
+                      {isOverdue(task.due_date) && (
+                        <>
+                          <FaExclamationTriangle className="date-icon" />
+                          <span className="overdue-days">{daysOverdue} days overdue</span>
+                        </>
+                      )}
+                      {isToday(task.due_date) && (
+                        <>
+                          <FaCalendarDay className="date-icon" />
+                          <span>Due today</span>
+                        </>
+                      )}
+                      <span className="date-text">
+                        {new Date(task.due_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: new Date(task.due_date).getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Task Action */}
+                {task.task_type === 'project' && task.project_id ? (
+                  <div className="task-action">
+                    <FaArrowRight className="action-icon" />
+                    <span>View in Project</span>
+                  </div>
+                ) : (
+                  <div className="task-action personal">
+                    <div className="personal-indicator">
+                      <span>Personal Task</span>
+                    </div>
                   </div>
                 )}
               </div>
-
-              <div className="task-description">
-                {task.description}
-              </div>
-
-              <div className="task-details">
-                <div className="detail-row">
-                  <span className="detail-label">
-                    {task.task_type === 'personal' ? 'Type:' : 'Project:'}
-                  </span>
-                  <span className="detail-value">
-                    {task.customer_name}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Due:</span>
-                  <span className={`detail-value date ${isOverdue(task.due_date) ? 'overdue' : isToday(task.due_date) ? 'today' : ''}`}>
-                    {isOverdue(task.due_date) && <FaExclamationTriangle className="date-icon" />}
-                    {isToday(task.due_date) && <FaCalendarDay className="date-icon" />}
-                    {new Date(task.due_date).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-
-              {task.task_type === 'project' && task.project_id ? (
-                <div className="task-action">
-                  <FaArrowRight className="action-icon" />
-                  <span>View Project</span>
-                </div>
-              ) : (
-                <div className="task-action personal">
-                  <span className="personal-badge">Personal Task</span>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="empty-state">
           <div className="empty-icon">
-            <FaCheckCircle />
+            {activeTab === 'overdue' ? (
+              <HiOutlineFire style={{ color: '#ef4444' }} />
+            ) : activeTab === 'today' ? (
+              <HiOutlineCalendar style={{ color: '#f59e0b' }} />
+            ) : (
+              <FaCheckCircle style={{ color: '#10b981' }} />
+            )}
           </div>
-          <h3 className="empty-title">All Clear!</h3>
+          <h3 className="empty-title">
+            {activeTab === 'overdue' ? 'No Overdue Tasks' : 
+             activeTab === 'today' ? 'Nothing Due Today' : 
+             'All Clear!'}
+          </h3>
           <p className="empty-message">
-            {filter === 'all' ? 
-              "No urgent tasks for today. Great job staying on top of things!" :
-              `No ${filter} tasks found.`
-            }
+            {activeTab === 'overdue' ? 
+              "Great job staying on top of your deadlines!" :
+              activeTab === 'today' ? 
+              "You're all caught up for today. Time to plan ahead!" :
+              "No urgent tasks requiring your attention right now."}
           </p>
         </div>
       )}
 
       <style jsx>{`
         .today-tasks-container {
-          padding: 1.5rem;
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
-          border-radius: 1rem;
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(226, 232, 240, 0.5);
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+          border-radius: 1.25rem;
+          padding: 2rem;
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(226, 232, 240, 0.3);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
         }
 
         .tasks-header {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          margin-bottom: 1.5rem;
-          position: relative;
+          margin-bottom: 2rem;
         }
 
-        .tasks-header.loading {
-          margin-bottom: 1rem;
+        .header-content {
+          display: flex;
+          align-items: center;
+          gap: 1.25rem;
+          margin-bottom: 1.5rem;
         }
 
         .header-icon-wrapper {
@@ -342,24 +467,47 @@ export default function TodayTasks() {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 3rem;
-          height: 3rem;
-          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-          border-radius: 0.75rem;
-          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+          width: 3.5rem;
+          height: 3.5rem;
+          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+          border-radius: 1rem;
+          box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .header-icon-wrapper.loading {
+          animation: pulse 2s ease-in-out infinite;
         }
 
         .header-icon {
-          font-size: 1.25rem;
+          font-size: 1.5rem;
           color: white;
         }
 
-        .sparkle-icon {
+        .urgency-indicator {
           position: absolute;
-          top: -0.25rem;
-          right: -0.25rem;
-          font-size: 0.75rem;
-          color: #fbbf24;
+          top: -0.375rem;
+          right: -0.375rem;
+          width: 1.5rem;
+          height: 1.5rem;
+          background: white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .urgency-icon {
+          font-size: 0.875rem;
+        }
+
+        .urgency-icon.critical {
+          color: #ef4444;
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .urgency-icon.normal {
+          color: #f59e0b;
           animation: sparkle 2s ease-in-out infinite;
         }
 
@@ -368,39 +516,78 @@ export default function TodayTasks() {
         }
 
         .tasks-title {
-          font-size: 1.5rem;
-          font-weight: 700;
+          font-size: 1.875rem;
+          font-weight: 800;
           color: #1e293b;
           margin: 0;
           letter-spacing: -0.025em;
         }
 
         .tasks-subtitle {
-          font-size: 0.875rem;
+          font-size: 1rem;
           color: #64748b;
-          margin: 0.25rem 0 0 0;
+          margin: 0.5rem 0 0 0;
           font-weight: 500;
-        }
-
-        .tasks-stats {
           display: flex;
           align-items: center;
           gap: 0.75rem;
-          background: rgba(255, 255, 255, 0.8);
-          padding: 0.75rem 1rem;
-          border-radius: 0.75rem;
-          border: 1px solid rgba(226, 232, 240, 0.5);
         }
 
-        .stat-item {
+        .urgent-text {
           display: flex;
-          flex-direction: column;
           align-items: center;
-          gap: 0.125rem;
+          gap: 0.375rem;
+          color: #dc2626;
+          font-weight: 600;
         }
 
-        .stat-value {
-          font-size: 1.25rem;
+        .today-text {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          color: #d97706;
+          font-weight: 600;
+        }
+
+        .clear-text {
+          color: #059669;
+          font-weight: 600;
+        }
+
+        .separator {
+          color: #cbd5e1;
+          font-weight: 400;
+        }
+
+        .quick-stats {
+          display: flex;
+          gap: 1rem;
+        }
+
+        .stat-card {
+          background: white;
+          padding: 1rem 1.25rem;
+          border-radius: 0.875rem;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          border: 1px solid rgba(226, 232, 240, 0.5);
+          min-width: 5rem;
+          text-align: center;
+        }
+
+        .stat-card.overdue {
+          border-left: 3px solid #ef4444;
+        }
+
+        .stat-card.today {
+          border-left: 3px solid #f59e0b;
+        }
+
+        .stat-card.priority {
+          border-left: 3px solid #8b5cf6;
+        }
+
+        .stat-number {
+          font-size: 1.75rem;
           font-weight: 800;
           color: #1e293b;
           line-height: 1;
@@ -412,88 +599,80 @@ export default function TodayTasks() {
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.05em;
+          margin-top: 0.25rem;
         }
 
-        .stat-divider {
-          width: 1px;
-          height: 2rem;
-          background: rgba(226, 232, 240, 0.8);
-        }
-
-        .filter-tabs {
+        .tab-navigation {
           display: flex;
           gap: 0.5rem;
-          margin-bottom: 1.5rem;
+          margin-bottom: 2rem;
           background: rgba(248, 250, 252, 0.8);
           padding: 0.5rem;
-          border-radius: 0.75rem;
+          border-radius: 1rem;
           border: 1px solid rgba(226, 232, 240, 0.5);
         }
 
-        .filter-tab {
+        .tab-button {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          padding: 0.5rem 0.75rem;
+          padding: 0.75rem 1rem;
           border: none;
           background: transparent;
-          border-radius: 0.5rem;
+          border-radius: 0.75rem;
           cursor: pointer;
           transition: all 0.2s ease;
           font-size: 0.875rem;
-          font-weight: 500;
+          font-weight: 600;
           color: #64748b;
+          position: relative;
         }
 
-        .filter-tab:hover {
+        .tab-button:hover {
           background: rgba(255, 255, 255, 0.8);
           color: #1e293b;
         }
 
-        .filter-tab.active {
-          background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        .tab-button.active {
+          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
           color: white;
-          box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
 
-        .filter-icon {
+        .tab-button.has-items::after {
+          content: '';
+          position: absolute;
+          top: 0.5rem;
+          right: 0.5rem;
+          width: 0.5rem;
+          height: 0.5rem;
+          background: #ef4444;
+          border-radius: 50%;
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        .tab-button.active.has-items::after {
+          background: rgba(255, 255, 255, 0.8);
+        }
+
+        .tab-icon {
           font-size: 1rem;
         }
 
-        .filter-label {
-          font-weight: 600;
-        }
-
-        .filter-count {
-          background: rgba(0, 0, 0, 0.1);
-          color: inherit;
-          padding: 0.125rem 0.375rem;
-          border-radius: 0.75rem;
-          font-size: 0.75rem;
-          font-weight: 700;
-          min-width: 1.25rem;
-          text-align: center;
-        }
-
-        .filter-tab.active .filter-count {
-          background: rgba(255, 255, 255, 0.2);
-        }
-
-        .tasks-grid {
+        .tasks-list {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 1.25rem;
         }
 
         .task-card {
           background: white;
-          border-radius: 0.75rem;
-          padding: 1.25rem;
-          border-left: 4px solid #0ea5e9;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+          border-radius: 1rem;
+          padding: 1.5rem;
+          border: 1px solid #e2e8f0;
           cursor: pointer;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          animation: slideInUp 0.5s ease-out forwards;
+          animation: slideInUp 0.6s ease-out forwards;
           opacity: 0;
           transform: translateY(20px);
           position: relative;
@@ -501,27 +680,8 @@ export default function TodayTasks() {
         }
 
         .task-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        }
-
-        .task-card.overdue {
-          border-left-color: #ef4444;
-        }
-
-        .task-card.today {
-          border-left-color: #f59e0b;
-        }
-
-        .task-card.completed {
-          opacity: 0.8;
-          background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
-          border-left-color: #10b981 !important;
-        }
-
-        .task-card.completed .task-description {
-          text-decoration: line-through;
-          color: #6b7280;
+          transform: translateY(-4px);
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12) !important;
         }
 
         .task-card::before {
@@ -541,21 +701,43 @@ export default function TodayTasks() {
           opacity: 1;
         }
 
-        .task-card-header {
+        .urgency-badge {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          color: white;
+          padding: 0.25rem 0.5rem;
+          border-radius: 0.5rem;
+          font-size: 0.75rem;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .urgency-badge.critical {
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        .task-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 0.75rem;
+          margin-bottom: 1rem;
         }
 
-        .task-status {
+        .task-status-group {
           display: flex;
           align-items: center;
           gap: 0.5rem;
         }
 
         .status-icon {
-          font-size: 0.875rem;
+          font-size: 1rem;
         }
 
         .status-icon.in-progress {
@@ -580,22 +762,30 @@ export default function TodayTasks() {
           color: #475569;
         }
 
+        .task-meta {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
         .priority-badge {
-          padding: 0.25rem 0.5rem;
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          padding: 0.375rem 0.75rem;
           border-radius: 0.75rem;
           font-size: 0.75rem;
           font-weight: 700;
-          color: white;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
 
         .task-description {
-          font-size: 1rem;
+          font-size: 1.125rem;
           font-weight: 600;
           color: #1e293b;
           line-height: 1.5;
-          margin-bottom: 1rem;
+          margin-bottom: 1.25rem;
           word-wrap: break-word;
           overflow-wrap: break-word;
         }
@@ -603,21 +793,20 @@ export default function TodayTasks() {
         .task-details {
           display: flex;
           flex-direction: column;
-          gap: 0.5rem;
-          margin-bottom: 1rem;
+          gap: 0.75rem;
+          margin-bottom: 1.25rem;
         }
 
-        .detail-row {
+        .detail-item {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          justify-content: space-between;
           font-size: 0.875rem;
         }
 
         .detail-label {
           font-weight: 600;
           color: #64748b;
-          min-width: 4rem;
         }
 
         .detail-value {
@@ -625,35 +814,50 @@ export default function TodayTasks() {
           font-weight: 500;
         }
 
-        .detail-value.date {
+        .due-date {
           display: flex;
           align-items: center;
-          gap: 0.25rem;
+          gap: 0.375rem;
+          font-weight: 600;
         }
 
-        .detail-value.date.overdue {
+        .due-date.overdue {
           color: #dc2626;
-          font-weight: 600;
         }
 
-        .detail-value.date.today {
+        .due-date.today {
           color: #d97706;
-          font-weight: 600;
         }
 
         .date-icon {
           font-size: 0.75rem;
         }
 
+        .overdue-days {
+          background: rgba(239, 68, 68, 0.1);
+          color: #dc2626;
+          padding: 0.125rem 0.5rem;
+          border-radius: 0.5rem;
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .date-text {
+          color: #64748b;
+          font-weight: 500;
+        }
+
         .task-action {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          color: #0ea5e9;
+          color: #3b82f6;
           font-size: 0.875rem;
           font-weight: 600;
-          opacity: 0.8;
-          transition: opacity 0.3s ease;
+          opacity: 0.7;
+          transition: all 0.3s ease;
         }
 
         .task-card:hover .task-action {
@@ -666,70 +870,91 @@ export default function TodayTasks() {
         }
 
         .task-card:hover .action-icon {
-          transform: translateX(2px);
+          transform: translateX(3px);
         }
 
         .task-action.personal {
-          justify-content: center;
+          justify-content: flex-end;
         }
 
-        .personal-badge {
+        .personal-indicator {
           background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
           color: white;
-          padding: 0.25rem 0.75rem;
+          padding: 0.375rem 0.875rem;
           border-radius: 1rem;
           font-size: 0.75rem;
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.05em;
+          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
         }
 
         .loading-content {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 1.25rem;
         }
 
-        .task-card.loading {
+        .task-card-skeleton {
           background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
           border: 1px solid #e2e8f0;
-          min-height: 120px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          border-radius: 1rem;
+          padding: 1.5rem;
+          animation: pulse 2s ease-in-out infinite;
         }
 
-        .loading-shimmer {
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
-          animation: shimmer 1.5s ease-in-out infinite;
+        .skeleton-header {
+          height: 1.5rem;
+          background: linear-gradient(90deg, #cbd5e1, #e2e8f0, #cbd5e1);
+          background-size: 200% 100%;
+          animation: shimmer 2s ease-in-out infinite;
+          border-radius: 0.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .skeleton-content {
+          height: 4rem;
+          background: linear-gradient(90deg, #cbd5e1, #e2e8f0, #cbd5e1);
+          background-size: 200% 100%;
+          animation: shimmer 2s ease-in-out infinite;
+          border-radius: 0.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .skeleton-footer {
+          height: 1rem;
+          background: linear-gradient(90deg, #cbd5e1, #e2e8f0, #cbd5e1);
+          background-size: 200% 100%;
+          animation: shimmer 2s ease-in-out infinite;
+          border-radius: 0.5rem;
+          width: 60%;
         }
 
         .empty-state {
           text-align: center;
-          padding: 3rem 1rem;
+          padding: 4rem 2rem;
           color: #64748b;
         }
 
         .empty-icon {
-          font-size: 3rem;
-          color: #10b981;
-          margin-bottom: 1rem;
+          font-size: 4rem;
+          margin-bottom: 1.5rem;
+          opacity: 0.8;
         }
 
         .empty-title {
-          font-size: 1.25rem;
-          font-weight: 600;
+          font-size: 1.5rem;
+          font-weight: 700;
           color: #1e293b;
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.75rem;
         }
 
         .empty-message {
-          font-size: 0.875rem;
+          font-size: 1rem;
           line-height: 1.6;
-          max-width: 300px;
+          max-width: 400px;
           margin: 0 auto;
+          color: #64748b;
         }
 
         @keyframes slideInUp {
@@ -739,57 +964,232 @@ export default function TodayTasks() {
           }
         }
 
+        @keyframes pulse {
+          0%, 100% { 
+            opacity: 1; 
+            transform: scale(1); 
+          }
+          50% { 
+            opacity: 0.8; 
+            transform: scale(1.05); 
+          }
+        }
+
         @keyframes sparkle {
-          0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
-          50% { transform: scale(1.2) rotate(180deg); opacity: 0.8; }
+          0%, 100% { 
+            transform: scale(1) rotate(0deg); 
+            opacity: 1; 
+          }
+          50% { 
+            transform: scale(1.2) rotate(180deg); 
+            opacity: 0.8; 
+          }
         }
 
         @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
+          0% { 
+            background-position: -200% 0; 
+          }
+          100% { 
+            background-position: 200% 0; 
+          }
         }
 
+        /* Mobile Responsive */
         @media (max-width: 768px) {
           .today-tasks-container {
+            padding: 1.5rem;
+            border-radius: 1rem;
+          }
+
+          .header-content {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+          }
+
+          .header-icon-wrapper {
+            width: 3rem;
+            height: 3rem;
+          }
+
+          .header-icon {
+            font-size: 1.25rem;
+          }
+
+          .tasks-title {
+            font-size: 1.5rem;
+          }
+
+          .tasks-subtitle {
+            font-size: 0.875rem;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+          }
+
+          .quick-stats {
+            flex-direction: row;
+            justify-content: space-between;
+            width: 100%;
+          }
+
+          .stat-card {
+            flex: 1;
+            min-width: auto;
+          }
+
+          .tab-navigation {
+            flex-direction: column;
+            gap: 0.25rem;
+          }
+
+          .tab-button {
+            justify-content: space-between;
             padding: 1rem;
           }
 
-          .tasks-header {
+          .task-card {
+            padding: 1.25rem;
+          }
+
+          .task-header {
             flex-direction: column;
             align-items: flex-start;
             gap: 0.75rem;
           }
 
-          .header-icon-wrapper {
-            width: 2.5rem;
-            height: 2.5rem;
+          .task-meta {
+            align-self: flex-end;
           }
 
-          .header-icon {
-            font-size: 1rem;
-          }
-
-          .tasks-stats {
-            align-self: stretch;
-            justify-content: center;
-          }
-
-          .filter-tabs {
-            flex-direction: column;
-            gap: 0.25rem;
-          }
-
-          .filter-tab {
-            justify-content: space-between;
-            padding: 0.75rem;
-          }
-
-          .task-card {
-            padding: 1rem;
+          .urgency-badge {
+            position: relative;
+            top: auto;
+            right: auto;
+            align-self: flex-start;
           }
 
           .task-description {
-            font-size: 0.9rem;
+            font-size: 1rem;
+          }
+
+          .detail-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
+          }
+
+          .due-date {
+            align-self: flex-end;
+          }
+
+          .empty-state {
+            padding: 3rem 1rem;
+          }
+
+          .empty-icon {
+            font-size: 3rem;
+          }
+
+          .empty-title {
+            font-size: 1.25rem;
+          }
+
+          .empty-message {
+            font-size: 0.875rem;
+          }
+        }
+
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+          *,
+          *::before,
+          *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
+
+        /* High Contrast Mode */
+        @media (prefers-contrast: high) {
+          .today-tasks-container {
+            background: white;
+            border: 2px solid #000;
+          }
+
+          .task-card {
+            background: white;
+            border: 1px solid #000;
+          }
+
+          .tasks-title {
+            color: #000;
+          }
+        }
+
+        /* Dark Mode Support */
+        @media (prefers-color-scheme: dark) {
+          .today-tasks-container {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+            border-color: rgba(51, 65, 85, 0.3);
+          }
+
+          .tasks-title {
+            color: #f1f5f9;
+          }
+
+          .tasks-subtitle {
+            color: #94a3b8;
+          }
+
+          .task-card {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(51, 65, 85, 0.5);
+          }
+
+          .task-description {
+            color: #e2e8f0;
+          }
+
+          .detail-label {
+            color: #94a3b8;
+          }
+
+          .detail-value {
+            color: #cbd5e1;
+          }
+
+          .stat-card {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(51, 65, 85, 0.5);
+          }
+
+          .stat-number {
+            color: #f1f5f9;
+          }
+
+          .tab-navigation {
+            background: rgba(15, 23, 42, 0.8);
+            border-color: rgba(51, 65, 85, 0.5);
+          }
+
+          .tab-button {
+            color: #94a3b8;
+          }
+
+          .tab-button:hover {
+            background: rgba(51, 65, 85, 0.5);
+            color: #f1f5f9;
+          }
+
+          .empty-title {
+            color: #f1f5f9;
+          }
+
+          .empty-message {
+            color: #94a3b8;
           }
         }
       `}</style>
