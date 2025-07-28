@@ -1108,10 +1108,6 @@ function CustomerDetails() {
               {customer.customer_name}
             </h1>
             <div className="customer-subtitle">
-              <span className="customer-badge">
-                <FaBuilding />
-                {customer.industry_vertical || 'Industry Not Set'}
-              </span>
               <span className="location-badge">
                 <FaGlobe />
                 {customer.country || 'Location Not Set'}
@@ -1169,20 +1165,6 @@ function CustomerDetails() {
                     All current
                   </>
                 )}
-              </div>
-            </div>
-          </div>
-
-          <div className="overview-card info">
-            <div className="card-icon">
-              <FaUsers />
-            </div>
-            <div className="card-content">
-              <div className="card-value">{customer.key_stakeholders?.length || 0}</div>
-              <div className="card-label">Key Contacts</div>
-              <div className="card-trend">
-                <FaUsers />
-                Stakeholders
               </div>
             </div>
           </div>
@@ -1294,28 +1276,6 @@ function CustomerDetails() {
                       </select>
                     ) : (
                       <div className="info-value">{customer.country || 'Not specified'}</div>
-                    )}
-                  </div>
-
-                  <div className="info-item">
-                    <label className="info-label">
-                      <FaIndustry />
-                      Industry
-                    </label>
-                    {isEditing ? (
-                      <select
-                        name="industry_vertical"
-                        value={editCustomer.industry_vertical || ''}
-                        onChange={handleEditChange}
-                        className="info-select"
-                      >
-                        <option value="">Select Industry</option>
-                        {industryVerticals.map((industry, i) => (
-                          <option key={i} value={industry}>{industry}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <div className="info-value">{customer.industry_vertical || 'Not specified'}</div>
                     )}
                   </div>
 
