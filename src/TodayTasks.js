@@ -31,20 +31,63 @@ export default function TodayTasks() {
     try {
       const today = new Date().toISOString().split("T")[0];
 
-      const { data, error } = await supabase
-        .from("project_tasks")
-        .select("id, description, status, due_date, project_id, priority, projects(customer_name)")
-        .lte("due_date", today)
-        .eq("is_archived", false)
-        .order("due_date", { ascending: true });
+      // Get both project tasks and personal tasks for today and overdue
+      const [projectTasksData, personalTasksData] = await Promise.all([
+        supabase
+          .from("project_tasks")
+          .select("id, description, status, due_date, project_id, priority, projects(customer_name)")
+          .lte("due_date", today)
+          .eq("is_archived", false)
+          .order("due_date", { ascending: true }),
+        supabase
+          .from("personal_tasks")
+          .select("id, description, status, due_date, priority")
+          .lte("due_date", today)
+          .eq("is_archived", false)
+          .order("due_date", { ascending: true })
+      ]);
 
-      if (!error) {
-        const filtered = data.filter(
-          (t) => !["Done", "Completed", "Cancelled/On-hold"].includes(t.status)
-        );
-        setTasks(filtered);
-      } else {
-        console.error("Error loading today's tasks:", error);
+      let allTasks = [];
+
+      // Add project tasks
+      if (projectTasksData.data) {
+        allTasks = [...allTasks, ...projectTasksData.data.map(task => ({
+          ...task,
+          task_type: 'project',
+          customer_name: task.projects?.customer_name || `Project ${task.project_id}`
+        }))];
+      }
+
+      // Add personal tasks
+      if (personalTasksData.data) {
+        allTasks = [...allTasks, ...personalTasksData.data.map(task => ({
+          ...task,
+          task_type: 'personal',
+          customer_name: 'Personal Task',
+          project_id: null
+        }))];
+      }
+
+      // Sort all tasks by due date and priority
+      allTasks.sort((a, b) => {
+        // First sort by due date
+        if (a.due_date !== b.due_date) {
+          return a.due_date.localeCompare(b.due_date);
+        }
+        // Then by priority (High > Medium > Low)
+        const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+        const aPriority = priorityOrder[a.priority] || 0;
+        const bPriority = priorityOrder[b.priority] || 0;
+        return bPriority - aPriority;
+      });
+
+      setTasks(allTasks);
+
+      if (projectTasksData.error) {
+        console.error("Error loading project tasks:", projectTasksData.error);
+      }
+      if (personalTasksData.error) {
+        console.error("Error loading personal tasks:", personalTasksData.error);
       }
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -57,9 +100,9 @@ export default function TodayTasks() {
   const isOverdue = (due) => due && due < today;
   const isToday = (due) => due === today;
 
-  const openCount = tasks.filter((t) => t.status !== "Done").length;
-  const doneCount = tasks.filter((t) => t.status === "Done").length;
-  const overdueCount = tasks.filter((t) => isOverdue(t.due_date)).length;
+  const openCount = tasks.filter((t) => !["Done", "Completed", "Cancelled/On-hold"].includes(t.status)).length;
+  const doneCount = tasks.filter((t) => ["Done", "Completed"].includes(t.status)).length;
+  const overdueCount = tasks.filter((t) => isOverdue(t.due_date) && !["Done", "Completed", "Cancelled/On-hold"].includes(t.status)).length;
   const todayCount = tasks.filter((t) => isToday(t.due_date)).length;
 
   const grouped = {
@@ -71,7 +114,12 @@ export default function TodayTasks() {
     [...grouped.overdue, ...grouped.today] :
     grouped[filter] || [];
 
-  const scrollToProject = (projectId) => {
+  const scrollToProject = (projectId, taskType) => {
+    if (taskType === 'personal' || !projectId) {
+      // For personal tasks, could scroll to a personal tasks section if it exists
+      // or show a message that it's a personal task
+      return;
+    }
     const el = document.getElementById(`project-${projectId}`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -80,6 +128,8 @@ export default function TodayTasks() {
     switch (status) {
       case "In Progress": return <FaPlay className="status-icon in-progress" />;
       case "Open": return <FaClock className="status-icon open" />;
+      case "Done": 
+      case "Completed": return <FaCheckCircle className="status-icon completed" />;
       default: return <FaTasks className="status-icon default" />;
     }
   };
@@ -192,8 +242,8 @@ export default function TodayTasks() {
           {filteredTasks.map((task, index) => (
             <div
               key={task.id}
-              className={`task-card ${isOverdue(task.due_date) ? 'overdue' : isToday(task.due_date) ? 'today' : ''}`}
-              onClick={() => scrollToProject(task.project_id)}
+              className={`task-card ${isOverdue(task.due_date) ? 'overdue' : isToday(task.due_date) ? 'today' : ''} ${['Done', 'Completed'].includes(task.status) ? 'completed' : ''}`}
+              onClick={() => scrollToProject(task.project_id, task.task_type)}
               style={{
                 background: getTaskTypeGradient(task.due_date),
                 borderLeftColor: getTaskTypeBorder(task.due_date),
@@ -221,9 +271,11 @@ export default function TodayTasks() {
 
               <div className="task-details">
                 <div className="detail-row">
-                  <span className="detail-label">Project:</span>
+                  <span className="detail-label">
+                    {task.task_type === 'personal' ? 'Type:' : 'Project:'}
+                  </span>
                   <span className="detail-value">
-                    {task.projects?.customer_name || `Project ${task.project_id}`}
+                    {task.customer_name}
                   </span>
                 </div>
                 <div className="detail-row">
@@ -236,10 +288,16 @@ export default function TodayTasks() {
                 </div>
               </div>
 
-              <div className="task-action">
-                <FaArrowRight className="action-icon" />
-                <span>View Project</span>
-              </div>
+              {task.task_type === 'project' && task.project_id ? (
+                <div className="task-action">
+                  <FaArrowRight className="action-icon" />
+                  <span>View Project</span>
+                </div>
+              ) : (
+                <div className="task-action personal">
+                  <span className="personal-badge">Personal Task</span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -455,6 +513,17 @@ export default function TodayTasks() {
           border-left-color: #f59e0b;
         }
 
+        .task-card.completed {
+          opacity: 0.8;
+          background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
+          border-left-color: #10b981 !important;
+        }
+
+        .task-card.completed .task-description {
+          text-decoration: line-through;
+          color: #6b7280;
+        }
+
         .task-card::before {
           content: '';
           position: absolute;
@@ -495,6 +564,10 @@ export default function TodayTasks() {
 
         .status-icon.open {
           color: #64748b;
+        }
+
+        .status-icon.completed {
+          color: #10b981;
         }
 
         .status-icon.default {
@@ -594,6 +667,21 @@ export default function TodayTasks() {
 
         .task-card:hover .action-icon {
           transform: translateX(2px);
+        }
+
+        .task-action.personal {
+          justify-content: center;
+        }
+
+        .personal-badge {
+          background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+          color: white;
+          padding: 0.25rem 0.75rem;
+          border-radius: 1rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
         .loading-content {
