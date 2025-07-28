@@ -96,8 +96,8 @@ function App() {
           <header className="dashboard-header">
             <div className="header-content">
               <div className="header-info">
-                <h1 className="dashboard-title">Presales Dashboard</h1>
-                <p className="dashboard-subtitle">Your workspace overview</p>
+                <h1 className="dashboard-title">Jonathan's Command Center</h1>
+                <p className="dashboard-subtitle">The Procrastinator's Paradise</p>
               </div>
               <div className="header-status">
                 <div className="status-indicator"></div>
