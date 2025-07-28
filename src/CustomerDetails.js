@@ -1,10 +1,12 @@
-// CustomerDetails.js - Enhanced version with real task management
+// CustomerDetails.js - Enhanced version with improved aesthetics and typography
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './CustomerDetails.css';
 import {
-  FaHome, FaUsers, FaEdit, FaPlus, FaBriefcase, FaTrash, FaSave, FaTimes
+  FaHome, FaUsers, FaEdit, FaPlus, FaBriefcase, FaTrash, FaSave, FaTimes,
+  FaBuilding, FaGlobe, FaIndustry, FaCalendarAlt, FaChartLine, FaCheckCircle,
+  FaClock, FaExclamationTriangle, FaEnvelope, FaPhone, FaDollarSign, FaTasks
 } from 'react-icons/fa';
 
 function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeholder = null, editingIndex = null }) {
@@ -15,7 +17,6 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeh
     phone: ''
   });
 
-  // Initialize form with editing data when editing
   useEffect(() => {
     if (editingStakeholder) {
       setNewStakeholder({
@@ -56,7 +57,6 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeh
       return;
     }
 
-    // Create stakeholder object with all information
     const stakeholderInfo = {
       name: newStakeholder.name,
       role: newStakeholder.role || '',
@@ -68,63 +68,82 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeh
     clearForm();
     onClose();
   };
-// Add these functions to your CustomerDetails.js component
-// Place them after your other helper functions but before the main component return
-
 
   if (!isOpen) return null;
 
   return (
     <div className="modal-backdrop" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-        <h3>{editingStakeholder ? 'Edit Stakeholder' : 'Add New Stakeholder'}</h3>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>{editingStakeholder ? 'Edit Stakeholder' : 'Add New Stakeholder'}</h3>
+          <button className="modal-close-btn" onClick={handleClose}>
+            <FaTimes />
+          </button>
+        </div>
         <form onSubmit={handleSubmit} className="modern-form">
-          <label style={{ gridColumn: 'span 2' }}>
-            Name *
-            <input 
-              name="name" 
-              value={newStakeholder.name} 
-              onChange={handleChange}
-              placeholder="Enter stakeholder name"
-              required
-            />
-          </label>
+          <div className="form-group full-width">
+            <label>
+              <FaUsers className="field-icon" />
+              Name *
+              <input 
+                name="name" 
+                value={newStakeholder.name} 
+                onChange={handleChange}
+                placeholder="Enter stakeholder name"
+                required
+              />
+            </label>
+          </div>
 
-          <label style={{ gridColumn: 'span 2' }}>
-            Role/Title
-            <input 
-              name="role" 
-              value={newStakeholder.role} 
-              onChange={handleChange}
-              placeholder="e.g., CTO, Project Manager, etc."
-            />
-          </label>
+          <div className="form-group">
+            <label>
+              <FaBriefcase className="field-icon" />
+              Role/Title
+              <input 
+                name="role" 
+                value={newStakeholder.role} 
+                onChange={handleChange}
+                placeholder="e.g., CTO, Project Manager"
+              />
+            </label>
+          </div>
 
-          <label>
-            Email
-            <input 
-              name="email" 
-              type="email"
-              value={newStakeholder.email} 
-              onChange={handleChange}
-              placeholder="email@company.com"
-            />
-          </label>
+          <div className="form-group">
+            <label>
+              <FaEnvelope className="field-icon" />
+              Email
+              <input 
+                name="email" 
+                type="email"
+                value={newStakeholder.email} 
+                onChange={handleChange}
+                placeholder="email@company.com"
+              />
+            </label>
+          </div>
 
-          <label>
-            Phone
-            <input 
-              name="phone" 
-              type="tel"
-              value={newStakeholder.phone} 
-              onChange={handleChange}
-              placeholder="+65 1234 5678"
-            />
-          </label>
+          <div className="form-group">
+            <label>
+              <FaPhone className="field-icon" />
+              Phone
+              <input 
+                name="phone" 
+                type="tel"
+                value={newStakeholder.phone} 
+                onChange={handleChange}
+                placeholder="+65 1234 5678"
+              />
+            </label>
+          </div>
           
           <div className="modal-actions">
-            <button type="button" onClick={handleClose}>Cancel</button>
-            <button type="submit">{editingStakeholder ? 'Update Stakeholder' : 'Add Stakeholder'}</button>
+            <button type="button" onClick={handleClose} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              <FaSave />
+              {editingStakeholder ? 'Update Stakeholder' : 'Add Stakeholder'}
+            </button>
           </div>
         </form>
       </div>
@@ -147,7 +166,6 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
     project_type: ''
   });
 
-  // Update customer_name when prop changes
   useEffect(() => {
     if (customerName) {
       setNewProject(prev => ({ ...prev, customer_name: customerName }));
@@ -156,10 +174,9 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
 
   const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
   const salesStages = [
-    'Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery',
-    'PoC', 'RFI', 'RFP', 'SoW'
-  ].sort();
-
+    'Discovery', 'Demo', 'PoC', 'RFI', 'RFP', 'SoW', 
+    'Contracting', 'Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold'
+  ];
   const projectTypes = ['RFP', 'CR'].sort();
 
   const handleChange = (e) => {
@@ -197,7 +214,6 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
     }
 
     try {
-      // Prepare project data with proper field mapping
       const projectData = {
         customer_name: customerName,
         account_manager: newProject.account_manager || null,
@@ -211,7 +227,6 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
         created_at: new Date().toISOString().split('T')[0]
       };
 
-      // Add project_name and project_type if your table supports them
       if (newProject.project_name) {
         projectData.project_name = newProject.project_name;
       }
@@ -219,13 +234,9 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
         projectData.project_type = newProject.project_type;
       }
 
-      console.log('Inserting project:', projectData);
       const { data, error } = await supabase.from('projects').insert([projectData]).select();
       
-      if (error) {
-        console.error('Error details:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       if (data && data.length > 0) {
         onSave(data[0]);
@@ -234,15 +245,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
       }
     } catch (error) {
       console.error('Error adding project:', error);
-      
-      // Handle specific database errors
-      if (error.message.includes('column') && error.message.includes('does not exist')) {
-        alert('Database schema error: Some fields may not exist in your projects table. Please check the console for details.');
-      } else if (error.message.includes('violates')) {
-        alert('Data validation error: Please check all required fields and try again.');
-      } else {
-        alert('Error adding project: ' + error.message);
-      }
+      alert('Error adding project: ' + error.message);
     }
   };
 
@@ -250,117 +253,157 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
 
   return (
     <div className="modal-backdrop" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
-        <h3>Add New Project for {customerName || 'Customer'}</h3>
+      <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Add New Project for {customerName}</h3>
+          <button className="modal-close-btn" onClick={handleClose}>
+            <FaTimes />
+          </button>
+        </div>
         <form onSubmit={handleSubmit} className="modern-form">
-          <label style={{ gridColumn: 'span 2' }}>
-            Project Name *
-            <input 
-              name="project_name" 
-              value={newProject.project_name} 
-              onChange={handleChange}
-              placeholder="Enter project name"
-              required
-            />
-          </label>
+          <div className="form-group full-width">
+            <label>
+              <FaBriefcase className="field-icon" />
+              Project Name *
+              <input 
+                name="project_name" 
+                value={newProject.project_name} 
+                onChange={handleChange}
+                placeholder="Enter project name"
+                required
+              />
+            </label>
+          </div>
 
-          <label>
-            Account Manager
-            <input 
-              name="account_manager" 
-              value={newProject.account_manager} 
-              onChange={handleChange}
-              placeholder="Account manager name"
-            />
-          </label>
+          <div className="form-group">
+            <label>
+              <FaUsers className="field-icon" />
+              Account Manager
+              <input 
+                name="account_manager" 
+                value={newProject.account_manager} 
+                onChange={handleChange}
+                placeholder="Account manager name"
+              />
+            </label>
+          </div>
 
-          <label>
-            Sales Stage *
-            <select name="sales_stage" value={newProject.sales_stage} onChange={handleChange} required>
-              <option value="">Select Stage</option>
-              {salesStages.map((stage, i) => (
-                <option key={i} value={stage}>{stage}</option>
-              ))}
-            </select>
-          </label>
+          <div className="form-group">
+            <label>
+              <FaChartLine className="field-icon" />
+              Sales Stage *
+              <select name="sales_stage" value={newProject.sales_stage} onChange={handleChange} required>
+                <option value="">Select Stage</option>
+                {salesStages.map((stage, i) => (
+                  <option key={i} value={stage}>{stage}</option>
+                ))}
+              </select>
+            </label>
+          </div>
           
-          <label>
-            Product *
-            <select name="product" value={newProject.product} onChange={handleChange} required>
-              <option value="">Select Product</option>
-              {products.map((product, i) => (
-                <option key={i} value={product}>{product}</option>
-              ))}
-            </select>
-          </label>
+          <div className="form-group">
+            <label>
+              <FaBuilding className="field-icon" />
+              Product *
+              <select name="product" value={newProject.product} onChange={handleChange} required>
+                <option value="">Select Product</option>
+                {products.map((product, i) => (
+                  <option key={i} value={product}>{product}</option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-          <label>
-            Project Type
-            <select name="project_type" value={newProject.project_type} onChange={handleChange}>
-              <option value="">Select Type</option>
-              {projectTypes.map((type, i) => (
-                <option key={i} value={type}>{type}</option>
-              ))}
-            </select>
-          </label>
+          <div className="form-group">
+            <label>
+              <FaTasks className="field-icon" />
+              Project Type
+              <select name="project_type" value={newProject.project_type} onChange={handleChange}>
+                <option value="">Select Type</option>
+                {projectTypes.map((type, i) => (
+                  <option key={i} value={type}>{type}</option>
+                ))}
+              </select>
+            </label>
+          </div>
           
-          <label>
-            Deal Value
-            <input 
-              name="deal_value" 
-              type="number" 
-              step="0.01"
-              value={newProject.deal_value} 
-              onChange={handleChange}
-              placeholder="Enter deal value (e.g., 50000)"
-            />
-          </label>
+          <div className="form-group">
+            <label>
+              <FaDollarSign className="field-icon" />
+              Deal Value
+              <input 
+                name="deal_value" 
+                type="number" 
+                step="0.01"
+                value={newProject.deal_value} 
+                onChange={handleChange}
+                placeholder="Enter deal value"
+              />
+            </label>
+          </div>
           
-          <label>
-            Backup Presales
-            <input 
-              name="backup_presales" 
-              value={newProject.backup_presales} 
-              onChange={handleChange}
-              placeholder="Backup presales contact"
-            />
-          </label>
+          <div className="form-group">
+            <label>
+              <FaUsers className="field-icon" />
+              Backup Presales
+              <input 
+                name="backup_presales" 
+                value={newProject.backup_presales} 
+                onChange={handleChange}
+                placeholder="Backup presales contact"
+              />
+            </label>
+          </div>
 
-          <label>
-            Expected Closing Date
-            <input 
-              name="due_date" 
-              type="date"
-              value={newProject.due_date} 
-              onChange={handleChange}
-            />
-          </label>
+          <div className="form-group">
+            <label>
+              <FaCalendarAlt className="field-icon" />
+              Expected Closing Date
+              <input 
+                name="due_date" 
+                type="date"
+                value={newProject.due_date} 
+                onChange={handleChange}
+              />
+            </label>
+          </div>
           
-          <label style={{ gridColumn: 'span 2' }}>
-            Scope
-            <textarea 
-              name="scope" 
-              value={newProject.scope} 
-              onChange={handleChange}
-              rows="3"
-              placeholder="Project scope and objectives"
-            />
-          </label>
+          <div className="form-group full-width">
+            <label>
+              <FaEdit className="field-icon" />
+              Scope
+              <textarea 
+                name="scope" 
+                value={newProject.scope} 
+                onChange={handleChange}
+                rows="3"
+                placeholder="Project scope and objectives"
+              />
+            </label>
+          </div>
           
-          <label style={{ gridColumn: 'span 2' }}>
-            Remarks
-            <textarea 
-              name="remarks" 
-              value={newProject.remarks} 
-              onChange={handleChange}
-              rows="3"
-              placeholder="Project remarks or notes"
-            />
-          </label>
+          <div className="form-group full-width">
+            <label>
+              <FaEdit className="field-icon" />
+              Remarks
+              <textarea 
+                name="remarks" 
+                value={newProject.remarks} 
+                onChange={handleChange}
+                rows="3"
+                placeholder="Project remarks or notes"
+              />
+            </label>
+          </div>
           
           <div className="modal-actions">
-            <button type="button" onClick={handleClose}>Cancel</button>
-            <button type="submit">Save Project</button>
+            <button type="button" onClick={handleClose} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              <FaSave />
+              Save Project
+            </button>
           </div>
         </form>
       </div>
@@ -412,54 +455,76 @@ function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-        <h3>{editingTask ? 'Edit Task' : 'Add New Task'}</h3>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>{editingTask ? 'Edit Task' : 'Add New Task'}</h3>
+          <button className="modal-close-btn" onClick={onClose}>
+            <FaTimes />
+          </button>
+        </div>
         <form onSubmit={handleSubmit} className="modern-form">
-          <label style={{ gridColumn: 'span 2' }}>
-            Task Description *
-            <input 
-              name="description" 
-              value={taskData.description} 
-              onChange={handleChange}
-              placeholder="Enter task description"
-              required
-            />
-          </label>
+          <div className="form-group full-width">
+            <label>
+              <FaTasks className="field-icon" />
+              Task Description *
+              <input 
+                name="description" 
+                value={taskData.description} 
+                onChange={handleChange}
+                placeholder="Enter task description"
+                required
+              />
+            </label>
+          </div>
 
-          <label>
-            Status
-            <select name="status" value={taskData.status} onChange={handleChange}>
-              <option value="Not Started">Not Started</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-            </select>
-          </label>
+          <div className="form-group">
+            <label>
+              <FaChartLine className="field-icon" />
+              Status
+              <select name="status" value={taskData.status} onChange={handleChange}>
+                <option value="Not Started">Not Started</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+              </select>
+            </label>
+          </div>
 
-          <label>
-            Due Date
-            <input 
-              name="due_date" 
-              type="date"
-              value={taskData.due_date} 
-              onChange={handleChange}
-            />
-          </label>
+          <div className="form-group">
+            <label>
+              <FaCalendarAlt className="field-icon" />
+              Due Date
+              <input 
+                name="due_date" 
+                type="date"
+                value={taskData.due_date} 
+                onChange={handleChange}
+              />
+            </label>
+          </div>
 
-          <label style={{ gridColumn: 'span 2' }}>
-            Notes
-            <textarea 
-              name="notes" 
-              value={taskData.notes} 
-              onChange={handleChange}
-              rows="3"
-              placeholder="Additional notes or details"
-            />
-          </label>
+          <div className="form-group full-width">
+            <label>
+              <FaEdit className="field-icon" />
+              Notes
+              <textarea 
+                name="notes" 
+                value={taskData.notes} 
+                onChange={handleChange}
+                rows="3"
+                placeholder="Additional notes or details"
+              />
+            </label>
+          </div>
           
           <div className="modal-actions">
-            <button type="button" onClick={onClose}>Cancel</button>
-            <button type="submit">{editingTask ? 'Update Task' : 'Add Task'}</button>
+            <button type="button" onClick={onClose} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              <FaSave />
+              {editingTask ? 'Update Task' : 'Add Task'}
+            </button>
           </div>
         </form>
       </div>
@@ -481,7 +546,6 @@ function CustomerDetails() {
   const [editingStakeholder, setEditingStakeholder] = useState(null);
   const [editingStakeholderIndex, setEditingStakeholderIndex] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
-  const [activities, setActivities] = useState([]);
   
   // Inline editing states
   const [isEditing, setIsEditing] = useState(false);
@@ -492,7 +556,7 @@ function CustomerDetails() {
   const [activeTab, setActiveTab] = useState('active');
   
   // Task filtering state
-  const [taskFilter, setTaskFilter] = useState('active'); // 'active' or 'all'
+  const [taskFilter, setTaskFilter] = useState('active');
 
   useEffect(() => {
     if (customerId) {
@@ -500,13 +564,12 @@ function CustomerDetails() {
     }
   }, [customerId]);
 
- useEffect(() => {
-  if (customer?.customer_name) {
-    fetchCustomerProjects();
-    fetchCustomerTasks();
-    fetchRecentActivity();
-  }
-}, [customer]);
+  useEffect(() => {
+    if (customer?.customer_name) {
+      fetchCustomerProjects();
+      fetchCustomerTasks();
+    }
+  }, [customer]);
 
   const fetchCustomerDetails = async () => {
     try {
@@ -527,7 +590,6 @@ function CustomerDetails() {
       }
       
       setCustomer(data);
-      // Initialize edit state with current customer data
       setEditCustomer(data);
     } catch (error) {
       console.error('Error fetching customer:', error);
@@ -541,7 +603,6 @@ function CustomerDetails() {
     if (!customer?.customer_name) return;
     
     try {
-      console.log('Fetching projects for customer:', customer.customer_name);
       const { data, error } = await supabase
         .from('projects')
         .select('*')
@@ -552,7 +613,6 @@ function CustomerDetails() {
         console.error('Error fetching projects:', error);
         setProjects([]);
       } else {
-        console.log('Projects found:', data);
         setProjects(data || []);
       }
     } catch (error) {
@@ -565,9 +625,6 @@ function CustomerDetails() {
     if (!customer?.customer_name) return;
     
     try {
-      console.log('Fetching tasks for customer:', customer.customer_name);
-      
-      // First get all projects for this customer
       const { data: customerProjects, error: projectsError } = await supabase
         .from('projects')
         .select('id')
@@ -584,10 +641,8 @@ function CustomerDetails() {
         return;
       }
 
-      // Get project IDs
       const projectIds = customerProjects.map(p => p.id);
 
-      // Fetch tasks for all customer projects
       const { data: customerTasks, error: tasksError } = await supabase
         .from('project_tasks')
         .select(`
@@ -601,7 +656,6 @@ function CustomerDetails() {
         console.error('Error fetching tasks:', tasksError);
         setTasks([]);
       } else {
-        console.log('Tasks found:', customerTasks);
         setTasks(customerTasks || []);
       }
     } catch (error) {
@@ -622,7 +676,6 @@ function CustomerDetails() {
 
       if (error) throw error;
       
-      // Refresh tasks to show updated status
       await fetchCustomerTasks();
     } catch (error) {
       console.error('Error updating task status:', error);
@@ -638,7 +691,6 @@ function CustomerDetails() {
   const handleTaskSaved = async (taskData) => {
     try {
       if (editingTask) {
-        // Update existing task
         const { error } = await supabase
           .from('project_tasks')
           .update(taskData)
@@ -647,15 +699,13 @@ function CustomerDetails() {
         if (error) throw error;
         alert('Task updated successfully!');
       } else {
-        // This shouldn't happen in CustomerDetails since we don't create tasks here
-        // But keeping for consistency
         alert('Task creation not available from customer view. Please use project details.');
         return;
       }
 
       setShowTaskModal(false);
       setEditingTask(null);
-      await fetchCustomerTasks(); // Refresh tasks
+      await fetchCustomerTasks();
     } catch (error) {
       console.error('Error saving task:', error);
       alert('Error saving task: ' + error.message);
@@ -684,11 +734,9 @@ function CustomerDetails() {
   // Inline editing handlers
   const handleEditToggle = () => {
     if (isEditing) {
-      // Cancel editing - reset to original values
       setEditCustomer(customer);
       setIsEditing(false);
     } else {
-      // Start editing
       setIsEditing(true);
     }
   };
@@ -697,7 +745,6 @@ function CustomerDetails() {
     const { name, value, type } = e.target;
     
     if (name === 'key_stakeholders' || name === 'competitors') {
-      // Handle comma-separated lists
       const arrayValue = value.split(',').map(item => item.trim()).filter(item => item);
       setEditCustomer(prev => ({ ...prev, [name]: arrayValue }));
     } else if (type === 'number') {
@@ -715,7 +762,6 @@ function CustomerDetails() {
 
     try {
       setSaving(true);
-      console.log('Updating customer:', editCustomer);
       
       const { data, error } = await supabase
         .from('customers')
@@ -723,10 +769,7 @@ function CustomerDetails() {
         .eq('id', customer.id)
         .select();
       
-      if (error) {
-        console.error('Error details:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       if (data && data.length > 0) {
         setCustomer(data[0]);
@@ -756,30 +799,23 @@ function CustomerDetails() {
 
   const handleStakeholderSaved = async (stakeholderInfo, editingIndex = null) => {
     try {
-      // Get current stakeholders or initialize as empty array
       const currentStakeholders = customer.key_stakeholders || [];
       let updatedStakeholders;
 
       if (editingIndex !== null) {
-        // Update existing stakeholder
         updatedStakeholders = [...currentStakeholders];
         updatedStakeholders[editingIndex] = stakeholderInfo;
       } else {
-        // Add new stakeholder
         updatedStakeholders = [...currentStakeholders, stakeholderInfo];
       }
       
-      // Update customer with new/updated stakeholder
       const { data, error } = await supabase
         .from('customers')
         .update({ key_stakeholders: updatedStakeholders })
         .eq('id', customer.id)
         .select();
       
-      if (error) {
-        console.error('Error details:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       if (data && data.length > 0) {
         setCustomer(data[0]);
@@ -796,21 +832,16 @@ function CustomerDetails() {
     if (!window.confirm('Are you sure you want to remove this stakeholder?')) return;
     
     try {
-      // Get current stakeholders and remove the one at the specified index
       const currentStakeholders = customer.key_stakeholders || [];
       const updatedStakeholders = currentStakeholders.filter((_, index) => index !== stakeholderIndex);
       
-      // Update customer with updated stakeholders list
       const { data, error } = await supabase
         .from('customers')
         .update({ key_stakeholders: updatedStakeholders })
         .eq('id', customer.id)
         .select();
       
-      if (error) {
-        console.error('Error details:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       if (data && data.length > 0) {
         setCustomer(data[0]);
@@ -862,12 +893,10 @@ function CustomerDetails() {
 
   // Helper function to parse stakeholder data
   const parseStakeholder = (stakeholder) => {
-    // If it's already an object, return it
     if (typeof stakeholder === 'object' && stakeholder !== null) {
       return stakeholder;
     }
     
-    // If it's a string, try to parse it as JSON first
     if (typeof stakeholder === 'string') {
       try {
         const parsed = JSON.parse(stakeholder);
@@ -875,7 +904,6 @@ function CustomerDetails() {
           return parsed;
         }
       } catch (e) {
-        // If JSON parsing fails, treat as old format string
         if (stakeholder.includes(' - ')) {
           const [name, role] = stakeholder.split(' - ');
           return { name, role, email: '', phone: '' };
@@ -885,7 +913,6 @@ function CustomerDetails() {
       }
     }
     
-    // Fallback
     return { name: 'Unknown', role: 'Contact', email: '', phone: '' };
   };
 
@@ -893,7 +920,11 @@ function CustomerDetails() {
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     try {
-      return new Date(dateString).toLocaleDateString();
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
     } catch (error) {
       return '-';
     }
@@ -902,27 +933,14 @@ function CustomerDetails() {
   const formatCurrency = (value) => {
     if (!value) return '-';
     try {
-      return `$${parseFloat(value).toLocaleString()}`;
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(parseFloat(value));
     } catch (error) {
       return '-';
-    }
-  };
-
-  const getComplexityClass = (complexity) => {
-    switch (complexity?.toLowerCase()) {
-      case 'high': return 'complexity-high';
-      case 'medium': return 'complexity-medium';
-      case 'low': return 'complexity-low';
-      default: return 'complexity-medium';
-    }
-  };
-
-  const getRelationshipClass = (strength) => {
-    switch (strength?.toLowerCase()) {
-      case 'strong': return 'relationship-strong';
-      case 'medium': return 'relationship-medium';
-      case 'weak': return 'relationship-weak';
-      default: return 'relationship-medium';
     }
   };
 
@@ -981,71 +999,15 @@ function CustomerDetails() {
     }
   };
 
-  // Activity logging function
-const logActivity = async (type, title, description = null, projectId = null) => {
-  try {
-    const { error } = await supabase
-      .from('activity_logs')
-      .insert([{
-        customer_name: customer.customer_name,
-        project_id: projectId,
-        activity_type: type,
-        activity_title: title,
-        activity_description: description,
-        created_by: 'Current User' // TODO: Replace with actual user from auth
-      }]);
-    
-    if (error) {
-      console.error('Error logging activity:', error);
+  const getTaskStatusIcon = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'completed': return <FaCheckCircle />;
+      case 'in progress': return <FaClock />;
+      case 'cancelled/on-hold': return <FaExclamationTriangle />;
+      default: return <FaClock />;
     }
-  } catch (error) {
-    console.error('Error logging activity:', error);
-  }
-};
+  };
 
-// Fetch recent activities
-const fetchRecentActivity = async () => {
-  if (!customer?.customer_name) return;
-  
-  try {
-    console.log('Fetching activities for customer:', customer.customer_name);
-    const { data, error } = await supabase
-      .from('activity_logs')
-      .select(`
-        *,
-        projects(project_name)
-      `)
-      .eq('customer_name', customer.customer_name)
-      .order('created_at', { ascending: false })
-      .limit(10); // Get last 10 activities
-
-    if (error) throw error;
-    
-    console.log('Activities found:', data);
-    setActivities(data || []);
-  } catch (error) {
-    console.error('Error fetching activities:', error);
-    setActivities([]);
-  }
-};
-
-// Time formatting helper
-const formatTimeAgo = (dateString) => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffInMinutes = Math.floor((now - date) / (1000 * 60));
-  
-  if (diffInMinutes < 1) return 'Just now';
-  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
-  
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-  
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
-  
-  return formatDate(dateString);
-};
   const getTaskDueStatus = (dueDate, status) => {
     if (!dueDate || ['Completed', 'Cancelled/On-hold'].includes(status)) return null;
     
@@ -1099,14 +1061,13 @@ const formatTimeAgo = (dateString) => {
     'Startup (1-10)', 'Small (11-50)', 'Medium (51-200)', 'Large (201-1000)', 'Enterprise (1000+)'
   ];
 
-  const revenueRanges = [
-    'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
-  ];
-
   if (loading) {
     return (
       <div className="page-wrapper">
-        <div className="loading-state">Loading customer details...</div>
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading customer details...</p>
+        </div>
       </div>
     );
   }
@@ -1115,8 +1076,10 @@ const formatTimeAgo = (dateString) => {
     return (
       <div className="page-wrapper">
         <div className="error-state">
+          <FaExclamationTriangle className="error-icon" />
+          <h2>Oops! Something went wrong</h2>
           <p>{error || 'Customer not found'}</p>
-          <button onClick={() => navigate('/')} className="back-btn">
+          <button onClick={() => navigate('/')} className="btn-primary">
             <FaHome /> Back to Dashboard
           </button>
         </div>
@@ -1129,274 +1092,373 @@ const formatTimeAgo = (dateString) => {
   const pendingTasksCount = getActiveTasksCount();
   const overdueTasksCount = getOverdueTasksCount();
 
-
   return (
     <div className="page-wrapper">
       <div className="page-content">
-        {/* Back Button */}
-        <button onClick={() => navigate('/')} className="back-btn">
-          <FaHome /> Back to Dashboard
+        {/* Navigation */}
+        <button onClick={() => navigate('/')} className="nav-btn primary">
+          <FaHome />
+          Dashboard
         </button>
 
         {/* Customer Header */}
         <div className="customer-header">
-          <h1 className="customer-name">{customer.customer_name}</h1>
+          <div className="customer-title-section">
+            <h1 className="customer-title">
+              {customer.customer_name}
+            </h1>
+            <div className="customer-subtitle">
+              <span className="customer-badge">
+                <FaBuilding />
+                {customer.industry_vertical || 'Industry Not Set'}
+              </span>
+              <span className="location-badge">
+                <FaGlobe />
+                {customer.country || 'Location Not Set'}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Dashboard Overview */}
-        <div className="dashboard-overview">
-          <div className="overview-card">
-            <div className="overview-content">
-              <div className="metric-item">
-                <div className="metric-value">{getActiveProjectsCount()}</div>
-                <div className="metric-label">Active Projects</div>
-                <div className="metric-trend trend-up">↗ +2 this quarter</div>
+        {/* Overview Cards */}
+        <div className="overview-grid">
+          <div className="overview-card primary">
+            <div className="card-icon">
+              <FaBriefcase />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{getActiveProjectsCount()}</div>
+              <div className="card-label">Active Projects</div>
+              <div className="card-trend">
+                <FaChartLine />
+                {getClosedProjectsCount()} completed
               </div>
-              <div className="metric-item">
-                <div className="metric-value">{pendingTasksCount}</div>
-                <div className="metric-label">Pending Tasks</div>
-                <div className="metric-trend">📅 {tasks.filter(t => getTaskDueStatus(t.due_date, t.status) === 'today').length} due today</div>
+            </div>
+          </div>
+
+          <div className="overview-card success">
+            <div className="card-icon">
+              <FaTasks />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{pendingTasksCount}</div>
+              <div className="card-label">Pending Tasks</div>
+              <div className="card-trend">
+                <FaCalendarAlt />
+                {tasks.filter(t => getTaskDueStatus(t.due_date, t.status) === 'today').length} due today
               </div>
-              <div className="metric-item">
-                <div className="metric-value">{overdueTasksCount}</div>
-                <div className="metric-label">Overdue Items</div>
-                <div className="metric-trend trend-down">{overdueTasksCount > 0 ? '⚠️ Needs attention' : '✅ All current'}</div>
+            </div>
+          </div>
+
+          <div className={`overview-card ${overdueTasksCount > 0 ? 'urgent' : 'normal'}`}>
+            <div className="card-icon">
+              <FaExclamationTriangle />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{overdueTasksCount}</div>
+              <div className="card-label">Overdue Items</div>
+              <div className="card-trend">
+                {overdueTasksCount > 0 ? (
+                  <>
+                    <FaExclamationTriangle />
+                    Needs attention
+                  </>
+                ) : (
+                  <>
+                    <FaCheckCircle />
+                    All current
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="overview-card info">
+            <div className="card-icon">
+              <FaUsers />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{customer.key_stakeholders?.length || 0}</div>
+              <div className="card-label">Key Contacts</div>
+              <div className="card-trend">
+                <FaUsers />
+                Stakeholders
               </div>
             </div>
           </div>
         </div>
 
-        {/* Main Content Grid */}
+        {/* Main Content */}
         <div className="main-content">
           {/* Left Column */}
           <div className="left-column">
-            {/* Customer Information (Compact) */}
+            {/* Customer Information */}
             <div className="section-card">
               <div className="section-header">
-                <h3>
-                  <FaUsers /> Customer Information
-                </h3>
-                <div className="edit-controls">
+                <div className="section-title">
+                  <FaBuilding className="section-icon" />
+                  <h3>Customer Information</h3>
+                </div>
+                <div className="section-actions">
                   {isEditing ? (
                     <>
                       <button 
                         onClick={handleSaveCustomer} 
-                        className="save-btn"
+                        className="btn-success"
                         disabled={saving}
                       >
-                        <FaSave /> {saving ? 'Saving...' : 'Save'}
+                        <FaSave />
+                        {saving ? 'Saving...' : 'Save'}
                       </button>
                       <button 
                         onClick={handleEditToggle} 
-                        className="cancel-btn"
+                        className="btn-secondary"
                         disabled={saving}
                       >
-                        <FaTimes /> Cancel
+                        <FaTimes />
+                        Cancel
                       </button>
                     </>
                   ) : (
-                    <button onClick={handleEditToggle} className="edit-btn">
-                      <FaEdit /> Edit Customer
+                    <button onClick={handleEditToggle} className="btn-primary">
+                      <FaEdit />
+                      Edit
                     </button>
                   )}
                 </div>
               </div>
 
               {isEditing && (
-                <div className="editing-indicator">
-                  📝 Currently editing - Click Save to confirm changes or Cancel to discard
+                <div className="edit-banner">
+                  <FaEdit />
+                  <span>Editing mode - Make your changes and click Save</span>
                 </div>
               )}
 
-              <div className="customer-info-compact">
-                <div className="info-item">
-                  <div className="info-label">Customer Name</div>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="customer_name"
-                      value={editCustomer.customer_name || ''}
-                      onChange={handleEditChange}
-                      className="inline-edit-input"
-                      required
-                    />
-                  ) : (
-                    <div className="info-value">{customer.customer_name}</div>
-                  )}
-                </div>
+              <div className="section-content">
+                <div className="customer-info-grid">
+                  <div className="info-item">
+                    <label className="info-label">
+                      <FaBuilding />
+                      Customer Name
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="customer_name"
+                        value={editCustomer.customer_name || ''}
+                        onChange={handleEditChange}
+                        className="info-input"
+                        required
+                      />
+                    ) : (
+                      <div className="info-value">{customer.customer_name}</div>
+                    )}
+                  </div>
 
-                <div className="info-item">
-                  <div className="info-label">Account Manager</div>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="account_manager"
-                      value={editCustomer.account_manager || ''}
-                      onChange={handleEditChange}
-                      className="inline-edit-input"
-                      placeholder="Account manager name"
-                    />
-                  ) : (
-                    <div className="info-value">{customer.account_manager || 'Not assigned'}</div>
-                  )}
-                </div>
+                  <div className="info-item">
+                    <label className="info-label">
+                      <FaUsers />
+                      Account Manager
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="account_manager"
+                        value={editCustomer.account_manager || ''}
+                        onChange={handleEditChange}
+                        className="info-input"
+                        placeholder="Account manager name"
+                      />
+                    ) : (
+                      <div className="info-value">{customer.account_manager || 'Not assigned'}</div>
+                    )}
+                  </div>
 
-                <div className="info-item">
-                  <div className="info-label">Country</div>
-                  {isEditing ? (
-                    <select
-                      name="country"
-                      value={editCustomer.country || ''}
-                      onChange={handleEditChange}
-                      className="inline-edit-select"
-                    >
-                      <option value="">Select Country</option>
-                      {asiaPacificCountries.map((c, i) => (
-                        <option key={i} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="info-value">{customer.country || 'Not specified'}</div>
-                  )}
-                </div>
+                  <div className="info-item">
+                    <label className="info-label">
+                      <FaGlobe />
+                      Country
+                    </label>
+                    {isEditing ? (
+                      <select
+                        name="country"
+                        value={editCustomer.country || ''}
+                        onChange={handleEditChange}
+                        className="info-select"
+                      >
+                        <option value="">Select Country</option>
+                        {asiaPacificCountries.map((c, i) => (
+                          <option key={i} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="info-value">{customer.country || 'Not specified'}</div>
+                    )}
+                  </div>
 
-                <div className="info-item">
-                  <div className="info-label">Industry</div>
-                  {isEditing ? (
-                    <select
-                      name="industry_vertical"
-                      value={editCustomer.industry_vertical || ''}
-                      onChange={handleEditChange}
-                      className="inline-edit-select"
-                    >
-                      <option value="">Select Industry</option>
-                      {industryVerticals.map((industry, i) => (
-                        <option key={i} value={industry}>{industry}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="info-value">{customer.industry_vertical || 'Not specified'}</div>
-                  )}
-                </div>
+                  <div className="info-item">
+                    <label className="info-label">
+                      <FaIndustry />
+                      Industry
+                    </label>
+                    {isEditing ? (
+                      <select
+                        name="industry_vertical"
+                        value={editCustomer.industry_vertical || ''}
+                        onChange={handleEditChange}
+                        className="info-select"
+                      >
+                        <option value="">Select Industry</option>
+                        {industryVerticals.map((industry, i) => (
+                          <option key={i} value={industry}>{industry}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="info-value">{customer.industry_vertical || 'Not specified'}</div>
+                    )}
+                  </div>
 
-                <div className="info-item">
-                  <div className="info-label">Company Size</div>
-                  {isEditing ? (
-                    <select
-                      name="company_size"
-                      value={editCustomer.company_size || ''}
-                      onChange={handleEditChange}
-                      className="inline-edit-select"
-                    >
-                      <option value="">Select Size</option>
-                      {companySizes.map((size, i) => (
-                        <option key={i} value={size}>{size}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="info-value">{customer.company_size || 'Not specified'}</div>
-                  )}
-                </div>
+                  <div className="info-item">
+                    <label className="info-label">
+                      <FaUsers />
+                      Company Size
+                    </label>
+                    {isEditing ? (
+                      <select
+                        name="company_size"
+                        value={editCustomer.company_size || ''}
+                        onChange={handleEditChange}
+                        className="info-select"
+                      >
+                        <option value="">Select Size</option>
+                        {companySizes.map((size, i) => (
+                          <option key={i} value={size}>{size}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="info-value">{customer.company_size || 'Not specified'}</div>
+                    )}
+                  </div>
 
-                <div className="info-item">
-                  <div className="info-label">Customer Since</div>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      name="year_first_closed"
-                      value={editCustomer.year_first_closed || ''}
-                      onChange={handleEditChange}
-                      className="inline-edit-input"
-                      min="2000"
-                      max={new Date().getFullYear()}
-                      placeholder="e.g., 2022"
-                    />
-                  ) : (
-                    <div className="info-value">{customer.year_first_closed || 'Not specified'}</div>
-                  )}
+                  <div className="info-item">
+                    <label className="info-label">
+                      <FaCalendarAlt />
+                      Customer Since
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        name="year_first_closed"
+                        value={editCustomer.year_first_closed || ''}
+                        onChange={handleEditChange}
+                        className="info-input"
+                        min="2000"
+                        max={new Date().getFullYear()}
+                        placeholder="e.g., 2022"
+                      />
+                    ) : (
+                      <div className="info-value">{customer.year_first_closed || 'Not specified'}</div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Key Stakeholders - moved under customer information */}
+            {/* Key Stakeholders */}
             <div className="section-card">
               <div className="section-header">
-                <h3>👤 Key Stakeholders</h3>
-                <button className="btn btn-secondary" onClick={handleAddStakeholder}>
-                  Add Contact
-                </button>
+                <div className="section-title">
+                  <FaUsers className="section-icon" />
+                  <h3>Key Stakeholders</h3>
+                  <span className="stakeholder-counter">
+                    {customer.key_stakeholders?.length || 0}
+                  </span>
+                </div>
+                <div className="section-actions">
+                  <button className="btn-primary" onClick={handleAddStakeholder}>
+                    <FaPlus />
+                    Add Contact
+                  </button>
+                </div>
               </div>
-              <div className="stakeholder-grid">
-                {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
-                  customer.key_stakeholders.map((stakeholder, index) => {
-                    const parsedStakeholder = parseStakeholder(stakeholder);
-                    const { name, role, email, phone } = parsedStakeholder;
+              <div className="section-content">
+                <div className="stakeholder-grid">
+                  {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
+                    customer.key_stakeholders.map((stakeholder, index) => {
+                      const parsedStakeholder = parseStakeholder(stakeholder);
+                      const { name, role, email, phone } = parsedStakeholder;
 
-                    return (
-                      <div key={index} className="stakeholder-card">
-                        <div className="stakeholder-header">
-                          <div className="stakeholder-info">
+                      return (
+                        <div key={index} className="stakeholder-card">
+                          <div className="stakeholder-header">
+                            <div className="stakeholder-avatar">
+                              <FaUsers />
+                            </div>
+                            <div className="stakeholder-actions">
+                              <button 
+                                className="stakeholder-action-btn edit"
+                                onClick={() => handleEditStakeholder(parsedStakeholder, index)}
+                                title="Edit stakeholder"
+                              >
+                                <FaEdit />
+                              </button>
+                              <button 
+                                className="stakeholder-action-btn delete"
+                                onClick={() => handleDeleteStakeholder(index)}
+                                title="Remove stakeholder"
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="stakeholder-content">
                             <div className="stakeholder-name">{name}</div>
                             <div className="stakeholder-role">{role || 'Contact'}</div>
                             {email && (
                               <div className="stakeholder-contact">
-                                <span className="contact-icon">✉️</span>
+                                <FaEnvelope />
                                 <a href={`mailto:${email}`} className="stakeholder-email">{email}</a>
                               </div>
                             )}
                             {phone && (
                               <div className="stakeholder-contact">
-                                <span className="contact-icon">📞</span>
+                                <FaPhone />
                                 <a href={`tel:${phone}`} className="stakeholder-phone">{phone}</a>
                               </div>
                             )}
                           </div>
-                          <div className="stakeholder-actions">
-                            <button 
-                              className="stakeholder-action-btn edit-action"
-                              onClick={() => handleEditStakeholder(parsedStakeholder, index)}
-                              title="Edit stakeholder"
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                <path d="m18.5 2.5 a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                              </svg>
-                            </button>
-                            <button 
-                              className="stakeholder-action-btn delete-action"
-                              onClick={() => handleDeleteStakeholder(index)}
-                              title="Remove stakeholder"
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="3,6 5,6 21,6"/>
-                                <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
-                                <line x1="10" y1="11" x2="10" y2="17"/>
-                                <line x1="14" y1="11" x2="14" y2="17"/>
-                              </svg>
-                            </button>
-                          </div>
                         </div>
+                      );
+                    })
+                  ) : (
+                    <div className="empty-state">
+                      <div className="empty-icon">
+                        <FaUsers />
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="stakeholder-card stakeholder-empty">
-                    <div className="stakeholder-name">No stakeholders added</div>
-                    <div className="stakeholder-role">Click "Add Contact" to add stakeholders</div>
-                  </div>
-                )}
+                      <h4>No stakeholders added</h4>
+                      <p>Add key contacts to manage relationships effectively</p>
+                      <button onClick={handleAddStakeholder} className="btn-primary">
+                        <FaPlus />
+                        Add First Contact
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Projects Section with Filtering */}
+            {/* Projects Section */}
             <div className="section-card">
               <div className="section-header">
-                <h3>
-                  <FaBriefcase /> Projects Portfolio
-                </h3>
-                <div className="section-controls">
-                  <button onClick={handleAddProject} className="add-btn">
-                    <FaPlus /> Add Project
+                <div className="section-title">
+                  <FaBriefcase className="section-icon" />
+                  <h3>Projects Portfolio</h3>
+                </div>
+                <div className="section-actions">
+                  <button onClick={handleAddProject} className="btn-primary">
+                    <FaPlus />
+                    Add Project
                   </button>
                 </div>
               </div>
@@ -1406,209 +1468,246 @@ const formatTimeAgo = (dateString) => {
                   className={`tab-button ${activeTab === 'active' ? 'active' : ''}`}
                   onClick={() => setActiveTab('active')}
                 >
+                  <FaChartLine />
                   Active Projects ({getActiveProjectsCount()})
                 </button>
                 <button 
                   className={`tab-button ${activeTab === 'closed' ? 'active' : ''}`}
                   onClick={() => setActiveTab('closed')}
                 >
+                  <FaCheckCircle />
                   Closed Projects ({getClosedProjectsCount()})
                 </button>
                 <button 
                   className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
                   onClick={() => setActiveTab('all')}
                 >
+                  <FaBriefcase />
                   All Projects ({projects.length})
                 </button>
               </div>
 
-              <div className="tab-content">
+              <div className="section-content">
                 {filteredProjects.length > 0 ? (
-                  filteredProjects.map((project) => (
-                    <div key={project.id} className="project-item">
-                      <div className="project-header">
-                        <button
-                          onClick={() => handleProjectClick(project.id, project.project_name)}
-                          className="project-name"
-                        >
-                          📁 {project.project_name || project.customer_name || 'Unnamed Project'}
-                        </button>
-                        <span className={`project-stage stage-${project.sales_stage?.toLowerCase().replace(/[\s-]/g, '-')}`}>
-                          {project.sales_stage || 'No Stage'}
-                        </span>
-                      </div>
-                      <div className="project-details">
-                        <div className="project-meta">
-                          Due: {formatDate(project.due_date)} • Account Manager: {project.account_manager || 'Not assigned'}
+                  <div className="project-list">
+                    {filteredProjects.map((project) => (
+                      <div key={project.id} className="project-item">
+                        <div className="project-header">
+                          <button
+                            onClick={() => handleProjectClick(project.id, project.project_name)}
+                            className="project-name"
+                          >
+                            <FaBriefcase />
+                            {project.project_name || project.customer_name || 'Unnamed Project'}
+                          </button>
+                          <span className={`project-stage stage-${project.sales_stage?.toLowerCase().replace(/[\s-]/g, '-')}`}>
+                            {project.sales_stage || 'No Stage'}
+                          </span>
                         </div>
-                        <div className="project-value">
-                          {formatCurrency(project.deal_value)}
+                        <div className="project-details">
+                          <div className="project-meta">
+                            <span className="project-meta-item">
+                              <FaCalendarAlt />
+                              Due: {formatDate(project.due_date)}
+                            </span>
+                            <span className="project-meta-item">
+                              <FaUsers />
+                              AM: {project.account_manager || 'Not assigned'}
+                            </span>
+                          </div>
+                          <div className="project-value">
+                            <FaDollarSign />
+                            {formatCurrency(project.deal_value)}
+                          </div>
+                        </div>
+                        {project.scope && (
+                          <div className="project-scope">
+                            {project.scope}
+                          </div>
+                        )}
+                        <div className="project-actions">
+                          <button 
+                            className="project-action-btn delete" 
+                            onClick={() => handleDeleteProject(project.id)}
+                            title="Delete project"
+                          >
+                            <FaTrash />
+                          </button>
                         </div>
                       </div>
-                      {project.scope && (
-                        <div className="project-scope">
-                          {project.scope}
-                        </div>
-                      )}
-                      <div className="project-actions">
-                        <button 
-                          className="delete-btn" 
-                          onClick={() => handleDeleteProject(project.id)}
-                          title="Delete project"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 ) : (
                   <div className="empty-state">
-                    <div className="empty-state-icon">📁</div>
-                    <p>No projects found for this filter.</p>
-                    {activeTab === 'active' && (
-                      <button onClick={handleAddProject} className="add-first-project-btn">
-                        <FaPlus /> Add First Project
-                      </button>
-                    )}
+                    <div className="empty-icon">
+                      <FaBriefcase />
+                    </div>
+                    <h4>No projects found</h4>
+                    <p>Start by creating your first project for this customer</p>
+                    <button onClick={handleAddProject} className="btn-primary">
+                      <FaPlus />
+                      Add First Project
+                    </button>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-         {/* Right Column */}
+          {/* Right Column */}
           <div className="right-column">
-            {/* Task List */}
+            {/* Task Summary Analytics */}
             <div className="section-card">
               <div className="section-header">
-                <h3>✓ Active Tasks</h3>
-                <div className="filter-toggle">
-                  <button 
-                    className={taskFilter === 'active' ? 'active' : ''}
-                    onClick={() => setTaskFilter('active')}
-                  >
-                    Active Tasks
-                  </button>
-                  <button 
-                    className={taskFilter === 'all' ? 'active' : ''}
-                    onClick={() => setTaskFilter('all')}
-                  >
-                    All Tasks
-                  </button>
+                <div className="section-title">
+                  <FaChartLine className="section-icon" />
+                  <h3>Task Overview</h3>
                 </div>
               </div>
-              <div className="tasks-content">
-                {filteredTasks.length > 0 ? (
-                  filteredTasks.map((task) => (
-                    <div key={task.id} className="task-item">
-                      <input 
-                        type="checkbox" 
-                        className="task-checkbox"
-                        checked={task.status === 'Completed'}
-                        onChange={() => handleTaskStatusChange(task.id, task.status)}
-                      />
-                      <div className="task-content">
-                        <div className="task-name">{task.description}</div>
-                        <div className="task-project">
-                          {task.projects?.project_name || 'Unknown Project'} • 
-                          <span className={`task-status ${getTaskStatusClass(task.status)}`}>
-                            {task.status}
-                          </span>
-                        </div>
-                      </div>
-                      <div className={`task-due due-${getTaskDueStatus(task.due_date, task.status) || 'normal'}`}>
-                        {formatTaskDueDate(task.due_date, task.status)}
-                      </div>
-                      <div className="task-actions" style={{ opacity: 0, transition: 'opacity 0.2s', marginLeft: '8px' }}>
-                        <button 
-                          onClick={() => handleEditTask(task)}
-                          className="edit-task-btn"
-                          title="Edit task"
-                          style={{ 
-                            background: '#f59e0b', 
-                            color: 'white', 
-                            border: 'none', 
-                            borderRadius: '4px', 
-                            width: '24px', 
-                            height: '24px', 
-                            cursor: 'pointer',
-                            marginRight: '4px',
-                            fontSize: '12px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <FaEdit />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="delete-task-btn"
-                          title="Delete task"
-                          style={{ 
-                            background: '#ef4444', 
-                            color: 'white', 
-                            border: 'none', 
-                            borderRadius: '4px', 
-                            width: '24px', 
-                            height: '24px', 
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
+              <div className="section-content">
+                <div className="task-analytics-grid">
+                  <div className="analytics-item">
+                    <div className="analytics-icon completed">
+                      <FaCheckCircle />
                     </div>
-                  ))
-                ) : (
-                  <div className="empty-state">
-                    <div className="empty-state-icon">✓</div>
-                    <p>No {taskFilter === 'active' ? 'active ' : ''}tasks found for this customer.</p>
-                    <p style={{ fontSize: '14px', color: '#6b7280' }}>
-                      Tasks are managed from individual project pages.
-                    </p>
+                    <div className="analytics-content">
+                      <div className="analytics-value">{tasks.filter(t => t.status === 'Completed').length}</div>
+                      <div className="analytics-label">Completed</div>
+                    </div>
+                  </div>
+                  
+                  <div className="analytics-item">
+                    <div className="analytics-icon active">
+                      <FaClock />
+                    </div>
+                    <div className="analytics-content">
+                      <div className="analytics-value">{getActiveTasksCount()}</div>
+                      <div className="analytics-label">Active</div>
+                    </div>
+                  </div>
+                  
+                  <div className="analytics-item">
+                    <div className="analytics-icon overdue">
+                      <FaExclamationTriangle />
+                    </div>
+                    <div className="analytics-content">
+                      <div className="analytics-value">{overdueTasksCount}</div>
+                      <div className="analytics-label">Overdue</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                {tasks.length > 0 && (
+                  <div className="progress-section">
+                    <div className="progress-header">
+                      <span className="progress-label">Overall Progress</span>
+                      <span className="progress-percentage">
+                        {Math.round((tasks.filter(t => t.status === 'Completed').length / tasks.length) * 100)}%
+                      </span>
+                    </div>
+                    <div className="progress-bar">
+                      <div 
+                        className="progress-fill" 
+                        style={{ 
+                          width: `${Math.round((tasks.filter(t => t.status === 'Completed').length / tasks.length) * 100)}%` 
+                        }}
+                      ></div>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
-           {/* Recent Activity */}
+            {/* Active Tasks */}
             <div className="section-card">
               <div className="section-header">
-                <h3>📈 Recent Activity</h3>
-                <button className="btn btn-secondary">View All</button>
+                <div className="section-title">
+                  <FaTasks className="section-icon" />
+                  <h3>Active Tasks</h3>
+                </div>
+                <div className="filter-toggle">
+                  <button 
+                    className={taskFilter === 'active' ? 'active' : ''}
+                    onClick={() => setTaskFilter('active')}
+                  >
+                    Active
+                  </button>
+                  <button 
+                    className={taskFilter === 'all' ? 'active' : ''}
+                    onClick={() => setTaskFilter('all')}
+                  >
+                    All
+                  </button>
+                </div>
               </div>
-              <div className="activity-content">
-                {activities.length > 0 ? (
-                  activities.map((activity) => (
-                    <div key={activity.id} className="timeline-item">
-                      <div className={`timeline-icon ${activity.activity_type || 'general'}`}>
-                        {activity.activity_type === 'project' ? '📁' : 
-                         activity.activity_type === 'meeting' ? '📅' : 
-                         activity.activity_type === 'email' ? '✉️' : 
-                         activity.activity_type === 'task' ? '✓' : '📝'}
-                      </div>
-                      <div className="timeline-content">
-                        <div className="timeline-title">{activity.activity_title}</div>
-                        <div className="timeline-meta">
-                          {activity.projects?.project_name && `${activity.projects.project_name} • `}
-                          {formatTimeAgo(activity.created_at)}
-                          {activity.created_by && ` • by ${activity.created_by}`}
+              <div className="section-content">
+                {filteredTasks.length > 0 ? (
+                  <div className="task-list compact">
+                    {filteredTasks.slice(0, 8).map((task) => (
+                      <div key={task.id} className="task-item compact">
+                        <div className="task-main-content">
+                          <div className="task-header">
+                            <input 
+                              type="checkbox" 
+                              className="task-checkbox"
+                              checked={task.status === 'Completed'}
+                              onChange={() => handleTaskStatusChange(task.id, task.status)}
+                            />
+                            <div className="task-title">{task.description}</div>
+                            <div className="task-status-badge">
+                              {getTaskStatusIcon(task.status)}
+                              <span className={getTaskStatusClass(task.status)}>
+                                {task.status}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="task-meta">
+                            <span className="task-project">
+                              <FaBriefcase />
+                              {task.projects?.project_name || 'Unknown Project'}
+                            </span>
+                            {task.due_date && (
+                              <span className={`task-due due-${getTaskDueStatus(task.due_date, task.status) || 'normal'}`}>
+                                <FaCalendarAlt />
+                                {formatTaskDueDate(task.due_date, task.status)}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        {activity.activity_description && (
-                          <div className="timeline-description">{activity.activity_description}</div>
-                        )}
+                        <div className="task-actions">
+                          <button 
+                            onClick={() => handleEditTask(task)}
+                            className="task-action-btn edit"
+                            title="Edit task"
+                          >
+                            <FaEdit />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="task-action-btn delete"
+                            title="Delete task"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                    {filteredTasks.length > 8 && (
+                      <div className="task-view-more">
+                        <button className="btn-secondary compact">
+                          View All {filteredTasks.length} Tasks
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <div className="empty-state">
-                    <div className="empty-state-icon">📈</div>
-                    <p>No recent activity found.</p>
+                  <div className="empty-state compact">
+                    <div className="empty-icon">
+                      <FaTasks />
+                    </div>
+                    <h4>No {taskFilter === 'active' ? 'active ' : ''}tasks</h4>
+                    <p>Tasks are managed from individual project pages</p>
                   </div>
                 )}
               </div>
@@ -1617,7 +1716,7 @@ const formatTimeAgo = (dateString) => {
         </div>
       </div>
 
-      {/* Add Stakeholder Modal */}
+      {/* Modals */}
       {customer && (
         <StakeholderModal
           isOpen={showStakeholderModal}
@@ -1633,7 +1732,6 @@ const formatTimeAgo = (dateString) => {
         />
       )}
 
-      {/* Add Project Modal */}
       {customer && (
         <ProjectModal
           isOpen={showProjectModal}
@@ -1643,7 +1741,6 @@ const formatTimeAgo = (dateString) => {
         />
       )}
 
-      {/* Task Modal */}
       <TaskModal
         isOpen={showTaskModal}
         onClose={() => {
