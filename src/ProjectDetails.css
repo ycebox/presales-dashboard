@@ -619,84 +619,329 @@ body {
   transform: scale(1.1);
 }
 
-/* Log List */
-.log-list {
-  display: flex;
-  flex-direction: column;
+/* Enhanced Task Analytics */
+.task-analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
+  margin-bottom: 24px;
 }
 
-.log-item {
+.analytics-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
   border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 20px;
-  transition: all 0.3s ease;
 }
 
-.log-item:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15);
-  transform: translateY(-2px);
+.analytics-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: white;
+  flex-shrink: 0;
 }
 
-.log-header {
+.analytics-icon.completed { background: linear-gradient(135deg, #10b981, #059669); }
+.analytics-icon.active { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.analytics-icon.total { background: linear-gradient(135deg, #3b82f6, #6366f1); }
+
+.analytics-content {
+  flex: 1;
+}
+
+.analytics-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1;
+}
+
+.analytics-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Progress Section */
+.progress-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.progress-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
 }
 
-.log-date {
+.progress-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.progress-percentage {
+  font-size: 18px;
+  font-weight: 700;
+  color: #3b82f6;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #10b981);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* Status Breakdown */
+.status-breakdown {
+  margin-bottom: 24px;
+}
+
+.breakdown-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.status-indicator {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.status-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.status-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  background: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Upcoming Tasks */
+.upcoming-tasks {
+  margin-bottom: 24px;
+}
+
+.upcoming-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upcoming-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upcoming-task {
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.upcoming-task-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upcoming-task-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  line-height: 1.3;
+}
+
+.upcoming-task-due {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
+  font-weight: 500;
+}
+
+.upcoming-task-due.normal { color: #6b7280; }
+.upcoming-task-due.urgent { color: #f59e0b; }
+.upcoming-task-due.overdue { color: #ef4444; }
+
+/* Compact Styles */
+.section-content.compact {
+  padding: 20px;
+}
+
+.log-list.compact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.log-item.compact {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  transition: all 0.3s ease;
+}
+
+.log-item.compact:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.log-content.compact {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.log-text {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.4;
+}
+
+.log-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.log-date-compact {
+  font-size: 11px;
   color: #6b7280;
   font-weight: 500;
 }
 
-.log-action-btn {
-  width: 32px;
-  height: 32px;
+.log-delete-compact {
+  width: 24px;
+  height: 24px;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
+  background: white;
+  color: #ef4444;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
-  background: white;
-  color: #ef4444;
+  font-size: 10px;
   opacity: 0;
+  transition: all 0.3s ease;
 }
 
-.log-item:hover .log-action-btn {
+.log-item.compact:hover .log-delete-compact {
   opacity: 1;
 }
 
-.log-action-btn:hover {
+.log-delete-compact:hover {
   background: #fee2e2;
   transform: scale(1.1);
 }
 
-.log-content {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
+.log-view-more {
+  text-align: center;
+  padding-top: 12px;
 }
 
-.log-icon {
-  color: #3b82f6;
-  margin-top: 2px;
-  flex-shrink: 0;
+.btn-secondary.compact {
+  padding: 8px 16px;
+  font-size: 12px;
 }
 
-.log-content p {
-  margin: 0;
-  line-height: 1.6;
-  color: #374151;
-  font-size: 14px;
+.empty-state.compact {
+  padding: 40px 20px;
+}
+
+.empty-state.compact .empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.empty-state.compact p {
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+/* Reduced spacing for overall layout */
+.section-card {
+  margin-bottom: 24px;
+}
+
+.section-header {
+  padding: 20px 24px;
+}
+
+.section-content {
+  padding: 24px;
+}
+
+.left-column, .right-column {
+  gap: 24px;
+}
+
+.main-content {
+  gap: 24px;
 }
 
 /* Empty States */
