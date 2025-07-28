@@ -1015,56 +1015,165 @@ function ProjectDetails() {
 
           {/* Right Column */}
           <div className="right-column">
-            {/* Project Log */}
+            {/* Enhanced Task Summary */}
+            <div className="section-card">
+              <div className="section-header">
+                <div className="section-title">
+                  <FaChartLine className="section-icon" />
+                  <h3>Task Analytics</h3>
+                </div>
+              </div>
+              <div className="section-content">
+                <div className="task-analytics-grid">
+                  <div className="analytics-item">
+                    <div className="analytics-icon completed">
+                      <FaCheckCircle />
+                    </div>
+                    <div className="analytics-content">
+                      <div className="analytics-value">{getCompletedTasksCount()}</div>
+                      <div className="analytics-label">Completed</div>
+                    </div>
+                  </div>
+                  
+                  <div className="analytics-item">
+                    <div className="analytics-icon active">
+                      <FaClock />
+                    </div>
+                    <div className="analytics-content">
+                      <div className="analytics-value">{getActiveTasksCount()}</div>
+                      <div className="analytics-label">Active</div>
+                    </div>
+                  </div>
+                  
+                  <div className="analytics-item">
+                    <div className="analytics-icon total">
+                      <FaTasks />
+                    </div>
+                    <div className="analytics-content">
+                      <div className="analytics-value">{tasks.length}</div>
+                      <div className="analytics-label">Total</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="progress-section">
+                  <div className="progress-header">
+                    <span className="progress-label">Project Progress</span>
+                    <span className="progress-percentage">{getProgressPercentage()}%</span>
+                  </div>
+                  <div className="progress-bar">
+                    <div 
+                      className="progress-fill" 
+                      style={{ width: `${getProgressPercentage()}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Task Status Breakdown */}
+                <div className="status-breakdown">
+                  <h4 className="breakdown-title">Task Status Breakdown</h4>
+                  <div className="status-list">
+                    {['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'].map(status => {
+                      const count = tasks.filter(task => task.status === status).length;
+                      if (count === 0) return null;
+                      return (
+                        <div key={status} className="status-item">
+                          <div className={`status-indicator ${getTaskStatusClass(status)}`}>
+                            {getTaskStatusIcon(status)}
+                          </div>
+                          <span className="status-name">{status}</span>
+                          <span className="status-count">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Upcoming Due Dates */}
+                {tasks.filter(task => task.due_date && !['Completed', 'Cancelled/On-hold'].includes(task.status)).length > 0 && (
+                  <div className="upcoming-tasks">
+                    <h4 className="upcoming-title">Upcoming Due Dates</h4>
+                    <div className="upcoming-list">
+                      {tasks
+                        .filter(task => task.due_date && !['Completed', 'Cancelled/On-hold'].includes(task.status))
+                        .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
+                        .slice(0, 3)
+                        .map(task => {
+                          const daysUntilDue = Math.ceil((new Date(task.due_date) - new Date()) / (1000 * 60 * 60 * 24));
+                          return (
+                            <div key={task.id} className="upcoming-task">
+                              <div className="upcoming-task-content">
+                                <div className="upcoming-task-title">{task.description}</div>
+                                <div className={`upcoming-task-due ${daysUntilDue < 0 ? 'overdue' : daysUntilDue <= 3 ? 'urgent' : 'normal'}`}>
+                                  <FaCalendarAlt />
+                                  {daysUntilDue < 0 ? `${Math.abs(daysUntilDue)} days overdue` : 
+                                   daysUntilDue === 0 ? 'Due today' : 
+                                   `${daysUntilDue} days left`}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Compact Project Log */}
             <div className="section-card">
               <div className="section-header">
                 <div className="section-title">
                   <FaBookOpen className="section-icon" />
                   <h3>Project Log</h3>
                   <span className="log-counter">
-                    {logs.length} {logs.length === 1 ? 'entry' : 'entries'}
+                    {logs.length}
                   </span>
                 </div>
                 <div className="section-actions">
                   <button onClick={handleAddLog} className="btn-primary">
                     <FaPlus />
-                    Add Entry
                   </button>
                 </div>
               </div>
 
-              <div className="section-content">
+              <div className="section-content compact">
                 {logs.length > 0 ? (
-                  <div className="log-list">
-                    {logs.map((log) => (
-                      <div key={log.id} className="log-item">
-                        <div className="log-header">
-                          <div className="log-date">
-                            <FaCalendarAlt />
-                            {formatDate(log.created_at)}
+                  <div className="log-list compact">
+                    {logs.slice(0, 5).map((log) => (
+                      <div key={log.id} className="log-item compact">
+                        <div className="log-content compact">
+                          <div className="log-text">{log.entry}</div>
+                          <div className="log-meta">
+                            <span className="log-date-compact">
+                              {formatDate(log.created_at)}
+                            </span>
+                            <button 
+                              onClick={() => handleDeleteLog(log.id)}
+                              className="log-delete-compact"
+                              title="Delete"
+                            >
+                              <FaTrash />
+                            </button>
                           </div>
-                          <button 
-                            onClick={() => handleDeleteLog(log.id)}
-                            className="log-action-btn delete"
-                            title="Delete log entry"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                        <div className="log-content">
-                          <FaBookOpen className="log-icon" />
-                          <p>{log.entry}</p>
                         </div>
                       </div>
                     ))}
+                    {logs.length > 5 && (
+                      <div className="log-view-more">
+                        <button className="btn-secondary compact">
+                          View All {logs.length} Entries
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="empty-state">
+                  <div className="empty-state compact">
                     <div className="empty-icon">
                       <FaBookOpen />
                     </div>
-                    <h4>No log entries yet</h4>
-                    <p>Start documenting project progress and important updates</p>
+                    <p>No entries yet</p>
                     <button onClick={handleAddLog} className="btn-primary">
                       <FaPlus />
                       Add Entry
