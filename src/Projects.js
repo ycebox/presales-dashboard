@@ -1,728 +1,638 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import ReactDOM from 'react-dom';
-import { supabase } from './supabaseClient';
-import { Link, useNavigate } from 'react-router-dom';
-import { FaFolderOpen, FaPlus, FaTrash, FaUser, FaUserPlus, FaBuilding, FaGlobe } from 'react-icons/fa';
-import './Projects.css';
+/* ==================== TYPOGRAPHY & FONTS ==================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-function Projects() {
-  const navigate = useNavigate();
-  const [projects, setProjects] = useState([]);
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    country: '',
-    account_manager: '',
-    customer_type: ''
-  });
-  const [showProjectModal, setShowProjectModal] = useState(false);
-  const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [newProject, setNewProject] = useState({
-    customer_id: '',
-    customer_name: '',
-    country: '',
-    account_manager: '',
-    sales_stage: '',
-    product: '',
-    deal_value: '',
-    backup_presales: '',
-    remarks: '',
-    is_archived: 'false'
-  });
-  const [newCustomer, setNewCustomer] = useState({
-    customer_name: '',
-    account_manager: '',
-    country: '',
-    customer_type: 'New',
-    year_first_closed: '',
-    company_size: '',
-    annual_revenue: '',
-    technical_complexity: 'Medium',
-    relationship_strength: 'Medium',
-    health_score: 7,
-    key_stakeholders: [],
-    competitors: [],
-    notes: ''
-  });
-
-  // Static data arrays
-  const asiaPacificCountries = [
-    "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
-    "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
-    "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
-  ].sort();
-
-  const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
-
-  const salesStages = [
-    'Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery',
-    'PoC', 'RFI', 'RFP', 'SoW'
-  ].sort();
-
-  const companySizes = [
-    'Startup (1-10)', 'Small (11-50)', 'Medium (51-200)', 'Large (201-1000)', 'Enterprise (1000+)'
-  ];
-
-  const revenueRanges = [
-    'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
-  ];
-
-  useEffect(() => {
-    fetchProjects();
-  }, [filters]);
-
-  useEffect(() => {
-    console.log('Projects component mounted, fetching customers...');
-    fetchCustomers();
-  }, []);
-
-  const fetchCustomers = async () => {
-    try {
-      console.log('Fetching customers...');
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .order('customer_name', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching customers:', error);
-        return;
-      }
-      
-      console.log('Customers fetched:', data);
-      setCustomers(data || []);
-    } catch (err) {
-      console.error('Unexpected error fetching customers:', err);
-    }
-  };
-
-  const fetchProjects = async () => {
-    setLoading(true);
-    try {
-      // Instead of joining, let's fetch customers with active projects
-      let query = supabase
-        .from('customers')
-        .select('*');
-      
-      // Apply filters to customers table (removed industry_vertical)
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
-          if (key === 'sales_stage' || key === 'product') {
-            // Skip project-specific filters for now
-            return;
-          }
-          query = query.eq(key, value);
-        }
-      });
-
-      const { data, error } = await query.order('customer_name', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching customers:', error);
-        setProjects([]);
-      } else {
-        console.log('Customers with projects:', data);
-        setProjects(data || []);
-      }
-    } catch (err) {
-      console.error('Unexpected error in fetchProjects:', err);
-      setProjects([]);
-    }
-    setLoading(false);
-  };
-
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleNewProjectChange = (e) => {
-    const { name, value } = e.target;
-    setNewProject((prev) => ({ ...prev, [name]: value }));
-
-    if (name === 'customer_id' && value) {
-      const selectedCustomer = customers.find(c => c.id === parseInt(value));
-      if (selectedCustomer) {
-        setNewProject((prev) => ({
-          ...prev,
-          customer_name: selectedCustomer.customer_name,
-          country: selectedCustomer.country,
-          account_manager: selectedCustomer.account_manager
-        }));
-      }
-    }
-  };
-
-  const handleNewCustomerChange = (e) => {
-    const { name, value, type } = e.target;
-    
-    if (name === 'key_stakeholders' || name === 'competitors') {
-      const arrayValue = value.split(',').map(item => item.trim()).filter(item => item);
-      setNewCustomer((prev) => ({ ...prev, [name]: arrayValue }));
-    } else if (type === 'number') {
-      setNewCustomer((prev) => ({ ...prev, [name]: parseFloat(value) || 0 }));
-    } else {
-      setNewCustomer((prev) => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const handleCloseCustomerModal = () => {
-    setShowCustomerModal(false);
-    setNewCustomer({
-      customer_name: '',
-      account_manager: '',
-      country: '',
-      customer_type: 'New',
-      year_first_closed: '',
-      company_size: '',
-      annual_revenue: '',
-      technical_complexity: 'Medium',
-      relationship_strength: 'Medium',
-      health_score: 7,
-      key_stakeholders: [],
-      competitors: [],
-      notes: ''
-    });
-  };
-
-  const handleCloseProjectModal = () => {
-    setShowProjectModal(false);
-    setNewProject({
-      customer_id: '',
-      customer_name: '',
-      country: '',
-      account_manager: '',
-      sales_stage: '',
-      product: '',
-      deal_value: '',
-      backup_presales: '',
-      remarks: '',
-      is_archived: 'false'
-    });
-  };
-
-  const handleAddCustomer = async (e) => {
-    e.preventDefault();
-    
-    try {
-      console.log('Adding customer:', newCustomer);
-      
-      const { data, error } = await supabase.from('customers').insert([newCustomer]).select();
-      
-      if (error) {
-        console.error('Error adding customer:', error);
-        alert(`Error adding customer: ${error.message}`);
-        return;
-      }
-      
-      if (data && data.length > 0) {
-        handleCloseCustomerModal();
-        
-        // Refresh both the customer list and dropdown
-        await fetchCustomers(); // For the dropdown in project modal
-        await fetchProjects(); // For the main table display
-        
-        const newCustomerId = data[0].id;
-        setNewProject((prev) => ({
-          ...prev,
-          customer_id: newCustomerId.toString(),
-          customer_name: data[0].customer_name,
-          country: data[0].country,
-          account_manager: data[0].account_manager
-        }));
-        
-        alert('Customer added successfully!');
-      }
-    } catch (err) {
-      console.error('Unexpected error:', err);
-      alert('An unexpected error occurred. Please try again.');
-    }
-  };
-
-  const handleAddProject = async (e) => {
-    e.preventDefault();
-    const { error } = await supabase.from('projects').insert([newProject]);
-    if (!error) {
-      handleCloseProjectModal();
-      fetchProjects();
-    } else {
-      console.error('Error adding project:', error.message);
-    }
-  };
-
-  const handleDeleteCustomer = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this customer?')) return;
-    const { error } = await supabase.from('customers').delete().eq('id', id);
-    if (!error) {
-      fetchProjects(); // Refresh the customer list
-      fetchCustomers(); // Also refresh the customers dropdown
-    } else {
-      console.error('Delete error:', error.message);
-    }
-  };
-
-  const handleCustomerClick = (customerId, customerName) => {
-    if (customerId) {
-      navigate(`/customer/${customerId}`);
-    } else {
-      console.log('No customer ID found for:', customerName);
-    }
-  };
-
-  // Memoized dropdown options to prevent re-renders and focus loss
-  const customerOptions = useMemo(() => {
-    console.log('Creating customer options from:', customers);
-    return customers.map((customer) => (
-      <option key={customer.id} value={customer.id}>
-        {customer.customer_name} ({customer.country})
-      </option>
-    ));
-  }, [customers]);
-
-  const countryOptions = useMemo(() =>
-    asiaPacificCountries.map((c, i) => (
-      <option key={i} value={c}>{c}</option>
-    )), [asiaPacificCountries]
-  );
-
-  const companySizeOptions = useMemo(() =>
-    companySizes.map((size, i) => (
-      <option key={i} value={size}>{size}</option>
-    )), [companySizes]
-  );
-
-  const revenueOptions = useMemo(() =>
-    revenueRanges.map((range, i) => (
-      <option key={i} value={range}>{range}</option>
-    )), [revenueRanges]
-  );
-
-  const salesStageOptions = useMemo(() =>
-    salesStages.map((s, i) => (
-      <option key={i} value={s}>{s}</option>
-    )), [salesStages]
-  );
-
-  const productOptions = useMemo(() =>
-    products.map((p, i) => (
-      <option key={i} value={p}>{p}</option>
-    )), [products]
-  );
-
-  const Modal = useCallback(({ isOpen, onClose, children }) => {
-    if (!isOpen) return null;
-    
-    return ReactDOM.createPortal(
-      <div className="modal-backdrop" onClick={onClose}>
-        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-          {children}
-        </div>
-      </div>,
-      document.body
-    );
-  }, []);
-
-  return (
-    <>
-      <section className="projects-wrapper">
-        <div className="projects-header-row">
-          <h2 className="projects-header">
-            <FaBuilding /> Customer Portfolio
-          </h2>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button className="add-btn" style={{ backgroundColor: '#10b981' }} onClick={() => setShowCustomerModal(true)}>
-              <FaUserPlus /> Add Customer
-            </button>
-            <button className="add-btn" style={{ backgroundColor: '#a6b2d9' }} onClick={() => setShowProjectModal(true)}>
-              <FaPlus /> Add Project
-            </button>
-          </div>
-        </div>
-
-        <div className="filters updated-filters">
-          <label>
-            <FaGlobe style={{ marginRight: '0.5rem', color: 'var(--color-primary)' }} />
-            Country Filter
-            <select name="country" value={filters.country} onChange={handleFilterChange}>
-              <option value="">All Countries</option>
-              {countryOptions}
-            </select>
-          </label>
-          <label>
-            <FaUser style={{ marginRight: '0.5rem', color: 'var(--color-success)' }} />
-            Account Manager
-            <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
-              <option value="">All Account Managers</option>
-              {[...new Set(projects.map(p => p.account_manager).filter(Boolean))].sort().map((am, i) => (
-                <option key={i} value={am}>{am}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <FaBuilding style={{ marginRight: '0.5rem', color: 'var(--color-neutral-500)' }} />
-            Customer Type
-            <select name="customer_type" value={filters.customer_type} onChange={handleFilterChange}>
-              <option value="">All Customer Types</option>
-              <option value="New">New Customers</option>
-              <option value="Existing">Existing Customers</option>
-            </select>
-          </label>
-        </div>
-
-        {loading ? (
-          <div className="loading-container">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{ 
-                width: '24px', 
-                height: '24px', 
-                border: '3px solid var(--color-neutral-200)', 
-                borderTop: '3px solid var(--color-primary)', 
-                borderRadius: '50%', 
-                animation: 'spin 1s linear infinite' 
-              }}></div>
-              Loading customers...
-            </div>
-          </div>
-        ) : (
-          <div className="table-scroll-wrapper">
-            <div className="table-container">
-              <table className="modern-table project-table">
-                <thead>
-                  <tr>
-                    <th>Customer Details</th>
-                    <th>Location</th>
-                    <th>Account Manager</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'center' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {projects.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" style={{ 
-                        textAlign: 'center', 
-                        padding: '3rem', 
-                        color: 'var(--color-neutral-500)',
-                        fontStyle: 'italic'
-                      }}>
-                        No customers found matching the current filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    projects.map((customer) => (
-                      <tr key={customer.id} id={`customer-${customer.id}`}>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <button
-                              onClick={() => handleCustomerClick(customer.id, customer.customer_name)}
-                              className="customer-link-btn"
-                              title="View customer details"
-                            >
-                              <FaUser size={14} />
-                              {customer.customer_name}
-                            </button>
-                          </div>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <FaGlobe size={12} style={{ color: 'var(--color-neutral-400)' }} />
-                            {customer.country}
-                          </div>
-                        </td>
-                        <td>
-                          <div style={{ 
-                            fontWeight: '600',
-                            color: 'var(--color-neutral-700)'
-                          }}>
-                            {customer.account_manager}
-                          </div>
-                        </td>
-                        <td>
-                          <span className={customer.customer_type === 'Existing' ? 'existing-customer' : 'new-customer'}>
-                            {customer.customer_type || 'New'}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <button 
-                            className="delete-btn" 
-                            onClick={() => handleDeleteCustomer(customer.id)}
-                            title="Delete customer"
-                          >
-                            <FaTrash />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </section>
-      
-      <Modal isOpen={showCustomerModal} onClose={handleCloseCustomerModal}>
-        <h3>Add New Customer</h3>
-        <form onSubmit={handleAddCustomer} className="modern-form">
-          <label>
-            Customer Name *
-            <input 
-              name="customer_name" 
-              value={newCustomer.customer_name} 
-              onChange={handleNewCustomerChange} 
-              required 
-              placeholder="Enter customer name"
-            />
-          </label>
-          
-          <label>
-            Account Manager *
-            <input 
-              name="account_manager" 
-              value={newCustomer.account_manager} 
-              onChange={handleNewCustomerChange} 
-              required 
-              placeholder="Enter account manager name"
-            />
-          </label>
-          
-          <label>
-            Country *
-            <select 
-              name="country" 
-              value={newCustomer.country} 
-              onChange={handleNewCustomerChange} 
-              required
-            >
-              <option value="">Select Country</option>
-              {countryOptions}
-            </select>
-          </label>
-          
-          <label>
-            Customer Type
-            <select 
-              name="customer_type" 
-              value={newCustomer.customer_type} 
-              onChange={handleNewCustomerChange}
-            >
-              <option value="New">New Customer</option>
-              <option value="Existing">Existing Customer</option>
-            </select>
-          </label>
-          
-          <label>
-            Year First Closed
-            <input 
-              name="year_first_closed" 
-              type="number"
-              min="2000"
-              max={new Date().getFullYear()}
-              value={newCustomer.year_first_closed} 
-              onChange={handleNewCustomerChange}
-              placeholder="e.g., 2022"
-            />
-          </label>
-          
-          <label>
-            Company Size
-            <select 
-              name="company_size" 
-              value={newCustomer.company_size} 
-              onChange={handleNewCustomerChange}
-            >
-              <option value="">Select Company Size</option>
-              {companySizeOptions}
-            </select>
-          </label>
-          
-          <label>
-            Annual Revenue
-            <select 
-              name="annual_revenue" 
-              value={newCustomer.annual_revenue} 
-              onChange={handleNewCustomerChange}
-            >
-              <option value="">Select Revenue Range</option>
-              {revenueOptions}
-            </select>
-          </label>
-          
-          <label>
-            Technical Complexity
-            <select 
-              name="technical_complexity" 
-              value={newCustomer.technical_complexity} 
-              onChange={handleNewCustomerChange}
-            >
-              <option value="Low">Low Complexity</option>
-              <option value="Medium">Medium Complexity</option>
-              <option value="High">High Complexity</option>
-            </select>
-          </label>
-          
-          <label>
-            Relationship Strength
-            <select 
-              name="relationship_strength" 
-              value={newCustomer.relationship_strength} 
-              onChange={handleNewCustomerChange}
-            >
-              <option value="Weak">Developing</option>
-              <option value="Medium">Established</option>
-              <option value="Strong">Strategic Partnership</option>
-            </select>
-          </label>
-          
-          <label>
-            Health Score (1-10)
-            <input 
-              name="health_score" 
-              type="number"
-              min="1"
-              max="10"
-              value={newCustomer.health_score} 
-              onChange={handleNewCustomerChange}
-              placeholder="Rate from 1-10"
-            />
-          </label>
-          
-          <label style={{ gridColumn: 'span 2' }}>
-            Key Stakeholders (comma-separated)
-            <input 
-              name="key_stakeholders" 
-              value={newCustomer.key_stakeholders.join(', ')} 
-              onChange={handleNewCustomerChange}
-              placeholder="John Smith, Jane Doe, etc."
-            />
-          </label>
-          
-          <label style={{ gridColumn: 'span 2' }}>
-            Main Competitors (comma-separated)
-            <input 
-              name="competitors" 
-              value={newCustomer.competitors.join(', ')} 
-              onChange={handleNewCustomerChange}
-              placeholder="Company A, Company B, etc."
-            />
-          </label>
-          
-          <label style={{ gridColumn: 'span 2' }}>
-            Additional Notes
-            <textarea 
-              name="notes" 
-              value={newCustomer.notes} 
-              onChange={handleNewCustomerChange}
-              rows="3"
-              style={{ resize: 'vertical' }}
-              placeholder="Any additional information about this customer..."
-            />
-          </label>
-          
-          <div className="modal-actions">
-            <button type="button" onClick={handleCloseCustomerModal}>Cancel</button>
-            <button type="submit">Save Customer</button>
-          </div>
-        </form>
-      </Modal>
-
-      <Modal isOpen={showProjectModal} onClose={handleCloseProjectModal}>
-        <h3>Add New Project</h3>
-        <form onSubmit={handleAddProject} className="modern-form">
-          <label style={{ gridColumn: 'span 2' }}>
-            Select Customer ({customers.length} available)
-            <select 
-              name="customer_id" 
-              value={newProject.customer_id} 
-              onChange={handleNewProjectChange} 
-              required
-            >
-              <option value="">
-                {customers.length === 0 ? 'No customers available - Add one first!' : 'Choose a customer'}
-              </option>
-              {customerOptions}
-            </select>
-            {customers.length === 0 && (
-              <div style={{ 
-                fontSize: '0.8rem', 
-                color: 'var(--color-danger)', 
-                marginTop: '0.5rem',
-                padding: '0.5rem',
-                background: 'rgba(239, 68, 68, 0.1)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid rgba(239, 68, 68, 0.2)'
-              }}>
-                ⚠️ No customers found. Please add a customer first using the "Add Customer" button.
-              </div>
-            )}
-          </label>
-          
-          <label>
-            Sales Stage
-            <select name="sales_stage" value={newProject.sales_stage} onChange={handleNewProjectChange} required>
-              <option value="">Select Sales Stage</option>
-              {salesStageOptions}
-            </select>
-          </label>
-          
-          <label>
-            Product
-            <select name="product" value={newProject.product} onChange={handleNewProjectChange} required>
-              <option value="">Select Product</option>
-              {productOptions}
-            </select>
-          </label>
-          
-          <label>
-            Deal Value ($)
-            <input 
-              name="deal_value" 
-              type="number" 
-              value={newProject.deal_value || ''} 
-              onChange={handleNewProjectChange}
-              placeholder="Enter deal value"
-              min="0"
-              step="0.01"
-            />
-          </label>
-          
-          <label>
-            Backup Presales Engineer
-            <input 
-              name="backup_presales" 
-              value={newProject.backup_presales || ''} 
-              onChange={handleNewProjectChange}
-              placeholder="Enter backup presales name"
-            />
-          </label>
-          
-          <label style={{ gridColumn: 'span 2' }}>
-            Project Remarks
-            <textarea 
-              name="remarks" 
-              value={newProject.remarks || ''} 
-              onChange={handleNewProjectChange}
-              placeholder="Additional project details, requirements, or notes..."
-              rows="3"
-              style={{ resize: 'vertical' }}
-            />
-          </label>
-       
-          <div className="modal-actions">
-            <button type="button" onClick={handleCloseProjectModal}>Cancel</button>
-            <button type="submit">Create Project</button>
-          </div>
-        </form>
-      </Modal>
-
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
-    </>
-  );
+/* ==================== ROOT VARIABLES ==================== */
+:root {
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-success: #10b981;
+  --color-success-hover: #059669;
+  --color-danger: #ef4444;
+  --color-danger-hover: #dc2626;
+  
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+  
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-export default Projects;
+/* ==================== GLOBAL STYLES ==================== */
+* {
+  font-family: var(--font-primary);
+}
+
+/* ==================== MAIN WRAPPER ==================== */
+.projects-wrapper {
+  padding: 2rem 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  min-height: 100vh;
+  position: relative;
+}
+
+/* ==================== HEADER SECTION ==================== */
+.projects-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+  gap: 1rem;
+}
+
+.projects-header {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--color-neutral-900);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  letter-spacing: -0.025em;
+}
+
+.projects-header svg {
+  color: var(--color-primary);
+  -webkit-text-fill-color: var(--color-primary);
+}
+
+/* ==================== BUTTON SYSTEM ==================== */
+.add-btn {
+  background: white;
+  border: 1px solid var(--color-neutral-200);
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-neutral-700);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.add-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transition: left var(--transition-slow);
+}
+
+.add-btn:hover::before {
+  left: 100%;
+}
+
+.add-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-neutral-300);
+}
+
+.add-btn[style*="background-color: #10b981"] {
+  background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
+  color: white;
+  border-color: var(--color-success);
+}
+
+.add-btn[style*="background-color: #10b981"]:hover {
+  background: linear-gradient(135deg, var(--color-success-hover) 0%, #047857 100%);
+  border-color: var(--color-success-hover);
+}
+
+.add-btn[style*="background-color: #a6b2d9"] {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  border-color: #6366f1;
+}
+
+.add-btn[style*="background-color: #a6b2d9"]:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  border-color: #4f46e5;
+}
+
+/* ==================== ENHANCED FILTERS ==================== */
+.filters.updated-filters {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 2.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  position: relative;
+}
+
+.filters.updated-filters::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+  border-radius: var(--radius-xl);
+  pointer-events: none;
+}
+
+.updated-filters label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-neutral-700);
+  gap: 0.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.updated-filters select {
+  padding: 0.875rem 1rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  border: 2px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  background: white;
+  color: var(--color-neutral-800);
+  transition: all var(--transition-normal);
+  cursor: pointer;
+}
+
+.updated-filters select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  transform: translateY(-1px);
+}
+
+.updated-filters select:hover {
+  border-color: var(--color-neutral-300);
+}
+
+/* ==================== ENHANCED TABLE ==================== */
+.table-container {
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  background: white;
+  border: 1px solid var(--color-neutral-200);
+}
+
+.modern-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9375rem;
+  background: white;
+  margin: 0;
+}
+
+.modern-table thead {
+  background: linear-gradient(135deg, var(--color-neutral-50) 0%, var(--color-neutral-100) 100%);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.modern-table thead th {
+  padding: 1.25rem 1.5rem;
+  font-weight: 700;
+  color: var(--color-neutral-800);
+  text-align: left;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--color-neutral-200);
+  position: relative;
+}
+
+.modern-table thead th::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-success) 100%);
+  transform: scaleX(0);
+  transition: transform var(--transition-normal);
+}
+
+.modern-table thead th:hover::after {
+  transform: scaleX(1);
+}
+
+.modern-table tbody tr {
+  transition: all var(--transition-normal);
+  border-bottom: 1px solid var(--color-neutral-100);
+}
+
+.modern-table tbody tr:hover {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.02) 0%, rgba(16, 185, 129, 0.02) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.modern-table tbody td {
+  padding: 1.25rem 1.5rem;
+  vertical-align: middle;
+  font-weight: 500;
+  color: var(--color-neutral-700);
+}
+
+/* ==================== CUSTOMER LINK STYLING ==================== */
+.customer-link-btn {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  border: 2px solid transparent;
+  color: var(--color-success);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  transition: all var(--transition-normal);
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.customer-link-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.2), transparent);
+  transition: left var(--transition-slow);
+}
+
+.customer-link-btn:hover::before {
+  left: 100%;
+}
+
+.customer-link-btn:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%);
+  border-color: var(--color-success);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  color: var(--color-success-hover);
+}
+
+/* ==================== CUSTOMER TYPE BADGES ==================== */
+.external-customer,
+.internal-customer {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  border: 1px solid;
+}
+
+.external-customer {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  color: var(--color-success);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.internal-customer {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+  color: #8b5cf6;
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+/* ==================== DELETE BUTTON ==================== */
+.delete-btn {
+  background: rgba(239, 68, 68, 0.1);
+  border: 2px solid transparent;
+  color: var(--color-danger);
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--color-danger);
+  color: var(--color-danger-hover);
+  transform: scale(1.1);
+}
+
+/* ==================== MODAL SYSTEM ==================== */
+.modal-backdrop {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(15, 23, 42, 0.7) !important;
+  backdrop-filter: blur(8px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+  animation: modalBackdropFadeIn var(--transition-normal) ease-out;
+}
+
+@keyframes modalBackdropFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+.modal-content {
+  background: white !important;
+  padding: 2.5rem !important;
+  border-radius: var(--radius-xl) !important;
+  width: 100% !important;
+  max-width: 700px !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  box-shadow: var(--shadow-xl) !important;
+  position: relative !important;
+  z-index: 10000 !important;
+  pointer-events: auto !important;
+  border: 1px solid var(--color-neutral-200) !important;
+  animation: modalContentSlideIn var(--transition-slow) ease-out;
+}
+
+@keyframes modalContentSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-content h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: var(--color-neutral-900);
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--color-neutral-100);
+}
+
+/* ==================== FORM SYSTEM ==================== */
+.modern-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.modern-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.875rem;
+  color: var(--color-neutral-700);
+  font-weight: 600;
+  gap: 0.5rem;
+}
+
+.modern-form input,
+.modern-form select,
+.modern-form textarea {
+  padding: 0.875rem 1rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  border: 2px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
+  background: white;
+  color: var(--color-neutral-800);
+  transition: all var(--transition-normal);
+  font-family: var(--font-primary);
+}
+
+.modern-form input:focus,
+.modern-form select:focus,
+.modern-form textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.modern-form textarea {
+  min-height: 100px;
+  resize: vertical;
+  font-family: var(--font-primary);
+}
+
+/* ==================== MODAL ACTIONS ==================== */
+.modal-content .modal-actions {
+  grid-column: span 2;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-neutral-200);
+}
+
+.modal-actions button {
+  padding: 0.875rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all var(--transition-normal);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-actions button[type="submit"] {
+  background: linear-gradient(135deg, var(--color-primary) 0%, #3b82f6 100%);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.modal-actions button[type="submit"]:hover {
+  background: linear-gradient(135deg, var(--color-primary-hover) 0%, #2563eb 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-actions button[type="button"] {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-700);
+  border-color: var(--color-neutral-200);
+}
+
+.modal-actions button[type="button"]:hover {
+  background: var(--color-neutral-200);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ==================== LOADING STATE ==================== */
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+  font-size: 1.125rem;
+  color: var(--color-neutral-600);
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+@media (max-width: 1024px) {
+  .projects-wrapper {
+    padding: 1.5rem 1rem;
+  }
+  
+  .projects-header {
+    font-size: 2rem;
+  }
+  
+  .updated-filters {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.25rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .projects-wrapper {
+    padding: 1rem 0.75rem;
+  }
+  
+  .projects-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+  }
+  
+  .projects-header {
+    font-size: 1.75rem;
+  }
+  
+  .modal-content {
+    margin: 1rem;
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 2rem);
+    padding: 1.5rem !important;
+  }
+  
+  .modern-form {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+  
+  .modern-form label[style*="grid-column: span 2"] {
+    grid-column: span 1;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+  
+  .updated-filters {
+    grid-template-columns: 1fr;
+    padding: 1.5rem;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+  }
+  
+  .modern-table {
+    min-width: 600px;
+  }
+}
+
+/* ==================== ACCESSIBILITY ==================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==================== FOCUS STYLES ==================== */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-success) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
