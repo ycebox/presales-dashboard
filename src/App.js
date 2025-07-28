@@ -6,7 +6,6 @@ import TodayTasks from './TodayTasks';
 import TaskSummaryDashboard from './TaskSummaryDashboard';
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
-import MeetingMinutes from './MeetingMinutes';
 import './App.css';
 
 function App() {
@@ -82,72 +81,52 @@ function App() {
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        fontSize: '1.2rem'
-      }}>
-        Initializing dashboard...
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p className="loading-text">Initializing dashboard...</p>
       </div>
     );
   }
 
   return (
     <Router basename="/presales-dashboard">
-      <div className="page-wrapper">
-        <div className="project-container">
-          <h1 className="big-name" style={{ marginBottom: '1.5rem' }}>
-            📋 Jonathan's "It's Fine, Everything's Fine" Dashboard
-          </h1>
+      <div className="app-wrapper">
+        <div className="main-container">
+          {/* Enhanced Header */}
+          <header className="dashboard-header">
+            <div className="header-content">
+              <div className="header-icon">📊</div>
+              <div className="header-text">
+                <h1 className="dashboard-title">Jonathan's Command Center</h1>
+                <p className="dashboard-subtitle">Everything under control, probably</p>
+              </div>
+            </div>
+            <div className="header-accent"></div>
+          </header>
 
           <Routes>
             {/* Main Dashboard Route */}
             <Route
               path="/"
               element={
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr minmax(0, 2fr)',
-                    gap: '5rem',
-                    alignItems: 'flex-start',
-                    width: '100%',
-                  }}
-                >
-                  {/* LEFT COLUMN */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '1.5rem',
-                    }}
-                  >
-                    <div className="section-card">
+                <main className="dashboard-main">
+                  {/* LEFT COLUMN - Summary & Tasks */}
+                  <div className="dashboard-sidebar">
+                    <div className="widget-card summary-widget">
                       <TaskSummaryDashboard />
                     </div>
-                    <div className="section-card">
+                    <div className="widget-card tasks-widget">
                       <TodayTasks />
-                    </div>
-                    <div className="section-card">
-                      <MeetingMinutes />
                     </div>
                   </div>
 
-                  {/* RIGHT COLUMN */}
-                  <div
-                    className="section-card"
-                    style={{
-                      overflowY: 'auto',
-                      maxHeight: '80vh',
-                      borderLeft: '1px solid #e2e8f0',
-                      paddingLeft: '1rem',
-                    }}
-                  >
-                    <Projects />
+                  {/* RIGHT COLUMN - Projects */}
+                  <div className="dashboard-content">
+                    <div className="widget-card projects-widget">
+                      <Projects />
+                    </div>
                   </div>
-                </div>
+                </main>
               }
             />
             
@@ -156,10 +135,6 @@ function App() {
             
             {/* Customer Details Route */}
             <Route path="/customer/:customerId" element={<CustomerDetails />} />
-            
-            {/* Meeting Minutes Routes */}
-            <Route path="/meeting-minutes" element={<MeetingMinutes />} />
-            <Route path="/meeting-minutes/*" element={<MeetingMinutes />} />
           </Routes>
         </div>
       </div>
