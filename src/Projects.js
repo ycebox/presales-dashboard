@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { supabase } from './supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaFolderOpen, FaPlus, FaTrash, FaUser, FaUserPlus } from 'react-icons/fa';
+import { FaFolderOpen, FaPlus, FaTrash, FaUser, FaUserPlus, FaBuilding, FaGlobe } from 'react-icons/fa';
 import './Projects.css';
 
 function Projects() {
@@ -13,7 +13,6 @@ function Projects() {
   const [filters, setFilters] = useState({
     country: '',
     account_manager: '',
-    industry_vertical: '',
     customer_type: ''
   });
   const [showProjectModal, setShowProjectModal] = useState(false);
@@ -34,7 +33,6 @@ function Projects() {
     customer_name: '',
     account_manager: '',
     country: '',
-    industry_vertical: '',
     customer_type: 'New',
     year_first_closed: '',
     company_size: '',
@@ -59,11 +57,6 @@ function Projects() {
   const salesStages = [
     'Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery',
     'PoC', 'RFI', 'RFP', 'SoW'
-  ].sort();
-
-  const industryVerticals = [
-    'Banking', 'Financial Services', 'Insurance', 'Government', 'Healthcare', 'Education', 
-    'Retail', 'Manufacturing', 'Telecommunications', 'Energy & Utilities', 'Transportation', 'Other'
   ].sort();
 
   const companySizes = [
@@ -111,7 +104,7 @@ function Projects() {
         .from('customers')
         .select('*');
       
-      // Apply filters to customers table
+      // Apply filters to customers table (removed industry_vertical)
       Object.entries(filters).forEach(([key, value]) => {
         if (value) {
           if (key === 'sales_stage' || key === 'product') {
@@ -179,7 +172,6 @@ function Projects() {
       customer_name: '',
       account_manager: '',
       country: '',
-      industry_vertical: '',
       customer_type: 'New',
       year_first_closed: '',
       company_size: '',
@@ -293,12 +285,6 @@ function Projects() {
     )), [asiaPacificCountries]
   );
 
-  const industryOptions = useMemo(() =>
-    industryVerticals.map((industry, i) => (
-      <option key={i} value={industry}>{industry}</option>
-    )), [industryVerticals]
-  );
-
   const companySizeOptions = useMemo(() =>
     companySizes.map((size, i) => (
       <option key={i} value={size}>{size}</option>
@@ -341,9 +327,9 @@ function Projects() {
       <section className="projects-wrapper">
         <div className="projects-header-row">
           <h2 className="projects-header">
-            <FaFolderOpen style={{ marginRight: '8px' }} /> Customers
+            <FaBuilding /> Customer Portfolio
           </h2>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             <button className="add-btn" style={{ backgroundColor: '#10b981' }} onClick={() => setShowCustomerModal(true)}>
               <FaUserPlus /> Add Customer
             </button>
@@ -355,86 +341,119 @@ function Projects() {
 
         <div className="filters updated-filters">
           <label>
-            Country
+            <FaGlobe style={{ marginRight: '0.5rem', color: 'var(--color-primary)' }} />
+            Country Filter
             <select name="country" value={filters.country} onChange={handleFilterChange}>
               <option value="">All Countries</option>
               {countryOptions}
             </select>
           </label>
           <label>
+            <FaUser style={{ marginRight: '0.5rem', color: 'var(--color-success)' }} />
             Account Manager
             <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
-              <option value="">All AMs</option>
-              {[...new Set(projects.map(p => p.account_manager).filter(Boolean))].sort().map((c, i) => (
-                <option key={i} value={c}>{c}</option>
+              <option value="">All Account Managers</option>
+              {[...new Set(projects.map(p => p.account_manager).filter(Boolean))].sort().map((am, i) => (
+                <option key={i} value={am}>{am}</option>
               ))}
             </select>
           </label>
           <label>
-            Industry Vertical
-            <select name="industry_vertical" value={filters.industry_vertical} onChange={handleFilterChange}>
-              <option value="">All Industries</option>
-              {industryOptions}
-            </select>
-          </label>
-          <label>
+            <FaBuilding style={{ marginRight: '0.5rem', color: 'var(--color-neutral-500)' }} />
             Customer Type
             <select name="customer_type" value={filters.customer_type} onChange={handleFilterChange}>
-              <option value="">All Types</option>
-              <option value="New">New</option>
-              <option value="Existing">Existing</option>
+              <option value="">All Customer Types</option>
+              <option value="New">New Customers</option>
+              <option value="Existing">Existing Customers</option>
             </select>
           </label>
         </div>
 
         {loading ? (
-          <p>Loading...</p>
+          <div className="loading-container">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ 
+                width: '24px', 
+                height: '24px', 
+                border: '3px solid var(--color-neutral-200)', 
+                borderTop: '3px solid var(--color-primary)', 
+                borderRadius: '50%', 
+                animation: 'spin 1s linear infinite' 
+              }}></div>
+              Loading customers...
+            </div>
+          </div>
         ) : (
           <div className="table-scroll-wrapper">
             <div className="table-container">
               <table className="modern-table project-table">
                 <thead>
                   <tr>
-                    <th>Customer Name</th>
-                    <th>Country</th>
+                    <th>Customer Details</th>
+                    <th>Location</th>
                     <th>Account Manager</th>
-                    <th>Customer Type</th>
+                    <th>Status</th>
                     <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {projects.map((customer) => (
-                    <tr key={customer.id} id={`customer-${customer.id}`}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <button
-                            onClick={() => handleCustomerClick(customer.id, customer.customer_name)}
-                            className="customer-link-btn"
-                            title="View customer details"
-                          >
-                            <FaUser size={12} />
-                            {customer.customer_name}
-                          </button>
-                        </div>
-                      </td>
-                      <td>{customer.country}</td>
-                      <td>{customer.account_manager}</td>
-                      <td>
-                        <span className={customer.customer_type === 'Existing' ? 'existing-customer' : 'new-customer'}>
-                          {customer.customer_type || 'New'}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button 
-                          className="delete-btn" 
-                          onClick={() => handleDeleteCustomer(customer.id)}
-                          title="Delete customer"
-                        >
-                          <FaTrash />
-                        </button>
+                  {projects.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" style={{ 
+                        textAlign: 'center', 
+                        padding: '3rem', 
+                        color: 'var(--color-neutral-500)',
+                        fontStyle: 'italic'
+                      }}>
+                        No customers found matching the current filters.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    projects.map((customer) => (
+                      <tr key={customer.id} id={`customer-${customer.id}`}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <button
+                              onClick={() => handleCustomerClick(customer.id, customer.customer_name)}
+                              className="customer-link-btn"
+                              title="View customer details"
+                            >
+                              <FaUser size={14} />
+                              {customer.customer_name}
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <FaGlobe size={12} style={{ color: 'var(--color-neutral-400)' }} />
+                            {customer.country}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ 
+                            fontWeight: '600',
+                            color: 'var(--color-neutral-700)'
+                          }}>
+                            {customer.account_manager}
+                          </div>
+                        </td>
+                        <td>
+                          <span className={customer.customer_type === 'Existing' ? 'existing-customer' : 'new-customer'}>
+                            {customer.customer_type || 'New'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button 
+                            className="delete-btn" 
+                            onClick={() => handleDeleteCustomer(customer.id)}
+                            title="Delete customer"
+                          >
+                            <FaTrash />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -452,6 +471,7 @@ function Projects() {
               value={newCustomer.customer_name} 
               onChange={handleNewCustomerChange} 
               required 
+              placeholder="Enter customer name"
             />
           </label>
           
@@ -462,6 +482,7 @@ function Projects() {
               value={newCustomer.account_manager} 
               onChange={handleNewCustomerChange} 
               required 
+              placeholder="Enter account manager name"
             />
           </label>
           
@@ -479,26 +500,14 @@ function Projects() {
           </label>
           
           <label>
-            Industry Vertical
-            <select 
-              name="industry_vertical" 
-              value={newCustomer.industry_vertical} 
-              onChange={handleNewCustomerChange}
-            >
-              <option value="">Select Industry</option>
-              {industryOptions}
-            </select>
-          </label>
-          
-          <label>
             Customer Type
             <select 
               name="customer_type" 
               value={newCustomer.customer_type} 
               onChange={handleNewCustomerChange}
             >
-              <option value="New">New</option>
-              <option value="Existing">Existing</option>
+              <option value="New">New Customer</option>
+              <option value="Existing">Existing Customer</option>
             </select>
           </label>
           
@@ -522,7 +531,7 @@ function Projects() {
               value={newCustomer.company_size} 
               onChange={handleNewCustomerChange}
             >
-              <option value="">Select Size</option>
+              <option value="">Select Company Size</option>
               {companySizeOptions}
             </select>
           </label>
@@ -546,9 +555,9 @@ function Projects() {
               value={newCustomer.technical_complexity} 
               onChange={handleNewCustomerChange}
             >
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
+              <option value="Low">Low Complexity</option>
+              <option value="Medium">Medium Complexity</option>
+              <option value="High">High Complexity</option>
             </select>
           </label>
           
@@ -559,9 +568,9 @@ function Projects() {
               value={newCustomer.relationship_strength} 
               onChange={handleNewCustomerChange}
             >
-              <option value="Weak">Weak</option>
-              <option value="Medium">Medium</option>
-              <option value="Strong">Strong</option>
+              <option value="Weak">Developing</option>
+              <option value="Medium">Established</option>
+              <option value="Strong">Strategic Partnership</option>
             </select>
           </label>
           
@@ -574,6 +583,7 @@ function Projects() {
               max="10"
               value={newCustomer.health_score} 
               onChange={handleNewCustomerChange}
+              placeholder="Rate from 1-10"
             />
           </label>
           
@@ -598,13 +608,14 @@ function Projects() {
           </label>
           
           <label style={{ gridColumn: 'span 2' }}>
-            Notes
+            Additional Notes
             <textarea 
               name="notes" 
               value={newCustomer.notes} 
               onChange={handleNewCustomerChange}
               rows="3"
               style={{ resize: 'vertical' }}
+              placeholder="Any additional information about this customer..."
             />
           </label>
           
@@ -619,7 +630,7 @@ function Projects() {
         <h3>Add New Project</h3>
         <form onSubmit={handleAddProject} className="modern-form">
           <label style={{ gridColumn: 'span 2' }}>
-            Customer ({customers.length} available)
+            Select Customer ({customers.length} available)
             <select 
               name="customer_id" 
               value={newProject.customer_id} 
@@ -627,17 +638,21 @@ function Projects() {
               required
             >
               <option value="">
-                {customers.length === 0 ? 'No customers available - Add one first!' : 'Select Customer'}
+                {customers.length === 0 ? 'No customers available - Add one first!' : 'Choose a customer'}
               </option>
               {customerOptions}
             </select>
             {customers.length === 0 && (
               <div style={{ 
                 fontSize: '0.8rem', 
-                color: '#ef4444', 
-                marginTop: '0.5rem' 
+                color: 'var(--color-danger)', 
+                marginTop: '0.5rem',
+                padding: '0.5rem',
+                background: 'rgba(239, 68, 68, 0.1)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid rgba(239, 68, 68, 0.2)'
               }}>
-                No customers found. Please add a customer first using the "Add Customer" button.
+                ⚠️ No customers found. Please add a customer first using the "Add Customer" button.
               </div>
             )}
           </label>
@@ -645,7 +660,7 @@ function Projects() {
           <label>
             Sales Stage
             <select name="sales_stage" value={newProject.sales_stage} onChange={handleNewProjectChange} required>
-              <option value="">Select Stage</option>
+              <option value="">Select Sales Stage</option>
               {salesStageOptions}
             </select>
           </label>
@@ -659,26 +674,53 @@ function Projects() {
           </label>
           
           <label>
-            Deal Value
-            <input name="deal_value" type="number" value={newProject.deal_value || ''} onChange={handleNewProjectChange} />
+            Deal Value ($)
+            <input 
+              name="deal_value" 
+              type="number" 
+              value={newProject.deal_value || ''} 
+              onChange={handleNewProjectChange}
+              placeholder="Enter deal value"
+              min="0"
+              step="0.01"
+            />
           </label>
           
           <label>
-            Backup Presales
-            <input name="backup_presales" value={newProject.backup_presales || ''} onChange={handleNewProjectChange} />
+            Backup Presales Engineer
+            <input 
+              name="backup_presales" 
+              value={newProject.backup_presales || ''} 
+              onChange={handleNewProjectChange}
+              placeholder="Enter backup presales name"
+            />
           </label>
           
           <label style={{ gridColumn: 'span 2' }}>
-            Remarks
-            <input name="remarks" value={newProject.remarks || ''} onChange={handleNewProjectChange} />
+            Project Remarks
+            <textarea 
+              name="remarks" 
+              value={newProject.remarks || ''} 
+              onChange={handleNewProjectChange}
+              placeholder="Additional project details, requirements, or notes..."
+              rows="3"
+              style={{ resize: 'vertical' }}
+            />
           </label>
        
           <div className="modal-actions">
             <button type="button" onClick={handleCloseProjectModal}>Cancel</button>
-            <button type="submit">Save</button>
+            <button type="submit">Create Project</button>
           </div>
         </form>
       </Modal>
+
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </>
   );
 }
