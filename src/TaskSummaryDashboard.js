@@ -284,15 +284,15 @@ export default function TaskSummaryDashboard() {
 
         .summary-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-          gap: 1rem;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 0.75rem;
           margin-bottom: 1rem;
         }
 
         .summary-card {
           position: relative;
-          border-radius: 1rem;
-          padding: 1.25rem;
+          border-radius: 0.75rem;
+          padding: 1rem;
           backdrop-filter: blur(10px);
           border: 1px solid rgba(255, 255, 255, 0.2);
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -301,6 +301,10 @@ export default function TaskSummaryDashboard() {
           animation: fadeInUp 0.6s ease-out forwards;
           opacity: 0;
           transform: translateY(20px);
+          min-height: 110px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
         }
 
         .summary-card:hover {
@@ -320,18 +324,22 @@ export default function TaskSummaryDashboard() {
         .card-header {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          margin-bottom: 0.75rem;
+          justify-content: center;
+          margin-bottom: 0.5rem;
+          position: relative;
         }
 
         .card-icon {
-          font-size: 1.5rem;
+          font-size: 1.25rem;
           filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
         }
 
         .urgent-pulse {
-          width: 0.5rem;
-          height: 0.5rem;
+          position: absolute;
+          top: -0.25rem;
+          right: -0.25rem;
+          width: 0.375rem;
+          height: 0.375rem;
           background: #ef4444;
           border-radius: 50%;
           animation: pulse 1.5s ease-in-out infinite;
@@ -342,27 +350,30 @@ export default function TaskSummaryDashboard() {
         }
 
         .card-value {
-          font-size: 2rem;
+          font-size: 1.5rem;
           font-weight: 800;
           color: white;
-          margin-bottom: 0.25rem;
+          margin-bottom: 0.125rem;
           text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
           font-family: 'Inter', sans-serif;
+          line-height: 1;
         }
 
         .card-label {
-          font-size: 0.875rem;
+          font-size: 0.75rem;
           font-weight: 600;
           color: rgba(255, 255, 255, 0.9);
-          margin-bottom: 0.25rem;
+          margin-bottom: 0.125rem;
           text-transform: uppercase;
           letter-spacing: 0.05em;
+          line-height: 1;
         }
 
         .card-description {
-          font-size: 0.75rem;
+          font-size: 0.625rem;
           color: rgba(255, 255, 255, 0.7);
           font-weight: 500;
+          line-height: 1;
         }
 
         .card-overlay {
@@ -383,18 +394,19 @@ export default function TaskSummaryDashboard() {
 
         .loading-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-          gap: 1rem;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 0.75rem;
         }
 
         .summary-card.loading {
           background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
           border: 1px solid #e2e8f0;
+          min-height: 110px;
         }
 
         .loading-shimmer {
           width: 100%;
-          height: 6rem;
+          height: 100%;
           background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
           animation: shimmer 1.5s ease-in-out infinite;
         }
@@ -486,8 +498,8 @@ export default function TaskSummaryDashboard() {
 
         @media (max-width: 768px) {
           .summary-grid {
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 0.75rem;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
           }
           
           .task-summary-container {
@@ -495,11 +507,40 @@ export default function TaskSummaryDashboard() {
           }
           
           .card-value {
-            font-size: 1.5rem;
+            font-size: 1.25rem;
+          }
+          
+          .card-label {
+            font-size: 0.625rem;
+          }
+          
+          .card-description {
+            font-size: 0.5rem;
           }
           
           .achievement-badge {
             display: none;
+          }
+          
+          .summary-card {
+            min-height: 90px;
+            padding: 0.75rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .summary-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+          }
+          
+          .summary-card {
+            min-height: 80px;
+            padding: 0.5rem;
+          }
+          
+          .card-value {
+            font-size: 1.125rem;
           }
         }
       `}</style>
