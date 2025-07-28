@@ -390,28 +390,28 @@ export default function TodayTasks() {
           align-items: center;
           justify-content: space-between;
           padding: 1rem;
-          border: 1px solid #e5e7eb;
+          border: 1px solid #f3f4f6;
           border-radius: 8px;
           margin-bottom: 0.75rem;
           cursor: pointer;
           transition: all 0.2s ease;
-          background: white;
+          background: #fafafa;
         }
 
         .task-item:hover {
-          border-color: #d1d5db;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-          transform: translateY(-1px);
+          border-color: #e5e7eb;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+          background: #ffffff;
         }
 
         .task-item.overdue {
-          border-left: 4px solid #dc2626;
-          background: #fef2f2;
+          border-left: 3px solid #ef4444;
+          background: #fefefe;
         }
 
         .task-item.today {
-          border-left: 4px solid #d97706;
-          background: #fffbeb;
+          border-left: 3px solid #f59e0b;
+          background: #fefefe;
         }
 
         .task-content {
