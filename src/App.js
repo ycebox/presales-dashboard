@@ -83,7 +83,7 @@ function App() {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
-        <p className="loading-text">Initializing dashboard...</p>
+        <p className="loading-text">Loading dashboard...</p>
       </div>
     );
   }
@@ -92,16 +92,18 @@ function App() {
     <Router basename="/presales-dashboard">
       <div className="app-wrapper">
         <div className="main-container">
-          {/* Enhanced Header */}
+          {/* Minimalist Header */}
           <header className="dashboard-header">
             <div className="header-content">
-              <div className="header-icon">📊</div>
-              <div className="header-text">
-                <h1 className="dashboard-title">Jonathan's Command Center</h1>
-                <p className="dashboard-subtitle">Everything under control, probably</p>
+              <div className="header-info">
+                <h1 className="dashboard-title">Presales Dashboard</h1>
+                <p className="dashboard-subtitle">Your workspace overview</p>
+              </div>
+              <div className="header-status">
+                <div className="status-indicator"></div>
+                <span className="status-text">Online</span>
               </div>
             </div>
-            <div className="header-accent"></div>
           </header>
 
           <Routes>
@@ -110,20 +112,25 @@ function App() {
               path="/"
               element={
                 <main className="dashboard-main">
-                  {/* LEFT COLUMN - Summary & Tasks */}
-                  <div className="dashboard-sidebar">
+                  {/* TOP ROW - Task Summary */}
+                  <div className="dashboard-top">
                     <div className="widget-card summary-widget">
                       <TaskSummaryDashboard />
                     </div>
-                    <div className="widget-card tasks-widget">
-                      <TodayTasks />
-                    </div>
                   </div>
 
-                  {/* RIGHT COLUMN - Projects */}
-                  <div className="dashboard-content">
-                    <div className="widget-card projects-widget">
-                      <Projects />
+                  {/* BOTTOM ROW - Tasks & Projects */}
+                  <div className="dashboard-bottom">
+                    <div className="dashboard-left">
+                      <div className="widget-card tasks-widget">
+                        <TodayTasks />
+                      </div>
+                    </div>
+                    
+                    <div className="dashboard-right">
+                      <div className="widget-card projects-widget">
+                        <Projects />
+                      </div>
                     </div>
                   </div>
                 </main>
