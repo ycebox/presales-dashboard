@@ -12,8 +12,7 @@ function Projects() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     country: '',
-    account_manager: '',
-    customer_type: ''
+    account_manager: ''
   });
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -341,30 +340,19 @@ function Projects() {
 
         <div className="filters updated-filters">
           <label>
-            <FaGlobe style={{ marginRight: '0.5rem', color: 'var(--color-primary)' }} />
-            Country Filter
+            Country
             <select name="country" value={filters.country} onChange={handleFilterChange}>
               <option value="">All Countries</option>
               {countryOptions}
             </select>
           </label>
           <label>
-            <FaUser style={{ marginRight: '0.5rem', color: 'var(--color-success)' }} />
             Account Manager
             <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
-              <option value="">All Account Managers</option>
+              <option value="">All Managers</option>
               {[...new Set(projects.map(p => p.account_manager).filter(Boolean))].sort().map((am, i) => (
                 <option key={i} value={am}>{am}</option>
               ))}
-            </select>
-          </label>
-          <label>
-            <FaBuilding style={{ marginRight: '0.5rem', color: 'var(--color-neutral-500)' }} />
-            Customer Type
-            <select name="customer_type" value={filters.customer_type} onChange={handleFilterChange}>
-              <option value="">All Customer Types</option>
-              <option value="Internal">Internal</option>
-              <option value="External">External</option>
             </select>
           </label>
         </div>
