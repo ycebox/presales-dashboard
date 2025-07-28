@@ -165,8 +165,8 @@ export default function TaskSummaryDashboard() {
       <style jsx>{`
         .task-summary-container {
           background: #ffffff;
-          border-radius: 12px;
-          padding: 1.5rem;
+          border-radius: 8px;
+          padding: 1rem;
           border: 1px solid #f1f5f9;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
@@ -174,12 +174,12 @@ export default function TaskSummaryDashboard() {
         .task-summary-header {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
-          margin-bottom: 1.5rem;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
         }
 
         .header-icon {
-          font-size: 1.25rem;
+          font-size: 1rem;
           color: #64748b;
         }
 
@@ -188,30 +188,30 @@ export default function TaskSummaryDashboard() {
         }
 
         .summary-title {
-          font-size: 1.25rem;
+          font-size: 1rem;
           font-weight: 700;
           color: #1e293b;
           margin: 0;
         }
 
         .summary-subtitle {
-          font-size: 0.875rem;
+          font-size: 0.75rem;
           color: #64748b;
-          margin: 0.25rem 0 0 0;
+          margin: 0.125rem 0 0 0;
           font-weight: 500;
         }
 
         .summary-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 1rem;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 0.75rem;
         }
 
         .summary-card {
           background: #fafafa;
           border: 1px solid #f3f4f6;
-          border-radius: 8px;
-          padding: 1rem;
+          border-radius: 6px;
+          padding: 0.75rem 0.5rem;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -219,6 +219,7 @@ export default function TaskSummaryDashboard() {
           transition: all 0.2s ease;
           cursor: pointer;
           position: relative;
+          min-height: 70px;
         }
 
         .summary-card:hover {
@@ -238,8 +239,8 @@ export default function TaskSummaryDashboard() {
         }
 
         .card-icon {
-          font-size: 1.25rem;
-          margin-bottom: 0.75rem;
+          font-size: 1rem;
+          margin-bottom: 0.375rem;
         }
 
         .card-content {
@@ -247,15 +248,15 @@ export default function TaskSummaryDashboard() {
         }
 
         .card-value {
-          font-size: 1.5rem;
+          font-size: 1.125rem;
           font-weight: 800;
           color: #1e293b;
-          margin-bottom: 0.25rem;
+          margin-bottom: 0.125rem;
           line-height: 1;
         }
 
         .card-label {
-          font-size: 0.75rem;
+          font-size: 0.625rem;
           font-weight: 600;
           color: #64748b;
           text-transform: uppercase;
@@ -328,29 +329,30 @@ export default function TaskSummaryDashboard() {
 
         @media (max-width: 768px) {
           .task-summary-container {
-            padding: 1rem;
+            padding: 0.75rem;
           }
 
           .summary-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
           }
           
           .summary-card {
-            padding: 0.75rem;
+            padding: 0.5rem 0.375rem;
+            min-height: 60px;
           }
           
           .card-value {
-            font-size: 1.25rem;
+            font-size: 1rem;
           }
           
           .card-label {
-            font-size: 0.625rem;
+            font-size: 0.5rem;
           }
 
           .card-icon {
-            font-size: 1rem;
-            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
           }
         }
 
@@ -361,15 +363,20 @@ export default function TaskSummaryDashboard() {
           }
           
           .summary-card {
-            padding: 0.5rem;
+            padding: 0.5rem 0.25rem;
+            min-height: 55px;
           }
           
           .card-value {
-            font-size: 1.125rem;
+            font-size: 0.875rem;
           }
 
           .summary-title {
-            font-size: 1.125rem;
+            font-size: 0.875rem;
+          }
+
+          .summary-subtitle {
+            font-size: 0.625rem;
           }
         }
       `}</style>
