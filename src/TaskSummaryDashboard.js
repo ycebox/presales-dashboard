@@ -1,126 +1,171 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from './supabaseClient';
-import { FaTasks, FaCalendarDay, FaExclamationTriangle, FaCheckCircle, FaClock, FaChartLine } from 'react-icons/fa';
-import { LuLayoutDashboard, LuTrendingUp } from "react-icons/lu";
-import { HiOutlineSparkles } from "react-icons/hi";
+import { 
+  FaCalendarDay, 
+  FaExclamationTriangle, 
+  FaTasks, 
+  FaClock, 
+  FaPlay, 
+  FaCheckCircle,
+  FaArrowRight,
+  FaUser,
+  FaBuilding
+} from "react-icons/fa";
 
-export default function TaskSummaryDashboard() {
-  const [taskSummary, setTaskSummary] = useState({
-    total: 0,
-    today: 0,
-    overdue: 0,
-    done: 0,
-    inProgress: 0,
-    completionRate: 0
-  });
-
+export default function TodayTasks() {
+  const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchSummary();
+    fetchTasks();
   }, []);
 
-  const fetchSummary = async () => {
+  const fetchTasks = async () => {
     setIsLoading(true);
     try {
       const today = new Date().toISOString().split("T")[0];
+      console.log("Fetching tasks for today and before:", today);
 
-      const [projectTasks, personalTasks] = await Promise.all([
-        supabase.from("project_tasks").select("*"),
-        supabase.from("personal_tasks").select("*")
+      // Get both project tasks and personal tasks for today and overdue
+      const [projectTasksData, personalTasksData] = await Promise.all([
+        supabase
+          .from("project_tasks")
+          .select("id, description, status, due_date, project_id, projects(customer_name)")
+          .lte("due_date", today)
+          .eq("is_archived", false)
+          .order("due_date", { ascending: true }),
+        supabase
+          .from("personal_tasks")
+          .select("id, description, status, due_date, priority")
+          .lte("due_date", today)
+          .eq("is_archived", false)
+          .order("due_date", { ascending: true })
       ]);
 
-      const allTasks = [...(projectTasks.data || []), ...(personalTasks.data || [])]
-        .filter(t => !t.is_archived);
+      console.log("Project tasks raw data:", projectTasksData);
+      console.log("Personal tasks raw data:", personalTasksData);
 
-      const todayCount = allTasks.filter(t => t.due_date === today && t.status !== "Done").length;
-      const overdueCount = allTasks.filter(t => t.due_date && t.due_date < today && t.status !== "Done").length;
-      const doneCount = allTasks.filter(t => t.status === "Done").length;
-      const inProgressCount = allTasks.filter(t => t.status === "In Progress").length;
-      const completionRate = allTasks.length > 0 ? Math.round((doneCount / allTasks.length) * 100) : 0;
+      let allTasks = [];
 
-      setTaskSummary({
-        total: allTasks.length,
-        today: todayCount,
-        overdue: overdueCount,
-        done: doneCount,
-        inProgress: inProgressCount,
-        completionRate
+      // Add project tasks (no priority field)
+      if (projectTasksData.data && projectTasksData.data.length > 0) {
+        const projectTasks = projectTasksData.data
+          .filter(task => !["Done", "Completed", "Cancelled/On-hold"].includes(task.status))
+          .map(task => ({
+            ...task,
+            task_type: 'project',
+            priority: 'Medium', // Default priority for project tasks
+            customer_name: task.projects?.customer_name || `Project ${task.project_id}`
+          }));
+        allTasks = [...allTasks, ...projectTasks];
+        console.log("Processed project tasks:", projectTasks);
+      }
+
+      // Add personal tasks (has priority field)
+      if (personalTasksData.data && personalTasksData.data.length > 0) {
+        const personalTasks = personalTasksData.data
+          .filter(task => !["Done", "Completed", "Cancelled/On-hold"].includes(task.status))
+          .map(task => ({
+            ...task,
+            task_type: 'personal',
+            customer_name: 'Personal Task',
+            project_id: null
+          }));
+        allTasks = [...allTasks, ...personalTasks];
+        console.log("Processed personal tasks:", personalTasks);
+      }
+
+      console.log("All tasks before sorting:", allTasks);
+
+      // Sort tasks: overdue first, then by priority, then by due date
+      allTasks.sort((a, b) => {
+        const aOverdue = a.due_date < today;
+        const bOverdue = b.due_date < today;
+        
+        // Overdue tasks first
+        if (aOverdue && !bOverdue) return -1;
+        if (!aOverdue && bOverdue) return 1;
+        
+        // Then by priority
+        const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+        const aPriority = priorityOrder[a.priority] || 2; // Default to Medium
+        const bPriority = priorityOrder[b.priority] || 2; // Default to Medium
+        if (aPriority !== bPriority) return bPriority - aPriority;
+        
+        // Finally by due date
+        return a.due_date.localeCompare(b.due_date);
       });
+
+      console.log("Final sorted tasks:", allTasks);
+      setTasks(allTasks);
+
+      if (projectTasksData.error) {
+        console.error("Error loading project tasks:", projectTasksData.error);
+      }
+      if (personalTasksData.error) {
+        console.error("Error loading personal tasks:", personalTasksData.error);
+      }
     } catch (error) {
-      console.error('Error fetching task summary:', error);
+      console.error("Error fetching tasks:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const summaryCards = [
-    { 
-      label: "Total Tasks", 
-      value: taskSummary.total, 
-      icon: <FaTasks />, 
-      gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      iconColor: "#667eea",
-      description: "All active tasks"
-    },
-    { 
-      label: "Due Today", 
-      value: taskSummary.today, 
-      icon: <FaCalendarDay />, 
-      gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-      iconColor: "#f093fb",
-      description: "Tasks due today",
-      urgent: taskSummary.today > 0
-    },
-    { 
-      label: "Overdue", 
-      value: taskSummary.overdue, 
-      icon: <FaExclamationTriangle />, 
-      gradient: "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)",
-      iconColor: "#ff6b6b",
-      description: "Past due tasks",
-      urgent: taskSummary.overdue > 0
-    },
-    { 
-      label: "Completed", 
-      value: taskSummary.done, 
-      icon: <FaCheckCircle />, 
-      gradient: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
-      iconColor: "#51cf66",
-      description: "Tasks finished"
-    },
-    { 
-      label: "In Progress", 
-      value: taskSummary.inProgress, 
-      icon: <FaClock />, 
-      gradient: "linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)",
-      iconColor: "#fab005",
-      description: "Currently working"
-    },
-    { 
-      label: "Completion", 
-      value: `${taskSummary.completionRate}%`, 
-      icon: <FaChartLine />, 
-      gradient: "linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)",
-      iconColor: "#339af0",
-      description: "Overall progress"
+  const today = new Date().toISOString().split("T")[0];
+  const isOverdue = (due) => due && due < today;
+  const isToday = (due) => due === today;
+
+  const overdueTasks = tasks.filter(t => isOverdue(t.due_date));
+  const todayTasks = tasks.filter(t => isToday(t.due_date));
+
+  const scrollToProject = (projectId, taskType) => {
+    if (taskType === 'personal' || !projectId) {
+      return;
     }
-  ];
+    const el = document.getElementById(`project-${projectId}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "In Progress": return <FaPlay className="text-blue-500" />;
+      case "Open": return <FaClock className="text-gray-500" />;
+      case "Done": 
+      case "Completed": return <FaCheckCircle className="text-green-500" />;
+      default: return <FaTasks className="text-gray-400" />;
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority?.toLowerCase()) {
+      case "high": return "text-red-600 bg-red-50 border-red-200";
+      case "medium": return "text-yellow-600 bg-yellow-50 border-yellow-200";
+      case "low": return "text-green-600 bg-green-50 border-green-200";
+      default: return "text-gray-600 bg-gray-50 border-gray-200";
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   if (isLoading) {
     return (
-      <div className="task-summary-container">
-        <div className="task-summary-header">
-          <LuLayoutDashboard className="header-icon" />
-          <div className="header-text">
-            <h2 className="summary-title">Task Overview</h2>
-            <p className="summary-subtitle">Loading your task insights...</p>
-          </div>
+      <div className="today-tasks-container">
+        <div className="tasks-header">
+          <h2 className="tasks-title">Today's Tasks</h2>
+          <p className="text-gray-500">Loading tasks...</p>
         </div>
-        <div className="loading-grid">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="summary-card loading">
-              <div className="loading-shimmer"></div>
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="task-skeleton">
+              <div className="skeleton-line w-3/4"></div>
+              <div className="skeleton-line w-1/2"></div>
             </div>
           ))}
         </div>
@@ -129,418 +174,423 @@ export default function TaskSummaryDashboard() {
   }
 
   return (
-    <div className="task-summary-container">
-      {/* Enhanced Header */}
-      <div className="task-summary-header">
-        <div className="header-icon-wrapper">
-          <LuLayoutDashboard className="header-icon" />
-          <HiOutlineSparkles className="sparkle-icon" />
+    <div className="today-tasks-container">
+      {/* Header */}
+      <div className="tasks-header">
+        <h2 className="tasks-title">Today's Tasks</h2>
+        <div className="task-summary">
+          {overdueTasks.length > 0 && (
+            <span className="summary-item overdue">
+              <FaExclamationTriangle className="w-4 h-4" />
+              {overdueTasks.length} overdue
+            </span>
+          )}
+          {todayTasks.length > 0 && (
+            <span className="summary-item today">
+              <FaCalendarDay className="w-4 h-4" />
+              {todayTasks.length} due today
+            </span>
+          )}
+          {tasks.length === 0 && (
+            <span className="summary-item clear">
+              All caught up! 🎉
+            </span>
+          )}
         </div>
-        <div className="header-text">
-          <h2 className="summary-title">Task Overview</h2>
-          <p className="summary-subtitle">Your productivity at a glance</p>
-        </div>
-        {taskSummary.completionRate >= 80 && (
-          <div className="achievement-badge">
-            <LuTrendingUp />
-            <span>Great Progress!</span>
-          </div>
-        )}
       </div>
 
-      {/* Summary Cards Grid */}
-      <div className="summary-grid">
-        {summaryCards.map((card, index) => (
-          <div
-            key={index}
-            className={`summary-card ${card.urgent ? 'urgent' : ''}`}
-            style={{
-              background: card.gradient,
-              animationDelay: `${index * 0.1}s`
-            }}
-          >
-            <div className="card-content">
-              <div className="card-header">
-                <div 
-                  className="card-icon"
-                  style={{ color: card.iconColor }}
+      {/* Tasks List */}
+      {tasks.length > 0 ? (
+        <div className="tasks-list">
+          {/* Overdue Section */}
+          {overdueTasks.length > 0 && (
+            <>
+              <div className="section-header overdue">
+                <FaExclamationTriangle className="w-4 h-4" />
+                <span>Overdue ({overdueTasks.length})</span>
+              </div>
+              {overdueTasks.map((task) => (
+                <div
+                  key={`overdue-${task.task_type}-${task.id}`}
+                  className="task-item overdue"
+                  onClick={() => scrollToProject(task.project_id, task.task_type)}
                 >
-                  {card.icon}
+                  <div className="task-content">
+                    <div className="task-main">
+                      <div className="task-status">
+                        {getStatusIcon(task.status)}
+                        <span className="task-description">{task.description}</span>
+                      </div>
+                      <div className="task-meta">
+                        <span className={`priority-badge ${getPriorityColor(task.priority)}`}>
+                          {task.priority}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="task-details">
+                      <div className="task-project">
+                        {task.task_type === 'personal' ? (
+                          <><FaUser className="w-3 h-3" /> Personal</>
+                        ) : (
+                          <><FaBuilding className="w-3 h-3" /> {task.customer_name}</>
+                        )}
+                      </div>
+                      <div className="task-due overdue">
+                        Due {formatDate(task.due_date)}
+                      </div>
+                    </div>
+                  </div>
+                  {task.task_type === 'project' && (
+                    <div className="task-action">
+                      <FaArrowRight className="w-3 h-3" />
+                    </div>
+                  )}
                 </div>
-                {card.urgent && (
-                  <div className="urgent-pulse"></div>
-                )}
-              </div>
-              
-              <div className="card-body">
-                <div className="card-value">{card.value}</div>
-                <div className="card-label">{card.label}</div>
-                <div className="card-description">{card.description}</div>
-              </div>
-            </div>
-            
-            <div className="card-overlay"></div>
-          </div>
-        ))}
-      </div>
+              ))}
+            </>
+          )}
 
-      {/* Quick Insights */}
-      {(taskSummary.overdue > 0 || taskSummary.today > 0) && (
-        <div className="quick-insights">
-          <div className="insight-header">
-            <FaExclamationTriangle className="insight-icon" />
-            <span>Action Required</span>
-          </div>
-          <div className="insight-content">
-            {taskSummary.overdue > 0 && (
-              <span className="insight-item overdue">
-                {taskSummary.overdue} overdue task{taskSummary.overdue !== 1 ? 's' : ''}
-              </span>
-            )}
-            {taskSummary.today > 0 && (
-              <span className="insight-item today">
-                {taskSummary.today} due today
-              </span>
-            )}
-          </div>
+          {/* Today Section */}
+          {todayTasks.length > 0 && (
+            <>
+              <div className="section-header today">
+                <FaCalendarDay className="w-4 h-4" />
+                <span>Due Today ({todayTasks.length})</span>
+              </div>
+              {todayTasks.map((task) => (
+                <div
+                  key={`today-${task.task_type}-${task.id}`}
+                  className="task-item today"
+                  onClick={() => scrollToProject(task.project_id, task.task_type)}
+                >
+                  <div className="task-content">
+                    <div className="task-main">
+                      <div className="task-status">
+                        {getStatusIcon(task.status)}
+                        <span className="task-description">{task.description}</span>
+                      </div>
+                      <div className="task-meta">
+                        <span className={`priority-badge ${getPriorityColor(task.priority)}`}>
+                          {task.priority}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="task-details">
+                      <div className="task-project">
+                        {task.task_type === 'personal' ? (
+                          <><FaUser className="w-3 h-3" /> Personal</>
+                        ) : (
+                          <><FaBuilding className="w-3 h-3" /> {task.customer_name}</>
+                        )}
+                      </div>
+                      <div className="task-due today">
+                        Due today
+                      </div>
+                    </div>
+                  </div>
+                  {task.task_type === 'project' && (
+                    <div className="task-action">
+                      <FaArrowRight className="w-3 h-3" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <FaCheckCircle className="empty-icon" />
+          <h3>All clear!</h3>
+          <p>No urgent tasks for today. Great job staying on top of things!</p>
         </div>
       )}
 
       <style jsx>{`
-        .task-summary-container {
+        .today-tasks-container {
+          background: white;
+          border-radius: 12px;
           padding: 1.5rem;
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
-          border-radius: 1rem;
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(226, 232, 240, 0.5);
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
-        .task-summary-header {
+        .tasks-header {
+          margin-bottom: 1.5rem;
+        }
+
+        .tasks-title {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #111827;
+          margin: 0 0 0.5rem 0;
+        }
+
+        .task-summary {
           display: flex;
           align-items: center;
           gap: 1rem;
-          margin-bottom: 1.5rem;
-          position: relative;
+          flex-wrap: wrap;
         }
 
-        .header-icon-wrapper {
-          position: relative;
+        .summary-item {
           display: flex;
           align-items: center;
-          justify-content: center;
-          width: 3rem;
-          height: 3rem;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 0.75rem;
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        }
-
-        .header-icon {
-          font-size: 1.25rem;
-          color: white;
-        }
-
-        .sparkle-icon {
-          position: absolute;
-          top: -0.25rem;
-          right: -0.25rem;
-          font-size: 0.75rem;
-          color: #fbbf24;
-          animation: sparkle 2s ease-in-out infinite;
-        }
-
-        .header-text {
-          flex: 1;
-        }
-
-        .summary-title {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #1e293b;
-          margin: 0;
-          letter-spacing: -0.025em;
-        }
-
-        .summary-subtitle {
+          gap: 0.375rem;
           font-size: 0.875rem;
-          color: #64748b;
-          margin: 0.25rem 0 0 0;
-          font-weight: 500;
+          font-weight: 600;
         }
 
-        .achievement-badge {
+        .summary-item.overdue {
+          color: #dc2626;
+        }
+
+        .summary-item.today {
+          color: #d97706;
+        }
+
+        .summary-item.clear {
+          color: #059669;
+        }
+
+        .section-header {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          color: white;
-          padding: 0.5rem 1rem;
-          border-radius: 2rem;
           font-size: 0.875rem;
-          font-weight: 600;
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-          animation: slideIn 0.5s ease-out;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin: 1.5rem 0 0.75rem 0;
+          padding-bottom: 0.5rem;
+          border-bottom: 2px solid;
         }
 
-        .summary-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 0.75rem;
+        .section-header.overdue {
+          color: #dc2626;
+          border-color: #dc2626;
+        }
+
+        .section-header.today {
+          color: #d97706;
+          border-color: #d97706;
+        }
+
+        .section-header:first-child {
+          margin-top: 0;
+        }
+
+        .tasks-list {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .task-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1rem;
+          border: 1px solid #f3f4f6;
+          border-radius: 8px;
+          margin-bottom: 0.75rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          background: #fafafa;
+        }
+
+        .task-item:hover {
+          border-color: #e5e7eb;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+          background: #ffffff;
+        }
+
+        .task-item.overdue {
+          border-left: 3px solid #ef4444;
+          background: #fefefe;
+        }
+
+        .task-item.today {
+          border-left: 3px solid #f59e0b;
+          background: #fefefe;
+        }
+
+        .task-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .task-main {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .task-status {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .task-description {
+          font-weight: 600;
+          color: #111827;
+          font-size: 0.95rem;
+        }
+
+        .task-meta {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .priority-badge {
+          padding: 0.25rem 0.5rem;
+          border-radius: 6px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          border: 1px solid;
+        }
+
+        .task-details {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 0.875rem;
+          color: #6b7280;
+        }
+
+        .task-project {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          font-weight: 500;
+        }
+
+        .task-due {
+          font-weight: 600;
+        }
+
+        .task-due.overdue {
+          color: #dc2626;
+        }
+
+        .task-due.today {
+          color: #d97706;
+        }
+
+        .task-action {
+          display: flex;
+          align-items: center;
+          color: #6b7280;
+          margin-left: 1rem;
+          opacity: 0.6;
+          transition: all 0.2s ease;
+        }
+
+        .task-item:hover .task-action {
+          opacity: 1;
+          color: #374151;
+          transform: translateX(2px);
+        }
+
+        .task-skeleton {
+          padding: 1rem;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          margin-bottom: 0.75rem;
+          background: #f9fafb;
+        }
+
+        .skeleton-line {
+          height: 1rem;
+          background: #e5e7eb;
+          border-radius: 4px;
+          margin-bottom: 0.5rem;
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        .empty-state {
+          text-align: center;
+          padding: 3rem 1rem;
+          color: #6b7280;
+        }
+
+        .empty-icon {
+          font-size: 3rem;
+          color: #10b981;
           margin-bottom: 1rem;
         }
 
-        .summary-card {
-          position: relative;
-          border-radius: 0.75rem;
-          padding: 1rem;
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          cursor: pointer;
-          overflow: hidden;
-          animation: fadeInUp 0.6s ease-out forwards;
-          opacity: 0;
-          transform: translateY(20px);
-          min-height: 110px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-        }
-
-        .summary-card:hover {
-          transform: translateY(-4px) scale(1.02);
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        }
-
-        .summary-card.urgent {
-          animation: urgentPulse 2s ease-in-out infinite;
-        }
-
-        .card-content {
-          position: relative;
-          z-index: 2;
-        }
-
-        .card-header {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: 0.5rem;
-          position: relative;
-        }
-
-        .card-icon {
+        .empty-state h3 {
           font-size: 1.25rem;
-          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-        }
-
-        .urgent-pulse {
-          position: absolute;
-          top: -0.25rem;
-          right: -0.25rem;
-          width: 0.375rem;
-          height: 0.375rem;
-          background: #ef4444;
-          border-radius: 50%;
-          animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        .card-body {
-          text-align: center;
-        }
-
-        .card-value {
-          font-size: 1.5rem;
-          font-weight: 800;
-          color: white;
-          margin-bottom: 0.125rem;
-          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-          font-family: 'Inter', sans-serif;
-          line-height: 1;
-        }
-
-        .card-label {
-          font-size: 0.75rem;
           font-weight: 600;
-          color: rgba(255, 255, 255, 0.9);
-          margin-bottom: 0.125rem;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          line-height: 1;
-        }
-
-        .card-description {
-          font-size: 0.625rem;
-          color: rgba(255, 255, 255, 0.7);
-          font-weight: 500;
-          line-height: 1;
-        }
-
-        .card-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
-          opacity: 0;
-          transition: opacity 0.3s ease;
-          pointer-events: none;
-        }
-
-        .summary-card:hover .card-overlay {
-          opacity: 1;
-        }
-
-        .loading-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 0.75rem;
-        }
-
-        .summary-card.loading {
-          background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-          border: 1px solid #e2e8f0;
-          min-height: 110px;
-        }
-
-        .loading-shimmer {
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
-          animation: shimmer 1.5s ease-in-out infinite;
-        }
-
-        .quick-insights {
-          background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-          border: 1px solid #f59e0b;
-          border-radius: 0.75rem;
-          padding: 1rem;
-          margin-top: 1rem;
-        }
-
-        .insight-header {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-weight: 600;
-          color: #92400e;
+          color: #111827;
           margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
           font-size: 0.875rem;
-        }
-
-        .insight-icon {
-          font-size: 1rem;
-        }
-
-        .insight-content {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.75rem;
-        }
-
-        .insight-item {
-          background: rgba(255, 255, 255, 0.8);
-          padding: 0.375rem 0.75rem;
-          border-radius: 1rem;
-          font-size: 0.75rem;
-          font-weight: 600;
-          border: 1px solid rgba(245, 158, 11, 0.3);
-        }
-
-        .insight-item.overdue {
-          color: #dc2626;
-          background: rgba(254, 226, 226, 0.8);
-          border-color: rgba(220, 38, 38, 0.3);
-        }
-
-        .insight-item.today {
-          color: #7c2d12;
-        }
-
-        @keyframes fadeInUp {
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateX(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        @keyframes sparkle {
-          0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
-          50% { transform: scale(1.2) rotate(180deg); opacity: 0.8; }
+          line-height: 1.6;
         }
 
         @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.7; transform: scale(1.2); }
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
 
-        @keyframes urgentPulse {
-          0%, 100% { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
-          50% { box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3); }
-        }
-
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
+        /* Utilities */
+        .w-3 { width: 0.75rem; }
+        .h-3 { height: 0.75rem; }
+        .w-4 { width: 1rem; }
+        .h-4 { height: 1rem; }
+        .text-blue-500 { color: #3b82f6; }
+        .text-gray-500 { color: #6b7280; }
+        .text-green-500 { color: #10b981; }
+        .text-gray-400 { color: #9ca3af; }
+        .text-red-600 { color: #dc2626; }
+        .text-yellow-600 { color: #d97706; }
+        .text-green-600 { color: #059669; }
+        .text-gray-600 { color: #4b5563; }
+        .bg-red-50 { background-color: #fef2f2; }
+        .bg-yellow-50 { background-color: #fffbeb; }
+        .bg-green-50 { background-color: #f0fdf4; }
+        .bg-gray-50 { background-color: #f9fafb; }
+        .border-red-200 { border-color: #fecaca; }
+        .border-yellow-200 { border-color: #fde68a; }
+        .border-green-200 { border-color: #bbf7d0; }
+        .border-gray-200 { border-color: #e5e7eb; }
 
         @media (max-width: 768px) {
-          .summary-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
-          }
-          
-          .task-summary-container {
+          .today-tasks-container {
             padding: 1rem;
           }
-          
-          .card-value {
-            font-size: 1.25rem;
-          }
-          
-          .card-label {
-            font-size: 0.625rem;
-          }
-          
-          .card-description {
-            font-size: 0.5rem;
-          }
-          
-          .achievement-badge {
-            display: none;
-          }
-          
-          .summary-card {
-            min-height: 90px;
+
+          .task-item {
             padding: 0.75rem;
           }
-        }
 
-        @media (max-width: 480px) {
-          .summary-grid {
-            grid-template-columns: repeat(2, 1fr);
+          .task-main {
+            flex-direction: column;
+            align-items: flex-start;
             gap: 0.5rem;
           }
-          
-          .summary-card {
-            min-height: 80px;
-            padding: 0.5rem;
+
+          .task-meta {
+            align-self: flex-end;
           }
-          
-          .card-value {
-            font-size: 1.125rem;
+
+          .task-details {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
+          }
+
+          .task-action {
+            margin-left: 0.5rem;
           }
         }
       `}</style>
