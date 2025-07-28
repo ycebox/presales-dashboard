@@ -32,7 +32,7 @@ function Projects() {
     customer_name: '',
     account_manager: '',
     country: '',
-    customer_type: 'External', // Changed default to External
+    customer_type: 'Existing', // Changed back to database-compatible value
     year_first_closed: '',
     company_size: '',
     annual_revenue: '',
@@ -171,7 +171,7 @@ function Projects() {
       customer_name: '',
       account_manager: '',
       country: '',
-      customer_type: 'External', // Changed default to External
+      customer_type: 'Existing', // Changed back to database-compatible value
       year_first_closed: '',
       company_size: '',
       annual_revenue: '',
@@ -426,8 +426,11 @@ function Projects() {
                           </div>
                         </td>
                         <td>
-                          <span className={customer.customer_type === 'Internal' ? 'internal-customer' : 'external-customer'}>
-                            {customer.customer_type || 'External'}
+                          <span className={
+                            customer.customer_type === 'Internal Initiative' ? 'internal-customer' : 
+                            customer.customer_type === 'Existing' ? 'existing-customer' : 'new-customer'
+                          }>
+                            {customer.customer_type || 'New'}
                           </span>
                         </td>
                         <td style={{ textAlign: 'center' }}>
@@ -450,16 +453,16 @@ function Projects() {
       </section>
       
       <Modal isOpen={showCustomerModal} onClose={handleCloseCustomerModal}>
-        <h3>Add New {newCustomer.customer_type === 'Internal' ? 'Internal Initiative' : 'Customer'}</h3>
+        <h3>Add New {newCustomer.customer_type === 'Internal Initiative' ? 'Internal Initiative' : 'Customer'}</h3>
         <form onSubmit={handleAddCustomer} className="modern-form">
           <label>
-            {newCustomer.customer_type === 'Internal' ? 'Initiative Name' : 'Customer Name'} *
+            {newCustomer.customer_type === 'Internal Initiative' ? 'Initiative Name' : 'Customer Name'} *
             <input 
               name="customer_name" 
               value={newCustomer.customer_name} 
               onChange={handleNewCustomerChange} 
               required 
-              placeholder={newCustomer.customer_type === 'Internal' ? 'e.g., Q4 Company Retreat, Annual Training' : 'Enter customer name'}
+              placeholder={newCustomer.customer_type === 'Internal Initiative' ? 'e.g., Q4 Company Retreat, Annual Training' : 'Enter customer name'}
             />
           </label>
           
@@ -495,13 +498,14 @@ function Projects() {
               onChange={handleNewCustomerChange}
               required
             >
-              <option value="External">External Customer</option>
-              <option value="Internal">Internal Initiative</option>
+              <option value="New">New</option>
+              <option value="Existing">Existing</option>
+              <option value="Internal Initiative">Internal Initiative</option>
             </select>
           </label>
           
-          {/* Only show additional fields for External customers */}
-          {newCustomer.customer_type === 'External' && (
+          {/* Only show additional fields for External customers (New/Existing) */}
+          {newCustomer.customer_type !== 'Internal Initiative' && (
             <>
               <label>
                 Year First Closed
@@ -602,21 +606,21 @@ function Projects() {
           )}
           
           <label style={{ gridColumn: 'span 2' }}>
-            {newCustomer.customer_type === 'Internal' ? 'Initiative Description' : 'Additional Notes'}
+            {newCustomer.customer_type === 'Internal Initiative' ? 'Initiative Description' : 'Additional Notes'}
             <textarea 
               name="notes" 
               value={newCustomer.notes} 
               onChange={handleNewCustomerChange}
               rows="3"
               style={{ resize: 'vertical' }}
-              placeholder={newCustomer.customer_type === 'Internal' ? 'Describe the internal initiative, goals, timeline, etc.' : 'Any additional information about this customer...'}
+              placeholder={newCustomer.customer_type === 'Internal Initiative' ? 'Describe the internal initiative, goals, timeline, etc.' : 'Any additional information about this customer...'}
             />
           </label>
           
           <div className="modal-actions">
             <button type="button" onClick={handleCloseCustomerModal}>Cancel</button>
             <button type="submit">
-              {newCustomer.customer_type === 'Internal' ? 'Create Initiative' : 'Save Customer'}
+              {newCustomer.customer_type === 'Internal Initiative' ? 'Create Initiative' : 'Save Customer'}
             </button>
           </div>
         </form>
