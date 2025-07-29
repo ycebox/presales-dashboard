@@ -11,10 +11,12 @@ import {
   FaUser,
   FaBuilding
 } from "react-icons/fa";
+import './TodayTasks.css';
 
 export default function TodayTasks() {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchTasks();
@@ -22,6 +24,8 @@ export default function TodayTasks() {
 
   const fetchTasks = async () => {
     setIsLoading(true);
+    setError(null);
+    
     try {
       const today = new Date().toISOString().split("T")[0];
       console.log("Fetching tasks for today and before:", today);
@@ -101,12 +105,15 @@ export default function TodayTasks() {
 
       if (projectTasksData.error) {
         console.error("Error loading project tasks:", projectTasksData.error);
+        setError("Failed to load project tasks");
       }
       if (personalTasksData.error) {
         console.error("Error loading personal tasks:", personalTasksData.error);
+        setError("Failed to load personal tasks");
       }
     } catch (error) {
       console.error("Error fetching tasks:", error);
+      setError("Failed to load tasks");
     } finally {
       setIsLoading(false);
     }
@@ -129,20 +136,20 @@ export default function TodayTasks() {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case "In Progress": return <FaPlay className="text-blue-500" />;
-      case "Open": return <FaClock className="text-gray-500" />;
+      case "In Progress": return <FaPlay className="status-icon in-progress" />;
+      case "Open": return <FaClock className="status-icon open" />;
       case "Done": 
-      case "Completed": return <FaCheckCircle className="text-green-500" />;
-      default: return <FaTasks className="text-gray-400" />;
+      case "Completed": return <FaCheckCircle className="status-icon completed" />;
+      default: return <FaTasks className="status-icon default" />;
     }
   };
 
   const getPriorityColor = (priority) => {
     switch (priority?.toLowerCase()) {
-      case "high": return "text-red-600 bg-red-50 border-red-200";
-      case "medium": return "text-yellow-600 bg-yellow-50 border-yellow-200";
-      case "low": return "text-green-600 bg-green-50 border-green-200";
-      default: return "text-gray-600 bg-gray-50 border-gray-200";
+      case "high": return "priority-high";
+      case "medium": return "priority-medium";
+      case "low": return "priority-low";
+      default: return "priority-default";
     }
   };
 
@@ -154,66 +161,133 @@ export default function TodayTasks() {
     });
   };
 
-  if (isLoading) {
-    return (
-      <div className="today-tasks-container">
-        <div className="tasks-header">
-          <h2 className="tasks-title">Today's Tasks</h2>
-          <p className="text-gray-500">Loading tasks...</p>
-        </div>
-        <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="task-skeleton">
-              <div className="skeleton-line w-3/4"></div>
-              <div className="skeleton-line w-1/2"></div>
-            </div>
-          ))}
+  // Loading skeleton component
+  const LoadingSkeleton = () => (
+    <div className="today-tasks-container">
+      <div className="tasks-header">
+        <div className="header-content">
+          <div className="title-skeleton"></div>
+          <div className="subtitle-skeleton"></div>
         </div>
       </div>
-    );
+      <div className="tasks-list">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="task-item loading">
+            <div className="task-content">
+              <div className="loading-main">
+                <div className="loading-icon"></div>
+                <div className="loading-text"></div>
+              </div>
+              <div className="loading-details">
+                <div className="loading-project"></div>
+                <div className="loading-date"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Error state component
+  const ErrorState = () => (
+    <div className="today-tasks-container">
+      <div className="tasks-header">
+        <h2 className="tasks-title" id="tasks-heading">Today's Tasks</h2>
+        <div className="error-message" role="alert">
+          <FaExclamationTriangle className="error-icon" />
+          <span>{error}</span>
+        </div>
+      </div>
+      <div className="retry-section">
+        <button 
+          onClick={fetchTasks} 
+          className="retry-button"
+          aria-label="Retry loading tasks"
+        >
+          Try Again
+        </button>
+      </div>
+    </div>
+  );
+
+  // Empty state component
+  const EmptyState = () => (
+    <div className="empty-state">
+      <div className="empty-icon-wrapper">
+        <FaCheckCircle className="empty-icon" aria-hidden="true" />
+      </div>
+      <h3 className="empty-title">All clear!</h3>
+      <p className="empty-description">
+        No urgent tasks for today. Great job staying on top of things!
+      </p>
+    </div>
+  );
+
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
+
+  if (error) {
+    return <ErrorState />;
   }
 
   return (
     <div className="today-tasks-container">
-      {/* Header */}
-      <div className="tasks-header">
-        <h2 className="tasks-title">Today's Tasks</h2>
-        <div className="task-summary">
-          {overdueTasks.length > 0 && (
-            <span className="summary-item overdue">
-              <FaExclamationTriangle className="w-4 h-4" />
-              {overdueTasks.length} overdue
-            </span>
-          )}
-          {todayTasks.length > 0 && (
-            <span className="summary-item today">
-              <FaCalendarDay className="w-4 h-4" />
-              {todayTasks.length} due today
-            </span>
-          )}
-          {tasks.length === 0 && (
-            <span className="summary-item clear">
-              All caught up! 🎉
-            </span>
-          )}
+      {/* Clean Header */}
+      <header className="tasks-header">
+        <div className="header-content">
+          <h2 className="tasks-title" id="tasks-heading">Today's Tasks</h2>
+          <div className="task-summary" role="status" aria-live="polite">
+            {overdueTasks.length > 0 && (
+              <span className="summary-item overdue">
+                <FaExclamationTriangle className="summary-icon" aria-hidden="true" />
+                <span className="summary-text">
+                  {overdueTasks.length} overdue
+                </span>
+              </span>
+            )}
+            {todayTasks.length > 0 && (
+              <span className="summary-item today">
+                <FaCalendarDay className="summary-icon" aria-hidden="true" />
+                <span className="summary-text">
+                  {todayTasks.length} due today
+                </span>
+              </span>
+            )}
+            {tasks.length === 0 && (
+              <span className="summary-item clear">
+                <span className="summary-text">All caught up! 🎉</span>
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Tasks List */}
       {tasks.length > 0 ? (
-        <div className="tasks-list">
+        <div className="tasks-list" role="region" aria-labelledby="tasks-heading">
           {/* Overdue Section */}
           {overdueTasks.length > 0 && (
-            <>
+            <section className="task-section">
               <div className="section-header overdue">
-                <FaExclamationTriangle className="w-4 h-4" />
-                <span>Overdue ({overdueTasks.length})</span>
+                <FaExclamationTriangle className="section-icon" aria-hidden="true" />
+                <h3 className="section-title">Overdue ({overdueTasks.length})</h3>
               </div>
               {overdueTasks.map((task) => (
                 <div
                   key={`overdue-${task.task_type}-${task.id}`}
                   className="task-item overdue"
                   onClick={() => scrollToProject(task.project_id, task.task_type)}
+                  role="button"
+                  tabIndex="0"
+                  aria-label={`Overdue task: ${task.description}. ${task.task_type === 'project' ? 'Click to view project' : ''}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      scrollToProject(task.project_id, task.task_type);
+                    }
+                  }}
                 >
                   <div className="task-content">
                     <div className="task-main">
@@ -230,9 +304,15 @@ export default function TodayTasks() {
                     <div className="task-details">
                       <div className="task-project">
                         {task.task_type === 'personal' ? (
-                          <><FaUser className="w-3 h-3" /> Personal</>
+                          <>
+                            <FaUser className="project-icon" aria-hidden="true" />
+                            <span>Personal</span>
+                          </>
                         ) : (
-                          <><FaBuilding className="w-3 h-3" /> {task.customer_name}</>
+                          <>
+                            <FaBuilding className="project-icon" aria-hidden="true" />
+                            <span>{task.customer_name}</span>
+                          </>
                         )}
                       </div>
                       <div className="task-due overdue">
@@ -241,27 +321,36 @@ export default function TodayTasks() {
                     </div>
                   </div>
                   {task.task_type === 'project' && (
-                    <div className="task-action">
-                      <FaArrowRight className="w-3 h-3" />
+                    <div className="task-action" aria-hidden="true">
+                      <FaArrowRight className="action-icon" />
                     </div>
                   )}
                 </div>
               ))}
-            </>
+            </section>
           )}
 
           {/* Today Section */}
           {todayTasks.length > 0 && (
-            <>
+            <section className="task-section">
               <div className="section-header today">
-                <FaCalendarDay className="w-4 h-4" />
-                <span>Due Today ({todayTasks.length})</span>
+                <FaCalendarDay className="section-icon" aria-hidden="true" />
+                <h3 className="section-title">Due Today ({todayTasks.length})</h3>
               </div>
               {todayTasks.map((task) => (
                 <div
                   key={`today-${task.task_type}-${task.id}`}
                   className="task-item today"
                   onClick={() => scrollToProject(task.project_id, task.task_type)}
+                  role="button"
+                  tabIndex="0"
+                  aria-label={`Task due today: ${task.description}. ${task.task_type === 'project' ? 'Click to view project' : ''}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      scrollToProject(task.project_id, task.task_type);
+                    }
+                  }}
                 >
                   <div className="task-content">
                     <div className="task-main">
@@ -278,9 +367,15 @@ export default function TodayTasks() {
                     <div className="task-details">
                       <div className="task-project">
                         {task.task_type === 'personal' ? (
-                          <><FaUser className="w-3 h-3" /> Personal</>
+                          <>
+                            <FaUser className="project-icon" aria-hidden="true" />
+                            <span>Personal</span>
+                          </>
                         ) : (
-                          <><FaBuilding className="w-3 h-3" /> {task.customer_name}</>
+                          <>
+                            <FaBuilding className="project-icon" aria-hidden="true" />
+                            <span>{task.customer_name}</span>
+                          </>
                         )}
                       </div>
                       <div className="task-due today">
@@ -289,311 +384,18 @@ export default function TodayTasks() {
                     </div>
                   </div>
                   {task.task_type === 'project' && (
-                    <div className="task-action">
-                      <FaArrowRight className="w-3 h-3" />
+                    <div className="task-action" aria-hidden="true">
+                      <FaArrowRight className="action-icon" />
                     </div>
                   )}
                 </div>
               ))}
-            </>
+            </section>
           )}
         </div>
       ) : (
-        <div className="empty-state">
-          <FaCheckCircle className="empty-icon" />
-          <h3>All clear!</h3>
-          <p>No urgent tasks for today. Great job staying on top of things!</p>
-        </div>
+        <EmptyState />
       )}
-
-      <style jsx>{`
-        .today-tasks-container {
-          background: white;
-          border-radius: 12px;
-          padding: 1.5rem;
-          border: 1px solid #e5e7eb;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        .tasks-header {
-          margin-bottom: 1.5rem;
-        }
-
-        .tasks-title {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #111827;
-          margin: 0 0 0.5rem 0;
-        }
-
-        .task-summary {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          flex-wrap: wrap;
-        }
-
-        .summary-item {
-          display: flex;
-          align-items: center;
-          gap: 0.375rem;
-          font-size: 0.875rem;
-          font-weight: 600;
-        }
-
-        .summary-item.overdue {
-          color: #dc2626;
-        }
-
-        .summary-item.today {
-          color: #d97706;
-        }
-
-        .summary-item.clear {
-          color: #059669;
-        }
-
-        .section-header {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.875rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          margin: 1.5rem 0 0.75rem 0;
-          padding-bottom: 0.5rem;
-          border-bottom: 2px solid;
-        }
-
-        .section-header.overdue {
-          color: #dc2626;
-          border-color: #dc2626;
-        }
-
-        .section-header.today {
-          color: #d97706;
-          border-color: #d97706;
-        }
-
-        .section-header:first-child {
-          margin-top: 0;
-        }
-
-        .tasks-list {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .task-item {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 1rem;
-          border: 1px solid #f3f4f6;
-          border-radius: 8px;
-          margin-bottom: 0.75rem;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          background: #fafafa;
-        }
-
-        .task-item:hover {
-          border-color: #e5e7eb;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-          background: #ffffff;
-        }
-
-        .task-item.overdue {
-          border-left: 3px solid #ef4444;
-          background: #fefefe;
-        }
-
-        .task-item.today {
-          border-left: 3px solid #f59e0b;
-          background: #fefefe;
-        }
-
-        .task-content {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .task-main {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .task-status {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .task-description {
-          font-weight: 600;
-          color: #111827;
-          font-size: 0.95rem;
-        }
-
-        .task-meta {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .priority-badge {
-          padding: 0.25rem 0.5rem;
-          border-radius: 6px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          border: 1px solid;
-        }
-
-        .task-details {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          font-size: 0.875rem;
-          color: #6b7280;
-        }
-
-        .task-project {
-          display: flex;
-          align-items: center;
-          gap: 0.375rem;
-          font-weight: 500;
-        }
-
-        .task-due {
-          font-weight: 600;
-        }
-
-        .task-due.overdue {
-          color: #dc2626;
-        }
-
-        .task-due.today {
-          color: #d97706;
-        }
-
-        .task-action {
-          display: flex;
-          align-items: center;
-          color: #6b7280;
-          margin-left: 1rem;
-          opacity: 0.6;
-          transition: all 0.2s ease;
-        }
-
-        .task-item:hover .task-action {
-          opacity: 1;
-          color: #374151;
-          transform: translateX(2px);
-        }
-
-        .task-skeleton {
-          padding: 1rem;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          margin-bottom: 0.75rem;
-          background: #f9fafb;
-        }
-
-        .skeleton-line {
-          height: 1rem;
-          background: #e5e7eb;
-          border-radius: 4px;
-          margin-bottom: 0.5rem;
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        .empty-state {
-          text-align: center;
-          padding: 3rem 1rem;
-          color: #6b7280;
-        }
-
-        .empty-icon {
-          font-size: 3rem;
-          color: #10b981;
-          margin-bottom: 1rem;
-        }
-
-        .empty-state h3 {
-          font-size: 1.25rem;
-          font-weight: 600;
-          color: #111827;
-          margin-bottom: 0.5rem;
-        }
-
-        .empty-state p {
-          font-size: 0.875rem;
-          line-height: 1.6;
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-
-        /* Utilities */
-        .w-3 { width: 0.75rem; }
-        .h-3 { height: 0.75rem; }
-        .w-4 { width: 1rem; }
-        .h-4 { height: 1rem; }
-        .text-blue-500 { color: #3b82f6; }
-        .text-gray-500 { color: #6b7280; }
-        .text-green-500 { color: #10b981; }
-        .text-gray-400 { color: #9ca3af; }
-        .text-red-600 { color: #dc2626; }
-        .text-yellow-600 { color: #d97706; }
-        .text-green-600 { color: #059669; }
-        .text-gray-600 { color: #4b5563; }
-        .bg-red-50 { background-color: #fef2f2; }
-        .bg-yellow-50 { background-color: #fffbeb; }
-        .bg-green-50 { background-color: #f0fdf4; }
-        .bg-gray-50 { background-color: #f9fafb; }
-        .border-red-200 { border-color: #fecaca; }
-        .border-yellow-200 { border-color: #fde68a; }
-        .border-green-200 { border-color: #bbf7d0; }
-        .border-gray-200 { border-color: #e5e7eb; }
-
-        @media (max-width: 768px) {
-          .today-tasks-container {
-            padding: 1rem;
-          }
-
-          .task-item {
-            padding: 0.75rem;
-          }
-
-          .task-main {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.5rem;
-          }
-
-          .task-meta {
-            align-self: flex-end;
-          }
-
-          .task-details {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.25rem;
-          }
-
-          .task-action {
-            margin-left: 0.5rem;
-          }
-        }
-      `}</style>
     </div>
   );
 }
