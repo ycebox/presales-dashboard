@@ -2,7 +2,17 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { supabase } from './supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaFolderOpen, FaPlus, FaTrash, FaUser, FaUserPlus, FaBuilding, FaGlobe } from 'react-icons/fa';
+import { 
+  FaFolderOpen, 
+  FaPlus, 
+  FaTrash, 
+  FaUser, 
+  FaUserPlus, 
+  FaBuilding, 
+  FaGlobe,
+  FaSearch,
+  FaFilter
+} from 'react-icons/fa';
 import './Projects.css';
 
 function Projects() {
@@ -10,6 +20,7 @@ function Projects() {
   const [projects, setProjects] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     country: '',
     account_manager: ''
@@ -32,7 +43,7 @@ function Projects() {
     customer_name: '',
     account_manager: '',
     country: '',
-    customer_type: 'Existing', // Changed back to database-compatible value
+    customer_type: 'Existing',
     year_first_closed: '',
     company_size: '',
     annual_revenue: '',
@@ -85,6 +96,7 @@ function Projects() {
       
       if (error) {
         console.error('Error fetching customers:', error);
+        setError('Failed to load customers');
         return;
       }
       
@@ -92,18 +104,20 @@ function Projects() {
       setCustomers(data || []);
     } catch (err) {
       console.error('Unexpected error fetching customers:', err);
+      setError('Failed to load customers');
     }
   };
 
   const fetchProjects = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
-      // Instead of joining, let's fetch customers with active projects
       let query = supabase
         .from('customers')
         .select('*');
       
-      // Apply filters to customers table (removed industry_vertical)
+      // Apply filters to customers table
       Object.entries(filters).forEach(([key, value]) => {
         if (value) {
           if (key === 'sales_stage' || key === 'product') {
@@ -118,6 +132,7 @@ function Projects() {
       
       if (error) {
         console.error('Error fetching customers:', error);
+        setError('Failed to load customer portfolio');
         setProjects([]);
       } else {
         console.log('Customers with projects:', data);
@@ -125,6 +140,7 @@ function Projects() {
       }
     } catch (err) {
       console.error('Unexpected error in fetchProjects:', err);
+      setError('Failed to load customer portfolio');
       setProjects([]);
     }
     setLoading(false);
@@ -171,7 +187,7 @@ function Projects() {
       customer_name: '',
       account_manager: '',
       country: '',
-      customer_type: 'Existing', // Changed back to database-compatible value
+      customer_type: 'Existing',
       year_first_closed: '',
       company_size: '',
       annual_revenue: '',
@@ -218,8 +234,8 @@ function Projects() {
         handleCloseCustomerModal();
         
         // Refresh both the customer list and dropdown
-        await fetchCustomers(); // For the dropdown in project modal
-        await fetchProjects(); // For the main table display
+        await fetchCustomers();
+        await fetchProjects();
         
         const newCustomerId = data[0].id;
         setNewProject((prev) => ({
@@ -250,13 +266,20 @@ function Projects() {
   };
 
   const handleDeleteCustomer = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this customer?')) return;
-    const { error } = await supabase.from('customers').delete().eq('id', id);
-    if (!error) {
-      fetchProjects(); // Refresh the customer list
-      fetchCustomers(); // Also refresh the customers dropdown
-    } else {
-      console.error('Delete error:', error.message);
+    if (!window.confirm('Are you sure you want to delete this customer? This action cannot be undone.')) return;
+    
+    try {
+      const { error } = await supabase.from('customers').delete().eq('id', id);
+      if (!error) {
+        fetchProjects();
+        fetchCustomers();
+      } else {
+        console.error('Delete error:', error.message);
+        alert('Failed to delete customer. Please try again.');
+      }
+    } catch (err) {
+      console.error('Unexpected delete error:', err);
+      alert('An unexpected error occurred while deleting.');
     }
   };
 
@@ -308,6 +331,7 @@ function Projects() {
     )), [products]
   );
 
+  // Enhanced Modal component
   const Modal = useCallback(({ isOpen, onClose, children }) => {
     if (!isOpen) return null;
     
@@ -321,407 +345,600 @@ function Projects() {
     );
   }, []);
 
+  // Loading skeleton component
+  const LoadingSkeleton = () => (
+    <div className="loading-container">
+      <div className="loading-content">
+        <div className="loading-spinner"></div>
+        <div className="loading-text">Loading customer portfolio...</div>
+      </div>
+    </div>
+  );
+
+  // Error state component
+  const ErrorState = () => (
+    <div className="error-container">
+      <div className="error-content">
+        <div className="error-icon">⚠️</div>
+        <h3 className="error-title">Something went wrong</h3>
+        <p className="error-message">{error}</p>
+        <button onClick={fetchProjects} className="retry-button">
+          Try Again
+        </button>
+      </div>
+    </div>
+  );
+
+  // Empty state component
+  const EmptyState = () => (
+    <div className="empty-state">
+      <div className="empty-icon-wrapper">
+        <FaBuilding className="empty-icon" />
+      </div>
+      <h3 className="empty-title">No customers found</h3>
+      <p className="empty-description">
+        No customers match your current filters. Try adjusting your search criteria or add a new customer.
+      </p>
+      <button 
+        onClick={() => setShowCustomerModal(true)}
+        className="empty-action-button"
+      >
+        <FaUserPlus />
+        Add Your First Customer
+      </button>
+    </div>
+  );
+
+  if (loading) {
+    return <LoadingSkeleton />;
+  }
+
+  if (error && projects.length === 0) {
+    return <ErrorState />;
+  }
+
   return (
-    <>
-      <section className="projects-wrapper">
-        <div className="projects-header-row">
-          <h2 className="projects-header">
-            <FaBuilding /> Customer Portfolio
-          </h2>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button className="add-btn" style={{ backgroundColor: '#10b981' }} onClick={() => setShowCustomerModal(true)}>
-              <FaUserPlus /> Add Customer
+    <div className="projects-container">
+      {/* Clean Header Section */}
+      <header className="projects-header-section">
+        <div className="header-content">
+          <div className="header-title-wrapper">
+            <div className="header-icon-wrapper">
+              <FaBuilding className="header-icon" />
+            </div>
+            <div className="header-text">
+              <h2 className="projects-title">Customer Portfolio</h2>
+              <p className="projects-subtitle">
+                {projects.length} customer{projects.length !== 1 ? 's' : ''} in your portfolio
+              </p>
+            </div>
+          </div>
+          
+          <div className="header-actions">
+            <button 
+              className="action-button primary" 
+              onClick={() => setShowCustomerModal(true)}
+              aria-label="Add new customer"
+            >
+              <FaUserPlus className="button-icon" />
+              <span>Add Customer</span>
             </button>
-            <button className="add-btn" style={{ backgroundColor: '#a6b2d9' }} onClick={() => setShowProjectModal(true)}>
-              <FaPlus /> Add Project
+            <button 
+              className="action-button secondary" 
+              onClick={() => setShowProjectModal(true)}
+              aria-label="Add new project"
+            >
+              <FaPlus className="button-icon" />
+              <span>Add Project</span>
             </button>
           </div>
         </div>
+      </header>
 
-        <div className="filters updated-filters">
-          <label>
-            Country
-            <select name="country" value={filters.country} onChange={handleFilterChange}>
+      {/* Enhanced Filters Section */}
+      <section className="filters-section" role="search" aria-label="Filter customers">
+        <div className="filters-header">
+          <div className="filters-title-wrapper">
+            <FaFilter className="filters-icon" />
+            <span className="filters-title">Filters</span>
+          </div>
+        </div>
+        
+        <div className="filters-grid">
+          <div className="filter-group">
+            <label htmlFor="country-filter" className="filter-label">
+              Country
+            </label>
+            <select 
+              id="country-filter"
+              name="country" 
+              value={filters.country} 
+              onChange={handleFilterChange}
+              className="filter-select"
+            >
               <option value="">All Countries</option>
               {countryOptions}
             </select>
-          </label>
-          <label>
-            Account Manager
-            <select name="account_manager" value={filters.account_manager} onChange={handleFilterChange}>
+          </div>
+          
+          <div className="filter-group">
+            <label htmlFor="manager-filter" className="filter-label">
+              Account Manager
+            </label>
+            <select 
+              id="manager-filter"
+              name="account_manager" 
+              value={filters.account_manager} 
+              onChange={handleFilterChange}
+              className="filter-select"
+            >
               <option value="">All Managers</option>
               {[...new Set(projects.map(p => p.account_manager).filter(Boolean))].sort().map((am, i) => (
                 <option key={i} value={am}>{am}</option>
               ))}
             </select>
-          </label>
-        </div>
-
-        {loading ? (
-          <div className="loading-container">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{ 
-                width: '24px', 
-                height: '24px', 
-                border: '3px solid var(--color-neutral-200)', 
-                borderTop: '3px solid var(--color-primary)', 
-                borderRadius: '50%', 
-                animation: 'spin 1s linear infinite' 
-              }}></div>
-              Loading customers...
-            </div>
           </div>
-        ) : (
-          <div className="table-scroll-wrapper">
-            <div className="table-container">
-              <table className="modern-table project-table">
-                <thead>
+        </div>
+      </section>
+
+      {/* Enhanced Table Section */}
+      <section className="table-section">
+        <div className="table-container">
+          <div className="table-wrapper">
+            <table className="customers-table" role="table">
+              <thead>
+                <tr>
+                  <th scope="col">Customer Details</th>
+                  <th scope="col">Location</th>
+                  <th scope="col">Account Manager</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" className="actions-column">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {projects.length === 0 ? (
                   <tr>
-                    <th>Customer Details</th>
-                    <th>Location</th>
-                    <th>Account Manager</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'center' }}>Actions</th>
+                    <td colSpan="5" className="empty-row">
+                      <EmptyState />
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {projects.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" style={{ 
-                        textAlign: 'center', 
-                        padding: '3rem', 
-                        color: 'var(--color-neutral-500)',
-                        fontStyle: 'italic'
-                      }}>
-                        No customers found matching the current filters.
+                ) : (
+                  projects.map((customer) => (
+                    <tr key={customer.id} id={`customer-${customer.id}`} className="customer-row">
+                      <td className="customer-details-cell">
+                        <button
+                          onClick={() => handleCustomerClick(customer.id, customer.customer_name)}
+                          className="customer-link"
+                          title={`View details for ${customer.customer_name}`}
+                          aria-label={`View details for ${customer.customer_name}`}
+                        >
+                          <div className="customer-icon-wrapper">
+                            <FaUser className="customer-icon" />
+                          </div>
+                          <span className="customer-name">{customer.customer_name}</span>
+                        </button>
+                      </td>
+                      
+                      <td className="location-cell">
+                        <div className="location-wrapper">
+                          <FaGlobe className="location-icon" />
+                          <span className="location-text">{customer.country}</span>
+                        </div>
+                      </td>
+                      
+                      <td className="manager-cell">
+                        <span className="manager-name">{customer.account_manager}</span>
+                      </td>
+                      
+                      <td className="status-cell">
+                        <span className={`status-badge ${
+                          customer.customer_type === 'Internal Initiative' ? 'internal' : 
+                          customer.customer_type === 'Existing' ? 'existing' : 'new'
+                        }`}>
+                          {customer.customer_type || 'New'}
+                        </span>
+                      </td>
+                      
+                      <td className="actions-cell">
+                        <button 
+                          className="delete-button" 
+                          onClick={() => handleDeleteCustomer(customer.id)}
+                          title={`Delete ${customer.customer_name}`}
+                          aria-label={`Delete customer ${customer.customer_name}`}
+                        >
+                          <FaTrash className="delete-icon" />
+                        </button>
                       </td>
                     </tr>
-                  ) : (
-                    projects.map((customer) => (
-                      <tr key={customer.id} id={`customer-${customer.id}`}>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <button
-                              onClick={() => handleCustomerClick(customer.id, customer.customer_name)}
-                              className="customer-link-btn"
-                              title="View customer details"
-                            >
-                              <FaUser size={14} />
-                              {customer.customer_name}
-                            </button>
-                          </div>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <FaGlobe size={12} style={{ color: 'var(--color-neutral-400)' }} />
-                            {customer.country}
-                          </div>
-                        </td>
-                        <td>
-                          <div style={{ 
-                            fontWeight: '600',
-                            color: 'var(--color-neutral-700)'
-                          }}>
-                            {customer.account_manager}
-                          </div>
-                        </td>
-                        <td>
-                          <span className={
-                            customer.customer_type === 'Internal Initiative' ? 'internal-customer' : 
-                            customer.customer_type === 'Existing' ? 'existing-customer' : 'new-customer'
-                          }>
-                            {customer.customer_type || 'New'}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <button 
-                            className="delete-btn" 
-                            onClick={() => handleDeleteCustomer(customer.id)}
-                            title="Delete customer"
-                          >
-                            <FaTrash />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
       </section>
       
+      {/* Enhanced Customer Modal */}
       <Modal isOpen={showCustomerModal} onClose={handleCloseCustomerModal}>
-        <h3>Add New {newCustomer.customer_type === 'Internal Initiative' ? 'Internal Initiative' : 'Customer'}</h3>
-        <form onSubmit={handleAddCustomer} className="modern-form">
-          <label>
-            {newCustomer.customer_type === 'Internal Initiative' ? 'Initiative Name' : 'Customer Name'} *
-            <input 
-              name="customer_name" 
-              value={newCustomer.customer_name} 
-              onChange={handleNewCustomerChange} 
-              required 
-              placeholder={newCustomer.customer_type === 'Internal Initiative' ? 'e.g., Q4 Company Retreat, Annual Training' : 'Enter customer name'}
-            />
-          </label>
-          
-          <label>
-            Account Manager *
-            <input 
-              name="account_manager" 
-              value={newCustomer.account_manager} 
-              onChange={handleNewCustomerChange} 
-              required 
-              placeholder="Enter account manager name"
-            />
-          </label>
-          
-          <label>
-            Country *
-            <select 
-              name="country" 
-              value={newCustomer.country} 
-              onChange={handleNewCustomerChange} 
-              required
-            >
-              <option value="">Select Country</option>
-              {countryOptions}
-            </select>
-          </label>
-          
-          <label>
-            Type *
-            <select 
-              name="customer_type" 
-              value={newCustomer.customer_type} 
-              onChange={handleNewCustomerChange}
-              required
-            >
-              <option value="New">New</option>
-              <option value="Existing">Existing</option>
-              <option value="Internal Initiative">Internal Initiative</option>
-            </select>
-          </label>
-          
-          {/* Only show additional fields for External customers (New/Existing) */}
-          {newCustomer.customer_type !== 'Internal Initiative' && (
-            <>
-              <label>
-                Year First Closed
-                <input 
-                  name="year_first_closed" 
-                  type="number"
-                  min="2000"
-                  max={new Date().getFullYear()}
-                  value={newCustomer.year_first_closed} 
-                  onChange={handleNewCustomerChange}
-                  placeholder="e.g., 2022"
-                />
+        <div className="modal-header">
+          <h3 className="modal-title">
+            Add New {newCustomer.customer_type === 'Internal Initiative' ? 'Internal Initiative' : 'Customer'}
+          </h3>
+          <button 
+            onClick={handleCloseCustomerModal}
+            className="modal-close-button"
+            aria-label="Close modal"
+          >
+            ×
+          </button>
+        </div>
+        
+        <form onSubmit={handleAddCustomer} className="modal-form">
+          <div className="form-grid">
+            <div className="form-group full-width">
+              <label htmlFor="customer-name" className="form-label">
+                {newCustomer.customer_type === 'Internal Initiative' ? 'Initiative Name' : 'Customer Name'} *
               </label>
-              
-              <label>
-                Company Size
-                <select 
-                  name="company_size" 
-                  value={newCustomer.company_size} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="">Select Company Size</option>
-                  {companySizeOptions}
-                </select>
+              <input 
+                id="customer-name"
+                name="customer_name" 
+                value={newCustomer.customer_name} 
+                onChange={handleNewCustomerChange} 
+                required 
+                className="form-input"
+                placeholder={
+                  newCustomer.customer_type === 'Internal Initiative' ? 
+                  'e.g., Q4 Company Retreat, Annual Training' : 
+                  'Enter customer name'
+                }
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="account-manager" className="form-label">
+                Account Manager *
               </label>
-              
-              <label>
-                Annual Revenue
-                <select 
-                  name="annual_revenue" 
-                  value={newCustomer.annual_revenue} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="">Select Revenue Range</option>
-                  {revenueOptions}
-                </select>
+              <input 
+                id="account-manager"
+                name="account_manager" 
+                value={newCustomer.account_manager} 
+                onChange={handleNewCustomerChange} 
+                required 
+                className="form-input"
+                placeholder="Enter account manager name"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="customer-country" className="form-label">
+                Country *
               </label>
-              
-              <label>
-                Technical Complexity
-                <select 
-                  name="technical_complexity" 
-                  value={newCustomer.technical_complexity} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="Low">Low Complexity</option>
-                  <option value="Medium">Medium Complexity</option>
-                  <option value="High">High Complexity</option>
-                </select>
+              <select 
+                id="customer-country"
+                name="country" 
+                value={newCustomer.country} 
+                onChange={handleNewCustomerChange} 
+                required
+                className="form-select"
+              >
+                <option value="">Select Country</option>
+                {countryOptions}
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="customer-type" className="form-label">
+                Type *
               </label>
-              
-              <label>
-                Relationship Strength
-                <select 
-                  name="relationship_strength" 
-                  value={newCustomer.relationship_strength} 
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="Weak">Developing</option>
-                  <option value="Medium">Established</option>
-                  <option value="Strong">Strategic Partnership</option>
-                </select>
+              <select 
+                id="customer-type"
+                name="customer_type" 
+                value={newCustomer.customer_type} 
+                onChange={handleNewCustomerChange}
+                required
+                className="form-select"
+              >
+                <option value="New">New</option>
+                <option value="Existing">Existing</option>
+                <option value="Internal Initiative">Internal Initiative</option>
+              </select>
+            </div>
+            
+            {/* Conditional fields for External customers */}
+            {newCustomer.customer_type !== 'Internal Initiative' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="year-closed" className="form-label">
+                    Year First Closed
+                  </label>
+                  <input 
+                    id="year-closed"
+                    name="year_first_closed" 
+                    type="number"
+                    min="2000"
+                    max={new Date().getFullYear()}
+                    value={newCustomer.year_first_closed} 
+                    onChange={handleNewCustomerChange}
+                    className="form-input"
+                    placeholder="e.g., 2022"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="company-size" className="form-label">
+                    Company Size
+                  </label>
+                  <select 
+                    id="company-size"
+                    name="company_size" 
+                    value={newCustomer.company_size} 
+                    onChange={handleNewCustomerChange}
+                    className="form-select"
+                  >
+                    <option value="">Select Company Size</option>
+                    {companySizeOptions}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="annual-revenue" className="form-label">
+                    Annual Revenue
+                  </label>
+                  <select 
+                    id="annual-revenue"
+                    name="annual_revenue" 
+                    value={newCustomer.annual_revenue} 
+                    onChange={handleNewCustomerChange}
+                    className="form-select"
+                  >
+                    <option value="">Select Revenue Range</option>
+                    {revenueOptions}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="tech-complexity" className="form-label">
+                    Technical Complexity
+                  </label>
+                  <select 
+                    id="tech-complexity"
+                    name="technical_complexity" 
+                    value={newCustomer.technical_complexity} 
+                    onChange={handleNewCustomerChange}
+                    className="form-select"
+                  >
+                    <option value="Low">Low Complexity</option>
+                    <option value="Medium">Medium Complexity</option>
+                    <option value="High">High Complexity</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="relationship-strength" className="form-label">
+                    Relationship Strength
+                  </label>
+                  <select 
+                    id="relationship-strength"
+                    name="relationship_strength" 
+                    value={newCustomer.relationship_strength} 
+                    onChange={handleNewCustomerChange}
+                    className="form-select"
+                  >
+                    <option value="Weak">Developing</option>
+                    <option value="Medium">Established</option>
+                    <option value="Strong">Strategic Partnership</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="health-score" className="form-label">
+                    Health Score (1-10)
+                  </label>
+                  <input 
+                    id="health-score"
+                    name="health_score" 
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={newCustomer.health_score} 
+                    onChange={handleNewCustomerChange}
+                    className="form-input"
+                    placeholder="Rate from 1-10"
+                  />
+                </div>
+                
+                <div className="form-group full-width">
+                  <label htmlFor="key-stakeholders" className="form-label">
+                    Key Stakeholders (comma-separated)
+                  </label>
+                  <input 
+                    id="key-stakeholders"
+                    name="key_stakeholders" 
+                    value={newCustomer.key_stakeholders.join(', ')} 
+                    onChange={handleNewCustomerChange}
+                    className="form-input"
+                    placeholder="John Smith, Jane Doe, etc."
+                  />
+                </div>
+                
+                <div className="form-group full-width">
+                  <label htmlFor="competitors" className="form-label">
+                    Main Competitors (comma-separated)
+                  </label>
+                  <input 
+                    id="competitors"
+                    name="competitors" 
+                    value={newCustomer.competitors.join(', ')} 
+                    onChange={handleNewCustomerChange}
+                    className="form-input"
+                    placeholder="Company A, Company B, etc."
+                  />
+                </div>
+              </>
+            )}
+            
+            <div className="form-group full-width">
+              <label htmlFor="customer-notes" className="form-label">
+                {newCustomer.customer_type === 'Internal Initiative' ? 'Initiative Description' : 'Additional Notes'}
               </label>
-              
-              <label>
-                Health Score (1-10)
-                <input 
-                  name="health_score" 
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={newCustomer.health_score} 
-                  onChange={handleNewCustomerChange}
-                  placeholder="Rate from 1-10"
-                />
-              </label>
-              
-              <label style={{ gridColumn: 'span 2' }}>
-                Key Stakeholders (comma-separated)
-                <input 
-                  name="key_stakeholders" 
-                  value={newCustomer.key_stakeholders.join(', ')} 
-                  onChange={handleNewCustomerChange}
-                  placeholder="John Smith, Jane Doe, etc."
-                />
-              </label>
-              
-              <label style={{ gridColumn: 'span 2' }}>
-                Main Competitors (comma-separated)
-                <input 
-                  name="competitors" 
-                  value={newCustomer.competitors.join(', ')} 
-                  onChange={handleNewCustomerChange}
-                  placeholder="Company A, Company B, etc."
-                />
-              </label>
-            </>
-          )}
-          
-          <label style={{ gridColumn: 'span 2' }}>
-            {newCustomer.customer_type === 'Internal Initiative' ? 'Initiative Description' : 'Additional Notes'}
-            <textarea 
-              name="notes" 
-              value={newCustomer.notes} 
-              onChange={handleNewCustomerChange}
-              rows="3"
-              style={{ resize: 'vertical' }}
-              placeholder={newCustomer.customer_type === 'Internal Initiative' ? 'Describe the internal initiative, goals, timeline, etc.' : 'Any additional information about this customer...'}
-            />
-          </label>
+              <textarea 
+                id="customer-notes"
+                name="notes" 
+                value={newCustomer.notes} 
+                onChange={handleNewCustomerChange}
+                rows="3"
+                className="form-textarea"
+                placeholder={
+                  newCustomer.customer_type === 'Internal Initiative' ? 
+                  'Describe the internal initiative, goals, timeline, etc.' : 
+                  'Any additional information about this customer...'
+                }
+              />
+            </div>
+          </div>
           
           <div className="modal-actions">
-            <button type="button" onClick={handleCloseCustomerModal}>Cancel</button>
-            <button type="submit">
+            <button type="button" onClick={handleCloseCustomerModal} className="button-cancel">
+              Cancel
+            </button>
+            <button type="submit" className="button-submit">
               {newCustomer.customer_type === 'Internal Initiative' ? 'Create Initiative' : 'Save Customer'}
             </button>
           </div>
         </form>
       </Modal>
 
+      {/* Enhanced Project Modal */}
       <Modal isOpen={showProjectModal} onClose={handleCloseProjectModal}>
-        <h3>Add New Project</h3>
-        <form onSubmit={handleAddProject} className="modern-form">
-          <label style={{ gridColumn: 'span 2' }}>
-            Select Customer ({customers.length} available)
-            <select 
-              name="customer_id" 
-              value={newProject.customer_id} 
-              onChange={handleNewProjectChange} 
-              required
-            >
-              <option value="">
-                {customers.length === 0 ? 'No customers available - Add one first!' : 'Choose a customer'}
-              </option>
-              {customerOptions}
-            </select>
-            {customers.length === 0 && (
-              <div style={{ 
-                fontSize: '0.8rem', 
-                color: 'var(--color-danger)', 
-                marginTop: '0.5rem',
-                padding: '0.5rem',
-                background: 'rgba(239, 68, 68, 0.1)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid rgba(239, 68, 68, 0.2)'
-              }}>
-                ⚠️ No customers found. Please add a customer first using the "Add Customer" button.
-              </div>
-            )}
-          </label>
-          
-          <label>
-            Sales Stage
-            <select name="sales_stage" value={newProject.sales_stage} onChange={handleNewProjectChange} required>
-              <option value="">Select Sales Stage</option>
-              {salesStageOptions}
-            </select>
-          </label>
-          
-          <label>
-            Product
-            <select name="product" value={newProject.product} onChange={handleNewProjectChange} required>
-              <option value="">Select Product</option>
-              {productOptions}
-            </select>
-          </label>
-          
-          <label>
-            Deal Value ($)
-            <input 
-              name="deal_value" 
-              type="number" 
-              value={newProject.deal_value || ''} 
-              onChange={handleNewProjectChange}
-              placeholder="Enter deal value"
-              min="0"
-              step="0.01"
-            />
-          </label>
-          
-          <label>
-            Backup Presales Engineer
-            <input 
-              name="backup_presales" 
-              value={newProject.backup_presales || ''} 
-              onChange={handleNewProjectChange}
-              placeholder="Enter backup presales name"
-            />
-          </label>
-          
-          <label style={{ gridColumn: 'span 2' }}>
-            Project Remarks
-            <textarea 
-              name="remarks" 
-              value={newProject.remarks || ''} 
-              onChange={handleNewProjectChange}
-              placeholder="Additional project details, requirements, or notes..."
-              rows="3"
-              style={{ resize: 'vertical' }}
-            />
-          </label>
+        <div className="modal-header">
+          <h3 className="modal-title">Add New Project</h3>
+          <button 
+            onClick={handleCloseProjectModal}
+            className="modal-close-button"
+            aria-label="Close modal"
+          >
+            ×
+          </button>
+        </div>
+        
+        <form onSubmit={handleAddProject} className="modal-form">
+          <div className="form-grid">
+            <div className="form-group full-width">
+              <label htmlFor="project-customer" className="form-label">
+                Select Customer ({customers.length} available)
+              </label>
+              <select 
+                id="project-customer"
+                name="customer_id" 
+                value={newProject.customer_id} 
+                onChange={handleNewProjectChange} 
+                required
+                className="form-select"
+              >
+                <option value="">
+                  {customers.length === 0 ? 'No customers available - Add one first!' : 'Choose a customer'}
+                </option>
+                {customerOptions}
+              </select>
+              {customers.length === 0 && (
+                <div className="form-warning">
+                  ⚠️ No customers found. Please add a customer first using the "Add Customer" button.
+                </div>
+              )}
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="sales-stage" className="form-label">
+                Sales Stage
+              </label>
+              <select 
+                id="sales-stage"
+                name="sales_stage" 
+                value={newProject.sales_stage} 
+                onChange={handleNewProjectChange} 
+                required
+                className="form-select"
+              >
+                <option value="">Select Sales Stage</option>
+                {salesStageOptions}
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="project-product" className="form-label">
+                Product
+              </label>
+              <select 
+                id="project-product"
+                name="product" 
+                value={newProject.product} 
+                onChange={handleNewProjectChange} 
+                required
+                className="form-select"
+              >
+                <option value="">Select Product</option>
+                {productOptions}
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="deal-value" className="form-label">
+                Deal Value ($)
+              </label>
+              <input 
+                id="deal-value"
+                name="deal_value" 
+                type="number" 
+                value={newProject.deal_value || ''} 
+                onChange={handleNewProjectChange}
+                className="form-input"
+                placeholder="Enter deal value"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="backup-presales" className="form-label">
+                Backup Presales Engineer
+              </label>
+              <input 
+                id="backup-presales"
+                name="backup_presales" 
+                value={newProject.backup_presales || ''} 
+                onChange={handleNewProjectChange}
+                className="form-input"
+                placeholder="Enter backup presales name"
+              />
+            </div>
+            
+            <div className="form-group full-width">
+              <label htmlFor="project-remarks" className="form-label">
+                Project Remarks
+              </label>
+              <textarea 
+                id="project-remarks"
+                name="remarks" 
+                value={newProject.remarks || ''} 
+                onChange={handleNewProjectChange}
+                className="form-textarea"
+                placeholder="Additional project details, requirements, or notes..."
+                rows="3"
+              />
+            </div>
+          </div>
        
           <div className="modal-actions">
-            <button type="button" onClick={handleCloseProjectModal}>Cancel</button>
-            <button type="submit">Create Project</button>
+            <button type="button" onClick={handleCloseProjectModal} className="button-cancel">
+              Cancel
+            </button>
+            <button type="submit" className="button-submit">
+              Create Project
+            </button>
           </div>
         </form>
       </Modal>
-
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
-    </>
+    </div>
   );
 }
 
