@@ -559,3 +559,18 @@ textarea:focus {
     padding: 0;
   }
 }
+
+/* Global heading alignment and reusable section title style */
+h1, h2, h3, h4, h5, h6 {
+  text-align: left;
+}
+
+/* Standardized section title */
+.section-title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin-bottom: var(--space-4);
+  text-align: left;
+  line-height: 1.3;
+}
