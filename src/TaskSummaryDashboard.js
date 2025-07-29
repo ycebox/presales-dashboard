@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from './supabaseClient';
-import { FaTasks, FaCalendarDay, FaExclamationTriangle, FaCheckCircle, FaClock, FaChartLine } from 'react-icons/fa';
+import { 
+  FaTasks, 
+  FaCalendarDay, 
+  FaExclamationTriangle, 
+  FaCheckCircle, 
+  FaClock, 
+  FaChartLine 
+} from 'react-icons/fa';
 import { LuLayoutDashboard } from "react-icons/lu";
+import './TaskSummaryDashboard.css';
 
 export default function TaskSummaryDashboard() {
   const [taskSummary, setTaskSummary] = useState({
@@ -58,328 +66,171 @@ export default function TaskSummaryDashboard() {
       label: "Total Tasks", 
       value: taskSummary.total, 
       icon: <FaTasks />, 
-      color: "#64748b"
+      color: "var(--color-gray-600)",
+      bgColor: "var(--color-gray-100)"
     },
     { 
       label: "Due Today", 
       value: taskSummary.today, 
       icon: <FaCalendarDay />, 
-      color: "#f59e0b",
+      color: "var(--color-warning)",
+      bgColor: "rgba(245, 158, 11, 0.1)",
       urgent: taskSummary.today > 0
     },
     { 
       label: "Overdue", 
       value: taskSummary.overdue, 
       icon: <FaExclamationTriangle />, 
-      color: "#ef4444",
+      color: "var(--color-danger)",
+      bgColor: "rgba(239, 68, 68, 0.1)",
       urgent: taskSummary.overdue > 0
     },
     { 
       label: "Completed", 
       value: taskSummary.done, 
       icon: <FaCheckCircle />, 
-      color: "#10b981"
+      color: "var(--color-success)",
+      bgColor: "rgba(16, 185, 129, 0.1)"
     },
     { 
       label: "In Progress", 
       value: taskSummary.inProgress, 
       icon: <FaClock />, 
-      color: "#3b82f6"
+      color: "var(--color-primary)",
+      bgColor: "var(--color-primary-subtle)"
     },
     { 
       label: "Completion", 
       value: `${taskSummary.completionRate}%`, 
       icon: <FaChartLine />, 
-      color: "#8b5cf6"
+      color: "#8b5cf6",
+      bgColor: "rgba(139, 92, 246, 0.1)"
     }
   ];
 
-  if (isLoading) {
-    return (
-      <div className="task-summary-container">
-        <div className="task-summary-header">
-          <LuLayoutDashboard className="header-icon" />
-          <div className="header-text">
-            <h2 className="summary-title">Task Overview</h2>
-            <p className="summary-subtitle">Loading...</p>
-          </div>
-        </div>
-        <div className="summary-grid">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="summary-card loading">
-              <div className="loading-content"></div>
-            </div>
-          ))}
+  // Loading skeleton component
+  const LoadingSkeleton = () => (
+    <div className="task-summary-container">
+      <div className="task-summary-header">
+        <div className="header-icon-skeleton"></div>
+        <div className="header-text">
+          <div className="title-skeleton"></div>
+          <div className="subtitle-skeleton"></div>
         </div>
       </div>
-    );
+      <div className="summary-grid">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="summary-card loading">
+            <div className="loading-icon"></div>
+            <div className="loading-value"></div>
+            <div className="loading-label"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (isLoading) {
+    return <LoadingSkeleton />;
   }
+
+  const hasUrgentTasks = taskSummary.overdue > 0 || taskSummary.today > 0;
 
   return (
     <div className="task-summary-container">
-      {/* Clean Header */}
-      <div className="task-summary-header">
-        <LuLayoutDashboard className="header-icon" />
+      {/* Clean Minimalist Header */}
+      <header className="task-summary-header">
+        <div className="header-icon-wrapper">
+          <LuLayoutDashboard className="header-icon" aria-hidden="true" />
+        </div>
         <div className="header-text">
-          <h2 className="summary-title">Task Overview</h2>
-          <p className="summary-subtitle">
-            {taskSummary.overdue > 0 || taskSummary.today > 0 
+          <h2 className="summary-title" id="summary-heading">Task Overview</h2>
+          <p className="summary-subtitle" role="status" aria-live="polite">
+            {hasUrgentTasks
               ? `${taskSummary.overdue + taskSummary.today} tasks need attention`
               : 'All tasks on track'
             }
           </p>
         </div>
-      </div>
+      </header>
 
       {/* Minimalist Cards Grid */}
-      <div className="summary-grid">
+      <div 
+        className="summary-grid" 
+        role="region" 
+        aria-labelledby="summary-heading"
+      >
         {summaryCards.map((card, index) => (
           <div
             key={index}
             className={`summary-card ${card.urgent ? 'urgent' : ''}`}
+            role="button"
+            tabIndex="0"
+            aria-label={`${card.label}: ${card.value}${card.urgent ? ' - Requires attention' : ''}`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                // Add click handler here if needed
+              }
+            }}
           >
-            <div className="card-icon" style={{ color: card.color }}>
-              {card.icon}
+            <div 
+              className="card-icon-wrapper"
+              style={{ 
+                backgroundColor: card.bgColor,
+                borderColor: card.color + '20'
+              }}
+            >
+              <div className="card-icon" style={{ color: card.color }}>
+                {card.icon}
+              </div>
             </div>
+            
             <div className="card-content">
-              <div className="card-value">{card.value}</div>
-              <div className="card-label">{card.label}</div>
+              <div className="card-value" aria-hidden="true">
+                {card.value}
+              </div>
+              <div className="card-label">
+                {card.label}
+              </div>
             </div>
-            {card.urgent && <div className="urgent-dot"></div>}
+            
+            {card.urgent && (
+              <div 
+                className="urgent-indicator" 
+                aria-label="Urgent"
+                role="status"
+              ></div>
+            )}
           </div>
         ))}
       </div>
 
-      {/* Alert Banner (only if needed) */}
-      {(taskSummary.overdue > 0 || taskSummary.today > 0) && (
-        <div className="alert-banner">
-          <FaExclamationTriangle className="alert-icon" />
-          <span>
-            {taskSummary.overdue > 0 && `${taskSummary.overdue} overdue`}
-            {taskSummary.overdue > 0 && taskSummary.today > 0 && ', '}
-            {taskSummary.today > 0 && `${taskSummary.today} due today`}
-          </span>
+      {/* Subtle Alert Banner */}
+      {hasUrgentTasks && (
+        <div className="alert-banner" role="alert">
+          <div className="alert-icon-wrapper">
+            <FaExclamationTriangle className="alert-icon" aria-hidden="true" />
+          </div>
+          <div className="alert-content">
+            <span className="alert-text">
+              {taskSummary.overdue > 0 && (
+                <span className="alert-item overdue">
+                  {taskSummary.overdue} overdue
+                </span>
+              )}
+              {taskSummary.overdue > 0 && taskSummary.today > 0 && (
+                <span className="alert-separator"> • </span>
+              )}
+              {taskSummary.today > 0 && (
+                <span className="alert-item today">
+                  {taskSummary.today} due today
+                </span>
+              )}
+            </span>
+          </div>
         </div>
       )}
-
-      <style jsx>{`
-        .task-summary-container {
-          background: #ffffff;
-          border-radius: 8px;
-          padding: 1rem;
-          border: 1px solid #f1f5f9;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
-
-        .task-summary-header {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 1rem;
-        }
-
-        .header-icon {
-          font-size: 1rem;
-          color: #64748b;
-        }
-
-        .header-text {
-          flex: 1;
-        }
-
-        .summary-title {
-          font-size: 1rem;
-          font-weight: 700;
-          color: #1e293b;
-          margin: 0;
-        }
-
-        .summary-subtitle {
-          font-size: 0.75rem;
-          color: #64748b;
-          margin: 0.125rem 0 0 0;
-          font-weight: 500;
-        }
-
-        .summary-grid {
-          display: grid;
-          grid-template-columns: repeat(6, 1fr);
-          gap: 0.75rem;
-        }
-
-        .summary-card {
-          background: #fafafa;
-          border: 1px solid #f3f4f6;
-          border-radius: 6px;
-          padding: 0.75rem 0.5rem;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-          transition: all 0.2s ease;
-          cursor: pointer;
-          position: relative;
-          min-height: 70px;
-        }
-
-        .summary-card:hover {
-          background: #ffffff;
-          border-color: #e5e7eb;
-          transform: translateY(-1px);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        }
-
-        .summary-card.urgent {
-          border-color: #fecaca;
-          background: #fefefe;
-        }
-
-        .summary-card.urgent:hover {
-          border-color: #f87171;
-        }
-
-        .card-icon {
-          font-size: 1rem;
-          margin-bottom: 0.375rem;
-        }
-
-        .card-content {
-          width: 100%;
-        }
-
-        .card-value {
-          font-size: 1.125rem;
-          font-weight: 800;
-          color: #1e293b;
-          margin-bottom: 0.125rem;
-          line-height: 1;
-        }
-
-        .card-label {
-          font-size: 0.625rem;
-          font-weight: 600;
-          color: #64748b;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
-        .urgent-dot {
-          position: absolute;
-          top: 0.5rem;
-          right: 0.5rem;
-          width: 0.5rem;
-          height: 0.5rem;
-          background: #ef4444;
-          border-radius: 50%;
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        .summary-card.loading {
-          background: #f8fafc;
-          border-color: #e2e8f0;
-        }
-
-        .loading-content {
-          width: 100%;
-          height: 60px;
-          background: linear-gradient(90deg, #e2e8f0, #f1f5f9, #e2e8f0);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s ease-in-out infinite;
-          border-radius: 4px;
-        }
-
-        .alert-banner {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: #fef3c7;
-          border: 1px solid #fbbf24;
-          border-radius: 8px;
-          padding: 0.75rem 1rem;
-          margin-top: 1rem;
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: #92400e;
-        }
-
-        .alert-icon {
-          font-size: 1rem;
-          color: #f59e0b;
-        }
-
-        @keyframes pulse {
-          0%, 100% { 
-            opacity: 1; 
-            transform: scale(1); 
-          }
-          50% { 
-            opacity: 0.7; 
-            transform: scale(1.1); 
-          }
-        }
-
-        @keyframes shimmer {
-          0% { 
-            background-position: -200% 0; 
-          }
-          100% { 
-            background-position: 200% 0; 
-          }
-        }
-
-        @media (max-width: 768px) {
-          .task-summary-container {
-            padding: 0.75rem;
-          }
-
-          .summary-grid {
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0.5rem;
-          }
-          
-          .summary-card {
-            padding: 0.5rem 0.375rem;
-            min-height: 60px;
-          }
-          
-          .card-value {
-            font-size: 1rem;
-          }
-          
-          .card-label {
-            font-size: 0.5rem;
-          }
-
-          .card-icon {
-            font-size: 0.875rem;
-            margin-bottom: 0.25rem;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .summary-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
-          }
-          
-          .summary-card {
-            padding: 0.5rem 0.25rem;
-            min-height: 55px;
-          }
-          
-          .card-value {
-            font-size: 0.875rem;
-          }
-
-          .summary-title {
-            font-size: 0.875rem;
-          }
-
-          .summary-subtitle {
-            font-size: 0.625rem;
-          }
-        }
-      `}</style>
     </div>
   );
 }
