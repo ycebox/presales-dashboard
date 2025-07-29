@@ -152,7 +152,7 @@ body {
   background: var(--gradient-card);
   border: 1px solid var(--color-gray-200);
   border-radius: var(--radius-2xl);
-  padding: var(--space-8) var(--space-10);
+  padding: var(--space-8) var(--space-1);
   margin-bottom: var(--space-10);
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(10px);
