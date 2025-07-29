@@ -167,7 +167,7 @@ body {
 .header-content {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: right;
   gap: var(--space-6);
 }
 
