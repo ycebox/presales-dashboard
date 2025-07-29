@@ -8,7 +8,7 @@ import {
   X,
   Plus,
   Trash2,
-  NotebookText
+  NotebookPen
 } from 'lucide-react';
 
 function ProjectDetails() {
@@ -156,7 +156,7 @@ function ProjectDetails() {
       <section className="meeting-section">
         <h2 className="section-title">Meeting Notes</h2>
         <div className="meeting-placeholder">
-          <NotebookText size={20} />
+          <NotebookPen size={20} />
           <p>No meeting notes linked yet.</p>
         </div>
       </section>
