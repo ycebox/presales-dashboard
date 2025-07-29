@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from './supabaseClient';
 import {
-  CalendarDays, AlarmClock, CheckCircle, ListChecks, BarChart3, CircleGauge
+  CalendarDays, AlarmClock, CheckCircle, ListChecks, BarChart3,  LoaderCircle
 } from 'lucide-react';
 import { LuLayoutDashboard } from "react-icons/lu";
 import './TaskSummaryDashboard.css';
@@ -89,7 +89,7 @@ export default function TaskSummaryDashboard() {
     {
       label: "In Progress",
       value: taskSummary.inProgress,
-      icon: <CircleGauge size={18} strokeWidth={1.5} />,
+      icon: <LoaderCircle size={18} strokeWidth={1.5} />,
       color: "var(--color-primary)",
       bgColor: "var(--color-primary-subtle)"
     },
