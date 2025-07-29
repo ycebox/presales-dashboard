@@ -167,13 +167,15 @@ body {
 .header-content {
   display: flex;
   justify-content: space-between;
-  align-items: right;
-  gap: var(--space-6);
+  align-items: flex-start; /* Aligns header-info to top-left */
+  flex-wrap: wrap;
+  gap: var(--space-4);
 }
 
 .header-info {
   flex: 1;
   min-width: 0; /* Prevents flex item from overflowing */
+    text-align: left;
 }
 
 .dashboard-title {
