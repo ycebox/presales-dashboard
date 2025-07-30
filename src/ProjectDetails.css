@@ -163,14 +163,14 @@
 
 /* Project Header */
 .project-header {
-  text-align: center;
+  text-align: left;
   margin-bottom: var(--space-8);
 }
 
 .project-title-section {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-4);
 }
 
@@ -185,18 +185,18 @@
 
 .project-subtitle {
   display: flex;
-  align-items: left;
+  align-items: center;
   gap: var(--space-4);
   flex-wrap: wrap;
-  justify-content: left;
+  justify-content: flex-start;
 }
 
 .customer-badge,
 .stage-badge {
- 
-  align-items: left;
+  display: flex;
+  align-items: center;
   gap: var(--space-2);
-
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-sm);
   font-weight: 600;
@@ -227,9 +227,9 @@
 
 .overview-grid {
   display: grid;
-/*  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); */
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-6);
+  min-height: 120px;
 }
 
 .overview-card {
@@ -244,6 +244,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  min-height: 120px;
 }
 
 .overview-card::before {
@@ -1324,7 +1325,7 @@
   }
   
   .overview-grid {
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -1340,6 +1341,7 @@
   .project-subtitle {
     flex-direction: column;
     gap: var(--space-3);
+    align-items: flex-start;
   }
   
   .overview-grid {
@@ -1349,6 +1351,9 @@
   
   .overview-card {
     padding: var(--space-4);
+    flex-direction: column;
+    text-align: center;
+    gap: var(--space-3);
   }
   
   .card-value {
