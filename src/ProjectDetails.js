@@ -3,13 +3,13 @@ import { useParams } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
 import {
-  PencilLine,
-  Save,
-  X,
-  Plus,
-  Trash2,
-  NotebookPen
-} from 'lucide-react';
+  FaEdit,
+  FaSave,
+  FaTimes,
+  FaPlus,
+  FaTrash,
+  FaRegStickyNote
+} from 'react-icons/fa';
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -72,11 +72,11 @@ function ProjectDetails() {
         <div className="header-actions">
           {editingProject ? (
             <>
-              <button className="icon-button" onClick={handleProjectSave}><Save size={16} /></button>
-              <button className="icon-button" onClick={() => setEditingProject(false)}><X size={16} /></button>
+              <button className="icon-button" onClick={handleProjectSave}><FaSave size={16} /></button>
+              <button className="icon-button" onClick={() => setEditingProject(false)}><FaTimes size={16} /></button>
             </>
           ) : (
-            <button className="icon-button" onClick={() => setEditingProject(true)}><PencilLine size={16} /></button>
+            <button className="icon-button" onClick={() => setEditingProject(true)}><FaEdit size={16} /></button>
           )}
         </div>
       </header>
@@ -127,14 +127,14 @@ function ProjectDetails() {
             value={newTask.description}
             onChange={e => setNewTask({ ...newTask, description: e.target.value })}
           />
-          <button className="icon-button" onClick={handleTaskAdd}><Plus size={16} /></button>
+          <button className="icon-button" onClick={handleTaskAdd}><FaPlus size={16} /></button>
         </div>
         <ul className="task-list">
           {tasks.map(task => (
             <li key={task.id} className="task-item">
               <span>{task.description}</span>
               <button className="delete-button" onClick={() => handleTaskDelete(task.id)}>
-                <Trash2 size={14} />
+                <FaTrash size={14} />
               </button>
             </li>
           ))}
@@ -156,7 +156,7 @@ function ProjectDetails() {
       <section className="meeting-section">
         <h2 className="section-title">Meeting Notes</h2>
         <div className="meeting-placeholder">
-          <NotebookPen size={20} />
+          <FaRegStickyNote size={20} />
           <p>No meeting notes linked yet.</p>
         </div>
       </section>
