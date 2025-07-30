@@ -185,7 +185,7 @@
 
 .project-subtitle {
   display: flex;
-  align-items: center;
+  align-items: left;
   gap: var(--space-4);
   flex-wrap: wrap;
   justify-content: center;
