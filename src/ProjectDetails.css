@@ -1,19 +1,5 @@
 /* ProjectDetails.css - Following Design Guidelines */
 
-/* Typography Enhancements */
-:root {
-  --font-family: 'Inter', 'Segoe UI', sans-serif;
-  --font-size-xs: 11px;
-  --font-size-sm: 13px;
-  --font-size-base: 15px;
-  --font-size-lg: 18px;
-  --font-size-xl: 22px;
-  --font-size-2xl: 26px;
-  --font-size-3xl: 30px;
-  --font-size-4xl: 36px;
-}
-
-
 .project-details-container {
   padding: var(--space-8);
   background: var(--gradient-card);
@@ -243,18 +229,10 @@
 .overview-grid {
   display: flex;
   gap: var(--space-1);
-  flex-wrap: nowrap;
-  overflow-x: auto;
-
-  display: flex;
-  gap: var(--space-1);
   width: 100%;
 }
 
 .overview-card {
-  min-height: 40px;
-  padding: 4px 6px;
-
   background: var(--color-white);
   border-radius: var(--radius-base);
   padding: var(--space-1);
@@ -299,10 +277,6 @@
 .overview-card.normal::before { background: var(--color-gray-400); }
 
 .card-icon-wrapper {
-  border-radius: 50%;
-  background: var(--color-gray-100);
-  padding: 6px;
-
   display: flex;
   align-items: center;
   justify-content: center;
@@ -312,65 +286,23 @@
   flex-shrink: 0;
 }
 
-.overview-card.primary .card-icon-wrapper {
-  border-radius: 50%;
-  background: var(--color-gray-100);
-  padding: 6px;
- background: var(--color-primary-subtle); }
-.overview-card.success .card-icon-wrapper {
-  border-radius: 50%;
-  background: var(--color-gray-100);
-  padding: 6px;
- background: rgba(16, 185, 129, 0.1); }
-.overview-card.warning .card-icon-wrapper {
-  border-radius: 50%;
-  background: var(--color-gray-100);
-  padding: 6px;
- background: rgba(245, 158, 11, 0.1); }
-.overview-card.urgent .card-icon-wrapper {
-  border-radius: 50%;
-  background: var(--color-gray-100);
-  padding: 6px;
- background: rgba(239, 68, 68, 0.1); }
-.overview-card.overdue .card-icon-wrapper {
-  border-radius: 50%;
-  background: var(--color-gray-100);
-  padding: 6px;
- background: rgba(239, 68, 68, 0.1); }
-.overview-card.normal .card-icon-wrapper {
-  border-radius: 50%;
-  background: var(--color-gray-100);
-  padding: 6px;
- background: var(--color-gray-100); }
+.overview-card.primary .card-icon-wrapper { background: var(--color-primary-subtle); }
+.overview-card.success .card-icon-wrapper { background: rgba(16, 185, 129, 0.1); }
+.overview-card.warning .card-icon-wrapper { background: rgba(245, 158, 11, 0.1); }
+.overview-card.urgent .card-icon-wrapper { background: rgba(239, 68, 68, 0.1); }
+.overview-card.overdue .card-icon-wrapper { background: rgba(239, 68, 68, 0.1); }
+.overview-card.normal .card-icon-wrapper { background: var(--color-gray-100); }
 
 .card-icon {
-  font-size: 10px;
-  opacity: 0.8;
-
   font-size: 10px;
   color: var(--color-primary);
 }
 
-.overview-card.success .card-icon {
-  font-size: 10px;
-  opacity: 0.8;
- color: var(--color-success); }
-.overview-card.warning .card-icon {
-  font-size: 10px;
-  opacity: 0.8;
- color: var(--color-warning); }
-.overview-card.urgent .card-icon {
-  font-size: 10px;
-  opacity: 0.8;
- color: var(--color-danger); }
-.overview-card.overdue .card-icon {
-  font-size: 10px;
-  opacity: 0.8;
- color: var(--color-danger); }
-.overview-card.normal .card-icon {
-  font-size: 10px;
-  opacity: 0.8;
- color: var(--color-gray-500); }
+.overview-card.success .card-icon { color: var(--color-success); }
+.overview-card.warning .card-icon { color: var(--color-warning); }
+.overview-card.urgent .card-icon { color: var(--color-danger); }
+.overview-card.overdue .card-icon { color: var(--color-danger); }
+.overview-card.normal .card-icon { color: var(--color-gray-500); }
 
 .card-content {
   flex: 1;
@@ -379,8 +311,6 @@
 }
 
 .card-value {
-  font-size: 11px;
-
   font-size: 14px;
   font-weight: 700;
   color: var(--color-gray-900);
@@ -392,9 +322,7 @@
 }
 
 .card-label {
-  font-size: 6px;
-
-  font-size: 6px;
+  font-size: 8px;
   color: var(--color-gray-600);
   font-weight: 600;
   text-transform: uppercase;
@@ -406,9 +334,7 @@
 }
 
 .card-trend {
-  font-size: 6px;
-
-  font-size: 6px;
+  font-size: 7px;
   color: var(--color-gray-500);
   font-weight: 500;
   white-space: nowrap;
@@ -1008,7 +934,7 @@
   font-weight: 600;
   color: var(--color-gray-900);
   background: var(--color-white);
-  padding: 4px 6px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-gray-200);
   min-width: 24px;
@@ -1411,37 +1337,23 @@
   }
   
   .overview-grid {
-  display: flex;
-  gap: var(--space-1);
-  flex-wrap: nowrap;
-  overflow-x: auto;
-
     gap: var(--space-1);
   }
   
   .overview-card {
-  min-height: 40px;
-  padding: 4px 6px;
-
     min-height: 45px;
     padding: var(--space-1);
   }
   
   .card-value {
-  font-size: 11px;
-
-    font-size: 10px;
+    font-size: 12px;
   }
   
   .card-label {
-  font-size: 6px;
-
-    font-size: 6px;
+    font-size: 7px;
   }
   
   .card-trend {
-  font-size: 6px;
-
     font-size: 6px;
   }
 }
@@ -1462,37 +1374,23 @@
   }
   
   .overview-grid {
-  display: flex;
-  gap: var(--space-1);
-  flex-wrap: nowrap;
-  overflow-x: auto;
-
     gap: var(--space-1);
   }
   
   .overview-card {
-  min-height: 40px;
-  padding: 4px 6px;
-
     padding: var(--space-1);
     min-height: 40px;
   }
   
   .card-value {
-  font-size: 11px;
-
     font-size: 10px;
   }
   
   .card-label {
-  font-size: 6px;
-
     font-size: 6px;
   }
   
   .card-trend {
-  font-size: 6px;
-
     font-size: 5px;
   }
   
@@ -1559,28 +1457,19 @@
   }
   
   .overview-card {
-  min-height: 40px;
-  padding: 4px 6px;
-
     padding: var(--space-1);
     min-height: 35px;
   }
   
   .card-value {
-  font-size: 11px;
-
     font-size: 9px;
   }
   
   .card-label {
-  font-size: 6px;
-
     font-size: 5px;
   }
   
   .card-trend {
-  font-size: 6px;
-
     font-size: 4px;
   }
   
@@ -1671,9 +1560,6 @@
   
   .content-card,
   .overview-card {
-  min-height: 40px;
-  padding: 4px 6px;
-
     box-shadow: none;
     border: 1px solid var(--color-gray-400);
     break-inside: avoid;
