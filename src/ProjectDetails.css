@@ -188,7 +188,7 @@
   align-items: left;
   gap: var(--space-4);
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: left;
 }
 
 .customer-badge,
