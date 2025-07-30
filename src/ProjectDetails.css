@@ -242,6 +242,13 @@
 
 .overview-grid {
   display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  justify-content: flex-start;
+
+  display: flex;
   gap: 6px;
   flex-wrap: nowrap;
   overflow-x: auto;
@@ -253,6 +260,23 @@
 }
 
 .overview-card {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 4px 6px;
+  background: var(--color-white);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+
   min-height: 40px;
   padding: 4px 6px;
   background: var(--color-white);
@@ -1467,6 +1491,13 @@
   
   .overview-grid {
   display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  justify-content: flex-start;
+
+  display: flex;
   gap: 6px;
   flex-wrap: nowrap;
   overflow-x: auto;
@@ -1476,6 +1507,23 @@
   }
   
   .overview-card {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 4px 6px;
+  background: var(--color-white);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+
   min-height: 40px;
   padding: 4px 6px;
   background: var(--color-white);
@@ -1546,6 +1594,13 @@
   
   .overview-grid {
   display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  justify-content: flex-start;
+
+  display: flex;
   gap: 6px;
   flex-wrap: nowrap;
   overflow-x: auto;
@@ -1555,6 +1610,23 @@
   }
   
   .overview-card {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 4px 6px;
+  background: var(--color-white);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+
   min-height: 40px;
   padding: 4px 6px;
   background: var(--color-white);
@@ -1670,6 +1742,23 @@
   }
   
   .overview-card {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 4px 6px;
+  background: var(--color-white);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+
   min-height: 40px;
   padding: 4px 6px;
   background: var(--color-white);
@@ -1809,6 +1898,23 @@
   
   .content-card,
   .overview-card {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 4px 6px;
+  background: var(--color-white);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+
   min-height: 40px;
   padding: 4px 6px;
   background: var(--color-white);
