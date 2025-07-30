@@ -220,38 +220,33 @@
 .stage-cancelled { color: var(--color-gray-500); }
 .stage-active { color: var(--color-primary); }
 
-/* Overview Section - Completely Redesigned for Single Row */
+/* Overview Section - FINAL COMPACT DESIGN */
 .overview-section {
   margin-bottom: var(--space-4);
   width: 100%;
-  max-width: 100%;
-  overflow: hidden;
 }
 
 .overview-grid {
   display: flex;
-  gap: var(--space-3);
-  align-items: stretch;
+  gap: var(--space-1);
   width: 100%;
-  overflow-x: auto;
 }
 
 .overview-card {
   background: var(--color-white);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3);
+  border-radius: var(--radius-base);
+  padding: var(--space-1);
   border: 1px solid var(--color-gray-200);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-base);
   position: relative;
   overflow: hidden;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  text-align: center;
-  min-width: 0;
+  gap: var(--space-1);
+  min-height: 50px;
   flex: 1;
-  min-height: 80px;
+  min-width: 0;
 }
 
 .overview-card::before {
@@ -260,7 +255,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 2px;
   transition: opacity var(--transition-base);
   opacity: 0;
 }
@@ -270,8 +265,8 @@
 }
 
 .overview-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-base);
 }
 
 .overview-card.primary::before { background: var(--color-primary); }
@@ -285,11 +280,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-lg);
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
-  margin-bottom: var(--space-2);
 }
 
 .overview-card.primary .card-icon-wrapper { background: var(--color-primary-subtle); }
@@ -300,7 +294,7 @@
 .overview-card.normal .card-icon-wrapper { background: var(--color-gray-100); }
 
 .card-icon {
-  font-size: 14px;
+  font-size: 10px;
   color: var(--color-primary);
 }
 
@@ -314,46 +308,41 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  width: 100%;
 }
 
 .card-value {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--color-gray-900);
-  margin-bottom: 2px;
+  margin-bottom: 1px;
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 100%;
 }
 
 .card-label {
-  font-size: 10px;
+  font-size: 8px;
   color: var(--color-gray-600);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.025em;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 100%;
 }
 
 .card-trend {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  font-size: 8px;
+  font-size: 7px;
   color: var(--color-gray-500);
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1px;
 }
 
 /* Main Content Grid */
@@ -1348,16 +1337,24 @@
   }
   
   .overview-grid {
-    gap: var(--space-2);
+    gap: var(--space-1);
   }
   
   .overview-card {
-    min-height: 70px;
-    padding: var(--space-2);
+    min-height: 45px;
+    padding: var(--space-1);
   }
   
   .card-value {
-    font-size: 16px;
+    font-size: 12px;
+  }
+  
+  .card-label {
+    font-size: 7px;
+  }
+  
+  .card-trend {
+    font-size: 6px;
   }
 }
 
@@ -1377,27 +1374,24 @@
   }
   
   .overview-grid {
-    gap: var(--space-2);
-    overflow-x: auto;
-    padding-bottom: var(--space-2);
+    gap: var(--space-1);
   }
   
   .overview-card {
-    padding: var(--space-2);
-    min-height: 70px;
-    min-width: 80px;
+    padding: var(--space-1);
+    min-height: 40px;
   }
   
   .card-value {
-    font-size: 14px;
+    font-size: 10px;
   }
   
   .card-label {
-    font-size: 9px;
+    font-size: 6px;
   }
   
   .card-trend {
-    font-size: 7px;
+    font-size: 5px;
   }
   
   .details-grid {
@@ -1463,20 +1457,20 @@
   }
   
   .overview-card {
-    min-width: 70px;
-    padding: var(--space-2);
+    padding: var(--space-1);
+    min-height: 35px;
   }
   
   .card-value {
-    font-size: 12px;
+    font-size: 9px;
   }
   
   .card-label {
-    font-size: 8px;
+    font-size: 5px;
   }
   
   .card-trend {
-    font-size: 7px;
+    font-size: 4px;
   }
   
   .card-content {
