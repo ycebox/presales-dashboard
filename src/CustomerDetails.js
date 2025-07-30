@@ -1,9 +1,3 @@
-// This file includes the EDIT PROJECT functionality patched into your original code.
-// Additions:
-// - editingProject state
-// - handleEditProject method
-// - Edit button per project
-// - Updated ProjectModal to support editing and updating existing projects
 // CustomerDetails.js - Enhanced version with improved aesthetics and typography
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -157,7 +151,79 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeh
   );
 }
 
-function ProjectModal({ isOpen, onClose, onSave, customerName }) {
+
+function ProjectModal({ isOpen, onClose, onSave, customerName, editingProject = null }) {
+  const [newProject, setNewProject] = useState({
+    customer_name: customerName || '',
+    project_name: '',
+    account_manager: '',
+    scope: '',
+    deal_value: '',
+    product: '',
+    backup_presales: '',
+    sales_stage: '',
+    remarks: '',
+    due_date: '',
+    project_type: ''
+  });
+
+  useEffect(() => {
+    if (editingProject) {
+      setNewProject({
+        ...editingProject,
+        deal_value: editingProject.deal_value?.toString() || '',
+      });
+    } else if (customerName) {
+      setNewProject(prev => ({ ...prev, customer_name: customerName }));
+    }
+  }, [editingProject, customerName]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const projectData = {
+        customer_name: customerName,
+        account_manager: newProject.account_manager || null,
+        scope: newProject.scope || null,
+        deal_value: newProject.deal_value ? parseFloat(newProject.deal_value) : null,
+        product: newProject.product || null,
+        backup_presales: newProject.backup_presales || null,
+        sales_stage: newProject.sales_stage,
+        remarks: newProject.remarks || null,
+        due_date: newProject.due_date || null,
+        project_name: newProject.project_name,
+        project_type: newProject.project_type || null,
+      };
+
+      let result;
+      if (editingProject) {
+        const { data, error } = await supabase
+          .from('projects')
+          .update(projectData)
+          .eq('id', editingProject.id)
+          .select();
+        result = { data, error };
+      } else {
+        const { data, error } = await supabase
+          .from('projects')
+          .insert([projectData])
+          .select();
+        result = { data, error };
+      }
+
+      if (result.error) throw result.error;
+      if (result.data && result.data.length > 0) {
+        onSave(result.data[0]);
+        setNewProject({});
+        onClose();
+      }
+    } catch (error) {
+      console.error('Error saving project:', error);
+      alert('Error saving project: ' + error.message);
+    }
+  };
+
   const [newProject, setNewProject] = useState({
     customer_name: customerName || '',
     project_name: '',
@@ -544,6 +610,24 @@ function CustomerDetails() {
   const [customer, setCustomer] = useState(null);
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [editingProject, setEditingProject] = useState(null);
+
+  const handleEditProject = (project) => {
+    setEditingProject(project);
+    setShowProjectModal(true);
+  };
+
+  const handleProjectSaved = (project) => {
+    if (editingProject) {
+      setProjects(prev => prev.map(p => (p.id === project.id ? project : p)));
+      alert('Project updated successfully!');
+    } else {
+      setProjects(prev => [project, ...prev]);
+      alert('Project added successfully!');
+    }
+    setEditingProject(null);
+  };
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
@@ -1492,6 +1576,15 @@ function CustomerDetails() {
                           </div>
                         )}
                         <div className="project-actions">
+                          
+<button 
+  className="project-action-btn edit" 
+  onClick={() => handleEditProject(project)}
+  title="Edit project"
+>
+  <FaEdit />
+</button>
+
                           <button 
                             className="project-action-btn delete" 
                             onClick={() => handleDeleteProject(project.id)}
@@ -1701,6 +1794,14 @@ function CustomerDetails() {
       {customer && (
         <ProjectModal
           isOpen={showProjectModal}
+          onClose={() => {
+            setShowProjectModal(false);
+            setEditingProject(null);
+          }}
+          onSave={handleProjectSaved}
+          customerName={customer.customer_name}
+          editingProject={editingProject}
+/>
           onClose={() => setShowProjectModal(false)}
           onSave={handleProjectSaved}
           customerName={customer.customer_name}
