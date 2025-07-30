@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from './supabaseClient';
-import ProjectModal from './ProjectModal';
-import { FaPlus, FaEdit } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
 import './CustomerDetails.css';
 
 function CustomerDetails() {
   const { customerId } = useParams();
   const [customer, setCustomer] = useState(null);
   const [projects, setProjects] = useState([]);
-  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [projectForm, setProjectForm] = useState({
+    scope: '',
+    sales_stage: '',
+    deal_value: ''
+  });
 
   useEffect(() => {
     fetchCustomer();
@@ -36,28 +40,68 @@ function CustomerDetails() {
     else setProjects(data);
   };
 
-  const handleAddProject = () => {
-    setEditingProject(null);
-    setShowProjectModal(true);
-  };
-
-  const handleEditProject = (project) => {
-    setEditingProject(project);
-    setShowProjectModal(true);
-  };
-
-  const handleProjectSaved = (newProject) => {
-    if (editingProject) {
-      // Editing existing project
-      setProjects((prev) =>
-        prev.map((p) => (p.id === newProject.id ? newProject : p))
-      );
+  const handleOpenModal = (project = null) => {
+    if (project) {
+      setEditingProject(project);
+      setProjectForm({
+        scope: project.scope || '',
+        sales_stage: project.sales_stage || '',
+        deal_value: project.deal_value || ''
+      });
     } else {
-      // Adding new project
-      setProjects((prev) => [...prev, newProject]);
+      setEditingProject(null);
+      setProjectForm({ scope: '', sales_stage: '', deal_value: '' });
     }
-    setShowProjectModal(false);
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
     setEditingProject(null);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setProjectForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveProject = async () => {
+    const payload = {
+      ...projectForm,
+      customer_id: customerId
+    };
+
+    let result;
+    if (editingProject) {
+      result = await supabase
+        .from('projects')
+        .update(payload)
+        .eq('id', editingProject.id)
+        .select()
+        .single();
+    } else {
+      result = await supabase
+        .from('projects')
+        .insert(payload)
+        .select()
+        .single();
+    }
+
+    if (result.error) {
+      console.error('Error saving project:', result.error);
+      return;
+    }
+
+    const saved = result.data;
+    setProjects((prev) => {
+      if (editingProject) {
+        return prev.map((p) => (p.id === saved.id ? saved : p));
+      } else {
+        return [...prev, saved];
+      }
+    });
+
+    handleCloseModal();
   };
 
   if (!customer) return <div>Loading customer...</div>;
@@ -72,10 +116,11 @@ function CustomerDetails() {
       <section className="projects-section">
         <div className="section-header">
           <h2 className="section-title">Project Portfolio</h2>
-          <button className="action-button primary" onClick={handleAddProject}>
+          <button className="action-button primary" onClick={() => handleOpenModal()}>
             <FaPlus /> Add Project
           </button>
         </div>
+
         <div className="projects-list">
           {projects.map((project) => (
             <div key={project.id} className="project-card">
@@ -88,7 +133,7 @@ function CustomerDetails() {
                 <button
                   className="project-action-btn edit"
                   title="Edit Project"
-                  onClick={() => handleEditProject(project)}
+                  onClick={() => handleOpenModal(project)}
                 >
                   <FaEdit />
                 </button>
@@ -98,16 +143,51 @@ function CustomerDetails() {
         </div>
       </section>
 
-      {showProjectModal && (
-        <ProjectModal
-          customerId={customerId}
-          existingProject={editingProject}
-          onSave={handleProjectSaved}
-          onClose={() => {
-            setShowProjectModal(false);
-            setEditingProject(null);
-          }}
-        />
+      {showModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>{editingProject ? 'Edit Project' : 'Add Project'}</h3>
+              <button className="icon-button" onClick={handleCloseModal}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-body">
+              <label>
+                Scope:
+                <input
+                  type="text"
+                  name="scope"
+                  value={projectForm.scope}
+                  onChange={handleInputChange}
+                />
+              </label>
+              <label>
+                Sales Stage:
+                <input
+                  type="text"
+                  name="sales_stage"
+                  value={projectForm.sales_stage}
+                  onChange={handleInputChange}
+                />
+              </label>
+              <label>
+                Deal Value:
+                <input
+                  type="text"
+                  name="deal_value"
+                  value={projectForm.deal_value}
+                  onChange={handleInputChange}
+                />
+              </label>
+            </div>
+            <div className="modal-footer">
+              <button className="action-button primary" onClick={handleSaveProject}>
+                <FaSave /> Save
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
