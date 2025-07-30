@@ -1,3 +1,9 @@
+// This file includes the EDIT PROJECT functionality patched into your original code.
+// Additions:
+// - editingProject state
+// - handleEditProject method
+// - Edit button per project
+// - Updated ProjectModal to support editing and updating existing projects
 // CustomerDetails.js - Enhanced version with improved aesthetics and typography
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
