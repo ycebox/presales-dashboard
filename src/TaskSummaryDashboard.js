@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from './supabaseClient';
 import {
-  CalendarDays, AlarmClock, CheckCircle, ListChecks, BarChart3,  Loader
-} from 'lucide-react';
-import { LuLayoutDashboard } from "react-icons/lu";
+  FaCalendarDay,
+  FaClock,
+  FaCheckCircle,
+  FaListUl,
+  FaChartBar,
+  FaSpinner,
+  FaTachometerAlt
+} from "react-icons/fa";
 import './TaskSummaryDashboard.css';
 
 export default function TaskSummaryDashboard() {
@@ -59,14 +64,14 @@ export default function TaskSummaryDashboard() {
     {
       label: "Total Tasks",
       value: taskSummary.total,
-      icon: <ListChecks size={18} strokeWidth={1.5} />,
+      icon: <FaListUl size={18} />,
       color: "var(--color-gray-600)",
       bgColor: "var(--color-gray-100)"
     },
     {
       label: "Due Today",
       value: taskSummary.today,
-      icon: <CalendarDays size={18} strokeWidth={1.5} />,
+      icon: <FaCalendarDay size={18} />,
       color: "var(--color-warning)",
       bgColor: "rgba(245, 158, 11, 0.1)",
       urgent: taskSummary.today > 0
@@ -74,7 +79,7 @@ export default function TaskSummaryDashboard() {
     {
       label: "Overdue",
       value: taskSummary.overdue,
-      icon: <AlarmClock size={18} strokeWidth={1.5} />,
+      icon: <FaClock size={18} />,
       color: "var(--color-danger)",
       bgColor: "rgba(239, 68, 68, 0.1)",
       urgent: taskSummary.overdue > 0
@@ -82,21 +87,21 @@ export default function TaskSummaryDashboard() {
     {
       label: "Completed",
       value: taskSummary.done,
-      icon: <CheckCircle size={18} strokeWidth={1.5} />,
+      icon: <FaCheckCircle size={18} />,
       color: "var(--color-success)",
       bgColor: "rgba(16, 185, 129, 0.1)"
     },
     {
       label: "In Progress",
       value: taskSummary.inProgress,
-      icon: <Loader size={18} strokeWidth={1.5} />,
+      icon: <FaSpinner size={18} />,
       color: "var(--color-primary)",
       bgColor: "var(--color-primary-subtle)"
     },
     {
       label: "Completion",
       value: `${taskSummary.completionRate}%`,
-      icon: <BarChart3 size={18} strokeWidth={1.5} />,
+      icon: <FaChartBar size={18} />,
       color: "#8b5cf6",
       bgColor: "rgba(139, 92, 246, 0.1)"
     }
@@ -110,7 +115,7 @@ export default function TaskSummaryDashboard() {
     <div className="task-summary-container">
       <header className="task-summary-header">
         <div className="header-icon-wrapper">
-          <LuLayoutDashboard className="header-icon" aria-hidden="true" />
+          <FaTachometerAlt className="header-icon" aria-hidden="true" />
         </div>
         <div className="header-text">
           <h2 className="summary-title section-title" id="summary-heading">Task Overview</h2>
