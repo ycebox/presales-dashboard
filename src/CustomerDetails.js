@@ -1,4 +1,4 @@
-// CustomerDetails.js - Enhanced version with improved aesthetics and typography
+// CustomerDetails.js - Enhanced version with project edit functionality
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -151,8 +151,8 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeh
   );
 }
 
-function ProjectModal({ isOpen, onClose, onSave, customerName }) {
-  const [newProject, setNewProject] = useState({
+function ProjectModal({ isOpen, onClose, onSave, customerName, editingProject = null }) {
+  const [projectData, setProjectData] = useState({
     customer_name: customerName || '',
     project_name: '',
     account_manager: '',
@@ -167,10 +167,38 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
   });
 
   useEffect(() => {
-    if (customerName) {
-      setNewProject(prev => ({ ...prev, customer_name: customerName }));
+    if (editingProject) {
+      // Populate form with existing project data
+      setProjectData({
+        customer_name: editingProject.customer_name || customerName || '',
+        project_name: editingProject.project_name || '',
+        account_manager: editingProject.account_manager || '',
+        scope: editingProject.scope || '',
+        deal_value: editingProject.deal_value || '',
+        product: editingProject.product || '',
+        backup_presales: editingProject.backup_presales || '',
+        sales_stage: editingProject.sales_stage || '',
+        remarks: editingProject.remarks || '',
+        due_date: editingProject.due_date || '',
+        project_type: editingProject.project_type || ''
+      });
+    } else if (customerName) {
+      // Reset form for new project
+      setProjectData({
+        customer_name: customerName,
+        project_name: '',
+        account_manager: '',
+        scope: '',
+        deal_value: '',
+        product: '',
+        backup_presales: '',
+        sales_stage: '',
+        remarks: '',
+        due_date: '',
+        project_type: ''
+      });
     }
-  }, [customerName]);
+  }, [customerName, editingProject, isOpen]);
 
   const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
   const salesStages = [
@@ -181,11 +209,11 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setNewProject(prev => ({ ...prev, [name]: value }));
+    setProjectData(prev => ({ ...prev, [name]: value }));
   };
 
   const clearForm = () => {
-    setNewProject({
+    setProjectData({
       customer_name: customerName || '',
       project_name: '',
       account_manager: '',
@@ -201,51 +229,85 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
   };
 
   const handleClose = () => {
-    clearForm();
+    if (!editingProject) {
+      clearForm();
+    }
     onClose();
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!customerName) {
+    if (!customerName && !projectData.customer_name) {
       alert('Customer name is required');
       return;
     }
 
+    if (!projectData.project_name?.trim()) {
+      alert('Project name is required');
+      return;
+    }
+
+    if (!projectData.sales_stage) {
+      alert('Sales stage is required');
+      return;
+    }
+
+    if (!projectData.product) {
+      alert('Product is required');
+      return;
+    }
+
     try {
-      const projectData = {
-        customer_name: customerName,
-        account_manager: newProject.account_manager || null,
-        scope: newProject.scope || null,
-        deal_value: newProject.deal_value ? parseFloat(newProject.deal_value) : null,
-        product: newProject.product || null,
-        backup_presales: newProject.backup_presales || null,
-        sales_stage: newProject.sales_stage,
-        remarks: newProject.remarks || null,
-        due_date: newProject.due_date || null,
-        created_at: new Date().toISOString().split('T')[0]
+      const submissionData = {
+        customer_name: customerName || projectData.customer_name,
+        project_name: projectData.project_name.trim(),
+        account_manager: projectData.account_manager?.trim() || null,
+        scope: projectData.scope?.trim() || null,
+        deal_value: projectData.deal_value ? parseFloat(projectData.deal_value) : null,
+        product: projectData.product,
+        backup_presales: projectData.backup_presales?.trim() || null,
+        sales_stage: projectData.sales_stage,
+        remarks: projectData.remarks?.trim() || null,
+        due_date: projectData.due_date || null,
+        project_type: projectData.project_type || null
       };
 
-      if (newProject.project_name) {
-        projectData.project_name = newProject.project_name;
-      }
-      if (newProject.project_type) {
-        projectData.project_type = newProject.project_type;
-      }
-
-      const { data, error } = await supabase.from('projects').insert([projectData]).select();
+      let result;
       
-      if (error) throw error;
+      if (editingProject) {
+        // Update existing project
+        const { data, error } = await supabase
+          .from('projects')
+          .update(submissionData)
+          .eq('id', editingProject.id)
+          .select();
+        
+        if (error) throw error;
+        result = { data, isEdit: true };
+      } else {
+        // Create new project
+        submissionData.created_at = new Date().toISOString().split('T')[0];
+        
+        const { data, error } = await supabase
+          .from('projects')
+          .insert([submissionData])
+          .select();
+        
+        if (error) throw error;
+        result = { data, isEdit: false };
+      }
       
-      if (data && data.length > 0) {
-        onSave(data[0]);
-        clearForm();
+      if (result.data && result.data.length > 0) {
+        onSave(result.data[0], result.isEdit);
+        if (!editingProject) {
+          clearForm();
+        }
         onClose();
       }
     } catch (error) {
-      console.error('Error adding project:', error);
-      alert('Error adding project: ' + error.message);
+      console.error('Error saving project:', error);
+      alert(`Error ${editingProject ? 'updating' : 'adding'} project: ${error.message}`);
     }
   };
 
@@ -255,7 +317,12 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
     <div className="modal-backdrop" onClick={handleClose}>
       <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Add New Project for {customerName}</h3>
+          <h3>
+            {editingProject 
+              ? `Edit Project: ${editingProject.project_name || 'Unnamed Project'}` 
+              : `Add New Project for ${customerName}`
+            }
+          </h3>
           <button className="modal-close-btn" onClick={handleClose}>
             <FaTimes />
           </button>
@@ -267,7 +334,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
               Project Name *
               <input 
                 name="project_name" 
-                value={newProject.project_name} 
+                value={projectData.project_name} 
                 onChange={handleChange}
                 placeholder="Enter project name"
                 required
@@ -281,7 +348,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
               Account Manager
               <input 
                 name="account_manager" 
-                value={newProject.account_manager} 
+                value={projectData.account_manager} 
                 onChange={handleChange}
                 placeholder="Account manager name"
               />
@@ -292,7 +359,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
             <label>
               <FaChartLine className="field-icon" />
               Sales Stage *
-              <select name="sales_stage" value={newProject.sales_stage} onChange={handleChange} required>
+              <select name="sales_stage" value={projectData.sales_stage} onChange={handleChange} required>
                 <option value="">Select Stage</option>
                 {salesStages.map((stage, i) => (
                   <option key={i} value={stage}>{stage}</option>
@@ -305,7 +372,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
             <label>
               <FaBuilding className="field-icon" />
               Product *
-              <select name="product" value={newProject.product} onChange={handleChange} required>
+              <select name="product" value={projectData.product} onChange={handleChange} required>
                 <option value="">Select Product</option>
                 {products.map((product, i) => (
                   <option key={i} value={product}>{product}</option>
@@ -318,7 +385,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
             <label>
               <FaTasks className="field-icon" />
               Project Type
-              <select name="project_type" value={newProject.project_type} onChange={handleChange}>
+              <select name="project_type" value={projectData.project_type} onChange={handleChange}>
                 <option value="">Select Type</option>
                 {projectTypes.map((type, i) => (
                   <option key={i} value={type}>{type}</option>
@@ -335,7 +402,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
                 name="deal_value" 
                 type="number" 
                 step="0.01"
-                value={newProject.deal_value} 
+                value={projectData.deal_value} 
                 onChange={handleChange}
                 placeholder="Enter deal value"
               />
@@ -348,7 +415,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
               Backup Presales
               <input 
                 name="backup_presales" 
-                value={newProject.backup_presales} 
+                value={projectData.backup_presales} 
                 onChange={handleChange}
                 placeholder="Backup presales contact"
               />
@@ -362,7 +429,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
               <input 
                 name="due_date" 
                 type="date"
-                value={newProject.due_date} 
+                value={projectData.due_date} 
                 onChange={handleChange}
               />
             </label>
@@ -374,7 +441,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
               Scope
               <textarea 
                 name="scope" 
-                value={newProject.scope} 
+                value={projectData.scope} 
                 onChange={handleChange}
                 rows="3"
                 placeholder="Project scope and objectives"
@@ -388,7 +455,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
               Remarks
               <textarea 
                 name="remarks" 
-                value={newProject.remarks} 
+                value={projectData.remarks} 
                 onChange={handleChange}
                 rows="3"
                 placeholder="Project remarks or notes"
@@ -402,7 +469,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName }) {
             </button>
             <button type="submit" className="btn-primary">
               <FaSave />
-              Save Project
+              {editingProject ? 'Update Project' : 'Save Project'}
             </button>
           </div>
         </form>
@@ -546,6 +613,7 @@ function CustomerDetails() {
   const [editingStakeholder, setEditingStakeholder] = useState(null);
   const [editingStakeholderIndex, setEditingStakeholderIndex] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
+  const [editingProject, setEditingProject] = useState(null); // New state for project editing
   
   // Inline editing states
   const [isEditing, setIsEditing] = useState(false);
@@ -854,17 +922,36 @@ function CustomerDetails() {
     }
   };
 
+  // Project handlers
   const handleAddProject = () => {
     if (!customer?.customer_name) {
       alert('Customer information not loaded. Please refresh the page.');
       return;
     }
+    setEditingProject(null); // Ensure we're in add mode
     setShowProjectModal(true);
   };
 
-  const handleProjectSaved = (newProject) => {
-    setProjects(prev => [newProject, ...prev]);
-    alert('Project added successfully!');
+  const handleEditProject = (project) => {
+    setEditingProject(project);
+    setShowProjectModal(true);
+  };
+
+  const handleProjectSaved = (projectData, isEdit = false) => {
+    if (isEdit) {
+      // Update existing project in state
+      setProjects(prev => prev.map(p => 
+        p.id === projectData.id ? projectData : p
+      ));
+      alert('Project updated successfully!');
+    } else {
+      // Add new project to state
+      setProjects(prev => [projectData, ...prev]);
+      alert('Project added successfully!');
+    }
+    
+    // Reset editing state
+    setEditingProject(null);
   };
 
   const handleProjectClick = (projectId, projectName) => {
@@ -1487,6 +1574,13 @@ function CustomerDetails() {
                         )}
                         <div className="project-actions">
                           <button 
+                            className="project-action-btn edit" 
+                            onClick={() => handleEditProject(project)}
+                            title="Edit project"
+                          >
+                            <FaEdit />
+                          </button>
+                          <button 
                             className="project-action-btn delete" 
                             onClick={() => handleDeleteProject(project.id)}
                             title="Delete project"
@@ -1695,9 +1789,13 @@ function CustomerDetails() {
       {customer && (
         <ProjectModal
           isOpen={showProjectModal}
-          onClose={() => setShowProjectModal(false)}
+          onClose={() => {
+            setShowProjectModal(false);
+            setEditingProject(null);
+          }}
           onSave={handleProjectSaved}
           customerName={customer.customer_name}
+          editingProject={editingProject}
         />
       )}
 
@@ -1715,4 +1813,3 @@ function CustomerDetails() {
 }
 
 export default CustomerDetails;
-
