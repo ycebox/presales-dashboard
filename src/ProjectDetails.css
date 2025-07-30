@@ -229,7 +229,8 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-6);
-  min-height: 120px;
+  min-height: 140px;
+  align-items: stretch;
 }
 
 .overview-card {
@@ -244,7 +245,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  min-height: 120px;
+  min-height: 140px;
+  height: 100%;
 }
 
 .overview-card::before {
@@ -313,6 +315,8 @@
   color: var(--color-gray-900);
   margin-bottom: var(--space-1);
   line-height: 1;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .card-label {
@@ -322,6 +326,9 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: var(--space-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card-trend {
@@ -331,6 +338,9 @@
   font-size: var(--font-size-xs);
   color: var(--color-gray-500);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Main Content Grid */
@@ -1326,6 +1336,11 @@
   
   .overview-grid {
     grid-template-columns: repeat(2, 1fr);
+    min-height: 120px;
+  }
+  
+  .overview-card {
+    min-height: 120px;
   }
 }
 
