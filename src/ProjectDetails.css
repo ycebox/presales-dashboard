@@ -1,5 +1,19 @@
 /* ProjectDetails.css - Following Design Guidelines */
 
+/* Typography Enhancements */
+:root {
+  --font-family: 'Inter', 'Segoe UI', sans-serif;
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-base: 15px;
+  --font-size-lg: 18px;
+  --font-size-xl: 22px;
+  --font-size-2xl: 26px;
+  --font-size-3xl: 30px;
+  --font-size-4xl: 36px;
+}
+
+
 .project-details-container {
   padding: var(--space-8);
   background: var(--gradient-card);
@@ -228,11 +242,32 @@
 
 .overview-grid {
   display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+
+  display: flex;
   gap: var(--space-1);
   width: 100%;
 }
 
 .overview-card {
+  min-height: 40px;
+  padding: 4px 6px;
+  background: var(--color-white);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 160px;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+
   background: var(--color-white);
   border-radius: var(--radius-base);
   padding: var(--space-1);
@@ -277,6 +312,13 @@
 .overview-card.normal::before { background: var(--color-gray-400); }
 
 .card-icon-wrapper {
+  border-radius: 50%;
+  background: var(--color-gray-100);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   display: flex;
   align-items: center;
   justify-content: center;
@@ -286,23 +328,89 @@
   flex-shrink: 0;
 }
 
-.overview-card.primary .card-icon-wrapper { background: var(--color-primary-subtle); }
-.overview-card.success .card-icon-wrapper { background: rgba(16, 185, 129, 0.1); }
-.overview-card.warning .card-icon-wrapper { background: rgba(245, 158, 11, 0.1); }
-.overview-card.urgent .card-icon-wrapper { background: rgba(239, 68, 68, 0.1); }
-.overview-card.overdue .card-icon-wrapper { background: rgba(239, 68, 68, 0.1); }
-.overview-card.normal .card-icon-wrapper { background: var(--color-gray-100); }
+.overview-card.primary .card-icon-wrapper {
+  border-radius: 50%;
+  background: var(--color-gray-100);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+ background: var(--color-primary-subtle); }
+.overview-card.success .card-icon-wrapper {
+  border-radius: 50%;
+  background: var(--color-gray-100);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+ background: rgba(16, 185, 129, 0.1); }
+.overview-card.warning .card-icon-wrapper {
+  border-radius: 50%;
+  background: var(--color-gray-100);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+ background: rgba(245, 158, 11, 0.1); }
+.overview-card.urgent .card-icon-wrapper {
+  border-radius: 50%;
+  background: var(--color-gray-100);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+ background: rgba(239, 68, 68, 0.1); }
+.overview-card.overdue .card-icon-wrapper {
+  border-radius: 50%;
+  background: var(--color-gray-100);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+ background: rgba(239, 68, 68, 0.1); }
+.overview-card.normal .card-icon-wrapper {
+  border-radius: 50%;
+  background: var(--color-gray-100);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+ background: var(--color-gray-100); }
 
 .card-icon {
   font-size: 10px;
   color: var(--color-primary);
+  opacity: 0.8;
+
+  font-size: 10px;
+  color: var(--color-primary);
 }
 
-.overview-card.success .card-icon { color: var(--color-success); }
-.overview-card.warning .card-icon { color: var(--color-warning); }
-.overview-card.urgent .card-icon { color: var(--color-danger); }
-.overview-card.overdue .card-icon { color: var(--color-danger); }
-.overview-card.normal .card-icon { color: var(--color-gray-500); }
+.overview-card.success .card-icon {
+  font-size: 10px;
+  color: var(--color-primary);
+  opacity: 0.8;
+ color: var(--color-success); }
+.overview-card.warning .card-icon {
+  font-size: 10px;
+  color: var(--color-primary);
+  opacity: 0.8;
+ color: var(--color-warning); }
+.overview-card.urgent .card-icon {
+  font-size: 10px;
+  color: var(--color-primary);
+  opacity: 0.8;
+ color: var(--color-danger); }
+.overview-card.overdue .card-icon {
+  font-size: 10px;
+  color: var(--color-primary);
+  opacity: 0.8;
+ color: var(--color-danger); }
+.overview-card.normal .card-icon {
+  font-size: 10px;
+  color: var(--color-primary);
+  opacity: 0.8;
+ color: var(--color-gray-500); }
 
 .card-content {
   flex: 1;
@@ -311,6 +419,15 @@
 }
 
 .card-value {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin-bottom: 1px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
   font-size: 14px;
   font-weight: 700;
   color: var(--color-gray-900);
@@ -322,6 +439,12 @@
 }
 
 .card-label {
+  font-size: 7px;
+  color: var(--color-gray-600);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+
   font-size: 8px;
   color: var(--color-gray-600);
   font-weight: 600;
@@ -334,6 +457,12 @@
 }
 
 .card-trend {
+  font-size: 6px;
+  color: var(--color-gray-500);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+
   font-size: 7px;
   color: var(--color-gray-500);
   font-weight: 500;
@@ -1337,23 +1466,65 @@
   }
   
   .overview-grid {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+
     gap: var(--space-1);
   }
   
   .overview-card {
+  min-height: 40px;
+  padding: 4px 6px;
+  background: var(--color-white);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 160px;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+
     min-height: 45px;
     padding: var(--space-1);
   }
   
   .card-value {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin-bottom: 1px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
     font-size: 12px;
   }
   
   .card-label {
+  font-size: 7px;
+  color: var(--color-gray-600);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+
     font-size: 7px;
   }
   
   .card-trend {
+  font-size: 6px;
+  color: var(--color-gray-500);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+
     font-size: 6px;
   }
 }
@@ -1374,23 +1545,65 @@
   }
   
   .overview-grid {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+
     gap: var(--space-1);
   }
   
   .overview-card {
+  min-height: 40px;
+  padding: 4px 6px;
+  background: var(--color-white);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 160px;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+
     padding: var(--space-1);
     min-height: 40px;
   }
   
   .card-value {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin-bottom: 1px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
     font-size: 10px;
   }
   
   .card-label {
+  font-size: 7px;
+  color: var(--color-gray-600);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+
     font-size: 6px;
   }
   
   .card-trend {
+  font-size: 6px;
+  color: var(--color-gray-500);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+
     font-size: 5px;
   }
   
@@ -1457,19 +1670,55 @@
   }
   
   .overview-card {
+  min-height: 40px;
+  padding: 4px 6px;
+  background: var(--color-white);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 160px;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+
     padding: var(--space-1);
     min-height: 35px;
   }
   
   .card-value {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin-bottom: 1px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
     font-size: 9px;
   }
   
   .card-label {
+  font-size: 7px;
+  color: var(--color-gray-600);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+
     font-size: 5px;
   }
   
   .card-trend {
+  font-size: 6px;
+  color: var(--color-gray-500);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+
     font-size: 4px;
   }
   
@@ -1560,6 +1809,21 @@
   
   .content-card,
   .overview-card {
+  min-height: 40px;
+  padding: 4px 6px;
+  background: var(--color-white);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--color-gray-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 160px;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+
     box-shadow: none;
     border: 1px solid var(--color-gray-400);
     break-inside: avoid;
