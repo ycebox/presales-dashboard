@@ -100,20 +100,11 @@ function ProjectDetails() {
                 onChange={e => setEditForm({ ...editForm, account_manager: e.target.value })}
               />
             </div>
-            <div className="form-group">
-              <label>Sales Stage</label>
-              <input
-                type="text"
-                value={editForm.sales_stage}
-                onChange={e => setEditForm({ ...editForm, sales_stage: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label>Deal Value</label>
-              <input
-                type="text"
-                value={editForm.deal_value}
-                onChange={e => setEditForm({ ...editForm, deal_value: e.target.value })}
+            <div className="form-group full-width">
+              <label>Scope</label>
+              <textarea
+                value={editForm.scope}
+                onChange={e => setEditForm({ ...editForm, scope: e.target.value })}
               />
             </div>
           </div>
