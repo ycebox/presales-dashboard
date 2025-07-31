@@ -1122,8 +1122,7 @@ function ProjectDetails() {
                 </div>
               )}
             </div>
-          </section>
-          </section>
+                   </section>
 
           {/* Project Log */}
           <section className="content-card">
