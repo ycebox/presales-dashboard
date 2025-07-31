@@ -6,7 +6,9 @@ import {
   FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
   FaPlus, FaInfo, FaTrash, FaChevronDown, FaChevronUp, 
   FaUsers, FaCalendarAlt, FaDollarSign, FaChartLine,
-  FaCheckCircle, FaClock, FaExclamationTriangle, FaArrowLeft
+  FaCheckCircle, FaClock, FaExclamationTriangle, FaArrowLeft,
+  FaFilter, FaEye, FaEyeSlash, FaProjectDiagram, FaAward,
+  FaBullseye, FaRocket, FaLightbulb, FaFileAlt
 } from 'react-icons/fa';
 
 // Constants
@@ -70,7 +72,14 @@ const getSalesStageIcon = (stage) => {
   if (stage?.toLowerCase().includes('closed-won')) return <FaCheckCircle className="stage-won" />;
   if (stage?.toLowerCase().includes('closed-lost')) return <FaExclamationTriangle className="stage-lost" />;
   if (stage?.toLowerCase().includes('closed-cancelled')) return <FaTimes className="stage-cancelled" />;
-  return <FaChartLine className="stage-active" />;
+  return <FaRocket className="stage-active" />;
+};
+
+const getSalesStageClass = (stage) => {
+  if (stage?.toLowerCase().includes('closed-won')) return 'stage-won';
+  if (stage?.toLowerCase().includes('closed-lost')) return 'stage-lost';
+  if (stage?.toLowerCase().includes('closed-cancelled')) return 'stage-cancelled';
+  return 'stage-active';
 };
 
 // Modal Components
@@ -121,9 +130,12 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
     <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">
-            {editingTask ? 'Edit Task' : 'Add New Task'}
-          </h3>
+          <div className="modal-title-wrapper">
+            <FaTasks className="modal-icon" />
+            <h3 className="modal-title">
+              {editingTask ? 'Edit Task' : 'Create New Task'}
+            </h3>
+          </div>
           <button 
             className="modal-close-button" 
             onClick={onClose}
@@ -146,7 +158,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
                 value={taskData.description} 
                 onChange={(e) => setTaskData(prev => ({ ...prev, description: e.target.value }))}
                 className="form-input"
-                placeholder="What needs to be done?"
+                placeholder="What needs to be accomplished?"
                 required
               />
             </div>
@@ -186,7 +198,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
 
             <div className="form-group full-width">
               <label htmlFor="task-notes" className="form-label">
-                <FaEdit className="form-icon" />
+                <FaFileAlt className="form-icon" />
                 Notes
               </label>
               <textarea 
@@ -196,18 +208,19 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
                 onChange={(e) => setTaskData(prev => ({ ...prev, notes: e.target.value }))}
                 rows="3"
                 className="form-textarea"
-                placeholder="Additional details or context..."
+                placeholder="Additional context, requirements, or details..."
               />
             </div>
           </div>
           
           <div className="modal-actions">
             <button type="button" onClick={onClose} className="button-cancel" disabled={loading}>
+              <FaTimes />
               Cancel
             </button>
             <button type="submit" className="button-submit" disabled={loading}>
               <FaSave />
-              {loading ? 'Saving...' : editingTask ? 'Update Task' : 'Add Task'}
+              {loading ? 'Saving...' : editingTask ? 'Update Task' : 'Create Task'}
             </button>
           </div>
         </form>
@@ -241,7 +254,10 @@ const LogModal = ({ isOpen, onClose, onSave }) => {
     <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">Add Project Log</h3>
+          <div className="modal-title-wrapper">
+            <FaBookOpen className="modal-icon" />
+            <h3 className="modal-title">Add Project Log Entry</h3>
+          </div>
           <button 
             className="modal-close-button" 
             onClick={onClose}
@@ -255,16 +271,16 @@ const LogModal = ({ isOpen, onClose, onSave }) => {
           <div className="form-grid">
             <div className="form-group full-width">
               <label htmlFor="log-entry" className="form-label">
-                <FaBookOpen className="form-icon" />
+                <FaEdit className="form-icon" />
                 Log Entry *
               </label>
               <textarea 
                 id="log-entry"
                 value={logEntry} 
                 onChange={(e) => setLogEntry(e.target.value)}
-                rows="4"
+                rows="5"
                 className="form-textarea"
-                placeholder="Document progress, decisions, or important updates..."
+                placeholder="Document progress, decisions, meeting notes, or any important project updates..."
                 required
               />
             </div>
@@ -272,11 +288,12 @@ const LogModal = ({ isOpen, onClose, onSave }) => {
           
           <div className="modal-actions">
             <button type="button" onClick={onClose} className="button-cancel" disabled={loading}>
+              <FaTimes />
               Cancel
             </button>
             <button type="submit" className="button-submit" disabled={loading}>
               <FaPlus />
-              {loading ? 'Adding...' : 'Add Log Entry'}
+              {loading ? 'Adding...' : 'Add Entry'}
             </button>
           </div>
         </form>
@@ -312,7 +329,7 @@ const ErrorScreen = ({ error, onBack }) => (
       <div className="error-icon-wrapper">
         <FaExclamationTriangle className="error-icon" />
       </div>
-      <h2 className="error-title">Oops! Something went wrong</h2>
+      <h2 className="error-title">Something went wrong</h2>
       <p className="error-message">{error || 'Project not found'}</p>
       <button onClick={onBack} className="action-button primary">
         <FaHome />
@@ -439,8 +456,8 @@ function ProjectDetails() {
   })();
 
   const getDaysRemainingText = () => {
-    if (daysRemaining === null) return 'No due date';
-    if (daysRemaining > 0) return `${daysRemaining} days left`;
+    if (daysRemaining === null) return 'No due date set';
+    if (daysRemaining > 0) return `${daysRemaining} days remaining`;
     if (daysRemaining === 0) return 'Due today';
     return `${Math.abs(daysRemaining)} days overdue`;
   };
@@ -625,11 +642,13 @@ function ProjectDetails() {
     <div className="project-details-container">
       {/* Navigation Header */}
       <header className="navigation-header">
-        <div className="navigation-content">
+        <div className="nav-left">
           <button onClick={() => navigate('/')} className="nav-button primary">
             <FaArrowLeft />
             <span>Back to Dashboard</span>
           </button>
+        </div>
+        <div className="nav-right">
           {project.customer_name && (
             <button onClick={navigateToCustomer} className="nav-button secondary">
               <FaUsers />
@@ -641,78 +660,66 @@ function ProjectDetails() {
 
       {/* Project Header */}
       <section className="project-header">
-        <div className="project-title-section">
-          <h1 className="project-title">
-            {project.project_name || 'Unnamed Project'}
-          </h1>
-          <div className="project-subtitle">
-            <span className="customer-badge">
-              <FaUsers />
-              <span>{project.customer_name}</span>
-            </span>
-            <span className="stage-badge">
-              {getSalesStageIcon(project.sales_stage)}
-              <span>{project.sales_stage || 'No Stage'}</span>
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* Overview Cards */}
-      <section className="overview-section">
-        <div className="overview-grid">
-          <div className="overview-card primary">
-            <div className="card-icon-wrapper">
-              <FaTasks className="card-icon" />
+        <div className="project-hero">
+          <div className="project-title-section">
+            <div className="project-icon-wrapper">
+              <FaProjectDiagram className="project-icon" />
             </div>
-            <div className="card-content">
-              <div className="card-value">{activeTasksCount}</div>
-              <div className="card-label">Active Tasks</div>
-              <div className="card-trend">
-                <FaCheckCircle />
-                <span>{completedTasksCount} completed</span>
+            <div className="project-title-content">
+              <h1 className="project-title">
+                {project.project_name || 'Unnamed Project'}
+              </h1>
+              <div className="project-meta">
+                <span className="customer-badge">
+                  <FaUsers className="badge-icon" />
+                  <span>{project.customer_name}</span>
+                </span>
+                <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
+                  {getSalesStageIcon(project.sales_stage)}
+                  <span>{project.sales_stage || 'No Stage'}</span>
+                </span>
               </div>
             </div>
           </div>
-
-          <div className="overview-card success">
-            <div className="card-icon-wrapper">
-              <FaChartLine className="card-icon" />
-            </div>
-            <div className="card-content">
-              <div className="card-value">{progressPercentage}%</div>
-              <div className="card-label">Progress</div>
-              <div className="card-trend">
-                <FaChartLine />
-                <span>On track</span>
+          
+          <div className="project-summary">
+            <div className="summary-item">
+              <div className="summary-icon">
+                <FaTasks />
+              </div>
+              <div className="summary-content">
+                <div className="summary-value">{activeTasksCount}</div>
+                <div className="summary-label">Active Tasks</div>
               </div>
             </div>
-          </div>
-
-          <div className={`overview-card ${getDaysRemainingClass()}`}>
-            <div className="card-icon-wrapper">
-              <FaCalendarAlt className="card-icon" />
+            
+            <div className="summary-item">
+              <div className="summary-icon">
+                <FaAward />
+              </div>
+              <div className="summary-content">
+                <div className="summary-value">{progressPercentage}%</div>
+                <div className="summary-label">Complete</div>
+              </div>
             </div>
-            <div className="card-content">
-              <div className="card-value">{daysRemaining || '-'}</div>
-              <div className="card-label">Days Remaining</div>
-              <div className="card-trend">
+            
+            <div className={`summary-item ${getDaysRemainingClass()}`}>
+              <div className="summary-icon">
                 <FaCalendarAlt />
-                <span>{getDaysRemainingText()}</span>
+              </div>
+              <div className="summary-content">
+                <div className="summary-value">{daysRemaining !== null ? Math.abs(daysRemaining) : '-'}</div>
+                <div className="summary-label">{getDaysRemainingText()}</div>
               </div>
             </div>
-          </div>
-
-          <div className="overview-card warning">
-            <div className="card-icon-wrapper">
-              <FaDollarSign className="card-icon" />
-            </div>
-            <div className="card-content">
-              <div className="card-value">{formatCurrency(project.deal_value)}</div>
-              <div className="card-label">Deal Value</div>
-              <div className="card-trend">
-                {getSalesStageIcon(project.sales_stage)}
-                <span>{project.sales_stage}</span>
+            
+            <div className="summary-item">
+              <div className="summary-icon">
+                <FaDollarSign />
+              </div>
+              <div className="summary-content">
+                <div className="summary-value">{formatCurrency(project.deal_value)}</div>
+                <div className="summary-label">Deal Value</div>
               </div>
             </div>
           </div>
@@ -728,7 +735,7 @@ function ProjectDetails() {
             <div className="card-header">
               <div className="header-title">
                 <FaInfo className="header-icon" />
-                <h3>Project Details</h3>
+                <h3>Project Information</h3>
               </div>
               <div className="header-actions">
                 {isEditing ? (
@@ -739,7 +746,7 @@ function ProjectDetails() {
                       disabled={saving}
                     >
                       <FaSave />
-                      <span>{saving ? 'Saving...' : 'Save'}</span>
+                      <span>{saving ? 'Saving...' : 'Save Changes'}</span>
                     </button>
                     <button 
                       onClick={handleEditToggle} 
@@ -753,7 +760,7 @@ function ProjectDetails() {
                 ) : (
                   <button onClick={handleEditToggle} className="action-button primary">
                     <FaEdit />
-                    <span>Edit</span>
+                    <span>Edit Details</span>
                   </button>
                 )}
               </div>
@@ -761,8 +768,8 @@ function ProjectDetails() {
 
             {isEditing && (
               <div className="edit-banner">
-                <FaEdit />
-                <span>Editing mode - Make your changes and click Save</span>
+                <FaLightbulb className="edit-icon" />
+                <span>Edit mode active - Make your changes and save when ready</span>
               </div>
             )}
 
@@ -770,7 +777,7 @@ function ProjectDetails() {
               <div className="details-grid">
                 <div className="detail-item">
                   <label className="detail-label">
-                    <FaChartLine />
+                    <FaRocket className="detail-icon" />
                     <span>Sales Stage</span>
                   </label>
                   {isEditing ? (
@@ -786,7 +793,7 @@ function ProjectDetails() {
                       ))}
                     </select>
                   ) : (
-                    <div className="detail-value">
+                    <div className={`detail-value stage-value ${getSalesStageClass(project.sales_stage)}`}>
                       {getSalesStageIcon(project.sales_stage)}
                       <span>{project.sales_stage || 'Not specified'}</span>
                     </div>
@@ -795,7 +802,7 @@ function ProjectDetails() {
 
                 <div className="detail-item">
                   <label className="detail-label">
-                    <FaInfo />
+                    <FaBullseye className="detail-icon" />
                     <span>Product</span>
                   </label>
                   {isEditing ? (
@@ -817,31 +824,9 @@ function ProjectDetails() {
                   )}
                 </div>
 
-                
                 <div className="detail-item">
                   <label className="detail-label">
-                    <FaInfo />
-                    <span>Status</span>
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="status"
-                      value={editProject.status || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                      placeholder="Project status"
-                    />
-                  ) : (
-                    <div className="detail-value">
-                      <span>{project.status || 'Not specified'}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaUsers />
+                    <FaUsers className="detail-icon" />
                     <span>Account Manager</span>
                   </label>
                   {isEditing ? (
@@ -862,7 +847,7 @@ function ProjectDetails() {
 
                 <div className="detail-item">
                   <label className="detail-label">
-                    <FaCalendarAlt />
+                    <FaCalendarAlt className="detail-icon" />
                     <span>Due Date</span>
                   </label>
                   {isEditing ? (
@@ -882,7 +867,7 @@ function ProjectDetails() {
 
                 <div className="detail-item">
                   <label className="detail-label">
-                    <FaDollarSign />
+                    <FaDollarSign className="detail-icon" />
                     <span>Deal Value</span>
                   </label>
                   {isEditing ? (
@@ -901,31 +886,9 @@ function ProjectDetails() {
                   )}
                 </div>
 
-                
                 <div className="detail-item">
                   <label className="detail-label">
-                    <FaInfo />
-                    <span>Status</span>
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="status"
-                      value={editProject.status || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                      placeholder="Project status"
-                    />
-                  ) : (
-                    <div className="detail-value">
-                      <span>{project.status || 'Not specified'}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaUsers />
+                    <FaUsers className="detail-icon" />
                     <span>Backup Presales</span>
                   </label>
                   {isEditing ? (
@@ -947,8 +910,8 @@ function ProjectDetails() {
 
               <div className="detail-item full-width">
                 <label className="detail-label">
-                  <FaInfo />
-                  <span>Scope</span>
+                  <FaBullseye className="detail-icon" />
+                  <span>Project Scope</span>
                 </label>
                 {isEditing ? (
                   <textarea
@@ -956,8 +919,8 @@ function ProjectDetails() {
                     value={editProject.scope || ''}
                     onChange={handleEditChange}
                     className="detail-textarea"
-                    rows="3"
-                    placeholder="Project scope and objectives"
+                    rows="4"
+                    placeholder="Describe the project scope, objectives, and deliverables..."
                   />
                 ) : (
                   <div className="detail-value scope-text">
@@ -969,8 +932,8 @@ function ProjectDetails() {
               {(project.remarks || isEditing) && (
                 <div className="detail-item full-width">
                   <label className="detail-label">
-                    <FaEdit />
-                    <span>Remarks</span>
+                    <FaFileAlt className="detail-icon" />
+                    <span>Additional Notes</span>
                   </label>
                   {isEditing ? (
                     <textarea
@@ -979,11 +942,11 @@ function ProjectDetails() {
                       onChange={handleEditChange}
                       className="detail-textarea"
                       rows="3"
-                      placeholder="Project remarks or notes"
+                      placeholder="Any additional remarks, constraints, or important notes..."
                     />
                   ) : (
                     <div className="detail-value scope-text">
-                      {project.remarks || 'No remarks'}
+                      {project.remarks || 'No additional notes'}
                     </div>
                   )}
                 </div>
@@ -997,9 +960,16 @@ function ProjectDetails() {
               <div className="header-title">
                 <FaTasks className="header-icon" />
                 <h3>Project Tasks</h3>
-                <span className="task-counter">
-                  {activeTasksCount} active, {completedTasksCount} completed
-                </span>
+                <div className="task-counter">
+                  <span className="counter-item active">
+                    <FaClock className="counter-icon" />
+                    {activeTasksCount} active
+                  </span>
+                  <span className="counter-item completed">
+                    <FaCheckCircle className="counter-icon" />
+                    {completedTasksCount} done
+                  </span>
+                </div>
               </div>
               <div className="header-actions">
                 <button 
@@ -1007,14 +977,15 @@ function ProjectDetails() {
                   className="action-button primary"
                 >
                   <FaPlus />
-                  <span>Add Task</span>
+                  <span>New Task</span>
                 </button>
                 <button 
-                  className={`action-button secondary ${showCompleted ? 'active' : ''}`}
+                  className={`action-button secondary filter-button ${showCompleted ? 'active' : ''}`}
                   onClick={() => setShowCompleted(!showCompleted)}
+                  title={showCompleted ? 'Hide completed tasks' : 'Show all tasks'}
                 >
-                  {showCompleted ? <FaChevronUp /> : <FaChevronDown />}
-                  <span>{showCompleted ? 'Hide Completed' : 'Show All'}</span>
+                  {showCompleted ? <FaEyeSlash /> : <FaEye />}
+                  <span>{showCompleted ? 'Hide Done' : 'Show All'}</span>
                 </button>
               </div>
             </div>
@@ -1023,39 +994,49 @@ function ProjectDetails() {
               {filteredTasks.length > 0 ? (
                 <div className="task-list">
                   {filteredTasks.map((task) => (
-                    <div key={task.id} className="task-item">
+                    <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)}`}>
                       <div className="task-checkbox-wrapper">
-                        <input 
-                          type="checkbox" 
-                          className="task-checkbox"
-                          checked={task.status === 'Completed'}
-                          onChange={() => handleTaskStatusChange(task.id, task.status)}
-                          aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`}
-                        />
+                        <div className="custom-checkbox">
+                          <input 
+                            type="checkbox" 
+                            className="task-checkbox"
+                            checked={task.status === 'Completed'}
+                            onChange={() => handleTaskStatusChange(task.id, task.status)}
+                            aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`}
+                          />
+                          <div className="checkbox-visual">
+                            <FaCheckCircle className="check-icon" />
+                          </div>
+                        </div>
                       </div>
+                      
                       <div className="task-main-content">
                         <div className="task-header">
                           <h4 className="task-title">{task.description}</h4>
-                          <div className="task-status-badge">
+                          <div className={`task-status-badge ${getTaskStatusClass(task.status)}`}>
                             {getTaskStatusIcon(task.status)}
-                            <span className={`status-text ${getTaskStatusClass(task.status)}`}>
+                            <span className="status-text">
                               {task.status}
                             </span>
                           </div>
                         </div>
-                        {task.due_date && (
-                          <div className="task-meta">
-                            <FaCalendarAlt />
-                            <span>Due {formatDate(task.due_date)}</span>
-                          </div>
-                        )}
-                        {task.notes && (
-                          <div className="task-notes">
-                            <FaEdit />
-                            <span>{task.notes}</span>
-                          </div>
-                        )}
+                        
+                        <div className="task-meta-row">
+                          {task.due_date && (
+                            <div className="task-meta-item">
+                              <FaCalendarAlt className="meta-icon" />
+                              <span>Due {formatDate(task.due_date)}</span>
+                            </div>
+                          )}
+                          {task.notes && (
+                            <div className="task-meta-item">
+                              <FaFileAlt className="meta-icon" />
+                              <span className="task-notes-preview">{task.notes}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
+                      
                       <div className="task-actions">
                         <button 
                           onClick={() => {
@@ -1082,8 +1063,8 @@ function ProjectDetails() {
                 </div>
               ) : (
                 <EmptyState
-                  title={`No ${showCompleted ? '' : 'active '}tasks yet`}
-                  description="Create your first task to start tracking project progress"
+                  title={`No ${showCompleted ? '' : 'active '}tasks found`}
+                  description={showCompleted ? "All tasks are completed! Great work." : "Create your first task to start tracking project progress"}
                   icon={<FaTasks />}
                   action={
                     <button 
@@ -1091,7 +1072,7 @@ function ProjectDetails() {
                       className="action-button primary"
                     >
                       <FaPlus />
-                      <span>Add Task</span>
+                      <span>Create Task</span>
                     </button>
                   }
                 />
@@ -1102,15 +1083,49 @@ function ProjectDetails() {
 
         {/* Right Sidebar */}
         <div className="sidebar-column">
-          {/* Task Analytics */}
+          {/* Progress Analytics */}
           <section className="content-card">
             <div className="card-header">
               <div className="header-title">
                 <FaChartLine className="header-icon" />
-                <h3>Task Analytics</h3>
+                <h3>Progress Overview</h3>
               </div>
             </div>
             <div className="card-content">
+              {/* Circular Progress */}
+              <div className="progress-circle-container">
+                <div className="progress-circle">
+                  <svg className="progress-ring" width="120" height="120">
+                    <circle
+                      className="progress-ring-bg"
+                      stroke="#e5e7eb"
+                      strokeWidth="8"
+                      fill="transparent"
+                      r="52"
+                      cx="60"
+                      cy="60"
+                    />
+                    <circle
+                      className="progress-ring-fill"
+                      stroke="#10b981"
+                      strokeWidth="8"
+                      fill="transparent"
+                      r="52"
+                      cx="60"
+                      cy="60"
+                      strokeDasharray={`${2 * Math.PI * 52}`}
+                      strokeDashoffset={`${2 * Math.PI * 52 * (1 - progressPercentage / 100)}`}
+                      transform="rotate(-90 60 60)"
+                    />
+                  </svg>
+                  <div className="progress-text">
+                    <span className="progress-percentage">{progressPercentage}%</span>
+                    <span className="progress-label">Complete</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Task Analytics Grid */}
               <div className="analytics-grid">
                 <div className="analytics-item completed">
                   <div className="analytics-icon-wrapper">
@@ -1128,7 +1143,7 @@ function ProjectDetails() {
                   </div>
                   <div className="analytics-content">
                     <div className="analytics-value">{activeTasksCount}</div>
-                    <div className="analytics-label">Active</div>
+                    <div className="analytics-label">In Progress</div>
                   </div>
                 </div>
                 
@@ -1138,49 +1153,18 @@ function ProjectDetails() {
                   </div>
                   <div className="analytics-content">
                     <div className="analytics-value">{tasks.length}</div>
-                    <div className="analytics-label">Total</div>
+                    <div className="analytics-label">Total Tasks</div>
                   </div>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="progress-section">
-                <div className="progress-header">
-                  <span className="progress-label">Project Progress</span>
-                  <span className="progress-percentage">{progressPercentage}%</span>
-                </div>
-                <div className="progress-bar">
-                  <div 
-                    className="progress-fill" 
-                    style={{ width: `${progressPercentage}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* Status Breakdown */}
-              <div className="status-breakdown">
-                <h4 className="breakdown-title">Task Status Breakdown</h4>
-                <div className="status-list">
-                  {TASK_STATUSES.map(status => {
-                    const count = tasks.filter(task => task.status === status).length;
-                    if (count === 0) return null;
-                    return (
-                      <div key={status} className="status-item">
-                        <div className={`status-indicator ${getTaskStatusClass(status)}`}>
-                          {getTaskStatusIcon(status)}
-                        </div>
-                        <span className="status-name">{status}</span>
-                        <span className="status-count">{count}</span>
-                      </div>
-                    );
-                  })}
                 </div>
               </div>
 
               {/* Upcoming Due Dates */}
               {tasks.filter(task => task.due_date && !['Completed', 'Cancelled/On-hold'].includes(task.status)).length > 0 && (
                 <div className="upcoming-tasks">
-                  <h4 className="upcoming-title">Upcoming Due Dates</h4>
+                  <h4 className="upcoming-title">
+                    <FaCalendarAlt className="upcoming-icon" />
+                    Upcoming Deadlines
+                  </h4>
                   <div className="upcoming-list">
                     {tasks
                       .filter(task => task.due_date && !['Completed', 'Cancelled/On-hold'].includes(task.status))
@@ -1189,11 +1173,11 @@ function ProjectDetails() {
                       .map(task => {
                         const daysUntilDue = Math.ceil((new Date(task.due_date) - new Date()) / (1000 * 60 * 60 * 24));
                         return (
-                          <div key={task.id} className="upcoming-task">
+                          <div key={task.id} className={`upcoming-task ${daysUntilDue < 0 ? 'overdue' : daysUntilDue <= 3 ? 'urgent' : 'normal'}`}>
                             <div className="upcoming-task-content">
                               <div className="upcoming-task-title">{task.description}</div>
-                              <div className={`upcoming-task-due ${daysUntilDue < 0 ? 'overdue' : daysUntilDue <= 3 ? 'urgent' : 'normal'}`}>
-                                <FaCalendarAlt />
+                              <div className="upcoming-task-due">
+                                <FaCalendarAlt className="due-icon" />
                                 <span>
                                   {daysUntilDue < 0 ? `${Math.abs(daysUntilDue)} days overdue` : 
                                    daysUntilDue === 0 ? 'Due today' : 
@@ -1215,29 +1199,35 @@ function ProjectDetails() {
             <div className="card-header">
               <div className="header-title">
                 <FaBookOpen className="header-icon" />
-                <h3>Project Log</h3>
+                <h3>Activity Log</h3>
                 <span className="log-counter">
-                  {logs.length} entries
+                  {logs.length} {logs.length === 1 ? 'entry' : 'entries'}
                 </span>
               </div>
               <div className="header-actions">
                 <button 
                   onClick={() => setShowLogModal(true)} 
                   className="action-button primary icon-only"
+                  title="Add log entry"
                 >
                   <FaPlus />
                 </button>
               </div>
             </div>
 
-            <div className="card-content compact">
+            <div className="card-content">
               {logs.length > 0 ? (
                 <div className="log-list">
-                  {logs.slice(0, 5).map((log) => (
+                  {logs.slice(0, 5).map((log, index) => (
                     <div key={log.id} className="log-item">
+                      <div className="log-timeline">
+                        <div className="log-dot"></div>
+                        {index < logs.slice(0, 5).length - 1 && <div className="log-line"></div>}
+                      </div>
                       <div className="log-content">
                         <div className="log-text">{log.entry}</div>
                         <div className="log-meta">
+                          <FaCalendarAlt className="log-meta-icon" />
                           <span className="log-date">
                             {formatDate(log.created_at)}
                           </span>
@@ -1256,6 +1246,7 @@ function ProjectDetails() {
                   {logs.length > 5 && (
                     <div className="log-view-more">
                       <button className="action-button secondary small">
+                        <FaEye />
                         View All {logs.length} Entries
                       </button>
                     </div>
@@ -1263,8 +1254,8 @@ function ProjectDetails() {
                 </div>
               ) : (
                 <EmptyState
-                  title="No entries yet"
-                  description="Start documenting project progress and decisions"
+                  title="No activity yet"
+                  description="Start documenting project progress, decisions, and important updates"
                   icon={<FaBookOpen />}
                   action={
                     <button 
