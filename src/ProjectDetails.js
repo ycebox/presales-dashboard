@@ -982,7 +982,7 @@ function ProjectDetails() {
                           type="checkbox" 
                           className="task-checkbox"
                           checked={task.status === 'Completed'}
-                          onChange={() = /> handleTaskStatusChange(task.id, task.status)}
+                          onChange={() => handleTaskStatusChange(task.id, task.status)}
                           aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`} />
                       </div>
                       <div className="task-main-content">
@@ -1246,4 +1246,3 @@ export default ProjectDetails;
 
 
 
-}
