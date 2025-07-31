@@ -146,11 +146,10 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
                 id="task-description"
                 name="description" 
                 value={taskData.description} 
-                onChange={(e) = / /> setTaskData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) = /> setTaskData(prev => ({ ...prev, description: e.target.value }))}
                 className="form-input"
                 placeholder="What needs to be done?"
-                required
-              />
+                required />
             </div>
 
             <div className="form-group">
@@ -181,9 +180,8 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
                 name="due_date" 
                 type="date"
                 value={taskData.due_date} 
-                onChange={(e) = / /> setTaskData(prev => ({ ...prev, due_date: e.target.value }))}
-                className="form-input"
-              />
+                onChange={(e) = /> setTaskData(prev => ({ ...prev, due_date: e.target.value }))}
+                className="form-input" />
             </div>
 
             <div className="form-group full-width">
@@ -198,8 +196,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
                 onChange={(e) => setTaskData(prev => ({ ...prev, notes: e.target.value }))}
                 rows="3"
                 className="form-textarea"
-                placeholder="Additional details or context..."
-              />
+                placeholder="Additional details or context..." />
             </div>
           </div>
           
@@ -267,8 +264,7 @@ const LogModal = ({ isOpen, onClose, onSave }) => {
                 rows="4"
                 className="form-textarea"
                 placeholder="Document progress, decisions, or important updates..."
-                required
-              />
+                required />
             </div>
           </div>
           
@@ -772,8 +768,7 @@ function ProjectDetails() {
                       value={editProject.account_manager || ''}
                       onChange={handleEditChange}
                       className="detail-input"
-                      placeholder="Account manager name"
-                    / />
+                      placeholder="Account manager name" />
                   ) : (
                     <div className="detail-value">
                       <span>{project.account_manager || 'Not assigned'}</span>
@@ -792,8 +787,7 @@ function ProjectDetails() {
                       name="due_date"
                       value={editProject.due_date || ''}
                       onChange={handleEditChange}
-                      className="detail-input"
-                    / />
+                      className="detail-input" />
                   ) : (
                     <div className="detail-value">
                       <span>{formatDate(project.due_date)}</span>
@@ -813,8 +807,7 @@ function ProjectDetails() {
                       value={editProject.deal_value || ''}
                       onChange={handleEditChange}
                       className="detail-input"
-                      placeholder="Deal value"
-                    / />
+                      placeholder="Deal value" />
                   ) : (
                     <div className="detail-value">
                       <span>{formatCurrency(project.deal_value)}</span>
@@ -835,8 +828,7 @@ function ProjectDetails() {
       value={editProject.backup_presales || ''}
       onChange={handleEditChange}
       className="detail-input"
-      placeholder="Backup presales contact"
-    / />
+      placeholder="Backup presales contact" />
   ) : (
     <div className="detail-value">
       <span>{project.backup_presales || 'Not assigned'}</span>
@@ -899,8 +891,7 @@ function ProjectDetails() {
                       value={editProject.backup_presales || ''}
                       onChange={handleEditChange}
                       className="detail-input"
-                      placeholder="Backup presales contact"
-                    / />
+                      placeholder="Backup presales contact" />
                   ) : (
                     <div className="detail-value">
                       <span>{project.backup_presales || 'Not assigned'}</span>
@@ -921,8 +912,7 @@ function ProjectDetails() {
                     onChange={handleEditChange}
                     className="detail-textarea"
                     rows="3"
-                    placeholder="Project scope and objectives"
-                  />
+                    placeholder="Project scope and objectives" />
                 ) : (
                   <div className="detail-value scope-text">
                     {project.scope || 'No scope defined'}
@@ -943,8 +933,7 @@ function ProjectDetails() {
                       onChange={handleEditChange}
                       className="detail-textarea"
                       rows="3"
-                      placeholder="Project remarks or notes"
-                    />
+                      placeholder="Project remarks or notes" />
                   ) : (
                     <div className="detail-value scope-text">
                       {project.remarks || 'No remarks'}
@@ -993,9 +982,8 @@ function ProjectDetails() {
                           type="checkbox" 
                           className="task-checkbox"
                           checked={task.status === 'Completed'}
-                          onChange={() = / /> handleTaskStatusChange(task.id, task.status)}
-                          aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`}
-                        />
+                          onChange={() = /> handleTaskStatusChange(task.id, task.status)}
+                          aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`} />
                       </div>
                       <div className="task-main-content">
                         <div className="task-header">
@@ -1057,8 +1045,7 @@ function ProjectDetails() {
                       <FaPlus />
                       <span>Add Task</span>
                     </button>
-                  }
-                />
+                  } />
               )}
             </div>
           </section>
@@ -1228,8 +1215,7 @@ function ProjectDetails() {
                       <FaPlus />
                       <span>Add Entry</span>
                     </button>
-                  }
-                />
+                  } />
               )}
             </div>
           
@@ -1244,17 +1230,19 @@ function ProjectDetails() {
           setEditingTask(null);
         }}
         onSave={handleTaskSaved}
-        editingTask={editingTask}
-      />
+        editingTask={editingTask} />
 
       <LogModal
         isOpen={showLogModal}
         onClose={() => setShowLogModal(false)}
-        onSave={handleLogSaved}
-      />
+        onSave={handleLogSaved} />
     
   );
 }
 
 export default ProjectDetails;
 
+</textarea>
+</textarea>
+</textarea>
+</textarea>
