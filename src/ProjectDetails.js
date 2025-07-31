@@ -981,17 +981,7 @@ function ProjectDetails() {
                               <FaCalendarAlt className="meta-icon" />
                               <span>Due {formatDate(task.due_date)}</span>
                             </div>
-                          )}
-                          {task.notes && (
-                            <div className="task-meta-item">
-                              <FaFileAlt className="meta-icon" />
-                              <span className="task-notes-preview">{task.notes}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="task-actions">
+ <div className="task-actions">
                         <button 
                           onClick={() => {
                             setEditingTask(task);
@@ -1013,6 +1003,18 @@ function ProjectDetails() {
                         </button>
                       </div>
                     </div>
+
+                          )}
+                          {task.notes && (
+                            <div className="task-meta-item">
+                              <FaFileAlt className="meta-icon" />
+                              <span className="task-notes-preview">{task.notes}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                     
                   ))}
                 </div>
               ) : (
