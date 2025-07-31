@@ -1123,7 +1123,7 @@ function ProjectDetails() {
               )}
             </div>
                    </section>
-
+</section>
           {/* Project Log */}
           <section className="content-card">
             <div className="card-header">
