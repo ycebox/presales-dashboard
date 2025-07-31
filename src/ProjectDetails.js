@@ -826,6 +826,22 @@ function ProjectDetails() {
                   <label className="detail-label">
                     <FaUsers />
                     <span>Backup Presales</span>
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      name="backup_presales"
+                      value={editProject.backup_presales || ''}
+                      onChange={handleEditChange}
+                      className="detail-input"
+                      placeholder="Backup presales contact"
+                    />
+                  ) : (
+                    <div className="detail-value">
+                      <span>{project.backup_presales || 'Not assigned'}</span>
+                    </div>
+                  )}
+                </div>
 
                 <div className="detail-item">
                   <label className="detail-label">
@@ -1122,6 +1138,7 @@ function ProjectDetails() {
                 </div>
               )}
             </div>
+          </section>
           </section>
 
           {/* Project Log */}
