@@ -681,48 +681,6 @@ function ProjectDetails() {
               </div>
             </div>
           </div>
-          
-          <div className="project-summary">
-            <div className="summary-item">
-              <div className="summary-icon">
-                <FaTasks />
-              </div>
-              <div className="summary-content">
-                <div className="summary-value">{activeTasksCount}</div>
-                <div className="summary-label">Active Tasks</div>
-              </div>
-            </div>
-            
-            <div className="summary-item">
-              <div className="summary-icon">
-                <FaAward />
-              </div>
-              <div className="summary-content">
-                <div className="summary-value">{progressPercentage}%</div>
-                <div className="summary-label">Complete</div>
-              </div>
-            </div>
-            
-            <div className={`summary-item ${getDaysRemainingClass()}`}>
-              <div className="summary-icon">
-                <FaCalendarAlt />
-              </div>
-              <div className="summary-content">
-                <div className="summary-value">{daysRemaining !== null ? Math.abs(daysRemaining) : '-'}</div>
-                <div className="summary-label">{getDaysRemainingText()}</div>
-              </div>
-            </div>
-            
-            <div className="summary-item">
-              <div className="summary-icon">
-                <FaDollarSign />
-              </div>
-              <div className="summary-content">
-                <div className="summary-value">{formatCurrency(project.deal_value)}</div>
-                <div className="summary-label">Deal Value</div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
