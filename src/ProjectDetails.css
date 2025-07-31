@@ -444,14 +444,12 @@
 }
 
 .detail-label {
+  font-weight: 600;
+  font-size: 0.95rem;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-xs);
-  color: var(--color-gray-600);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  gap: 6px;
+  color: #334155;
 }
 
 .detail-value {
@@ -471,17 +469,21 @@
 }
 
 .detail-input,
-.detail-textarea {
-  padding: var(--space-3);
-  border: 2px solid var(--color-gray-200);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  transition: all var(--transition-base);
-  background: var(--color-white);
-  font-family: var(--font-family);
+.detail-textarea,
+.detail-value {
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
+.detail-value {
+  background-color: #f1f5f9;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  color: #1e293b;
+}
+.detail-item {
+  margin-bottom: 1.2rem;
+}
 .detail-input:focus,
 .detail-textarea:focus {
   outline: 2px solid var(--color-primary);
