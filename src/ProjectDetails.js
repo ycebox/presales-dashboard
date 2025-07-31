@@ -822,7 +822,7 @@ function ProjectDetails() {
                   )}
                 </div>
 
-           <div className="detail-item">
+         <div className="detail-item">
   <label className="detail-label">
     <FaUsers />
     <span>Backup Presales</span>
