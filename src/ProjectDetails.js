@@ -181,7 +181,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
                 name="due_date" 
                 type="date"
                 value={taskData.due_date} 
-                onChange={(e) = /> setTaskData(prev => ({ ...prev, due_date: e.target.value }))}
+               onChange={(e) => setTaskData(prev => ({ ...prev, due_date: e.target.value }))}
                 className="form-input" />
             </div>
 
