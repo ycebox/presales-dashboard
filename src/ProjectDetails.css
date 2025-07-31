@@ -1366,3 +1366,23 @@ body {
     padding: 1rem 1.5rem 1.5rem 1.5rem;
   }
 }
+
+.task-actions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.task-item:hover .task-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.task-actions {
+  transform: translateY(5px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.task-item:hover .task-actions {
+  transform: translateY(0);
+}
