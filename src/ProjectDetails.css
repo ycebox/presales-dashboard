@@ -1,5 +1,3 @@
-/* ProjectDetails.css */
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
 body {
@@ -127,8 +125,7 @@ body {
 }
 
 .detail-input,
-.detail-textarea,
-.detail-select {
+.detail-textarea {
   width: 100%;
   padding: 0.55rem 0.75rem;
   font-size: 0.95rem;
