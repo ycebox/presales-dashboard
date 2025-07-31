@@ -684,6 +684,11 @@ body {
   align-items: center;
 }
 
+.task-actions {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
 .task-action-button {
   padding: 0.75rem;
   border: 1px solid transparent;
