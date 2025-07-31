@@ -677,11 +677,6 @@ body {
   white-space: nowrap;
 }
 
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.125rem;
-  align-items: center;
-}
 
 .task-action-button {
   padding: 0.75rem;
@@ -1369,6 +1364,7 @@ body {
 .task-item:hover .task-actions {
   opacity: 1;
   pointer-events: auto;
+  transform: translateY(0);
 }
 
   transform: translateY(5px);
