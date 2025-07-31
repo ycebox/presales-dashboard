@@ -677,6 +677,7 @@ body {
   white-space: nowrap;
 }
 
+.task-actions {
   display: flex;
   gap: 0.5rem;
   margin-top: 0.125rem;
@@ -1359,21 +1360,4 @@ body {
   .card-content {
     padding: 1rem 1.5rem 1.5rem 1.5rem;
   }
-}
-
-.task-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.125rem;
-  align-items: center;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(5px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.task-item:hover .task-actions {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
 }
