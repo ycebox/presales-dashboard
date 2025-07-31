@@ -822,7 +822,7 @@ function ProjectDetails() {
                   )}
                 </div>
 
-               <div className="detail-item">
+           <div className="detail-item">
   <label className="detail-label">
     <FaUsers />
     <span>Backup Presales</span>
@@ -1139,7 +1139,6 @@ function ProjectDetails() {
               )}
             </div>
                    </section>
-</section>
           {/* Project Log */}
           <section className="content-card">
             <div className="card-header">
