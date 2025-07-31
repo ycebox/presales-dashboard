@@ -660,7 +660,66 @@ function ProjectDetails() {
         </div>
       </section>
 
-      
+      {/* Overview Cards */}
+      <section className="overview-section">
+        <div className="overview-grid">
+          <div className="overview-card primary">
+            <div className="card-icon-wrapper">
+              <FaTasks className="card-icon" />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{activeTasksCount}</div>
+              <div className="card-label">Active Tasks</div>
+              <div className="card-trend">
+                <FaCheckCircle />
+                <span>{completedTasksCount} completed</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="overview-card success">
+            <div className="card-icon-wrapper">
+              <FaChartLine className="card-icon" />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{progressPercentage}%</div>
+              <div className="card-label">Progress</div>
+              <div className="card-trend">
+                <FaChartLine />
+                <span>On track</span>
+              </div>
+            </div>
+          </div>
+
+          <div className={`overview-card ${getDaysRemainingClass()}`}>
+            <div className="card-icon-wrapper">
+              <FaCalendarAlt className="card-icon" />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{daysRemaining || '-'}</div>
+              <div className="card-label">Days Remaining</div>
+              <div className="card-trend">
+                <FaCalendarAlt />
+                <span>{getDaysRemainingText()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="overview-card warning">
+            <div className="card-icon-wrapper">
+              <FaDollarSign className="card-icon" />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{formatCurrency(project.deal_value)}</div>
+              <div className="card-label">Deal Value</div>
+              <div className="card-trend">
+                {getSalesStageIcon(project.sales_stage)}
+                <span>{project.sales_stage}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Main Content */}
       <div className="main-content-grid">
@@ -866,23 +925,6 @@ function ProjectDetails() {
                     </div>
                   )}
                 </div>
-
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="backup_presales"
-                      value={editProject.backup_presales || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                      placeholder="Backup presales contact"
-                    />
-                  ) : (
-                    <div className="detail-value">
-                      <span>{project.backup_presales || 'Not assigned'}</span>
-                    </div>
-                  )}
-                </div>
               </div>
 
               <div className="detail-item full-width">
@@ -1084,7 +1126,17 @@ function ProjectDetails() {
               </div>
 
               {/* Progress Bar */}
-              
+              <div className="progress-section">
+                <div className="progress-header">
+                  <span className="progress-label">Project Progress</span>
+                  <span className="progress-percentage">{progressPercentage}%</span>
+                </div>
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill" 
+                    style={{ width: `${progressPercentage}%` }}
+                  ></div>
+                </div>
               </div>
 
               {/* Status Breakdown */}
@@ -1138,7 +1190,6 @@ function ProjectDetails() {
                 </div>
               )}
             </div>
-          </section>
           </section>
 
           {/* Project Log */}
