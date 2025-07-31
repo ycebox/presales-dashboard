@@ -1129,43 +1129,49 @@ body {
   .project-hero {
     padding: 1.5rem 1rem;
     min-height: 180px;
-
+}
+  }
   .project-title {
     font-size: 1.75rem;
-
+}
   .project-icon {
     width: 2rem;
     height: 2rem;
-
+}
   .project-icon-wrapper {
     padding: 1rem;
-
+}
   .task-item {
     padding: 1rem;
-
+}
   .card-header {
     padding: 1.25rem 1.5rem 0.75rem 1.5rem;
-
+}
   .card-content {
     padding: 1rem 1.5rem 1.5rem 1.5rem;
 
   transition: opacity 0.2s ease;
-
+}
 .task-item:hover .task-actions {
   opacity: 1;
   pointer-events: auto;
 
   transition: opacity 0.2s ease, transform 0.2s ease;
-
+}
 .task-item:hover .task-actions {
   transform: translateY(0);
+  }
+  
 .task-actions {
   opacity: 0;
   transition: opacity 0.2s ease, transform 0.2s ease;
-
+}
+  
 .task-item:hover .task-actions {
   opacity: 1;
   pointer-events: auto;
+}
+  
 .task-actions {
   opacity: 0;
   pointer-events: none;
