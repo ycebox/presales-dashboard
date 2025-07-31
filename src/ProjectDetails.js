@@ -1092,39 +1092,6 @@ function ProjectDetails() {
               </div>
             </div>
             <div className="card-content">
-              {/* Circular Progress */}
-              <div className="progress-circle-container">
-                <div className="progress-circle">
-                  <svg className="progress-ring" width="120" height="120">
-                    <circle
-                      className="progress-ring-bg"
-                      stroke="#e5e7eb"
-                      strokeWidth="8"
-                      fill="transparent"
-                      r="52"
-                      cx="60"
-                      cy="60"
-                    />
-                    <circle
-                      className="progress-ring-fill"
-                      stroke="#10b981"
-                      strokeWidth="8"
-                      fill="transparent"
-                      r="52"
-                      cx="60"
-                      cy="60"
-                      strokeDasharray={`${2 * Math.PI * 52}`}
-                      strokeDashoffset={`${2 * Math.PI * 52 * (1 - progressPercentage / 100)}`}
-                      transform="rotate(-90 60 60)"
-                    />
-                  </svg>
-                  <div className="progress-text">
-                    <span className="progress-percentage">{progressPercentage}%</span>
-                    <span className="progress-label">Complete</span>
-                  </div>
-                </div>
-              </div>
-
               {/* Task Analytics Grid */}
               <div className="analytics-grid">
                 <div className="analytics-item completed">
