@@ -1,4 +1,3 @@
-
 /* ProjectDetails.css */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -18,8 +17,8 @@ body {
 
 .navigation-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 1rem;
   margin-bottom: 2rem;
 }
 
@@ -27,39 +26,24 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background-color: #e2e8f0;
-  border: none;
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.nav-button.primary {
   background-color: #3b82f6;
   color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-.nav-button.secondary {
-  background-color: #e5e7eb;
+.nav-button:hover {
+  background-color: #2563eb;
 }
 
 .project-title {
-  font-size: 1.8rem;
+  font-size: 1.75rem;
   font-weight: 700;
   margin: 0;
-}
-
-.customer-badge,
-.stage-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  background-color: #f1f5f9;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  font-weight: 500;
 }
 
 .main-content-grid {
@@ -69,13 +53,6 @@ body {
 }
 
 .main-column {
-  flex: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.sidebar-column {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -86,14 +63,14 @@ body {
   background: white;
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .card-header .header-title {
@@ -112,12 +89,13 @@ body {
 .action-button {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.4rem;
   padding: 0.4rem 0.8rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-weight: 600;
 }
 
 .action-button.primary {
@@ -127,6 +105,7 @@ body {
 
 .action-button.secondary {
   background-color: #e5e7eb;
+  color: #1e293b;
 }
 
 .action-button.success {
@@ -135,7 +114,7 @@ body {
 }
 
 .detail-item {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .detail-label {
@@ -144,29 +123,40 @@ body {
   gap: 0.4rem;
   font-weight: 600;
   font-size: 0.9rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.3rem;
 }
 
 .detail-input,
 .detail-textarea,
 .detail-select {
   width: 100%;
-  padding: 0.5rem;
+  padding: 0.55rem 0.75rem;
   font-size: 0.95rem;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: 8px;
+  background-color: #ffffff;
+  transition: border 0.2s ease;
 }
 
-.detail-value {
-  font-size: 0.95rem;
-  color: #334155;
+.detail-input:focus,
+.detail-textarea:focus {
+  border-color: #3b82f6;
+  outline: none;
 }
 
 .detail-textarea {
   resize: vertical;
+  min-height: 80px;
 }
 
-.status-completed { color: #10b981; }
-.status-in-progress { color: #3b82f6; }
-.status-not-started { color: #9ca3af; }
-.status-cancelled { color: #ef4444; }
+.detail-value {
+  font-size: 0.975rem;
+  color: #374151;
+  background-color: #f9fafb;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+}
+
+.header-icon {
+  color: #3b82f6;
+}
