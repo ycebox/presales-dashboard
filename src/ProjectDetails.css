@@ -158,7 +158,6 @@ body {
 .customer-badge, .stage-badge {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   padding: 0.125rem 0.25rem;
   border-radius: 3px;
   font-size: 0.625rem;
@@ -168,9 +167,6 @@ body {
   white-space: nowrap;
   line-height: 1;
   flex-shrink: 0;
-  min-width: 3rem;
-  height: 1.25rem;
-  text-align: center;
 }
 
 .customer-badge {
