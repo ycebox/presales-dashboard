@@ -150,7 +150,9 @@ body {
 .project-meta {
   display: flex;
   gap: 0.125rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: fit-content;
 }
 
 .customer-badge, .stage-badge {
@@ -164,6 +166,7 @@ body {
   transition: all 0.2s ease;
   white-space: nowrap;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .customer-badge {
