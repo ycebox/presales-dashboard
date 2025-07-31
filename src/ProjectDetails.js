@@ -822,34 +822,50 @@ function ProjectDetails() {
                   )}
                 </div>
 
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaUsers />
-                    <span>Backup Presales</span>
+               <div className="detail-item">
+  <label className="detail-label">
+    <FaUsers />
+    <span>Backup Presales</span>
+  </label>
+  {isEditing ? (
+    <input
+      type="text"
+      name="backup_presales"
+      value={editProject.backup_presales || ''}
+      onChange={handleEditChange}
+      className="detail-input"
+      placeholder="Backup presales contact"
+    />
+  ) : (
+    <div className="detail-value">
+      <span>{project.backup_presales || 'Not assigned'}</span>
+    </div>
+  )}
+</div>
 
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaChartLine />
-                    <span>Current Status/Progress</span>
-                  </label>
-                  {isEditing ? (
-                    <select
-                      name="status_progress"
-                      value={editProject.status_progress || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                    >
-                      <option value="">Select Status</option>
-                      {STATUS_PROGRESS_OPTIONS.map((status, i) => (
-                        <option key={i} value={status}>{status}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="detail-value">
-                      <span>{project.status_progress || 'Not specified'}</span>
-                    </div>
-                  )}
-                </div>
+<div className="detail-item">
+  <label className="detail-label">
+    <FaChartLine />
+    <span>Current Status/Progress</span>
+  </label>
+  {isEditing ? (
+    <select
+      name="status_progress"
+      value={editProject.status_progress || ''}
+      onChange={handleEditChange}
+      className="detail-input"
+    >
+      <option value="">Select Status</option>
+      {STATUS_PROGRESS_OPTIONS.map((status, i) => (
+        <option key={i} value={status}>{status}</option>
+      ))}
+    </select>
+  ) : (
+    <div className="detail-value">
+      <span>{project.status_progress || 'Not specified'}</span>
+    </div>
+  )}
+</div>
 
                   </label>
                   {isEditing ? (
