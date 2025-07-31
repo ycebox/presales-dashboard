@@ -17,6 +17,8 @@ const SALES_STAGES = [
 
 const PRODUCTS = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
 
+const STATUS_PROGRESS_OPTIONS = ['Not Started', 'In Progress', 'Stuck', 'Delayed', 'Completed'];
+
 const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'];
 
 // Utility Functions
@@ -824,6 +826,31 @@ function ProjectDetails() {
                   <label className="detail-label">
                     <FaUsers />
                     <span>Backup Presales</span>
+
+                <div className="detail-item">
+                  <label className="detail-label">
+                    <FaChartLine />
+                    <span>Current Status/Progress</span>
+                  </label>
+                  {isEditing ? (
+                    <select
+                      name="status_progress"
+                      value={editProject.status_progress || ''}
+                      onChange={handleEditChange}
+                      className="detail-input"
+                    >
+                      <option value="">Select Status</option>
+                      {STATUS_PROGRESS_OPTIONS.map((status, i) => (
+                        <option key={i} value={status}>{status}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="detail-value">
+                      <span>{project.status_progress || 'Not specified'}</span>
+                    </div>
+                  )}
+                </div>
+
                   </label>
                   {isEditing ? (
                     <input
@@ -1041,17 +1068,7 @@ function ProjectDetails() {
               </div>
 
               {/* Progress Bar */}
-              <div className="progress-section">
-                <div className="progress-header">
-                  <span className="progress-label">Project Progress</span>
-                  <span className="progress-percentage">{progressPercentage}%</span>
-                </div>
-                <div className="progress-bar">
-                  <div 
-                    className="progress-fill" 
-                    style={{ width: `${progressPercentage}%` }}
-                  ></div>
-                </div>
+              
               </div>
 
               {/* Status Breakdown */}
