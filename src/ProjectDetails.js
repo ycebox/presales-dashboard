@@ -146,7 +146,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
                 id="task-description"
                 name="description" 
                 value={taskData.description} 
-                onChange={(e) => setTaskData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) = /> setTaskData(prev => ({ ...prev, description: e.target.value }))}
                 className="form-input"
                 placeholder="What needs to be done?"
                 required
@@ -181,7 +181,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
                 name="due_date" 
                 type="date"
                 value={taskData.due_date} 
-                onChange={(e) => setTaskData(prev => ({ ...prev, due_date: e.target.value }))}
+                onChange={(e) = /> setTaskData(prev => ({ ...prev, due_date: e.target.value }))}
                 className="form-input"
               />
             </div>
@@ -953,7 +953,7 @@ function ProjectDetails() {
                           type="checkbox" 
                           className="task-checkbox"
                           checked={task.status === 'Completed'}
-                          onChange={() => handleTaskStatusChange(task.id, task.status)}
+                          onChange={() = /> handleTaskStatusChange(task.id, task.status)}
                           aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`}
                         />
                       </div>
@@ -1217,3 +1217,7 @@ function ProjectDetails() {
 }
 
 export default ProjectDetails;
+</textarea>
+</textarea>
+</textarea>
+</textarea>
