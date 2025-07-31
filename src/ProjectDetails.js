@@ -1,1221 +1,1308 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
-import './ProjectDetails.css';
-import {
-  FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
-  FaPlus, FaInfo, FaTrash, FaChevronDown, FaChevronUp, 
-  FaUsers, FaCalendarAlt, FaDollarSign, FaChartLine,
-  FaCheckCircle, FaClock, FaExclamationTriangle, FaArrowLeft,
-  FaFilter, FaEye, FaEyeSlash, FaProjectDiagram, FaAward,
-  FaBullseye, FaRocket, FaLightbulb, FaFileAlt
-} from 'react-icons/fa';
+/* Enhanced ProjectDetails.css - Modern, Beautiful, and Readable */
 
-// Constants
-const SALES_STAGES = [
-  'Discovery', 'Demo', 'PoC', 'RFI', 'RFP', 'SoW', 
-  'Contracting', 'Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold'
-];
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-const PRODUCTS = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
-
-const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'];
-
-// Utility Functions
-const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  try {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  } catch (error) {
-    return '-';
-  }
-};
-
-const formatCurrency = (value) => {
-  if (!value) return '-';
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(parseFloat(value));
-  } catch (error) {
-    return '-';
-  }
-};
-
-const getTaskStatusClass = (status) => {
-  switch (status?.toLowerCase()) {
-    case 'completed': return 'status-completed';
-    case 'in progress': return 'status-in-progress';
-    case 'not started': return 'status-not-started';
-    case 'cancelled/on-hold': return 'status-cancelled';
-    default: return 'status-not-started';
-  }
-};
-
-const getTaskStatusIcon = (status) => {
-  switch (status?.toLowerCase()) {
-    case 'completed': return <FaCheckCircle />;
-    case 'in progress': return <FaClock />;
-    case 'cancelled/on-hold': return <FaExclamationTriangle />;
-    default: return <FaClock />;
-  }
-};
-
-const getSalesStageIcon = (stage) => {
-  if (stage?.toLowerCase().includes('closed-won')) return <FaCheckCircle className="stage-won" />;
-  if (stage?.toLowerCase().includes('closed-lost')) return <FaExclamationTriangle className="stage-lost" />;
-  if (stage?.toLowerCase().includes('closed-cancelled')) return <FaTimes className="stage-cancelled" />;
-  return <FaRocket className="stage-active" />;
-};
-
-const getSalesStageClass = (stage) => {
-  if (stage?.toLowerCase().includes('closed-won')) return 'stage-won';
-  if (stage?.toLowerCase().includes('closed-lost')) return 'stage-lost';
-  if (stage?.toLowerCase().includes('closed-cancelled')) return 'stage-cancelled';
-  return 'stage-active';
-};
-
-// Modal Components
-const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
-  const [taskData, setTaskData] = useState({
-    description: '',
-    status: 'Not Started',
-    due_date: '',
-    notes: ''
-  });
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (editingTask) {
-      setTaskData({
-        description: editingTask.description || '',
-        status: editingTask.status || 'Not Started',
-        due_date: editingTask.due_date || '',
-        notes: editingTask.notes || ''
-      });
-    } else {
-      setTaskData({
-        description: '',
-        status: 'Not Started',
-        due_date: '',
-        notes: ''
-      });
-    }
-  }, [editingTask, isOpen]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!taskData.description.trim()) {
-      alert('Task description is required');
-      return;
-    }
-    setLoading(true);
-    try {
-      await onSave(taskData);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-wrapper">
-            <FaTasks className="modal-icon" />
-            <h3 className="modal-title">
-              {editingTask ? 'Edit Task' : 'Create New Task'}
-            </h3>
-          </div>
-          <button 
-            className="modal-close-button" 
-            onClick={onClose}
-            aria-label="Close modal"
-          >
-            <FaTimes />
-          </button>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-grid">
-            <div className="form-group full-width">
-              <label htmlFor="task-description" className="form-label">
-                <FaTasks className="form-icon" />
-                Task Description *
-              </label>
-              <input 
-                id="task-description"
-                name="description" 
-                value={taskData.description} 
-                onChange={(e) => setTaskData(prev => ({ ...prev, description: e.target.value }))}
-                className="form-input"
-                placeholder="What needs to be accomplished?"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="task-status" className="form-label">
-                <FaChartLine className="form-icon" />
-                Status
-              </label>
-              <select 
-                id="task-status"
-                name="status" 
-                value={taskData.status} 
-                onChange={(e) => setTaskData(prev => ({ ...prev, status: e.target.value }))}
-                className="form-select"
-              >
-                {TASK_STATUSES.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="task-due-date" className="form-label">
-                <FaCalendarAlt className="form-icon" />
-                Due Date
-              </label>
-              <input 
-                id="task-due-date"
-                name="due_date" 
-                type="date"
-                value={taskData.due_date} 
-                onChange={(e) => setTaskData(prev => ({ ...prev, due_date: e.target.value }))}
-                className="form-input"
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label htmlFor="task-notes" className="form-label">
-                <FaFileAlt className="form-icon" />
-                Notes
-              </label>
-              <textarea 
-                id="task-notes"
-                name="notes" 
-                value={taskData.notes} 
-                onChange={(e) => setTaskData(prev => ({ ...prev, notes: e.target.value }))}
-                rows="3"
-                className="form-textarea"
-                placeholder="Additional context, requirements, or details..."
-              />
-            </div>
-          </div>
-          
-          <div className="modal-actions">
-            <button type="button" onClick={onClose} className="button-cancel" disabled={loading}>
-              <FaTimes />
-              Cancel
-            </button>
-            <button type="submit" className="button-submit" disabled={loading}>
-              <FaSave />
-              {loading ? 'Saving...' : editingTask ? 'Update Task' : 'Create Task'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-const LogModal = ({ isOpen, onClose, onSave }) => {
-  const [logEntry, setLogEntry] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!logEntry.trim()) {
-      alert('Log entry is required');
-      return;
-    }
-    setLoading(true);
-    try {
-      await onSave(logEntry);
-      setLogEntry('');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-wrapper">
-            <FaBookOpen className="modal-icon" />
-            <h3 className="modal-title">Add Project Log Entry</h3>
-          </div>
-          <button 
-            className="modal-close-button" 
-            onClick={onClose}
-            aria-label="Close modal"
-          >
-            <FaTimes />
-          </button>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-grid">
-            <div className="form-group full-width">
-              <label htmlFor="log-entry" className="form-label">
-                <FaEdit className="form-icon" />
-                Log Entry *
-              </label>
-              <textarea 
-                id="log-entry"
-                value={logEntry} 
-                onChange={(e) => setLogEntry(e.target.value)}
-                rows="5"
-                className="form-textarea"
-                placeholder="Document progress, decisions, meeting notes, or any important project updates..."
-                required
-              />
-            </div>
-          </div>
-          
-          <div className="modal-actions">
-            <button type="button" onClick={onClose} className="button-cancel" disabled={loading}>
-              <FaTimes />
-              Cancel
-            </button>
-            <button type="submit" className="button-submit" disabled={loading}>
-              <FaPlus />
-              {loading ? 'Adding...' : 'Add Entry'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-// UI Components
-const EmptyState = ({ title, description, action, icon }) => (
-  <div className="empty-state">
-    <div className="empty-icon-wrapper">
-      {icon}
-    </div>
-    <h4 className="empty-title">{title}</h4>
-    <p className="empty-description">{description}</p>
-    {action}
-  </div>
-);
-
-const LoadingScreen = () => (
-  <div className="project-details-container">
-    <div className="loading-state">
-      <div className="loading-spinner"></div>
-      <p className="loading-text">Loading project details...</p>
-    </div>
-  </div>
-);
-
-const ErrorScreen = ({ error, onBack }) => (
-  <div className="project-details-container">
-    <div className="error-state">
-      <div className="error-icon-wrapper">
-        <FaExclamationTriangle className="error-icon" />
-      </div>
-      <h2 className="error-title">Something went wrong</h2>
-      <p className="error-message">{error || 'Project not found'}</p>
-      <button onClick={onBack} className="action-button primary">
-        <FaHome />
-        Back to Dashboard
-      </button>
-    </div>
-  </div>
-);
-
-// Custom Hook for Project Data
-const useProjectData = (projectId) => {
-  const [project, setProject] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchProjectDetails = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
-
-      if (projectError) throw projectError;
-      if (!projectData) throw new Error('Project not found');
-
-      setProject(projectData);
-      await Promise.all([fetchTasks(), fetchLogs()]);
-    } catch (error) {
-      console.error('Error fetching project:', error);
-      setError('Failed to load project details: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchTasks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('project_tasks')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTasks(data || []);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-    }
-  };
-
-  const fetchLogs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('project_logs')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setLogs(data || []);
-    } catch (error) {
-      console.error('Error fetching logs:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (projectId) {
-      fetchProjectDetails();
-    }
-  }, [projectId]);
-
-  return {
-    project,
-    setProject,
-    tasks,
-    logs,
-    loading,
-    error,
-    fetchTasks,
-    fetchLogs,
-    refetch: fetchProjectDetails
-  };
-};
-
-// Main Component
-function ProjectDetails() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs } = useProjectData(id);
-  
-  // Local state
-  const [isEditing, setIsEditing] = useState(false);
-  const [editProject, setEditProject] = useState({});
-  const [saving, setSaving] = useState(false);
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [showLogModal, setShowLogModal] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);
-  const [showCompleted, setShowCompleted] = useState(false);
-
-  // Update edit state when project changes
-  useEffect(() => {
-    if (project) {
-      setEditProject(project);
-    }
-  }, [project]);
-
-  // Calculated values
-  const activeTasksCount = tasks.filter(task => !['Completed', 'Cancelled/On-hold'].includes(task.status)).length;
-  const completedTasksCount = tasks.filter(task => task.status === 'Completed').length;
-  const progressPercentage = tasks.length > 0 ? Math.round((completedTasksCount / tasks.length) * 100) : 0;
-  
-  const daysRemaining = (() => {
-    if (!project?.due_date) return null;
-    const today = new Date();
-    const dueDate = new Date(project.due_date);
-    const diffTime = dueDate - today;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  })();
-
-  const getDaysRemainingText = () => {
-    if (daysRemaining === null) return 'No due date set';
-    if (daysRemaining > 0) return `${daysRemaining} days remaining`;
-    if (daysRemaining === 0) return 'Due today';
-    return `${Math.abs(daysRemaining)} days overdue`;
-  };
-
-  const getDaysRemainingClass = () => {
-    if (daysRemaining === null) return 'normal';
-    if (daysRemaining < 0) return 'overdue';
-    if (daysRemaining <= 3) return 'urgent';
-    if (daysRemaining <= 7) return 'warning';
-    return 'normal';
-  };
-
-  const filteredTasks = showCompleted ? tasks : tasks.filter(task => !['Completed', 'Cancelled/On-hold'].includes(task.status));
-
-  // Event handlers
-  const handleEditToggle = () => {
-    if (isEditing) {
-      setEditProject(project);
-      setIsEditing(false);
-    } else {
-      setIsEditing(true);
-    }
-  };
-
-  const handleEditChange = (e) => {
-    const { name, value, type } = e.target;
-    const newValue = type === 'number' ? parseFloat(value) || 0 : value;
-    setEditProject(prev => ({ ...prev, [name]: newValue }));
-  };
-
-  const handleSaveProject = async () => {
-    if (!project?.id) {
-      alert('Project ID is required');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const { data, error } = await supabase
-        .from('projects')
-        .update(editProject)
-        .eq('id', project.id)
-        .select();
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        setProject(data[0]);
-        setEditProject(data[0]);
-        setIsEditing(false);
-        alert('Project updated successfully!');
-      }
-    } catch (error) {
-      console.error('Error updating project:', error);
-      alert('Error updating project: ' + error.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleTaskStatusChange = async (taskId, currentStatus) => {
-    try {
-      const newStatus = currentStatus === 'Completed' ? 'Not Started' : 'Completed';
-      
-      const { error } = await supabase
-        .from('project_tasks')
-        .update({ status: newStatus })
-        .eq('id', taskId);
-
-      if (error) throw error;
-      await fetchTasks();
-    } catch (error) {
-      console.error('Error updating task status:', error);
-      alert('Error updating task status: ' + error.message);
-    }
-  };
-
-  const handleTaskSaved = async (taskData) => {
-    try {
-      if (editingTask) {
-        const { error } = await supabase
-          .from('project_tasks')
-          .update(taskData)
-          .eq('id', editingTask.id);
-
-        if (error) throw error;
-        alert('Task updated successfully!');
-      } else {
-        const { error } = await supabase
-          .from('project_tasks')
-          .insert([{ ...taskData, project_id: id }]);
-
-        if (error) throw error;
-        alert('Task added successfully!');
-      }
-
-      setShowTaskModal(false);
-      setEditingTask(null);
-      await fetchTasks();
-    } catch (error) {
-      console.error('Error saving task:', error);
-      alert('Error saving task: ' + error.message);
-    }
-  };
-
-  const handleDeleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task? This action cannot be undone.')) return;
-
-    try {
-      const { error } = await supabase
-        .from('project_tasks')
-        .delete()
-        .eq('id', taskId);
-
-      if (error) throw error;
-      alert('Task deleted successfully!');
-      fetchTasks();
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      alert('Error deleting task: ' + error.message);
-    }
-  };
-
-  const handleLogSaved = async (logEntry) => {
-    try {
-      const { error } = await supabase
-        .from('project_logs')
-        .insert([{ project_id: id, entry: logEntry }]);
-
-      if (error) throw error;
-      alert('Log added successfully!');
-      setShowLogModal(false);
-      fetchLogs();
-    } catch (error) {
-      console.error('Error adding log:', error);
-      alert('Error adding log: ' + error.message);
-    }
-  };
-
-  const handleDeleteLog = async (logId) => {
-    if (!window.confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) return;
-
-    try {
-      const { error } = await supabase
-        .from('project_logs')
-        .delete()
-        .eq('id', logId);
-
-      if (error) throw error;
-      alert('Log deleted successfully!');
-      fetchLogs();
-    } catch (error) {
-      console.error('Error deleting log:', error);
-      alert('Error deleting log: ' + error.message);
-    }
-  };
-
-  const navigateToCustomer = async () => {
-    try {
-      const { data: customers } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('customer_name', project.customer_name)
-        .single();
-      
-      if (customers) {
-        navigate(`/customer/${customers.id}`);
-      } else {
-        navigate('/');
-      }
-    } catch (error) {
-      console.error('Error finding customer:', error);
-      navigate('/');
-    }
-  };
-
-  // Render states
-  if (loading) return <LoadingScreen />;
-  if (error || !project) return <ErrorScreen error={error} onBack={() => navigate('/')} />;
-
-  return (
-    <div className="project-details-container">
-      {/* Navigation Header */}
-      <header className="navigation-header">
-        <div className="nav-left">
-          <button onClick={() => navigate('/')} className="nav-button primary">
-            <FaArrowLeft />
-            <span>Back to Dashboard</span>
-          </button>
-        </div>
-        <div className="nav-right">
-          {project.customer_name && (
-            <button onClick={navigateToCustomer} className="nav-button secondary">
-              <FaUsers />
-              <span>{project.customer_name}</span>
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* Project Header */}
-      <section className="project-header">
-        <div className="project-hero">
-          <div className="project-title-section">
-            <div className="project-icon-wrapper">
-              <FaProjectDiagram className="project-icon" />
-            </div>
-            <div className="project-title-content">
-              <h1 className="project-title">
-                {project.project_name || 'Unnamed Project'}
-              </h1>
-              <div className="project-meta">
-                <span className="customer-badge">
-                  <FaUsers className="badge-icon" />
-                  <span>{project.customer_name}</span>
-                </span>
-                <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
-                  {getSalesStageIcon(project.sales_stage)}
-                  <span>{project.sales_stage || 'No Stage'}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Main Content */}
-      <div className="main-content-grid">
-        {/* Left Column */}
-        <div className="main-column">
-          {/* Project Details Section */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="header-title">
-                <FaInfo className="header-icon" />
-                <h3>Project Information</h3>
-              </div>
-              <div className="header-actions">
-                {isEditing ? (
-                  <>
-                    <button 
-                      onClick={handleSaveProject} 
-                      className="action-button success"
-                      disabled={saving}
-                    >
-                      <FaSave />
-                      <span>{saving ? 'Saving...' : 'Save Changes'}</span>
-                    </button>
-                    <button 
-                      onClick={handleEditToggle} 
-                      className="action-button secondary"
-                      disabled={saving}
-                    >
-                      <FaTimes />
-                      <span>Cancel</span>
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={handleEditToggle} className="action-button primary">
-                    <FaEdit />
-                    <span>Edit Details</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {isEditing && (
-              <div className="edit-banner">
-                <FaLightbulb className="edit-icon" />
-                <span>Edit mode active - Make your changes and save when ready</span>
-              </div>
-            )}
-
-            <div className="card-content">
-              <div className="details-grid">
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaRocket className="detail-icon" />
-                    <span>Sales Stage</span>
-                  </label>
-                  {isEditing ? (
-                    <select
-                      name="sales_stage"
-                      value={editProject.sales_stage || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                    >
-                      <option value="">Select Stage</option>
-                      {SALES_STAGES.map((stage, i) => (
-                        <option key={i} value={stage}>{stage}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className={`detail-value stage-value ${getSalesStageClass(project.sales_stage)}`}>
-                      {getSalesStageIcon(project.sales_stage)}
-                      <span>{project.sales_stage || 'Not specified'}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaBullseye className="detail-icon" />
-                    <span>Product</span>
-                  </label>
-                  {isEditing ? (
-                    <select
-                      name="product"
-                      value={editProject.product || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                    >
-                      <option value="">Select Product</option>
-                      {PRODUCTS.map((product, i) => (
-                        <option key={i} value={product}>{product}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="detail-value">
-                      <span>{project.product || 'Not specified'}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaUsers className="detail-icon" />
-                    <span>Account Manager</span>
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="account_manager"
-                      value={editProject.account_manager || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                      placeholder="Account manager name"
-                    />
-                  ) : (
-                    <div className="detail-value">
-                      <span>{project.account_manager || 'Not assigned'}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaCalendarAlt className="detail-icon" />
-                    <span>Due Date</span>
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="date"
-                      name="due_date"
-                      value={editProject.due_date || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                    />
-                  ) : (
-                    <div className="detail-value">
-                      <span>{formatDate(project.due_date)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaDollarSign className="detail-icon" />
-                    <span>Deal Value</span>
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      name="deal_value"
-                      value={editProject.deal_value || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                      placeholder="Deal value"
-                    />
-                  ) : (
-                    <div className="detail-value">
-                      <span>{formatCurrency(project.deal_value)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaUsers className="detail-icon" />
-                    <span>Backup Presales</span>
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="backup_presales"
-                      value={editProject.backup_presales || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                      placeholder="Backup presales contact"
-                    />
-                  ) : (
-                    <div className="detail-value">
-                      <span>{project.backup_presales || 'Not assigned'}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="detail-item full-width">
-                <label className="detail-label">
-                  <FaBullseye className="detail-icon" />
-                  <span>Project Scope</span>
-                </label>
-                {isEditing ? (
-                  <textarea
-                    name="scope"
-                    value={editProject.scope || ''}
-                    onChange={handleEditChange}
-                    className="detail-textarea"
-                    rows="4"
-                    placeholder="Describe the project scope, objectives, and deliverables..."
-                  />
-                ) : (
-                  <div className="detail-value scope-text">
-                    {project.scope || 'No scope defined'}
-                  </div>
-                )}
-              </div>
-
-              {(project.remarks || isEditing) && (
-                <div className="detail-item full-width">
-                  <label className="detail-label">
-                    <FaFileAlt className="detail-icon" />
-                    <span>Additional Notes</span>
-                  </label>
-                  {isEditing ? (
-                    <textarea
-                      name="remarks"
-                      value={editProject.remarks || ''}
-                      onChange={handleEditChange}
-                      className="detail-textarea"
-                      rows="3"
-                      placeholder="Any additional remarks, constraints, or important notes..."
-                    />
-                  ) : (
-                    <div className="detail-value scope-text">
-                      {project.remarks || 'No additional notes'}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Tasks Section */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="header-title">
-                <FaTasks className="header-icon" />
-                <h3>Project Tasks</h3>
-                <div className="task-counter">
-                  <span className="counter-item active">
-                    <FaClock className="counter-icon" />
-                    {activeTasksCount} active
-                  </span>
-                  <span className="counter-item completed">
-                    <FaCheckCircle className="counter-icon" />
-                    {completedTasksCount} done
-                  </span>
-                </div>
-              </div>
-              <div className="header-actions">
-                <button 
-                  onClick={() => setShowTaskModal(true)} 
-                  className="action-button primary"
-                >
-                  <FaPlus />
-                  <span>New Task</span>
-                </button>
-                <button 
-                  className={`action-button secondary filter-button ${showCompleted ? 'active' : ''}`}
-                  onClick={() => setShowCompleted(!showCompleted)}
-                  title={showCompleted ? 'Hide completed tasks' : 'Show all tasks'}
-                >
-                  {showCompleted ? <FaEyeSlash /> : <FaEye />}
-                  <span>{showCompleted ? 'Hide Done' : 'Show All'}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="card-content">
-              {filteredTasks.length > 0 ? (
-                <div className="task-list">
-                  {filteredTasks.map((task) => (
-                    <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)}`}>
-                      <div className="task-checkbox-wrapper">
-                        <div className="custom-checkbox">
-                          <input 
-                            type="checkbox" 
-                            className="task-checkbox"
-                            checked={task.status === 'Completed'}
-                            onChange={() => handleTaskStatusChange(task.id, task.status)}
-                            aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`}
-                          />
-                          <div className="checkbox-visual">
-                            <FaCheckCircle className="check-icon" />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="task-main-content">
-                        <div className="task-header">
-                          <h4 className="task-title">{task.description}</h4>
-                          <div className={`task-status-badge ${getTaskStatusClass(task.status)}`}>
-                            {getTaskStatusIcon(task.status)}
-                            <span className="status-text">
-                              {task.status}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="task-meta-row">
-                          {task.due_date && (
-                            <div className="task-meta-item">
-                              <FaCalendarAlt className="meta-icon" />
-                              <span>Due {formatDate(task.due_date)}</span>
-                            </div>
-                          )}
-                          {task.notes && (
-                            <div className="task-meta-item">
-                              <FaFileAlt className="meta-icon" />
-                              <span className="task-notes-preview">{task.notes}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="task-actions">
-                        <button 
-                          onClick={() => {
-                            setEditingTask(task);
-                            setShowTaskModal(true);
-                          }}
-                          className="task-action-button edit"
-                          title="Edit task"
-                          aria-label={`Edit task "${task.description}"`}
-                        >
-                          <FaEdit />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="task-action-button delete"
-                          title="Delete task"
-                          aria-label={`Delete task "${task.description}"`}
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  title={`No ${showCompleted ? '' : 'active '}tasks found`}
-                  description={showCompleted ? "All tasks are completed! Great work." : "Create your first task to start tracking project progress"}
-                  icon={<FaTasks />}
-                  action={
-                    <button 
-                      onClick={() => setShowTaskModal(true)} 
-                      className="action-button primary"
-                    >
-                      <FaPlus />
-                      <span>Create Task</span>
-                    </button>
-                  }
-                />
-              )}
-            </div>
-          </section>
-        </div>
-
-        {/* Right Sidebar */}
-        <div className="sidebar-column">
-          {/* Progress Analytics */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="header-title">
-                <FaChartLine className="header-icon" />
-                <h3>Progress Overview</h3>
-              </div>
-            </div>
-            <div className="card-content">
-              {/* Task Analytics Grid */}
-              <div className="analytics-grid">
-                <div className="analytics-item completed">
-                  <div className="analytics-icon-wrapper">
-                    <FaCheckCircle className="analytics-icon" />
-                  </div>
-                  <div className="analytics-content">
-                    <div className="analytics-value">{completedTasksCount}</div>
-                    <div className="analytics-label">Completed</div>
-                  </div>
-                </div>
-                
-                <div className="analytics-item active">
-                  <div className="analytics-icon-wrapper">
-                    <FaClock className="analytics-icon" />
-                  </div>
-                  <div className="analytics-content">
-                    <div className="analytics-value">{activeTasksCount}</div>
-                    <div className="analytics-label">In Progress</div>
-                  </div>
-                </div>
-                
-                <div className="analytics-item total">
-                  <div className="analytics-icon-wrapper">
-                    <FaTasks className="analytics-icon" />
-                  </div>
-                  <div className="analytics-content">
-                    <div className="analytics-value">{tasks.length}</div>
-                    <div className="analytics-label">Total Tasks</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Upcoming Due Dates */}
-              {tasks.filter(task => task.due_date && !['Completed', 'Cancelled/On-hold'].includes(task.status)).length > 0 && (
-                <div className="upcoming-tasks">
-                  <h4 className="upcoming-title">
-                    <FaCalendarAlt className="upcoming-icon" />
-                    Upcoming Deadlines
-                  </h4>
-                  <div className="upcoming-list">
-                    {tasks
-                      .filter(task => task.due_date && !['Completed', 'Cancelled/On-hold'].includes(task.status))
-                      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
-                      .slice(0, 3)
-                      .map(task => {
-                        const daysUntilDue = Math.ceil((new Date(task.due_date) - new Date()) / (1000 * 60 * 60 * 24));
-                        return (
-                          <div key={task.id} className={`upcoming-task ${daysUntilDue < 0 ? 'overdue' : daysUntilDue <= 3 ? 'urgent' : 'normal'}`}>
-                            <div className="upcoming-task-content">
-                              <div className="upcoming-task-title">{task.description}</div>
-                              <div className="upcoming-task-due">
-                                <FaCalendarAlt className="due-icon" />
-                                <span>
-                                  {daysUntilDue < 0 ? `${Math.abs(daysUntilDue)} days overdue` : 
-                                   daysUntilDue === 0 ? 'Due today' : 
-                                   `${daysUntilDue} days left`}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Project Log */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="header-title">
-                <FaBookOpen className="header-icon" />
-                <h3>Activity Log</h3>
-                <span className="log-counter">
-                  {logs.length} {logs.length === 1 ? 'entry' : 'entries'}
-                </span>
-              </div>
-              <div className="header-actions">
-                <button 
-                  onClick={() => setShowLogModal(true)} 
-                  className="action-button primary icon-only"
-                  title="Add log entry"
-                >
-                  <FaPlus />
-                </button>
-              </div>
-            </div>
-
-            <div className="card-content">
-              {logs.length > 0 ? (
-                <div className="log-list">
-                  {logs.slice(0, 5).map((log, index) => (
-                    <div key={log.id} className="log-item">
-                      <div className="log-timeline">
-                        <div className="log-dot"></div>
-                        {index < logs.slice(0, 5).length - 1 && <div className="log-line"></div>}
-                      </div>
-                      <div className="log-content">
-                        <div className="log-text">{log.entry}</div>
-                        <div className="log-meta">
-                          <FaCalendarAlt className="log-meta-icon" />
-                          <span className="log-date">
-                            {formatDate(log.created_at)}
-                          </span>
-                          <button 
-                            onClick={() => handleDeleteLog(log.id)}
-                            className="log-delete-button"
-                            title="Delete log entry"
-                            aria-label={`Delete log entry from ${formatDate(log.created_at)}`}
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {logs.length > 5 && (
-                    <div className="log-view-more">
-                      <button className="action-button secondary small">
-                        <FaEye />
-                        View All {logs.length} Entries
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <EmptyState
-                  title="No activity yet"
-                  description="Start documenting project progress, decisions, and important updates"
-                  icon={<FaBookOpen />}
-                  action={
-                    <button 
-                      onClick={() => setShowLogModal(true)} 
-                      className="action-button primary"
-                    >
-                      <FaPlus />
-                      <span>Add Entry</span>
-                    </button>
-                  }
-                />
-              )}
-            </div>
-          </section>
-        </div>
-      </div>
-
-      {/* Modals */}
-      <TaskModal
-        isOpen={showTaskModal}
-        onClose={() => {
-          setShowTaskModal(false);
-          setEditingTask(null);
-        }}
-        onSave={handleTaskSaved}
-        editingTask={editingTask}
-      />
-
-      <LogModal
-        isOpen={showLogModal}
-        onClose={() => setShowLogModal(false)}
-        onSave={handleLogSaved}
-      />
-    </div>
-  );
+/* Reset and Base Styles */
+* {
+  box-sizing: border-box;
 }
 
-export default ProjectDetails;
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  color: #1e293b;
+  line-height: 1.6;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+/* Container */
+.project-details-container {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+/* Navigation Header */
+.navigation-header {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 0 0.5rem;
+}
+
+.nav-left {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.nav-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  text-decoration: none;
+  color: inherit;
+}
+
+.nav-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.nav-button.primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border-color: #2563eb;
+}
+
+.nav-button.primary:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+}
+
+.nav-button.secondary {
+  background: #f8fafc;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+
+.nav-button.secondary:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* Project Header */
+.project-header {
+  margin-bottom: 2.5rem;
+}
+
+.project-hero {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 20px;
+  padding: 2.5rem;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+  position: relative;
+  overflow: hidden;
+}
+
+.project-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #3b82f6, #10b981, #f59e0b, #ef4444);
+}
+
+.project-title-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.project-icon-wrapper {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  padding: 1rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+}
+
+.project-icon {
+  width: 2rem;
+  height: 2rem;
+  color: white;
+}
+
+.project-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0 0 0.75rem 0;
+  letter-spacing: -0.025em;
+}
+
+.project-meta {
+  display: flex;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+
+.customer-badge, .stage-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.customer-badge {
+  background: #f0f9ff;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+.stage-badge {
+  border-color: #d1d5db;
+}
+
+.stage-badge.stage-won {
+  background: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.stage-badge.stage-lost {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.stage-badge.stage-cancelled {
+  background: #fafafa;
+  color: #6b7280;
+  border-color: #e5e7eb;
+}
+
+.stage-badge.stage-active {
+  background: #fffbeb;
+  color: #d97706;
+  border-color: #fed7aa;
+}
+
+/* Main Content Grid */
+.main-content-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .main-content-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+.main-column, .sidebar-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Content Cards */
+.content-card {
+  background: white;
+  border-radius: 20px;
+  padding: 0;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.content-card:hover {
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* Card Header */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.75rem 2rem 1rem 2rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.header-title h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.header-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #3b82f6;
+}
+
+.task-counter {
+  display: flex;
+  gap: 1rem;
+  margin-left: 1rem;
+}
+
+.counter-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid;
+}
+
+.counter-item.active {
+  background: #fef3c7;
+  color: #d97706;
+  border-color: #fcd34d;
+}
+
+.counter-item.completed {
+  background: #d1fae5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.counter-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.log-counter {
+  font-size: 0.875rem;
+  color: #64748b;
+  font-weight: 500;
+  background: #f8fafc;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Action Buttons */
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  position: relative;
+}
+
+.action-button:hover {
+  transform: translateY(-1px);
+}
+
+.action-button.primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+.action-button.primary:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
+}
+
+.action-button.secondary {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.action-button.secondary:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.action-button.secondary.active {
+  background: #e0e7ff;
+  color: #3730a3;
+  border-color: #c7d2fe;
+}
+
+.action-button.success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+.action-button.success:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.action-button.icon-only {
+  padding: 0.625rem;
+  min-width: 2.5rem;
+}
+
+.action-button.small {
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+}
+
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Edit Banner */
+.edit-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #f59e0b;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.edit-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Card Content */
+.card-content {
+  padding: 1.5rem 2rem 2rem 2rem;
+}
+
+.card-content.compact {
+  padding: 1rem 2rem 1.5rem 2rem;
+}
+
+/* Details Grid */
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.detail-item {
+  margin-bottom: 0;
+}
+
+.detail-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.detail-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #374151;
+  margin-bottom: 0.625rem;
+}
+
+.detail-icon {
+  width: 1rem;
+  height: 1rem;
+  color: #6366f1;
+}
+
+.detail-value {
+  font-size: 0.9375rem;
+  color: #1e293b;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1.5rem;
+}
+
+.detail-value.stage-value {
+  font-weight: 600;
+}
+
+.detail-value.scope-text {
+  line-height: 1.6;
+  color: #475569;
+}
+
+.detail-input, .detail-textarea, .detail-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: white;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.detail-input:focus, .detail-textarea:focus, .detail-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.detail-textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.6;
+}
+
+/* Task List */
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: #fafbfc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.task-item:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.task-item.status-completed {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.task-item.status-completed .task-title {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* Custom Checkbox */
+.task-checkbox-wrapper {
+  margin-top: 0.125rem;
+}
+
+.custom-checkbox {
+  position: relative;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.task-checkbox {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+.checkbox-visual {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: white;
+  border: 2px solid #d1d5db;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkbox-visual .check-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: white;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.task-checkbox:checked + .checkbox-visual {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #10b981;
+}
+
+.task-checkbox:checked + .checkbox-visual .check-icon {
+  opacity: 1;
+}
+
+.task-checkbox:hover + .checkbox-visual {
+  border-color: #3b82f6;
+}
+
+.task-main-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  gap: 1rem;
+}
+
+.task-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.task-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid;
+}
+
+.task-status-badge.status-completed {
+  background: #d1fae5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.task-status-badge.status-in-progress {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.task-status-badge.status-not-started {
+  background: #f3f4f6;
+  color: #6b7280;
+  border-color: #d1d5db;
+}
+
+.task-status-badge.status-cancelled {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.task-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.task-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.meta-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.task-notes-preview {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-actions {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.125rem;
+}
+
+.task-action-button {
+  padding: 0.5rem;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+}
+
+.task-action-button:hover {
+  background: #f1f5f9;
+}
+
+.task-action-button.edit {
+  color: #3b82f6;
+}
+
+.task-action-button.edit:hover {
+  background: #dbeafe;
+}
+
+.task-action-button.delete {
+  color: #ef4444;
+}
+
+.task-action-button.delete:hover {
+  background: #fee2e2;
+}
+
+/* Analytics Grid */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.analytics-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #fafbfc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.analytics-item:hover {
+  background: #f8fafc;
+  transform: translateY(-1px);
+}
+
+.analytics-icon-wrapper {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.analytics-item.completed .analytics-icon-wrapper {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.analytics-item.active .analytics-icon-wrapper {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.analytics-item.total .analytics-icon-wrapper {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+}
+
+.analytics-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.analytics-content {
+  flex: 1;
+}
+
+.analytics-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1;
+}
+
+.analytics-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+/* Upcoming Tasks */
+.upcoming-tasks {
+  margin-top: 2rem;
+}
+
+.upcoming-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1rem;
+}
+
+.upcoming-icon {
+  width: 1rem;
+  height: 1rem;
+  color: #3b82f6;
+}
+
+.upcoming-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.upcoming-task {
+  padding: 1rem;
+  background: #fafbfc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.upcoming-task:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.upcoming-task.urgent {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.upcoming-task.overdue {
+  background: #fef2f2;
+  border-color: #f87171;
+}
+
+.upcoming-task-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.upcoming-task-due {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.upcoming-task.urgent .upcoming-task-due,
+.upcoming-task.overdue .upcoming-task-due {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.due-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* Log List */
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.log-item {
+  display: flex;
+  gap: 1rem;
+  position: relative;
+}
+
+.log-timeline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.log-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.log-line {
+  width: 2px;
+  background: #e2e8f0;
+  flex: 1;
+  margin-top: 0.5rem;
+  min-height: 1rem;
+}
+
+.log-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.log-text {
+  font-size: 0.9375rem;
+  color: #374151;
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+}
+
+.log-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.log-meta-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #9ca3af;
+}
+
+.log-date {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.log-delete-button {
+  padding: 0.25rem;
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.log-delete-button:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.log-view-more {
+  text-align: center;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Modals */
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.modal-close-button {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+}
+
+.modal-close-button:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-form {
+  padding: 1.5rem 2rem 2rem 2rem;
+  overflow-y: auto;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.form-icon {
+  width: 1rem;
+  height: 1rem;
+  color: #6366f1;
+}
+
+.form-input, .form-textarea, .form-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.form-input:focus, .form-textarea:focus, .form-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.button-cancel, .button-submit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.button-cancel {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.button-cancel:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.button-submit {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+.button-submit:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
+}
+
+.button-submit:disabled, .button-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.empty-icon-wrapper {
+  width: 4rem;
+  height: 4rem;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  font-size: 1.5rem;
+  color: #9ca3af;
+}
+
+.empty-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.5rem 0;
+}
+
+.empty-description {
+  font-size: 0.9375rem;
+  color: #6b7280;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.6;
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 1.5rem;
+}
+
+.loading-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 1rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Error State */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.error-icon-wrapper {
+  width: 4rem;
+  height: 4rem;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #dc2626;
+  font-size: 1.5rem;
+}
+
+.error-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.error-message {
+  font-size: 1rem;
+  color: #64748b;
+  margin: 0;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+/* Status Classes */
+.status-completed { color: #059669; }
+.status-in-progress { color: #2563eb; }
+.status-not-started { color: #6b7280; }
+.status-cancelled { color: #dc2626; }
+
+.stage-won { color: #059669; }
+.stage-lost { color: #dc2626; }
+.stage-cancelled { color: #6b7280; }
+.stage-active { color: #d97706; }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .project-details-container {
+    padding: 1rem;
+  }
+
+  .project-hero {
+    padding: 1.5rem;
+  }
+
+  .project-title {
+    font-size: 1.75rem;
+  }
+
+  .project-title-section {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .task-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .task-meta-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .modal-container {
+    margin: 1rem;
+    max-width: calc(100vw - 2rem);
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .navigation-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .nav-left {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .task-item {
+    padding: 1rem;
+  }
+
+  .card-header {
+    padding: 1.25rem 1.5rem 0.75rem 1.5rem;
+  }
+
+  .card-content {
+    padding: 1rem 1.5rem 1.5rem 1.5rem;
+  }
+}-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-container {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.75rem 2rem 1rem 2rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.modal-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.modal-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #3b82f6;
+}
+
+.modal
