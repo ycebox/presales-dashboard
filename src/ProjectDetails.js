@@ -1016,7 +1016,7 @@ function ProjectDetails() {
                                                                             
                   )}
                 </div>
-              ) : (
+        
                 <EmptyState
                   title={`No ${showCompleted ? '' : 'active '}tasks found`}
                   description={showCompleted ? "All tasks are completed! Great work." : "Create your first task to start tracking project progress"}
