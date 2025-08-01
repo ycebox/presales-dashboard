@@ -137,6 +137,7 @@ useEffect(() => {
   if (!isOpen) return null;
 
   return (
+    <>
     <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -1256,6 +1257,5 @@ return (
       onSave={handleLogSaved}
       editingLog={editingLog}
     />
-  </>
 );
 export default ProjectDetails;
