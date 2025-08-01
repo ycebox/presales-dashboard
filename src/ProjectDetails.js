@@ -12,6 +12,9 @@ import {
 } from 'react-icons/fa';
 
 // Constants
+
+const [editingLog, setEditingLog] = useState(null);
+
 const SALES_STAGES = [
   'Discovery', 'Demo', 'PoC', 'RFI', 'RFP', 'SoW', 
   'Contracting', 'Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold'
@@ -92,6 +95,14 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
   });
   const [loading, setLoading] = useState(false);
 
+useEffect(() => {
+  if (editingLog) {
+    setLogEntry(editingLog.entry || '');
+  } else {
+    setLogEntry('');
+  }
+}, [editingLog, isOpen]);
+  
   useEffect(() => {
     if (editingTask) {
       setTaskData({
@@ -229,7 +240,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
   );
 };
 
-const LogModal = ({ isOpen, onClose, onSave }) => {
+const LogModal = ({isOpen, onClose, onSave, editingLog = null }) => {
   const [logEntry, setLogEntry] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -241,7 +252,7 @@ const LogModal = ({ isOpen, onClose, onSave }) => {
     }
     setLoading(true);
     try {
-      await onSave(logEntry);
+     await onSave(logEntry, editingLog?.id || null);
       setLogEntry('');
     } finally {
       setLoading(false);
@@ -581,21 +592,34 @@ function ProjectDetails() {
     }
   };
 
-  const handleLogSaved = async (logEntry) => {
-    try {
+const handleLogSaved = async (logEntry, logId = null) => {
+  try {
+    if (logId) {
+      const { error } = await supabase
+        .from('project_logs')
+        .update({ entry: logEntry })
+        .eq('id', logId);
+
+      if (error) throw error;
+      alert('Log updated successfully!');
+    } else {
       const { error } = await supabase
         .from('project_logs')
         .insert([{ project_id: id, entry: logEntry }]);
 
       if (error) throw error;
       alert('Log added successfully!');
-      setShowLogModal(false);
-      fetchLogs();
-    } catch (error) {
-      console.error('Error adding log:', error);
-      alert('Error adding log: ' + error.message);
     }
-  };
+
+    setShowLogModal(false);
+    setEditingLog(null);
+    fetchLogs();
+  } catch (error) {
+    console.error('Error saving log:', error);
+    alert('Error saving log: ' + error.message);
+  }
+};
+
 
   const handleDeleteLog = async (logId) => {
     if (!window.confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) return;
@@ -1152,22 +1176,32 @@ function ProjectDetails() {
                       </div>
                       <div className="log-content">
                         <div className="log-text">{log.entry}</div>
-                        <div className="log-meta">
-                          <FaCalendarAlt className="log-meta-icon" />
-                          <span className="log-date">
-                            {formatDate(log.created_at)}
-                          </span>
-                          <button 
-                            onClick={() => handleDeleteLog(log.id)}
-                            className="log-delete-button"
-                            title="Delete log entry"
-                            aria-label={`Delete log entry from ${formatDate(log.created_at)}`}
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                       <div className="log-meta">
+  <FaCalendarAlt className="log-meta-icon" />
+  <span className="log-date">{formatDate(log.created_at)}</span>
+
+  <div className="log-meta-actions">
+    <button
+      onClick={() => {
+        setEditingLog(log);
+        setShowLogModal(true);
+      }}
+      className="log-delete-button"
+      title="Edit log entry"
+    >
+      <FaEdit />
+    </button>
+
+    <button
+      onClick={() => handleDeleteLog(log.id)}
+      className="log-delete-button"
+      title="Delete log entry"
+    >
+      <FaTrash />
+    </button>
+  </div>
+</div>
+
                   ))}
                   {logs.length > 5 && (
                     <div className="log-view-more">
@@ -1216,6 +1250,16 @@ function ProjectDetails() {
         onSave={handleLogSaved}
       />
     </div>
+
+    <LogModal
+  isOpen={showLogModal}
+  onClose={() => {
+    setShowLogModal(false);
+    setEditingLog(null);
+  }}
+  onSave={handleLogSaved}
+  editingLog={editingLog}
+/>
   );
 }
 
