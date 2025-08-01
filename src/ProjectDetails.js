@@ -1014,9 +1014,7 @@ function ProjectDetails() {
                               <span className="task-notes-preview">{task.notes}</span>
                             </div>
                          
-                        </div>
-                      </div>
-                      
+                                
                      
                   ))}
                 </div>
