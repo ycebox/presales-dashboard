@@ -1235,7 +1235,8 @@ const handleLogSaved = async (logEntry, logId = null) => {
       </div>
 
     </div>
-    {/* Modals */}
+    
+   {/* Modals */}
     <TaskModal
       isOpen={showTaskModal}
       onClose={() => {
@@ -1257,5 +1258,4 @@ const handleLogSaved = async (logEntry, logId = null) => {
     />
   </>
 );
-
 export default ProjectDetails;
