@@ -663,6 +663,7 @@ const handleLogSaved = async (logEntry, logId = null) => {
   if (error || !project) return <ErrorScreen error={error} onBack={() => navigate('/')} />;
 
   return (
+     <>
     <div className="project-details-container">
       {/* Navigation Header */}
       <header className="navigation-header">
