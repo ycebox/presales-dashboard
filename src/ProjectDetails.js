@@ -1013,10 +1013,8 @@ function ProjectDetails() {
                               <FaFileAlt className="meta-icon" />
                               <span className="task-notes-preview">{task.notes}</span>
                             </div>
-                         
-                                
-                     
-                  ))}
+                                                                            
+                  )}
                 </div>
               ) : (
                 <EmptyState
