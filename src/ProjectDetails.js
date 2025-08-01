@@ -13,7 +13,6 @@ import {
 
 // Constants
 
-const [editingLog, setEditingLog] = useState(null);
 
 const SALES_STAGES = [
   'Discovery', 'Demo', 'PoC', 'RFI', 'RFP', 'SoW', 
@@ -445,6 +444,7 @@ function ProjectDetails() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [editingLog, setEditingLog] = useState(null);
 
   // Update edit state when project changes
   useEffect(() => {
@@ -1244,14 +1244,7 @@ const handleLogSaved = async (logEntry, logId = null) => {
         editingTask={editingTask}
       />
 
-      <LogModal
-        isOpen={showLogModal}
-        onClose={() => setShowLogModal(false)}
-        onSave={handleLogSaved}
-      />
-    </div>
-
-    <LogModal
+         <LogModal
   isOpen={showLogModal}
   onClose={() => {
     setShowLogModal(false);
