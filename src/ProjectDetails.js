@@ -976,42 +976,36 @@ function ProjectDetails() {
                         </div>
                         
               <div className="task-meta-row">
-  <>
-    {task.due_date && (
-      <div className="task-meta-item">
-        <FaCalendarAlt className="meta-icon" />
-        <span>Due {formatDate(task.due_date)}</span>
-      </div>
-    )}
-    {task.notes && (
-      <div className="task-meta-item">
-        <FaFileAlt className="meta-icon" />
-        <span className="task-notes-preview">{task.notes}</span>
-      </div>
-    )}
-    <div className="task-actions">
-      <button 
-        onClick={() => {
-          setEditingTask(task);
-          setShowTaskModal(true);
-        }}
-        className="task-action-button edit"
-        title="Edit task"
-        aria-label={`Edit task "${task.description}"`}
-      >
-        <FaEdit />
-      </button>
-      <button 
-        onClick={() => handleDeleteTask(task.id)}
-        className="task-action-button delete"
-        title="Delete task"
-        aria-label={`Delete task "${task.description}"`}
-      >
-        <FaTrash />
-      </button>
+  {task.due_date && (
+    <div className="task-meta-item">
+      <FaCalendarAlt className="meta-icon" />
+      <span>Due {formatDate(task.due_date)}</span>
     </div>
-  </>
+  )}
+
+  <div className="task-actions">
+    <button
+      onClick={() => {
+        setEditingTask(task);
+        setShowTaskModal(true);
+      }}
+      className="task-action-button edit"
+      title="Edit task"
+      aria-label={`Edit task "${task.description}"`}
+    >
+      <FaEdit />
+    </button>
+    <button
+      onClick={() => handleDeleteTask(task.id)}
+      className="task-action-button delete"
+      title="Delete task"
+      aria-label={`Delete task "${task.description}"`}
+    >
+      <FaTrash />
+    </button>
+  </div>
 </div>
+
 
                           )}
                           {task.notes && (
@@ -1019,7 +1013,7 @@ function ProjectDetails() {
                               <FaFileAlt className="meta-icon" />
                               <span className="task-notes-preview">{task.notes}</span>
                             </div>
-                          )}
+                         
                         </div>
                       </div>
                       
