@@ -90,13 +90,13 @@ body {
 .project-hero {
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border-radius: 20px;
-  padding: 3.5rem 4rem;
+  padding: 2rem 2.5rem;
   box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08);
   border: 1px solid #e2e8f0;
   position: relative;
   overflow: hidden;
   width: 100%;
-  min-height: 280px;
+ min-height: 200px;
 }
 
 .project-hero::before {
