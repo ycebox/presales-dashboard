@@ -1233,7 +1233,7 @@ const handleLogSaved = async (logEntry, logId = null) => {
           </section>
         </div>
       </div>
-
+</div>
     {/* Modals */}
     <TaskModal
       isOpen={showTaskModal}
