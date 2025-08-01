@@ -437,7 +437,7 @@ body {
 }
 
 .detail-item {
-  margin-bottom: 0;
+   margin-bottom: 1.25rem;
 }
 
 .detail-item.full-width {
