@@ -1233,27 +1233,63 @@ const handleLogSaved = async (logEntry, logId = null) => {
         </div>
       </div>
 
-      {/* Modals */}
-      <TaskModal
-        isOpen={showTaskModal}
-        onClose={() => {
-          setShowTaskModal(false);
-          setEditingTask(null);
-        }}
-        onSave={handleTaskSaved}
-        editingTask={editingTask}
-      />
+     ChatGPT said:
+Thanks for uploading the updated code. The build error is caused by a missing wrapper tag in your return statement.
 
-         <LogModal
-  isOpen={showLogModal}
-  onClose={() => {
-    setShowLogModal(false);
-    setEditingLog(null);
-  }}
-  onSave={handleLogSaved}
-  editingLog={editingLog}
-/>
-  );
+🧨 Error Explained
+The error says:
+
+nginx
+Copy
+Edit
+Syntax error: Adjacent JSX elements must be wrapped in an enclosing tag.
+This is happening because your return block ends like this:
+
+jsx
+Copy
+Edit
+      {/* Modals */}
+      <TaskModal ... />
+
+      <LogModal ... />
+
+  ); // ❌ Invalid: JSX is not wrapped
+This means React sees two sibling elements at the root level (your two <Modal> components), which is not allowed unless wrapped in a single parent.
+
+✅ Fix
+Wrap the entire JSX return in a <div> or <> fragment </> like this:
+
+jsx
+Copy
+Edit
+return (
+  <>
+    <div className="project-details-container">
+      ...
+    </div>
+
+    {/* Modals */}
+    <TaskModal
+      isOpen={showTaskModal}
+      onClose={() => {
+        setShowTaskModal(false);
+        setEditingTask(null);
+      }}
+      onSave={handleTaskSaved}
+      editingTask={editingTask}
+    />
+
+    <LogModal
+      isOpen={showLogModal}
+      onClose={() => {
+        setShowLogModal(false);
+        setEditingLog(null);
+      }}
+      onSave={handleLogSaved}
+      editingLog={editingLog}
+    />
+  </>
+);
 }
 
 export default ProjectDetails;
