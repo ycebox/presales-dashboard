@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import Projects from './Projects';
 import TodayTasks from './TodayTasks';
-import TaskSummaryDashboard from './TaskSummaryDashboard';
+//import TaskSummaryDashboard from './TaskSummaryDashboard';
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
 import './App.css';
