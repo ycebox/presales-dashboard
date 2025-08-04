@@ -883,7 +883,7 @@ function ProjectDetails() {
         )}
       </div>
 
-      {/* SmartVista Modules - Simple dropdown like other fields */}
+      {/* SmartVista Modules - Multiple selection with simple UI */}
       <div className="detail-item">
         <label className="detail-label">
           <FaAward className="detail-icon" />
@@ -892,18 +892,85 @@ function ProjectDetails() {
         {isEditing ? (
           <select
             name="smartvista_modules"
-            value={editProject.smartvista_modules || ''}
-            onChange={handleEditChange}
+            value=""
+            onChange={(e) => {
+              if (e.target.value) {
+                const currentModules = editProject.smartvista_modules || [];
+                let updatedModules;
+                
+                if (currentModules.includes(e.target.value)) {
+                  // Remove if already selected
+                  updatedModules = currentModules.filter(m => m !== e.target.value);
+                } else {
+                  // Add if not selected
+                  updatedModules = [...currentModules, e.target.value];
+                }
+                
+                setEditProject(prev => ({ 
+                  ...prev, 
+                  smartvista_modules: updatedModules 
+                }));
+                
+                // Reset dropdown to default
+                e.target.value = "";
+              }
+            }}
             className="detail-input"
           >
-            <option value="">Select Module</option>
+            <option value="">
+              {editProject.smartvista_modules && editProject.smartvista_modules.length > 0
+                ? `${editProject.smartvista_modules.length} selected - Add/remove more`
+                : 'Select modules'
+              }
+            </option>
             {SMARTVISTA_MODULES.map((module, i) => (
-              <option key={i} value={module}>{module}</option>
+              <option 
+                key={i} 
+                value={module}
+                style={{
+                  backgroundColor: editProject.smartvista_modules?.includes(module) ? '#dbeafe' : 'white',
+                  fontWeight: editProject.smartvista_modules?.includes(module) ? '600' : '400'
+                }}
+              >
+                {editProject.smartvista_modules?.includes(module) ? '✓ ' : ''}{module}
+              </option>
             ))}
           </select>
         ) : (
           <div className="detail-value">
-            <span>{project.smartvista_modules || 'Not specified'}</span>
+            {project.smartvista_modules && project.smartvista_modules.length > 0 ? (
+              <span>{project.smartvista_modules.join(', ')}</span>
+            ) : (
+              <span>Not specified</span>
+            )}
+          </div>
+        )}
+        
+        {/* Show selected modules below dropdown in edit mode */}
+        {isEditing && editProject.smartvista_modules && editProject.smartvista_modules.length > 0 && (
+          <div className="selected-modules-simple">
+            <div className="selected-modules-label">Selected:</div>
+            <div className="selected-modules-list">
+              {editProject.smartvista_modules.map((module, i) => (
+                <span key={i} className="module-chip">
+                  {module}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updatedModules = editProject.smartvista_modules.filter(m => m !== module);
+                      setEditProject(prev => ({ 
+                        ...prev, 
+                        smartvista_modules: updatedModules 
+                      }));
+                    }}
+                    className="module-remove-btn"
+                    title={`Remove ${module}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -1037,7 +1104,6 @@ function ProjectDetails() {
     )}
   </div>
 </section>
-        
 
           {/* Tasks Section */}
           <section className="content-card">
