@@ -868,8 +868,7 @@ useEffect(() => {
             )}
           </div>
         </div>
-  
-         </div>
+      </div>
     </div>
 
     <div className="details-grid">
