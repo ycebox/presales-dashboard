@@ -946,6 +946,8 @@ function ProjectDetails() {
 
           // Replace the task list section starting around line 1020 with this corrected version:
 
+// Replace the task list section starting around line 1020 with this corrected version:
+
 <div className="card-content">
   {filteredTasks.length > 0 ? (
     <div className="task-list">
