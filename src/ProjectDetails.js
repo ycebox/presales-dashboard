@@ -944,95 +944,97 @@ function ProjectDetails() {
               </div>
             </div>
 
-            <div className="card-content">
-              {filteredTasks.length > 0 ? (
-                <div className="task-list">
-                  {filteredTasks.map((task) => (
-                    <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)}`}>
-                      <div className="task-checkbox-wrapper">
-                        <div className="custom-checkbox">
-                          <input 
-                            type="checkbox" 
-                            className="task-checkbox"
-                            checked={task.status === 'Completed'}
-                            onChange={() => handleTaskStatusChange(task.id, task.status)}
-                            aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`}
-                          />
-                          <div className="checkbox-visual">
-                            <FaCheckCircle className="check-icon" />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="task-main-content">
-                        <div className="task-header">
-                          <h4 className="task-title">{task.description}</h4>
-                          <div className={`task-status-badge ${getTaskStatusClass(task.status)}`}>
-                            {getTaskStatusIcon(task.status)}
-                            <span className="status-text">
-                              {task.status}
-                            </span>
-                          </div>
-                        </div>
-                        
-              <div className="task-meta-row">
-  {task.due_date && (
-    <div className="task-meta-item">
-      <FaCalendarAlt className="meta-icon" />
-      <span>Due {formatDate(task.due_date)}</span>
-    </div>
-  )}
+          // Replace the task list section starting around line 1020 with this corrected version:
 
-  <div className="task-actions">
-    <button
-      onClick={() => {
-        setEditingTask(task);
-        setShowTaskModal(true);
-      }}
-      className="task-action-button edit"
-      title="Edit task"
-      aria-label={`Edit task "${task.description}"`}
-    >
-      <FaEdit />
-    </button>
-    <button
-      onClick={() => handleDeleteTask(task.id)}
-      className="task-action-button delete"
-      title="Delete task"
-      aria-label={`Delete task "${task.description}"`}
-    >
-      <FaTrash />
-    </button>
-  </div>
-</div>
-
-
-      )}                     
-                          {task.notes && (
-                            <div className="task-meta-item">
-                              <FaFileAlt className="meta-icon" />
-                              <span className="task-notes-preview">{task.notes}</span>
-                            </div>
-                                                                            
-                  )}
-                </div>
-        
-                <EmptyState
-                  title={`No ${showCompleted ? '' : 'active '}tasks found`}
-                  description={showCompleted ? "All tasks are completed! Great work." : "Create your first task to start tracking project progress"}
-                  icon={<FaTasks />}
-                  action={
-                    <button 
-                      onClick={() => setShowTaskModal(true)} 
-                      className="action-button primary"
-                    >
-                      <FaPlus />
-                      <span>Create Task</span>
-                    </button>
-                  }
-                />
-              )}
+<div className="card-content">
+  {filteredTasks.length > 0 ? (
+    <div className="task-list">
+      {filteredTasks.map((task) => (
+        <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)}`}>
+          <div className="task-checkbox-wrapper">
+            <div className="custom-checkbox">
+              <input 
+                type="checkbox" 
+                className="task-checkbox"
+                checked={task.status === 'Completed'}
+                onChange={() => handleTaskStatusChange(task.id, task.status)}
+                aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`}
+              />
+              <div className="checkbox-visual">
+                <FaCheckCircle className="check-icon" />
+              </div>
             </div>
+          </div>
+          
+          <div className="task-main-content">
+            <div className="task-header">
+              <h4 className="task-title">{task.description}</h4>
+              <div className={`task-status-badge ${getTaskStatusClass(task.status)}`}>
+                {getTaskStatusIcon(task.status)}
+                <span className="status-text">
+                  {task.status}
+                </span>
+              </div>
+            </div>
+            
+            <div className="task-meta-row">
+              {task.due_date && (
+                <div className="task-meta-item">
+                  <FaCalendarAlt className="meta-icon" />
+                  <span>Due {formatDate(task.due_date)}</span>
+                </div>
+              )}
+
+              <div className="task-actions">
+                <button
+                  onClick={() => {
+                    setEditingTask(task);
+                    setShowTaskModal(true);
+                  }}
+                  className="task-action-button edit"
+                  title="Edit task"
+                  aria-label={`Edit task "${task.description}"`}
+                >
+                  <FaEdit />
+                </button>
+                <button
+                  onClick={() => handleDeleteTask(task.id)}
+                  className="task-action-button delete"
+                  title="Delete task"
+                  aria-label={`Delete task "${task.description}"`}
+                >
+                  <FaTrash />
+                </button>
+              </div>
+            </div>
+
+            {task.notes && (
+              <div className="task-meta-item">
+                <FaFileAlt className="meta-icon" />
+                <span className="task-notes-preview">{task.notes}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <EmptyState
+      title={`No ${showCompleted ? '' : 'active '}tasks found`}
+      description={showCompleted ? "All tasks are completed! Great work." : "Create your first task to start tracking project progress"}
+      icon={<FaTasks />}
+      action={
+        <button 
+          onClick={() => setShowTaskModal(true)} 
+          className="action-button primary"
+        >
+          <FaPlus />
+          <span>Create Task</span>
+        </button>
+      }
+    />
+  )}
+</div>
           </section>
         </div>
 
