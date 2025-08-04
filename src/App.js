@@ -1,11 +1,6 @@
 // App.js
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay } from 'date-fns';
-import enUS from 'date-fns/locale/en-US/index.js';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-
 import { supabase } from './supabaseClient';
 import Projects from './Projects';
 import TodayTasks from './TodayTasks';
@@ -13,21 +8,9 @@ import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
 import './App.css';
 
-const locales = {
-  'en-US': enUS,
-};
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek,
-  getDay,
-  locales,
-});
-
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [calendarTasks, setCalendarTasks] = useState([]);
 
   useEffect(() => {
     autoAuthenticate();
@@ -37,30 +20,6 @@ function App() {
     });
     return () => subscription?.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (user) {
-      fetchCalendarTasks();
-    }
-  }, [user]);
-
-  const fetchCalendarTasks = async () => {
-    const { data, error } = await supabase
-      .from('project_tasks')
-      .select('description, due_date');
-
-    if (!error && data) {
-      const formatted = data
-        .filter(t => t.due_date)
-        .map(t => ({
-          title: t.description,
-          start: new Date(t.due_date),
-          end: new Date(t.due_date),
-        }));
-      setCalendarTasks(formatted);
-      console.log('Fetched tasks:', data);
-    }
-  };
 
   const autoAuthenticate = async () => {
     try {
@@ -127,21 +86,6 @@ function App() {
               path="/"
               element={
                 <main className="dashboard-main">
-                  {/* Weekly Calendar View */}
-                  <div className="calendar-widget widget-card">
-                    <BigCalendar
-                      localizer={localizer}
-                      events={calendarTasks}
-                      startAccessor="start"
-                      endAccessor="end"
-                      views={['week']}
-                      defaultView="week"
-                      style={{ height: 450 }}
-                      onSelectEvent={(event) => alert(event.title)}
-                    />
-                  </div>
-
-                  {/* Two-column layout below */}
                   <div className="dashboard-bottom">
                     <div className="dashboard-left">
                       <div className="widget-card tasks-widget">
