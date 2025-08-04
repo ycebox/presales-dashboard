@@ -1729,3 +1729,63 @@ body {
     justify-content: flex-start;
   }
 }
+
+.log-actions {
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.log-item:hover .log-actions {
+  opacity: 1;
+}
+
+.log-action-button {
+  padding: 0.25rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.log-action-button.edit {
+  color: #3b82f6;
+}
+
+.log-action-button.edit:hover {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.log-action-button.delete {
+  color: #ef4444;
+}
+
+.log-action-button.delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.log-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.log-date {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  font-weight: 500;
+  flex: 1;
+}
