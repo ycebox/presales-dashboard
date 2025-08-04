@@ -38,7 +38,7 @@ export default function TodayTasksKanban() {
 
       const filtered = data
         .filter(task =>
-          ["Open", "In Progress"].includes(task.status)
+          ["Not Started", "In Progress"].includes(task.status)
         )
         .map(task => ({
           ...task,
@@ -59,7 +59,7 @@ export default function TodayTasksKanban() {
   const getStatusIcon = (status) => {
     switch (status) {
       case "In Progress": return <FaPlay className="status-icon in-progress" />;
-      case "Open": return <FaClock className="status-icon open" />;
+      case "Not Started": return <FaClock className="status-icon open" />;
       default: return null;
     }
   };
@@ -74,7 +74,7 @@ export default function TodayTasksKanban() {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const openTasks = tasks.filter(t => t.status === "Open");
+  const notStartedTasks = tasks.filter(t => t.status === "Not Started");
   const inProgressTasks = tasks.filter(t => t.status === "In Progress");
 
   return (
@@ -93,8 +93,8 @@ export default function TodayTasksKanban() {
       ) : (
         <div className="kanban-board">
           <div className="kanban-column">
-            <h3 className="column-title">Open</h3>
-            {openTasks.map(task => (
+            <h3 className="column-title">Not Started</h3>
+            {notStartedTasks.map(task => (
               <div key={task.id} className={`task-card ${isOverdue(task.due_date) ? "overdue" : ""}`} onClick={() => scrollToProject(task.project_id)}>
                 <div className="task-header">
                   {getStatusIcon(task.status)}
