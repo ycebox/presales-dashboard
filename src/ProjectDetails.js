@@ -738,7 +738,6 @@ function ProjectDetails() {
         <div className="main-column">
 
         {/* Project Details Section */}
-{/* Project Details Section */}
 <section className="content-card">
   <div className="card-header">
     <div className="header-title">
@@ -895,7 +894,11 @@ function ProjectDetails() {
             value=""
             onChange={(e) => {
               if (e.target.value) {
-                const currentModules = editProject.smartvista_modules || [];
+                // Ensure we're working with an array
+                const currentModules = Array.isArray(editProject.smartvista_modules) 
+                  ? editProject.smartvista_modules 
+                  : [];
+                  
                 let updatedModules;
                 
                 if (currentModules.includes(e.target.value)) {
@@ -918,58 +921,103 @@ function ProjectDetails() {
             className="detail-input"
           >
             <option value="">
-              {editProject.smartvista_modules && editProject.smartvista_modules.length > 0
-                ? `${editProject.smartvista_modules.length} selected - Add/remove more`
-                : 'Select modules'
-              }
+              {(() => {
+                const modules = Array.isArray(editProject.smartvista_modules) 
+                  ? editProject.smartvista_modules 
+                  : [];
+                return modules.length > 0
+                  ? `${modules.length} selected - Add/remove more`
+                  : 'Select modules';
+              })()}
             </option>
-            {SMARTVISTA_MODULES.map((module, i) => (
-              <option 
-                key={i} 
-                value={module}
-                style={{
-                  backgroundColor: editProject.smartvista_modules?.includes(module) ? '#dbeafe' : 'white',
-                  fontWeight: editProject.smartvista_modules?.includes(module) ? '600' : '400'
-                }}
-              >
-                {editProject.smartvista_modules?.includes(module) ? '✓ ' : ''}{module}
-              </option>
-            ))}
+            {SMARTVISTA_MODULES.map((module, i) => {
+              const selectedModules = Array.isArray(editProject.smartvista_modules) 
+                ? editProject.smartvista_modules 
+                : [];
+              const isSelected = selectedModules.includes(module);
+              
+              return (
+                <option 
+                  key={i} 
+                  value={module}
+                  style={{
+                    backgroundColor: isSelected ? '#dbeafe' : 'white',
+                    fontWeight: isSelected ? '600' : '400'
+                  }}
+                >
+                  {isSelected ? '✓ ' : ''}{module}
+                </option>
+              );
+            })}
           </select>
         ) : (
           <div className="detail-value">
-            {project.smartvista_modules && project.smartvista_modules.length > 0 ? (
-              <span>{project.smartvista_modules.join(', ')}</span>
-            ) : (
-              <span>Not specified</span>
-            )}
+            {(() => {
+              // Handle different data types for smartvista_modules
+              const modules = project.smartvista_modules;
+              
+              if (!modules) {
+                return <span>Not specified</span>;
+              }
+              
+              // If it's already an array
+              if (Array.isArray(modules) && modules.length > 0) {
+                return <span>{modules.join(', ')}</span>;
+              }
+              
+              // If it's a string (perhaps JSON string from database)
+              if (typeof modules === 'string') {
+                try {
+                  // Try to parse as JSON first
+                  const parsedModules = JSON.parse(modules);
+                  if (Array.isArray(parsedModules) && parsedModules.length > 0) {
+                    return <span>{parsedModules.join(', ')}</span>;
+                  }
+                } catch (e) {
+                  // If JSON parsing fails, treat as single module
+                  return <span>{modules}</span>;
+                }
+              }
+              
+              return <span>Not specified</span>;
+            })()}
           </div>
         )}
         
         {/* Show selected modules below dropdown in edit mode */}
-        {isEditing && editProject.smartvista_modules && editProject.smartvista_modules.length > 0 && (
+        {isEditing && (() => {
+          const selectedModules = Array.isArray(editProject.smartvista_modules) 
+            ? editProject.smartvista_modules 
+            : [];
+          return selectedModules.length > 0;
+        })() && (
           <div className="selected-modules-simple">
             <div className="selected-modules-label">Selected:</div>
             <div className="selected-modules-list">
-              {editProject.smartvista_modules.map((module, i) => (
-                <span key={i} className="module-chip">
-                  {module}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updatedModules = editProject.smartvista_modules.filter(m => m !== module);
-                      setEditProject(prev => ({ 
-                        ...prev, 
-                        smartvista_modules: updatedModules 
-                      }));
-                    }}
-                    className="module-remove-btn"
-                    title={`Remove ${module}`}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
+              {(() => {
+                const selectedModules = Array.isArray(editProject.smartvista_modules) 
+                  ? editProject.smartvista_modules 
+                  : [];
+                return selectedModules.map((module, i) => (
+                  <span key={i} className="module-chip">
+                    {module}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updatedModules = selectedModules.filter(m => m !== module);
+                        setEditProject(prev => ({ 
+                          ...prev, 
+                          smartvista_modules: updatedModules 
+                        }));
+                      }}
+                      className="module-remove-btn"
+                      title={`Remove ${module}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ));
+              })()}
             </div>
           </div>
         )}
@@ -1104,7 +1152,7 @@ function ProjectDetails() {
     )}
   </div>
 </section>
-
+ {/* Tatan */}
           {/* Tasks Section */}
           <section className="content-card">
             <div className="card-header">
