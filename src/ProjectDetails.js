@@ -12,6 +12,22 @@ import {
 } from 'react-icons/fa';
 
 // Constants
+
+const SMARTVISTA_MODULES = [
+  'Core Banking',
+  'Card Management',
+  'Digital Banking',
+  'Payment Processing',
+  'Risk Management',
+  'Fraud Detection',
+  'ATM Management',
+  'Mobile Banking',
+  'Internet Banking',
+  'Merchant Acquiring',
+  'Switch & Authorization',
+  'Customer Onboarding'
+];
+
 const SALES_STAGES = [
   'Discovery', 'Demo', 'PoC', 'RFI', 'RFP', 'SoW', 
   'Contracting', 'Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold'
@@ -22,6 +38,41 @@ const PRODUCTS = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
 const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'];
 
 // Utility Functions
+
+const getStatusClass = (status) => {
+  if (!status) return 'status-not-specified';
+  
+  const statusLower = status.toLowerCase();
+  
+  // Check for common status patterns
+  if (statusLower.includes('complet')) return 'status-completed';
+  if (statusLower.includes('progress') || statusLower.includes('active') || statusLower.includes('working')) return 'status-in-progress';
+  if (statusLower.includes('plan')) return 'status-planning';
+  if (statusLower.includes('hold') || statusLower.includes('pause')) return 'status-on-hold';
+  if (statusLower.includes('cancel')) return 'status-cancelled';
+  if (statusLower.includes('delay')) return 'status-delayed';
+  if (statusLower.includes('review')) return 'status-under-review';
+  
+  // Default to in-progress for any other status
+  return 'status-in-progress';
+};
+
+const getStatusIcon = (status) => {
+  if (!status) return <FaClock />;
+  
+  const statusLower = status.toLowerCase();
+  
+  if (statusLower.includes('complet')) return <FaCheckCircle />;
+  if (statusLower.includes('progress') || statusLower.includes('active') || statusLower.includes('working')) return <FaClock />;
+  if (statusLower.includes('plan')) return <FaLightbulb />;
+  if (statusLower.includes('hold') || statusLower.includes('pause')) return <FaExclamationTriangle />;
+  if (statusLower.includes('cancel')) return <FaTimes />;
+  if (statusLower.includes('delay')) return <FaExclamationTriangle />;
+  if (statusLower.includes('review')) return <FaEye />;
+  
+  return <FaClock />;
+};
+
 const formatDate = (dateString) => {
   if (!dateString) return '-';
   try {
@@ -434,6 +485,7 @@ function ProjectDetails() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showModulesDropdown, setShowModulesDropdown] = useState(false);
 
   // Update edit state when project changes
   useEffect(() => {
@@ -684,229 +736,374 @@ function ProjectDetails() {
       <div className="main-content-grid">
         {/* Left Column */}
         <div className="main-column">
-          {/* Project Details Section */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="header-title">
-                <FaInfo className="header-icon" />
-                <h3>Project Information</h3>
-              </div>
-              <div className="header-actions">
-                {isEditing ? (
-                  <>
-                    <button 
-                      onClick={handleSaveProject} 
-                      className="action-button success"
-                      disabled={saving}
-                    >
-                      <FaSave />
-                      <span>{saving ? 'Saving...' : 'Save Changes'}</span>
-                    </button>
-                    <button 
-                      onClick={handleEditToggle} 
-                      className="action-button secondary"
-                      disabled={saving}
-                    >
-                      <FaTimes />
-                      <span>Cancel</span>
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={handleEditToggle} className="action-button primary">
-                    <FaEdit />
-                    <span>Edit Details</span>
-                  </button>
-                )}
-              </div>
-            </div>
 
-            {isEditing && (
-              <div className="edit-banner">
-                <FaLightbulb className="edit-icon" />
-                <span>Edit mode active - Make your changes and save when ready</span>
+        {/* Project Details Section */}
+<section className="content-card">
+  <div className="card-header">
+    <div className="header-title">
+      <FaInfo className="header-icon" />
+      <h3>Project Information</h3>
+    </div>
+    <div className="header-actions">
+      {isEditing ? (
+        <>
+          <button 
+            onClick={handleSaveProject} 
+            className="action-button success"
+            disabled={saving}
+          >
+            <FaSave />
+            <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+          </button>
+          <button 
+            onClick={handleEditToggle} 
+            className="action-button secondary"
+            disabled={saving}
+          >
+            <FaTimes />
+            <span>Cancel</span>
+          </button>
+        </>
+      ) : (
+        <button onClick={handleEditToggle} className="action-button primary">
+          <FaEdit />
+          <span>Edit Details</span>
+        </button>
+      )}
+    </div>
+  </div>
+
+  {isEditing && (
+    <div className="edit-banner">
+      <FaLightbulb className="edit-icon" />
+      <span>Edit mode active - Make your changes and save when ready</span>
+    </div>
+  )}
+
+  <div className="card-content">
+    {/* Current Status/Progress - Highlighted at the top */}
+    <div className="status-highlight-section">
+      <div className="status-highlight-card">
+        <div className="status-highlight-header">
+          <div className="status-highlight-icon-wrapper">
+            <FaChartLine className="status-highlight-icon" />
+          </div>
+          <div className="status-highlight-content">
+            <h4 className="status-highlight-title">Current Status</h4>
+            {isEditing ? (
+              <input
+                type="text"
+                name="current_status"
+                value={editProject.current_status || ''}
+                onChange={handleEditChange}
+                className="status-highlight-input"
+                placeholder="Enter current project status..."
+              />
+            ) : (
+              <div className={`status-highlight-value ${getStatusClass(project.current_status)}`}>
+                {getStatusIcon(project.current_status)}
+                <span>{project.current_status || 'Not specified'}</span>
               </div>
             )}
+          </div>
+        </div>
+        {!isEditing && project.progress_notes && (
+          <div className="status-progress-notes">
+            <FaFileAlt className="progress-notes-icon" />
+            <span>{project.progress_notes}</span>
+          </div>
+        )}
+        {isEditing && (
+          <div className="progress-notes-edit">
+            <label className="progress-notes-label">
+              <FaFileAlt className="form-icon" />
+              Progress Notes
+            </label>
+            <textarea
+              name="progress_notes"
+              value={editProject.progress_notes || ''}
+              onChange={handleEditChange}
+              className="progress-notes-textarea"
+              rows="2"
+              placeholder="Add notes about current progress, blockers, or next steps..."
+            />
+          </div>
+        )}
+      </div>
+    </div>
 
-            <div className="card-content">
-              <div className="details-grid">
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaRocket className="detail-icon" />
-                    <span>Sales Stage</span>
-                  </label>
-                  {isEditing ? (
-                    <select
-                      name="sales_stage"
-                      value={editProject.sales_stage || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                    >
-                      <option value="">Select Stage</option>
-                      {SALES_STAGES.map((stage, i) => (
-                        <option key={i} value={stage}>{stage}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className={`detail-value stage-value ${getSalesStageClass(project.sales_stage)}`}>
-                      {getSalesStageIcon(project.sales_stage)}
-                      <span>{project.sales_stage || 'Not specified'}</span>
-                    </div>
-                  )}
-                </div>
+    <div className="details-grid">
+      <div className="detail-item">
+        <label className="detail-label">
+          <FaRocket className="detail-icon" />
+          <span>Sales Stage</span>
+        </label>
+        {isEditing ? (
+          <select
+            name="sales_stage"
+            value={editProject.sales_stage || ''}
+            onChange={handleEditChange}
+            className="detail-input"
+          >
+            <option value="">Select Stage</option>
+            {SALES_STAGES.map((stage, i) => (
+              <option key={i} value={stage}>{stage}</option>
+            ))}
+          </select>
+        ) : (
+          <div className={`detail-value stage-value ${getSalesStageClass(project.sales_stage)}`}>
+            {getSalesStageIcon(project.sales_stage)}
+            <span>{project.sales_stage || 'Not specified'}</span>
+          </div>
+        )}
+      </div>
 
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaBullseye className="detail-icon" />
-                    <span>Product</span>
-                  </label>
-                  {isEditing ? (
-                    <select
-                      name="product"
-                      value={editProject.product || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                    >
-                      <option value="">Select Product</option>
-                      {PRODUCTS.map((product, i) => (
-                        <option key={i} value={product}>{product}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="detail-value">
-                      <span>{project.product || 'Not specified'}</span>
-                    </div>
-                  )}
-                </div>
+      <div className="detail-item">
+        <label className="detail-label">
+          <FaBullseye className="detail-icon" />
+          <span>Product</span>
+        </label>
+        {isEditing ? (
+          <select
+            name="product"
+            value={editProject.product || ''}
+            onChange={handleEditChange}
+            className="detail-input"
+          >
+            <option value="">Select Product</option>
+            {PRODUCTS.map((product, i) => (
+              <option key={i} value={product}>{product}</option>
+            ))}
+          </select>
+        ) : (
+          <div className="detail-value">
+            <span>{project.product || 'Not specified'}</span>
+          </div>
+        )}
+      </div>
 
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaUsers className="detail-icon" />
-                    <span>Account Manager</span>
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="account_manager"
-                      value={editProject.account_manager || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                      placeholder="Account manager name"
-                    />
-                  ) : (
-                    <div className="detail-value">
-                      <span>{project.account_manager || 'Not assigned'}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaCalendarAlt className="detail-icon" />
-                    <span>Due Date</span>
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="date"
-                      name="due_date"
-                      value={editProject.due_date || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                    />
-                  ) : (
-                    <div className="detail-value">
-                      <span>{formatDate(project.due_date)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaDollarSign className="detail-icon" />
-                    <span>Deal Value</span>
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      name="deal_value"
-                      value={editProject.deal_value || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                      placeholder="Deal value"
-                    />
-                  ) : (
-                    <div className="detail-value">
-                      <span>{formatCurrency(project.deal_value)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="detail-item">
-                  <label className="detail-label">
-                    <FaUsers className="detail-icon" />
-                    <span>Backup Presales</span>
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="backup_presales"
-                      value={editProject.backup_presales || ''}
-                      onChange={handleEditChange}
-                      className="detail-input"
-                      placeholder="Backup presales contact"
-                    />
-                  ) : (
-                    <div className="detail-value">
-                      <span>{project.backup_presales || 'Not assigned'}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="detail-item full-width">
-                <label className="detail-label">
-                  <FaBullseye className="detail-icon" />
-                  <span>Project Scope</span>
-                </label>
-                {isEditing ? (
-                  <textarea
-                    name="scope"
-                    value={editProject.scope || ''}
-                    onChange={handleEditChange}
-                    className="detail-textarea"
-                    rows="4"
-                    placeholder="Describe the project scope, objectives, and deliverables..."
-                  />
-                ) : (
-                  <div className="detail-value scope-text">
-                    {project.scope || 'No scope defined'}
-                  </div>
-                )}
-              </div>
-
-              {(project.remarks || isEditing) && (
-                <div className="detail-item full-width">
-                  <label className="detail-label">
-                    <FaFileAlt className="detail-icon" />
-                    <span>Additional Notes</span>
-                  </label>
-                  {isEditing ? (
-                    <textarea
-                      name="remarks"
-                      value={editProject.remarks || ''}
-                      onChange={handleEditChange}
-                      className="detail-textarea"
-                      rows="3"
-                      placeholder="Any additional remarks, constraints, or important notes..."
-                    />
-                  ) : (
-                    <div className="detail-value scope-text">
-                      {project.remarks || 'No additional notes'}
-                    </div>
-                  )}
+      {/* SmartVista Modules - Multi-select */}
+      <div className="detail-item">
+        <label className="detail-label">
+          <FaAward className="detail-icon" />
+          <span>SmartVista Modules</span>
+        </label>
+        {isEditing ? (
+          <div className="multi-select-container">
+            <div className="multi-select-dropdown">
+              <button
+                type="button"
+                className="multi-select-button"
+                onClick={() => setShowModulesDropdown(!showModulesDropdown)}
+              >
+                <span>
+                  {editProject.smartvista_modules && editProject.smartvista_modules.length > 0
+                    ? `${editProject.smartvista_modules.length} module(s) selected`
+                    : 'Select modules'
+                  }
+                </span>
+                <FaChevronDown className={`dropdown-icon ${showModulesDropdown ? 'rotated' : ''}`} />
+              </button>
+              {showModulesDropdown && (
+                <div className="multi-select-options">
+                  {SMARTVISTA_MODULES.map((module, i) => (
+                    <label key={i} className="multi-select-option">
+                      <input
+                        type="checkbox"
+                        checked={editProject.smartvista_modules?.includes(module) || false}
+                        onChange={(e) => {
+                          const currentModules = editProject.smartvista_modules || [];
+                          let updatedModules;
+                          
+                          if (e.target.checked) {
+                            updatedModules = [...currentModules, module];
+                          } else {
+                            updatedModules = currentModules.filter(m => m !== module);
+                          }
+                          
+                          setEditProject(prev => ({ 
+                            ...prev, 
+                            smartvista_modules: updatedModules 
+                          }));
+                        }}
+                      />
+                      <span className="checkmark"></span>
+                      <span className="option-text">{module}</span>
+                    </label>
+                  ))}
                 </div>
               )}
             </div>
-          </section>
+            {editProject.smartvista_modules && editProject.smartvista_modules.length > 0 && (
+              <div className="selected-modules-preview">
+                {editProject.smartvista_modules.map((module, i) => (
+                  <span key={i} className="module-tag">
+                    {module}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updatedModules = editProject.smartvista_modules.filter(m => m !== module);
+                        setEditProject(prev => ({ 
+                          ...prev, 
+                          smartvista_modules: updatedModules 
+                        }));
+                      }}
+                      className="remove-module-button"
+                    >
+                      <FaTimes />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="detail-value">
+            {project.smartvista_modules && project.smartvista_modules.length > 0 ? (
+              <div className="modules-display">
+                {project.smartvista_modules.map((module, i) => (
+                  <span key={i} className="module-tag-display">
+                    {module}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span>Not specified</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="detail-item">
+        <label className="detail-label">
+          <FaUsers className="detail-icon" />
+          <span>Account Manager</span>
+        </label>
+        {isEditing ? (
+          <input
+            type="text"
+            name="account_manager"
+            value={editProject.account_manager || ''}
+            onChange={handleEditChange}
+            className="detail-input"
+            placeholder="Account manager name"
+          />
+        ) : (
+          <div className="detail-value">
+            <span>{project.account_manager || 'Not assigned'}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="detail-item">
+        <label className="detail-label">
+          <FaCalendarAlt className="detail-icon" />
+          <span>Due Date</span>
+        </label>
+        {isEditing ? (
+          <input
+            type="date"
+            name="due_date"
+            value={editProject.due_date || ''}
+            onChange={handleEditChange}
+            className="detail-input"
+          />
+        ) : (
+          <div className="detail-value">
+            <span>{formatDate(project.due_date)}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="detail-item">
+        <label className="detail-label">
+          <FaDollarSign className="detail-icon" />
+          <span>Deal Value</span>
+        </label>
+        {isEditing ? (
+          <input
+            type="number"
+            name="deal_value"
+            value={editProject.deal_value || ''}
+            onChange={handleEditChange}
+            className="detail-input"
+            placeholder="Deal value"
+          />
+        ) : (
+          <div className="detail-value">
+            <span>{formatCurrency(project.deal_value)}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="detail-item">
+        <label className="detail-label">
+          <FaUsers className="detail-icon" />
+          <span>Backup Presales</span>
+        </label>
+        {isEditing ? (
+          <input
+            type="text"
+            name="backup_presales"
+            value={editProject.backup_presales || ''}
+            onChange={handleEditChange}
+            className="detail-input"
+            placeholder="Backup presales contact"
+          />
+        ) : (
+          <div className="detail-value">
+            <span>{project.backup_presales || 'Not assigned'}</span>
+          </div>
+        )}
+      </div>
+    </div>
+
+    <div className="detail-item full-width">
+      <label className="detail-label">
+        <FaBullseye className="detail-icon" />
+        <span>Project Scope</span>
+      </label>
+      {isEditing ? (
+        <textarea
+          name="scope"
+          value={editProject.scope || ''}
+          onChange={handleEditChange}
+          className="detail-textarea"
+          rows="4"
+          placeholder="Describe the project scope, objectives, and deliverables..."
+        />
+      ) : (
+        <div className="detail-value scope-text">
+          {project.scope || 'No scope defined'}
+        </div>
+      )}
+    </div>
+
+    {(project.remarks || isEditing) && (
+      <div className="detail-item full-width">
+        <label className="detail-label">
+          <FaFileAlt className="detail-icon" />
+          <span>Additional Notes</span>
+        </label>
+        {isEditing ? (
+          <textarea
+            name="remarks"
+            value={editProject.remarks || ''}
+            onChange={handleEditChange}
+            className="detail-textarea"
+            rows="3"
+            placeholder="Any additional remarks, constraints, or important notes..."
+          />
+        ) : (
+          <div className="detail-value scope-text">
+            {project.remarks || 'No additional notes'}
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+</section>
+        
 
           {/* Tasks Section */}
           <section className="content-card">
