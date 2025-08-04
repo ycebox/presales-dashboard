@@ -14,18 +14,18 @@ import {
 // Constants
 
 const SMARTVISTA_MODULES = [
-  'Core Banking',
-  'Card Management',
+  'SVFE - Switch',
+  'SVFE - ATM',
+  'SVBO - CMS',
+  'SVBO - Merchant',
   'Digital Banking',
-  'Payment Processing',
-  'Risk Management',
-  'Fraud Detection',
-  'ATM Management',
-  'Mobile Banking',
-  'Internet Banking',
-  'Merchant Acquiring',
-  'Switch & Authorization',
-  'Customer Onboarding'
+  'SVFM',
+  'SVCG',
+  'SVIP',
+  'SVCSP',
+  'EPG',
+  'ACS'
+  
 ];
 
 const SALES_STAGES = [
@@ -300,9 +300,17 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null }) => {
   );
 };
 
-const LogModal = ({ isOpen, onClose, onSave }) => {
+const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
   const [logEntry, setLogEntry] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (editingLog) {
+      setLogEntry(editingLog.entry || '');
+    } else {
+      setLogEntry('');
+    }
+  }, [editingLog, isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -327,7 +335,9 @@ const LogModal = ({ isOpen, onClose, onSave }) => {
         <div className="modal-header">
           <div className="modal-title-wrapper">
             <FaBookOpen className="modal-icon" />
-            <h3 className="modal-title">Add Project Log Entry</h3>
+            <h3 className="modal-title">
+              {editingLog ? 'Edit Log Entry' : 'Add Project Log Entry'}
+            </h3>
           </div>
           <button 
             className="modal-close-button" 
@@ -363,8 +373,8 @@ const LogModal = ({ isOpen, onClose, onSave }) => {
               Cancel
             </button>
             <button type="submit" className="button-submit" disabled={loading}>
-              <FaPlus />
-              {loading ? 'Adding...' : 'Add Entry'}
+              <FaSave />
+              {loading ? (editingLog ? 'Updating...' : 'Adding...') : (editingLog ? 'Update Entry' : 'Add Entry')}
             </button>
           </div>
         </form>
@@ -505,6 +515,7 @@ function ProjectDetails() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [editingLog, setEditingLog] = useState(null);
  
   // Update edit state when project changes
 useEffect(() => {
@@ -672,6 +683,33 @@ useEffect(() => {
     }
   };
 
+  const handleLogEdit = async (logEntry) => {
+  try {
+    if (editingLog) {
+      const { error } = await supabase
+        .from('project_logs')
+        .update({ entry: logEntry })
+        .eq('id', editingLog.id);
+
+      if (error) throw error;
+      alert('Log updated successfully!');
+    } else {
+      const { error } = await supabase
+        .from('project_logs')
+        .insert([{ project_id: id, entry: logEntry }]);
+
+      if (error) throw error;
+      alert('Log added successfully!');
+    }
+
+    setShowLogModal(false);
+    setEditingLog(null);
+    fetchLogs();
+  } catch (error) {
+    console.error('Error saving log:', error);
+    alert('Error saving log: ' + error.message);
+  }
+};
   const handleDeleteLog = async (logId) => {
     if (!window.confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) return;
 
@@ -1378,20 +1416,32 @@ useEffect(() => {
                       <div className="log-content">
                         <div className="log-text">{log.entry}</div>
                         <div className="log-meta">
-                          <FaCalendarAlt className="log-meta-icon" />
-                          <span className="log-date">
-                            {formatDate(log.created_at)}
-                          </span>
-                          <button 
-                            onClick={() => handleDeleteLog(log.id)}
-                            className="log-delete-button"
-                            title="Delete log entry"
-                            aria-label={`Delete log entry from ${formatDate(log.created_at)}`}
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </div>
+  <FaCalendarAlt className="log-meta-icon" />
+  <span className="log-date">
+    {formatDate(log.created_at)}
+  </span>
+  <div className="log-actions">
+    <button 
+      onClick={() => {
+        setEditingLog(log);
+        setShowLogModal(true);
+      }}
+      className="log-action-button edit"
+      title="Edit log entry"
+      aria-label={`Edit log entry from ${formatDate(log.created_at)}`}
+    >
+      <FaEdit />
+    </button>
+    <button 
+      onClick={() => handleDeleteLog(log.id)}
+      className="log-action-button delete"
+      title="Delete log entry"
+      aria-label={`Delete log entry from ${formatDate(log.created_at)}`}
+    >
+      <FaTrash />
+    </button>
+  </div>
+</div>
                     </div>
                   ))}
                   {logs.length > 5 && (
@@ -1435,11 +1485,15 @@ useEffect(() => {
         editingTask={editingTask}
       />
 
-      <LogModal
-        isOpen={showLogModal}
-        onClose={() => setShowLogModal(false)}
-        onSave={handleLogSaved}
-      />
+ <LogModal
+  isOpen={showLogModal}
+  onClose={() => {
+    setShowLogModal(false);
+    setEditingLog(null);
+  }}
+  onSave={handleLogEdit}
+  editingLog={editingLog}
+/>
     </div>
   );
 }
