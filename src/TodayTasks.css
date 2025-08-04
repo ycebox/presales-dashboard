@@ -94,5 +94,8 @@
 
 .project-name {
   font-size: var(--font-size-xs);
-  color: var(--color-gray-500);
+  font-weight: 500;
+  color: var(--color-gray-400);
+  letter-spacing: 0.02em;
+  text-transform: none;
 }
