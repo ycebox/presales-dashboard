@@ -1413,7 +1413,7 @@ useEffect(() => {
                       </div>
                       <div className="log-content">
                         <div className="log-text">{log.entry}</div>
-                        <div className="log-meta">
+                      <div className="log-meta">
   <FaCalendarAlt className="log-meta-icon" />
   <span className="log-date">
     {formatDate(log.created_at)}
@@ -1438,8 +1438,8 @@ useEffect(() => {
     >
       <FaTrash />
     </button>
-     </div>
-                        </div>
+  </div>
+</div>
                       </div>
                     </div>
                   ))}
