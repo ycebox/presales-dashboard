@@ -18,13 +18,14 @@ const SMARTVISTA_MODULES = [
   'SVFE - ATM',
   'SVBO - CMS',
   'SVBO - Merchant',
-  'Digital Banking',
   'SVFM',
   'SVCG',
   'SVIP',
   'SVCSP',
   'EPG',
-  'ACS'
+  'ACS',
+  'Digital Banking',
+  'Merchant Portal'
   
 ];
 
@@ -1414,10 +1415,6 @@ useEffect(() => {
                       <div className="log-content">
                         <div className="log-text">{log.entry}</div>
                       <div className="log-meta">
-  <FaCalendarAlt className="log-meta-icon" />
-  <span className="log-date">
-    {formatDate(log.created_at)}
-  </span>
   <div className="log-actions">
     <button 
       onClick={() => {
