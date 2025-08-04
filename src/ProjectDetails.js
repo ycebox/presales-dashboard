@@ -830,29 +830,8 @@ useEffect(() => {
             )}
           </div>
         </div>
-        {!isEditing && project.progress_notes && (
-          <div className="status-progress-notes">
-            <FaFileAlt className="progress-notes-icon" />
-            <span>{project.progress_notes}</span>
-          </div>
-        )}
-        {isEditing && (
-          <div className="progress-notes-edit">
-            <label className="progress-notes-label">
-              <FaFileAlt className="form-icon" />
-              Progress Notes
-            </label>
-            <textarea
-              name="progress_notes"
-              value={editProject.progress_notes || ''}
-              onChange={handleEditChange}
-              className="progress-notes-textarea"
-              rows="2"
-              placeholder="Add notes about current progress, blockers, or next steps..."
-            />
-          </div>
-        )}
-      </div>
+  
+         </div>
     </div>
 
     <div className="details-grid">
