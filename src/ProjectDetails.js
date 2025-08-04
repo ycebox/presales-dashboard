@@ -38,6 +38,26 @@ const PRODUCTS = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
 const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'];
 
 // Utility Functions
+const normalizeModulesArray = (modules) => {
+  if (!modules) return [];
+  
+  // If it's already an array
+  if (Array.isArray(modules)) return modules;
+  
+  // If it's a string (perhaps JSON string from database)
+  if (typeof modules === 'string') {
+    try {
+      // Try to parse as JSON first
+      const parsedModules = JSON.parse(modules);
+      if (Array.isArray(parsedModules)) return parsedModules;
+    } catch (e) {
+      // If JSON parsing fails, treat as single module
+      return [modules];
+    }
+  }
+  
+  return [];
+};
 
 const getStatusClass = (status) => {
   if (!status) return 'status-not-specified';
@@ -485,14 +505,17 @@ function ProjectDetails() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [showModulesDropdown, setShowModulesDropdown] = useState(false);
-
+ 
   // Update edit state when project changes
-  useEffect(() => {
-    if (project) {
-      setEditProject(project);
-    }
-  }, [project]);
+useEffect(() => {
+  if (project) {
+    setEditProject({
+      ...project,
+      // Ensure smartvista_modules is always an array in edit mode
+      smartvista_modules: normalizeModulesArray(project.smartvista_modules)
+    });
+  }
+}, [project]);
 
   // Calculated values
   const activeTasksCount = tasks.filter(task => !['Completed', 'Cancelled/On-hold'].includes(task.status)).length;
@@ -952,36 +975,17 @@ function ProjectDetails() {
           </select>
         ) : (
           <div className="detail-value">
-            {(() => {
-              // Handle different data types for smartvista_modules
-              const modules = project.smartvista_modules;
-              
-              if (!modules) {
-                return <span>Not specified</span>;
-              }
-              
-              // If it's already an array
-              if (Array.isArray(modules) && modules.length > 0) {
-                return <span>{modules.join(', ')}</span>;
-              }
-              
-              // If it's a string (perhaps JSON string from database)
-              if (typeof modules === 'string') {
-                try {
-                  // Try to parse as JSON first
-                  const parsedModules = JSON.parse(modules);
-                  if (Array.isArray(parsedModules) && parsedModules.length > 0) {
-                    return <span>{parsedModules.join(', ')}</span>;
-                  }
-                } catch (e) {
-                  // If JSON parsing fails, treat as single module
-                  return <span>{modules}</span>;
-                }
-              }
-              
-              return <span>Not specified</span>;
-            })()}
-          </div>
+  {(() => {
+    // Handle different data types for smartvista_modules
+    const normalizedModules = normalizeModulesArray(project.smartvista_modules);
+    
+    if (normalizedModules.length > 0) {
+      return <span>{normalizedModules.join(', ')}</span>;
+    }
+    
+    return <span>Not specified</span>;
+  })()}
+</div>
         )}
         
         {/* Show selected modules below dropdown in edit mode */}
