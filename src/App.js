@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
-import enUS from 'date-fns/locale/en-US';
+import enUS from 'date-fns/locale/en-US/index.js';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 import { supabase } from './supabaseClient';
