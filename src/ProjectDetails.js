@@ -944,11 +944,7 @@ function ProjectDetails() {
               </div>
             </div>
 
-          // Replace the task list section starting around line 1020 with this corrected version:
-
-// Replace the task list section starting around line 1020 with this corrected version:
-
-<div className="card-content">
+  <div className="card-content">
   {filteredTasks.length > 0 ? (
     <div className="task-list">
       {filteredTasks.map((task) => (
@@ -1047,7 +1043,7 @@ function ProjectDetails() {
             <div className="card-header">
               <div className="header-title">
                 <FaChartLine className="header-icon" />
-                <h3>Progress Overview</h3>
+                <h3>Task Progress Overview</h3>
               </div>
             </div>
             <div className="card-content">
