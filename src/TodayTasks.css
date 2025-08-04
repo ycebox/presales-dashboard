@@ -8,7 +8,7 @@
 .kanban-header h2 {
   font-size: var(--font-size-xl);
   font-weight: 600;
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-2);
   color: var(--color-gray-800);
 }
 
@@ -20,9 +20,9 @@
 
 .kanban-column {
   flex: 1;
-  min-width: 240px;
+  min-width: 200px;
   background: var(--color-white);
-  padding: var(--space-3);
+  padding: var(--space-2);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-gray-100);
   box-shadow: var(--shadow-xs);
@@ -32,15 +32,15 @@
   font-size: var(--font-size-base);
   font-weight: 600;
   color: var(--color-gray-700);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .task-card {
   background: var(--color-white);
   border: 1px solid var(--color-gray-200);
   border-radius: var(--radius-base);
-  padding: var(--space-3);
-  margin-bottom: var(--space-3);
+  padding: var(--space-2);
+  margin-bottom: var(--space-2);
   transition: all var(--transition-base);
   cursor: pointer;
 }
@@ -54,7 +54,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
   font-weight: 600;
   color: var(--color-gray-900);
 }
@@ -86,7 +86,7 @@
 
 .kanban-loading,
 .kanban-error {
-  padding: var(--space-6);
+  padding: var(--space-2);
   color: var(--color-danger);
   text-align: center;
 }
