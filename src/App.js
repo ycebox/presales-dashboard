@@ -1,6 +1,13 @@
 // App.js
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
+import format from 'date-fns/format';
+import parse from 'date-fns/parse';
+import startOfWeek from 'date-fns/startOfWeek';
+import getDay from 'date-fns/getDay';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+
 import { supabase } from './supabaseClient';
 import Projects from './Projects';
 import TodayTasks from './TodayTasks';
@@ -8,53 +15,80 @@ import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
 import './App.css';
 
+const locales = {
+  'en-US': require('date-fns/locale/en-US'),
+};
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  locales,
+});
+
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [calendarTasks, setCalendarTasks] = useState([]);
 
   useEffect(() => {
     autoAuthenticate();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth event:', event);
       setUser(session?.user ?? null);
       setLoading(false);
     });
     return () => subscription?.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      fetchCalendarTasks();
+    }
+  }, [user]);
+
+  const fetchCalendarTasks = async () => {
+    const { data, error } = await supabase
+      .from('project_tasks')
+      .select('description, due_date');
+
+    if (!error && data) {
+      const formatted = data
+        .filter(t => t.due_date)
+        .map(t => ({
+          title: t.description,
+          start: new Date(t.due_date),
+          end: new Date(t.due_date),
+        }));
+      setCalendarTasks(formatted);
+    }
+  };
+
   const autoAuthenticate = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        console.log('Existing user found:', user.email);
         setUser(user);
         setLoading(false);
         return;
       }
-      console.log('No existing user, creating automatic session...');
+
       const defaultEmail = 'admin@presales.com';
       const defaultPassword = 'presales123';
       let { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: defaultEmail,
         password: defaultPassword
       });
+
       if (signInError && signInError.message.includes('Invalid login credentials')) {
-        console.log('Default user not found, creating one...');
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: defaultEmail,
           password: defaultPassword
         });
-        if (signUpError) {
-          console.error('Could not create default user:', signUpError);
-        } else {
-          console.log('Default user created and signed in');
+        if (!signUpError) {
           setUser(signUpData.user);
         }
       } else if (!signInError) {
-        console.log('Signed in with default user');
         setUser(data.user);
-      } else {
-        console.error('Authentication error:', signInError);
       }
     } catch (error) {
       console.error('Auto-authentication failed:', error);
@@ -94,6 +128,21 @@ function App() {
               path="/"
               element={
                 <main className="dashboard-main">
+                  {/* Weekly Calendar View */}
+                  <div className="calendar-widget widget-card">
+                    <BigCalendar
+                      localizer={localizer}
+                      events={calendarTasks}
+                      startAccessor="start"
+                      endAccessor="end"
+                      views={['week']}
+                      defaultView="week"
+                      style={{ height: 450 }}
+                      onSelectEvent={(event) => alert(event.title)}
+                    />
+                  </div>
+
+                  {/* Two-column layout below */}
                   <div className="dashboard-bottom">
                     <div className="dashboard-left">
                       <div className="widget-card tasks-widget">
