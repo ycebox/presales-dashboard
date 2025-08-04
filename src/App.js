@@ -85,20 +85,20 @@ function App() {
             <Route
               path="/"
               element={
-                <main className="dashboard-main">
-                  <div className="dashboard-bottom">
-                    <div className="dashboard-left">
-                      <div className="widget-card tasks-widget">
-                        <TodayTasks />
-                      </div>
-                    </div>
-                    <div className="dashboard-right">
-                      <div className="widget-card projects-widget">
-                        <Projects />
-                      </div>
-                    </div>
-                  </div>
-                </main>
+     <main className="dashboard-main">
+  <div className="dashboard-bottom">
+    {/* Tasks first */}
+    <div className="widget-card tasks-widget">
+      <TodayTasks />
+    </div>
+
+    {/* Then Projects */}
+    <div className="widget-card projects-widget">
+      <Projects />
+    </div>
+  </div>
+</main>
+
               }
             />
             <Route path="/project/:id" element={<ProjectDetails />} />
