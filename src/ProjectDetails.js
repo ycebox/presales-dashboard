@@ -738,6 +738,7 @@ function ProjectDetails() {
         <div className="main-column">
 
         {/* Project Details Section */}
+{/* Project Details Section */}
 <section className="content-card">
   <div className="card-header">
     <div className="header-title">
@@ -882,94 +883,27 @@ function ProjectDetails() {
         )}
       </div>
 
-      {/* SmartVista Modules - Multi-select */}
+      {/* SmartVista Modules - Simple dropdown like other fields */}
       <div className="detail-item">
         <label className="detail-label">
           <FaAward className="detail-icon" />
           <span>SmartVista Modules</span>
         </label>
         {isEditing ? (
-          <div className="multi-select-container">
-            <div className="multi-select-dropdown">
-              <button
-                type="button"
-                className="multi-select-button"
-                onClick={() => setShowModulesDropdown(!showModulesDropdown)}
-              >
-                <span>
-                  {editProject.smartvista_modules && editProject.smartvista_modules.length > 0
-                    ? `${editProject.smartvista_modules.length} module(s) selected`
-                    : 'Select modules'
-                  }
-                </span>
-                <FaChevronDown className={`dropdown-icon ${showModulesDropdown ? 'rotated' : ''}`} />
-              </button>
-              {showModulesDropdown && (
-                <div className="multi-select-options">
-                  {SMARTVISTA_MODULES.map((module, i) => (
-                    <label key={i} className="multi-select-option">
-                      <input
-                        type="checkbox"
-                        checked={editProject.smartvista_modules?.includes(module) || false}
-                        onChange={(e) => {
-                          const currentModules = editProject.smartvista_modules || [];
-                          let updatedModules;
-                          
-                          if (e.target.checked) {
-                            updatedModules = [...currentModules, module];
-                          } else {
-                            updatedModules = currentModules.filter(m => m !== module);
-                          }
-                          
-                          setEditProject(prev => ({ 
-                            ...prev, 
-                            smartvista_modules: updatedModules 
-                          }));
-                        }}
-                      />
-                      <span className="checkmark"></span>
-                      <span className="option-text">{module}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-            {editProject.smartvista_modules && editProject.smartvista_modules.length > 0 && (
-              <div className="selected-modules-preview">
-                {editProject.smartvista_modules.map((module, i) => (
-                  <span key={i} className="module-tag">
-                    {module}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const updatedModules = editProject.smartvista_modules.filter(m => m !== module);
-                        setEditProject(prev => ({ 
-                          ...prev, 
-                          smartvista_modules: updatedModules 
-                        }));
-                      }}
-                      className="remove-module-button"
-                    >
-                      <FaTimes />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+          <select
+            name="smartvista_modules"
+            value={editProject.smartvista_modules || ''}
+            onChange={handleEditChange}
+            className="detail-input"
+          >
+            <option value="">Select Module</option>
+            {SMARTVISTA_MODULES.map((module, i) => (
+              <option key={i} value={module}>{module}</option>
+            ))}
+          </select>
         ) : (
           <div className="detail-value">
-            {project.smartvista_modules && project.smartvista_modules.length > 0 ? (
-              <div className="modules-display">
-                {project.smartvista_modules.map((module, i) => (
-                  <span key={i} className="module-tag-display">
-                    {module}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <span>Not specified</span>
-            )}
+            <span>{project.smartvista_modules || 'Not specified'}</span>
           </div>
         )}
       </div>
