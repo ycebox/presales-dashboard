@@ -4,7 +4,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import Projects from './Projects';
 import TodayTasks from './TodayTasks';
-import TaskSummaryDashboard from './TaskSummaryDashboard';
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
 import './App.css';
@@ -95,12 +94,6 @@ function App() {
               path="/"
               element={
                 <main className="dashboard-main">
-                  <div className="dashboard-top">
-                    <div className="widget-card summary-widget">
-                      <TaskSummaryDashboard />
-                    </div>
-                  </div>
-
                   <div className="dashboard-bottom">
                     <div className="dashboard-left">
                       <div className="widget-card tasks-widget">
