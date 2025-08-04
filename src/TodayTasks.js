@@ -8,7 +8,7 @@ import {
   FaArrowRight,
   FaBuilding
 } from "react-icons/fa";
-import './TodayTasksKanban.css';
+import './TodayTasks.css';
 
 export default function TodayTasksKanban() {
   const [tasks, setTasks] = useState([]);
