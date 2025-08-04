@@ -1380,14 +1380,14 @@ body {
 
 /* Status Highlight Section */
 .status-highlight-section {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .status-highlight-card {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border: 2px solid #0ea5e9;
-  border-radius: 16px;
-  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
   position: relative;
   overflow: hidden;
 }
@@ -1398,10 +1398,9 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #0ea5e9, #06b6d4, #10b981);
+  height: 2px;
+  background: linear-gradient(90deg, #64748b, #94a3b8);
 }
-
 .status-highlight-header {
   display: flex;
   align-items: flex-start;
@@ -1410,65 +1409,63 @@ body {
 }
 
 .status-highlight-icon-wrapper {
-  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-  padding: 0.875rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(14, 165, 233, 0.3);
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  padding: 0.625rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.2);
   flex-shrink: 0;
 }
 
 .status-highlight-icon {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.125rem;
+  height: 1.125rem;
   color: white;
 }
-
 .status-highlight-content {
   flex: 1;
   min-width: 0;
 }
 
 .status-highlight-title {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #0c4a6e;
-  margin: 0 0 0.5rem 0;
-  letter-spacing: -0.025em;
-}
-
-.status-highlight-value {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  font-size: 1.125rem;
+  font-size: 0.9375rem;
   font-weight: 600;
-  padding: 0.5rem 0.875rem;
-  border-radius: 10px;
-  border: 1px solid;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  width: fit-content;
+  color: #475569;
+  margin: 0 0 0.375rem 0;
+  letter-spacing: -0.025em;
 }
 
 .status-highlight-input {
   width: 100%;
-  max-width: 400px;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  font-weight: 600;
-  border: 2px solid #0ea5e9;
-  border-radius: 10px;
+  max-width: 320px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
   background: white;
-  color: #0c4a6e;
+  color: #374151;
   transition: all 0.2s ease;
 }
 
 .status-highlight-input:focus {
   outline: none;
-  border-color: #0284c7;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+  border-color: #64748b;
+  box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.1);
 }
 
+.status-highlight-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.375rem 0.625rem;
+  border-radius: 6px;
+  border: 1px solid;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  width: fit-content;
+}
 .status-highlight-input::placeholder {
   color: #64748b;
   font-weight: 500;
