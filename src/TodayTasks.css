@@ -8,39 +8,39 @@
 .kanban-header h2 {
   font-size: var(--font-size-xl);
   font-weight: 600;
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
   color: var(--color-gray-800);
 }
 
 .kanban-board {
   display: flex;
-  gap: var(--space-8);
+  gap: var(--space-4);
   overflow-x: auto;
 }
 
 .kanban-column {
   flex: 1;
-  min-width: 200px;
+  min-width: 160px;
   background: var(--color-white);
-  padding: var(--space-2);
+  padding: var(--space-1);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-gray-100);
   box-shadow: var(--shadow-xs);
 }
 
 .column-title {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-xs);
   font-weight: 600;
   color: var(--color-gray-700);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .task-card {
   background: var(--color-white);
   border: 1px solid var(--color-gray-200);
   border-radius: var(--radius-base);
-  padding: var(--space-2);
-  margin-bottom: var(--space-2);
+  padding: var(--space-1);
+  margin-bottom: var(--space-1);
   transition: all var(--transition-base);
   cursor: pointer;
 }
@@ -54,7 +54,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
   font-weight: 600;
   color: var(--color-gray-900);
 }
@@ -63,7 +63,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-gray-600);
   flex-wrap: wrap;
   gap: var(--space-2);
@@ -86,7 +86,7 @@
 
 .kanban-loading,
 .kanban-error {
-  padding: var(--space-2);
+  padding: var(--space-1);
   color: var(--color-danger);
   text-align: center;
 }
