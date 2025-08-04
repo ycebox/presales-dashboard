@@ -1007,7 +1007,7 @@ function ProjectDetails() {
 </div>
 
 
-                          )}
+                          
                           {task.notes && (
                             <div className="task-meta-item">
                               <FaFileAlt className="meta-icon" />
