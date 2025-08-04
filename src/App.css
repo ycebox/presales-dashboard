@@ -301,41 +301,7 @@ body {
   border: 1px solid var(--color-gray-200);
 }
 
-.tasks-widget,
-.projects-widget {
-  min-height: 500px;
-  max-height: 75vh;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-gray-300) transparent;
-}
 
-/* Enhanced Custom Scrollbar */
-.tasks-widget::-webkit-scrollbar,
-.projects-widget::-webkit-scrollbar {
-  width: 8px;
-}
-
-.tasks-widget::-webkit-scrollbar-track,
-.projects-widget::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: var(--radius-base);
-}
-
-.tasks-widget::-webkit-scrollbar-thumb,
-.projects-widget::-webkit-scrollbar-thumb {
-  background: var(--color-gray-300);
-  border-radius: var(--radius-base);
-  border: 2px solid transparent;
-  background-clip: content-box;
-  transition: background var(--transition-base);
-}
-
-.tasks-widget::-webkit-scrollbar-thumb:hover,
-.projects-widget::-webkit-scrollbar-thumb:hover {
-  background: var(--color-gray-400);
-  background-clip: content-box;
-}
 
 /* Typography Hierarchy - Clear & Consistent */
 h1, h2, h3, h4, h5, h6 {
@@ -468,11 +434,6 @@ p {
     font-size: var(--font-size-sm);
   }
   
-  .tasks-widget,
-  .projects-widget {
-    max-height: 60vh;
-    min-height: 400px;
-  }
   
   .dashboard-main {
     gap: var(--space-6);
@@ -493,11 +454,6 @@ p {
     gap: var(--space-4);
   }
   
-  .tasks-widget,
-  .projects-widget {
-    max-height: 50vh;
-    min-height: 350px;
-  }
   
   .dashboard-title {
     font-size: var(--font-size-xl);
