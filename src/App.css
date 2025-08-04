@@ -251,10 +251,9 @@ body {
 }
 
 .dashboard-bottom {
-  display: grid;
-  grid-template-columns: minmax(400px, 1fr) minmax(500px, 1.5fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--space-8);
-  align-items: flex-start;
 }
 
 .dashboard-left,
