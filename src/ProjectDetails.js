@@ -1438,8 +1438,9 @@ useEffect(() => {
     >
       <FaTrash />
     </button>
-  </div>
-</div>
+     </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                   {logs.length > 5 && (
