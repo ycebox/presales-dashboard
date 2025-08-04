@@ -90,3 +90,9 @@
   color: var(--color-danger);
   text-align: center;
 }
+
+
+.project-name {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
