@@ -58,6 +58,7 @@ function App() {
           end: new Date(t.due_date),
         }));
       setCalendarTasks(formatted);
+      console.log('Fetched tasks:', data);
     }
   };
 
