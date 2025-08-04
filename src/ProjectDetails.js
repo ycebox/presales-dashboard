@@ -1173,7 +1173,6 @@ useEffect(() => {
     )}
   </div>
 </section>
- {/* Tatan */}
 
           {/* Tasks Section */}
           <section className="content-card">
