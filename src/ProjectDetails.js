@@ -1153,6 +1153,39 @@ function ProjectDetails() {
   </div>
 </section>
  {/* Tatan */}
+// Add this helper function to normalize smartvista_modules data
+const normalizeModulesArray = (modules) => {
+  if (!modules) return [];
+  
+  // If it's already an array
+  if (Array.isArray(modules)) return modules;
+  
+  // If it's a string (perhaps JSON string from database)
+  if (typeof modules === 'string') {
+    try {
+      // Try to parse as JSON first
+      const parsedModules = JSON.parse(modules);
+      if (Array.isArray(parsedModules)) return parsedModules;
+    } catch (e) {
+      // If JSON parsing fails, treat as single module
+      return [modules];
+    }
+  }
+  
+  return [];
+};
+
+// Update edit state when project changes - ADD THIS AFTER THE EXISTING useEffect
+useEffect(() => {
+  if (project) {
+    setEditProject({
+      ...project,
+      // Ensure smartvista_modules is always an array in edit mode
+      smartvista_modules: normalizeModulesArray(project.smartvista_modules)
+    });
+  }
+}, [project]);
+ 
           {/* Tasks Section */}
           <section className="content-card">
             <div className="card-header">
