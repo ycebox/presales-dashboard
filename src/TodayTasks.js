@@ -6,7 +6,11 @@ import {
   Clock,
   Play,
   ArrowRight,
-  Building2
+  Building2,
+  MoreVertical,
+  Check,
+  Pause,
+  RotateCcw
 } from "lucide-react";
 import './TodayTasks.css';
 
@@ -14,6 +18,9 @@ export default function TodayTasksKanban() {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [draggedTask, setDraggedTask] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(null);
+  const [updatingTask, setUpdatingTask] = useState(null);
 
   useEffect(() => {
     fetchTasks();
@@ -87,6 +94,73 @@ export default function TodayTasksKanban() {
     }
   };
 
+  const updateTaskStatus = async (taskId, newStatus) => {
+    setUpdatingTask(taskId);
+    try {
+      const { error } = await supabase
+        .from("project_tasks")
+        .update({ status: newStatus })
+        .eq("id", taskId);
+
+      if (error) {
+        console.error("Error updating task:", error);
+        return false;
+      }
+
+      // Update local state
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId ? { ...task, status: newStatus } : task
+        )
+      );
+      
+      setShowDropdown(null);
+      return true;
+    } catch (error) {
+      console.error("Error updating task:", error);
+      return false;
+    } finally {
+      setUpdatingTask(null);
+    }
+  };
+
+  const handleDragStart = (e, task) => {
+    setDraggedTask(task);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e, targetStatus) => {
+    e.preventDefault();
+    
+    if (!draggedTask || draggedTask.status === targetStatus) {
+      setDraggedTask(null);
+      return;
+    }
+
+    await updateTaskStatus(draggedTask.id, targetStatus);
+    setDraggedTask(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTask(null);
+  };
+
+  const getStatusOptions = (currentStatus) => {
+    const allStatuses = [
+      { value: "Not Started", label: "Not Started", icon: Clock },
+      { value: "In Progress", label: "In Progress", icon: Play },
+      { value: "Completed", label: "Completed", icon: Check },
+      { value: "On Hold", label: "On Hold", icon: Pause }
+    ];
+    
+    return allStatuses.filter(status => status.value !== currentStatus);
+  };
+
   const scrollToProject = (projectId) => {
     const el = document.getElementById(`project-${projectId}`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -98,11 +172,52 @@ export default function TodayTasksKanban() {
   const TaskCard = ({ task }) => (
     <div 
       key={task.id} 
-      className={`task-card ${isOverdue(task.due_date) ? "overdue" : ""}`} 
-      onClick={() => scrollToProject(task.project_id)}
+      className={`task-card ${isOverdue(task.due_date) ? "overdue" : ""} ${updatingTask === task.id ? "updating" : ""}`}
+      draggable
+      onDragStart={(e) => handleDragStart(e, task)}
+      onDragEnd={handleDragEnd}
+      onClick={(e) => {
+        if (!e.target.closest('.task-actions')) {
+          scrollToProject(task.project_id);
+        }
+      }}
     >
       <div className="task-header">
-        <div className="task-title">{task.description}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div className="task-title">{task.description}</div>
+          <div className="task-actions">
+            <button
+              className="task-menu-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDropdown(showDropdown === task.id ? null : task.id);
+              }}
+              disabled={updatingTask === task.id}
+            >
+              <MoreVertical size={12} />
+            </button>
+            {showDropdown === task.id && (
+              <div className="status-dropdown">
+                {getStatusOptions(task.status).map((status) => {
+                  const IconComponent = status.icon;
+                  return (
+                    <button
+                      key={status.value}
+                      className="status-option"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateTaskStatus(task.id, status.value);
+                      }}
+                    >
+                      <IconComponent size={10} />
+                      {status.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
         <div className="project-name">
           <Building2 size={10} className="project-icon" />
           {task.customer_name}
@@ -141,41 +256,31 @@ export default function TodayTasksKanban() {
         </div>
       ) : (
         <div className="kanban-board">
-          <div className="kanban-column">
+          <div 
+            className="kanban-column"
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, "Not Started")}
+          >
             <h3 className="column-title">Not Started</h3>
             {notStartedTasks.length > 0 ? (
               notStartedTasks.map(task => <TaskCard key={task.id} task={task} />)
             ) : (
-              <div style={{ 
-                textAlign: 'center', 
-                color: '#cbd5e1', 
-                fontSize: '0.75rem',
-                fontWeight: '500',
-                padding: '2rem 1rem',
-                border: '2px dashed #e2e8f0',
-                borderRadius: '8px',
-                marginTop: '0.5rem'
-              }}>
+              <div className="empty-column">
                 No tasks to start
               </div>
             )}
           </div>
 
-          <div className="kanban-column">
+          <div 
+            className="kanban-column"
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, "In Progress")}
+          >
             <h3 className="column-title">In Progress</h3>
             {inProgressTasks.length > 0 ? (
               inProgressTasks.map(task => <TaskCard key={task.id} task={task} />)
             ) : (
-              <div style={{ 
-                textAlign: 'center', 
-                color: '#cbd5e1', 
-                fontSize: '0.75rem',
-                fontWeight: '500',
-                padding: '2rem 1rem',
-                border: '2px dashed #e2e8f0',
-                borderRadius: '8px',
-                marginTop: '0.5rem'
-              }}>
+              <div className="empty-column">
                 No tasks in progress
               </div>
             )}
