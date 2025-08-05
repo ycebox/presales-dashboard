@@ -200,18 +200,124 @@
   background: #2563eb;
 }
 
-/* Empty state styling */
-.kanban-column:empty::after {
-  content: 'No tasks';
-  display: block;
+/* Task actions and dropdown */
+.task-actions {
+  position: relative;
+  margin-left: 0.5rem;
+}
+
+.task-menu-btn {
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-menu-btn:hover {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.task-menu-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  min-width: 120px;
+  overflow: hidden;
+}
+
+.status-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 0.75rem;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.status-option:hover {
+  background: #f9fafb;
+}
+
+.status-option:active {
+  background: #f3f4f6;
+}
+
+/* Drag and drop styles */
+.task-card {
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: grab;
+  position: relative;
+  overflow: hidden;
+}
+
+.task-card:active {
+  cursor: grabbing;
+}
+
+.task-card.updating {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.kanban-column {
+  flex: 1;
+  min-width: 280px;
+  background: #ffffff;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: border-color 0.2s ease;
+}
+
+.kanban-column:hover {
+  border-color: #cbd5e1;
+}
+
+.empty-column {
   text-align: center;
   color: #cbd5e1;
-  font-size: 0.75rem;
+  fontSize: 0.75rem;
   font-weight: 500;
   padding: 2rem 1rem;
   border: 2px dashed #e2e8f0;
   border-radius: 8px;
   margin-top: 0.5rem;
+}
+
+/* Click outside to close dropdown */
+@media (hover: hover) {
+  .task-actions:focus-within .status-dropdown {
+    display: block;
+  }
 }
 
 /* Responsive design */
