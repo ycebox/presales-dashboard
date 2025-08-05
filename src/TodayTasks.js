@@ -21,6 +21,21 @@ export default function TodayTasksKanban() {
   const [draggedTask, setDraggedTask] = useState(null);
   const [showDropdown, setShowDropdown] = useState(null);
   const [updatingTask, setUpdatingTask] = useState(null);
+  const [completingTask, setCompletingTask] = useState(null);
+  const [completedCount, setCompletedCount] = useState(0);
+  const [showToast, setShowToast] = useState(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.task-actions')) {
+        setShowDropdown(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetchTasks();
@@ -53,6 +68,14 @@ export default function TodayTasksKanban() {
         }));
 
       setTasks(filtered);
+
+      // Count completed tasks for today
+      const completedToday = data.filter(task => 
+        task.status === "Completed" && 
+        task.due_date === today
+      ).length;
+      setCompletedCount(completedToday);
+
     } catch (error) {
       setError("Failed to load tasks");
     } finally {
@@ -91,6 +114,42 @@ export default function TodayTasksKanban() {
         day: 'numeric',
         year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
       });
+    }
+  };
+
+  const completeTask = async (task) => {
+    setCompletingTask(task.id);
+    
+    try {
+      const { error } = await supabase
+        .from("project_tasks")
+        .update({ status: "Completed" })
+        .eq("id", task.id);
+
+      if (error) {
+        console.error("Error completing task:", error);
+        return;
+      }
+
+      // Remove from local state with animation
+      setTimeout(() => {
+        setTasks(prevTasks => prevTasks.filter(t => t.id !== task.id));
+        setCompletedCount(prev => prev + 1);
+      }, 300);
+
+      // Show success toast
+      setShowToast({
+        message: `"${task.description}" completed!`,
+        type: 'success'
+      });
+
+      // Hide toast after 3 seconds
+      setTimeout(() => setShowToast(null), 3000);
+
+    } catch (error) {
+      console.error("Error completing task:", error);
+    } finally {
+      setTimeout(() => setCompletingTask(null), 300);
     }
   };
 
@@ -172,12 +231,12 @@ export default function TodayTasksKanban() {
   const TaskCard = ({ task }) => (
     <div 
       key={task.id} 
-      className={`task-card ${isOverdue(task.due_date) ? "overdue" : ""} ${updatingTask === task.id ? "updating" : ""}`}
-      draggable
+      className={`task-card ${isOverdue(task.due_date) ? "overdue" : ""} ${updatingTask === task.id ? "updating" : ""} ${completingTask === task.id ? "completing" : ""}`}
+      draggable={!completingTask}
       onDragStart={(e) => handleDragStart(e, task)}
       onDragEnd={handleDragEnd}
       onClick={(e) => {
-        if (!e.target.closest('.task-actions')) {
+        if (!e.target.closest('.task-actions') && !e.target.closest('.complete-btn')) {
           scrollToProject(task.project_id);
         }
       }}
@@ -185,37 +244,50 @@ export default function TodayTasksKanban() {
       <div className="task-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div className="task-title">{task.description}</div>
-          <div className="task-actions">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <button
-              className="task-menu-btn"
+              className="complete-btn"
               onClick={(e) => {
                 e.stopPropagation();
-                setShowDropdown(showDropdown === task.id ? null : task.id);
+                completeTask(task);
               }}
-              disabled={updatingTask === task.id}
+              disabled={completingTask === task.id || updatingTask === task.id}
+              title="Mark as completed"
             >
-              <MoreVertical size={12} />
+              <Check size={12} />
             </button>
-            {showDropdown === task.id && (
-              <div className="status-dropdown">
-                {getStatusOptions(task.status).map((status) => {
-                  const IconComponent = status.icon;
-                  return (
-                    <button
-                      key={status.value}
-                      className="status-option"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateTaskStatus(task.id, status.value);
-                      }}
-                    >
-                      <IconComponent size={10} />
-                      {status.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            <div className="task-actions">
+              <button
+                className="task-menu-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDropdown(showDropdown === task.id ? null : task.id);
+                }}
+                disabled={updatingTask === task.id || completingTask === task.id}
+              >
+                <MoreVertical size={12} />
+              </button>
+              {showDropdown === task.id && (
+                <div className="status-dropdown">
+                  {getStatusOptions(task.status).map((status) => {
+                    const IconComponent = status.icon;
+                    return (
+                      <button
+                        key={status.value}
+                        className="status-option"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateTaskStatus(task.id, status.value);
+                        }}
+                      >
+                        <IconComponent size={10} />
+                        {status.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div className="project-name">
@@ -244,8 +316,25 @@ export default function TodayTasksKanban() {
   return (
     <div className="kanban-container">
       <header className="kanban-header">
-        <h2>Today's Tasks</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2>Today's Tasks</h2>
+          {completedCount > 0 && (
+            <div className="completed-counter">
+              <Check size={14} />
+              <span>{completedCount} completed today</span>
+            </div>
+          )}
+        </div>
       </header>
+      
+      {/* Toast Notification */}
+      {showToast && (
+        <div className={`toast toast-${showToast.type}`}>
+          <Check size={16} />
+          {showToast.message}
+        </div>
+      )}
+
       {isLoading ? (
         <p className="kanban-loading">Loading tasks...</p>
       ) : error ? (
