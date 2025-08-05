@@ -1,44 +1,41 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { supabase } from './supabaseClient';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
-  FaFolderOpen, 
-  FaPlus, 
-  FaTrash, 
-  FaUser, 
-  FaUserPlus, 
-  FaBuilding, 
-  FaGlobe,
-  FaSearch,
-  FaFilter
-} from 'react-icons/fa';
+  Building2,
+  Plus,
+  Trash2,
+  User,
+  UserPlus,
+  Globe,
+  Search,
+  Filter,
+  X,
+  Edit3,
+  MoreHorizontal,
+  Check,
+  AlertTriangle,
+  Clock
+} from 'lucide-react';
 import './Projects.css';
 
 function Projects() {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     country: '',
-    account_manager: ''
-  });
-  const [showProjectModal, setShowProjectModal] = useState(false);
-  const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [newProject, setNewProject] = useState({
-    customer_id: '',
-    customer_name: '',
-    country: '',
     account_manager: '',
-    sales_stage: '',
-    product: '',
-    deal_value: '',
-    backup_presales: '',
-    remarks: '',
-    is_archived: 'false'
+    customer_type: ''
   });
+  const [selectedCustomers, setSelectedCustomers] = useState(new Set());
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [toast, setToast] = useState(null);
   const [newCustomer, setNewCustomer] = useState({
     customer_name: '',
     account_manager: '',
@@ -54,41 +51,48 @@ function Projects() {
     competitors: [],
     notes: ''
   });
+  const [newProject, setNewProject] = useState({
+    customer_id: '',
+    customer_name: '',
+    country: '',
+    account_manager: '',
+    sales_stage: '',
+    product: '',
+    deal_value: '',
+    backup_presales: '',
+    remarks: '',
+    is_archived: 'false'
+  });
 
   // Static data arrays
   const asiaPacificCountries = [
-    "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
-    "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
-    "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
+    "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", 
+    "Japan", "Laos", "Malaysia", "Myanmar", "Nepal", "New Zealand", "Pakistan", 
+    "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands", "South Korea", 
+    "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
   ].sort();
 
   const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
-
   const salesStages = [
-    'Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 'Discovery',
-    'PoC', 'RFI', 'RFP', 'SoW'
+    'Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 
+    'Discovery', 'PoC', 'RFI', 'RFP', 'SoW'
   ].sort();
-
   const companySizes = [
     'Startup (1-10)', 'Small (11-50)', 'Medium (51-200)', 'Large (201-1000)', 'Enterprise (1000+)'
   ];
-
   const revenueRanges = [
     'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
   ];
 
   useEffect(() => {
-    fetchProjects();
-  }, [filters]);
-
-  useEffect(() => {
-    console.log('Projects component mounted, fetching customers...');
     fetchCustomers();
   }, []);
 
   const fetchCustomers = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      console.log('Fetching customers...');
       const { data, error } = await supabase
         .from('customers')
         .select('*')
@@ -100,65 +104,131 @@ function Projects() {
         return;
       }
       
-      console.log('Customers fetched:', data);
       setCustomers(data || []);
     } catch (err) {
       console.error('Unexpected error fetching customers:', err);
       setError('Failed to load customers');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchProjects = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      let query = supabase
-        .from('customers')
-        .select('*');
+  // Filter and search customers
+  const filteredCustomers = useMemo(() => {
+    return customers.filter(customer => {
+      const matchesSearch = !searchTerm || 
+        customer.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.account_manager?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.country?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // Apply filters to customers table
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
-          if (key === 'sales_stage' || key === 'product') {
-            // Skip project-specific filters for now
-            return;
-          }
-          query = query.eq(key, value);
-        }
+      const matchesFilters = Object.entries(filters).every(([key, value]) => {
+        if (!value) return true;
+        return customer[key] === value;
       });
-
-      const { data, error } = await query.order('customer_name', { ascending: true });
       
-      if (error) {
-        console.error('Error fetching customers:', error);
-        setError('Failed to load customer portfolio');
-        setProjects([]);
+      return matchesSearch && matchesFilters;
+    });
+  }, [customers, searchTerm, filters]);
+
+  // Get unique filter options
+  const filterOptions = useMemo(() => ({
+    countries: [...new Set(customers.map(c => c.country).filter(Boolean))].sort(),
+    managers: [...new Set(customers.map(c => c.account_manager).filter(Boolean))].sort(),
+    types: [...new Set(customers.map(c => c.customer_type).filter(Boolean))].sort()
+  }), [customers]);
+
+  // Active filters for chips
+  const activeFilters = useMemo(() => {
+    return Object.entries(filters)
+      .filter(([key, value]) => value)
+      .map(([key, value]) => ({ key, value, label: `${key.replace('_', ' ')}: ${value}` }));
+  }, [filters]);
+
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const removeFilter = (key) => {
+    setFilters(prev => ({ ...prev, [key]: '' }));
+  };
+
+  const clearAllFilters = () => {
+    setFilters({ country: '', account_manager: '', customer_type: '' });
+    setSearchTerm('');
+  };
+
+  const handleCustomerSelect = (customerId) => {
+    setSelectedCustomers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(customerId)) {
+        newSet.delete(customerId);
       } else {
-        console.log('Customers with projects:', data);
-        setProjects(data || []);
+        newSet.add(customerId);
       }
-    } catch (err) {
-      console.error('Unexpected error in fetchProjects:', err);
-      setError('Failed to load customer portfolio');
-      setProjects([]);
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedCustomers.size === filteredCustomers.length) {
+      setSelectedCustomers(new Set());
+    } else {
+      setSelectedCustomers(new Set(filteredCustomers.map(c => c.id)));
     }
-    setLoading(false);
   };
 
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedCustomers.size} customer(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .in('id', Array.from(selectedCustomers));
+
+      if (error) throw error;
+
+      await fetchCustomers();
+      setSelectedCustomers(new Set());
+      showToast(`Successfully deleted ${selectedCustomers.size} customer(s)`);
+    } catch (err) {
+      console.error('Error deleting customers:', err);
+      showToast('Failed to delete customers', 'error');
+    }
   };
 
-  const handleNewProjectChange = (e) => {
+  const handleCustomerChange = (e) => {
+    const { name, value, type } = e.target;
+    
+    if (name === 'key_stakeholders' || name === 'competitors') {
+      const arrayValue = value.split(',').map(item => item.trim()).filter(item => item);
+      setNewCustomer(prev => ({ ...prev, [name]: arrayValue }));
+    } else if (type === 'number') {
+      setNewCustomer(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
+    } else {
+      setNewCustomer(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleProjectChange = (e) => {
     const { name, value } = e.target;
-    setNewProject((prev) => ({ ...prev, [name]: value }));
+    setNewProject(prev => ({ ...prev, [name]: value }));
 
     if (name === 'customer_id' && value) {
       const selectedCustomer = customers.find(c => c.id === parseInt(value));
       if (selectedCustomer) {
-        setNewProject((prev) => ({
+        setNewProject(prev => ({
           ...prev,
           customer_name: selectedCustomer.customer_name,
           country: selectedCustomer.country,
@@ -168,21 +238,7 @@ function Projects() {
     }
   };
 
-  const handleNewCustomerChange = (e) => {
-    const { name, value, type } = e.target;
-    
-    if (name === 'key_stakeholders' || name === 'competitors') {
-      const arrayValue = value.split(',').map(item => item.trim()).filter(item => item);
-      setNewCustomer((prev) => ({ ...prev, [name]: arrayValue }));
-    } else if (type === 'number') {
-      setNewCustomer((prev) => ({ ...prev, [name]: parseFloat(value) || 0 }));
-    } else {
-      setNewCustomer((prev) => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const handleCloseCustomerModal = () => {
-    setShowCustomerModal(false);
+  const resetCustomerForm = () => {
     setNewCustomer({
       customer_name: '',
       account_manager: '',
@@ -198,10 +254,10 @@ function Projects() {
       competitors: [],
       notes: ''
     });
+    setEditingCustomer(null);
   };
 
-  const handleCloseProjectModal = () => {
-    setShowProjectModal(false);
+  const resetProjectForm = () => {
     setNewProject({
       customer_id: '',
       customer_name: '',
@@ -220,119 +276,102 @@ function Projects() {
     e.preventDefault();
     
     try {
-      console.log('Adding customer:', newCustomer);
+      const { data, error } = await supabase
+        .from('customers')
+        .insert([newCustomer])
+        .select();
       
-      const { data, error } = await supabase.from('customers').insert([newCustomer]).select();
-      
-      if (error) {
-        console.error('Error adding customer:', error);
-        alert(`Error adding customer: ${error.message}`);
-        return;
-      }
+      if (error) throw error;
       
       if (data && data.length > 0) {
-        handleCloseCustomerModal();
-        
-        // Refresh both the customer list and dropdown
         await fetchCustomers();
-        await fetchProjects();
-        
-        const newCustomerId = data[0].id;
-        setNewProject((prev) => ({
-          ...prev,
-          customer_id: newCustomerId.toString(),
-          customer_name: data[0].customer_name,
-          country: data[0].country,
-          account_manager: data[0].account_manager
-        }));
-        
-        alert('Customer added successfully!');
+        setShowCustomerModal(false);
+        resetCustomerForm();
+        showToast('Customer added successfully!');
       }
     } catch (err) {
-      console.error('Unexpected error:', err);
-      alert('An unexpected error occurred. Please try again.');
+      console.error('Error adding customer:', err);
+      showToast('Failed to add customer', 'error');
+    }
+  };
+
+  const handleUpdateCustomer = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const { error } = await supabase
+        .from('customers')
+        .update(newCustomer)
+        .eq('id', editingCustomer.id);
+      
+      if (error) throw error;
+      
+      await fetchCustomers();
+      setShowCustomerModal(false);
+      resetCustomerForm();
+      showToast('Customer updated successfully!');
+    } catch (err) {
+      console.error('Error updating customer:', err);
+      showToast('Failed to update customer', 'error');
     }
   };
 
   const handleAddProject = async (e) => {
     e.preventDefault();
-    const { error } = await supabase.from('projects').insert([newProject]);
-    if (!error) {
-      handleCloseProjectModal();
-      fetchProjects();
-    } else {
-      console.error('Error adding project:', error.message);
+    
+    try {
+      const { error } = await supabase.from('projects').insert([newProject]);
+      if (error) throw error;
+      
+      setShowProjectModal(false);
+      resetProjectForm();
+      showToast('Project added successfully!');
+    } catch (err) {
+      console.error('Error adding project:', err);
+      showToast('Failed to add project', 'error');
     }
   };
 
   const handleDeleteCustomer = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this customer? This action cannot be undone.')) return;
+    const customer = customers.find(c => c.id === id);
+    if (!window.confirm(`Are you sure you want to delete "${customer?.customer_name}"? This action cannot be undone.`)) {
+      return;
+    }
     
     try {
       const { error } = await supabase.from('customers').delete().eq('id', id);
-      if (!error) {
-        fetchProjects();
-        fetchCustomers();
-      } else {
-        console.error('Delete error:', error.message);
-        alert('Failed to delete customer. Please try again.');
-      }
+      if (error) throw error;
+      
+      await fetchCustomers();
+      showToast('Customer deleted successfully!');
     } catch (err) {
-      console.error('Unexpected delete error:', err);
-      alert('An unexpected error occurred while deleting.');
+      console.error('Error deleting customer:', err);
+      showToast('Failed to delete customer', 'error');
     }
   };
 
-  const handleCustomerClick = (customerId, customerName) => {
-    if (customerId) {
-      navigate(`/customer/${customerId}`);
-    } else {
-      console.log('No customer ID found for:', customerName);
-    }
+  const handleEditCustomer = (customer) => {
+    setEditingCustomer(customer);
+    setNewCustomer({
+      ...customer,
+      key_stakeholders: customer.key_stakeholders || [],
+      competitors: customer.competitors || []
+    });
+    setShowCustomerModal(true);
   };
 
-  // Memoized dropdown options to prevent re-renders and focus loss
-  const customerOptions = useMemo(() => {
-    console.log('Creating customer options from:', customers);
-    return customers.map((customer) => (
-      <option key={customer.id} value={customer.id}>
-        {customer.customer_name} ({customer.country})
-      </option>
-    ));
-  }, [customers]);
+  const handleCustomerClick = (customerId) => {
+    navigate(`/customer/${customerId}`);
+  };
 
-  const countryOptions = useMemo(() =>
-    asiaPacificCountries.map((c, i) => (
-      <option key={i} value={c}>{c}</option>
-    )), [asiaPacificCountries]
-  );
+  const getHealthScoreColor = (score) => {
+    if (score >= 8) return 'excellent';
+    if (score >= 6) return 'good';
+    if (score >= 4) return 'fair';
+    return 'poor';
+  };
 
-  const companySizeOptions = useMemo(() =>
-    companySizes.map((size, i) => (
-      <option key={i} value={size}>{size}</option>
-    )), [companySizes]
-  );
-
-  const revenueOptions = useMemo(() =>
-    revenueRanges.map((range, i) => (
-      <option key={i} value={range}>{range}</option>
-    )), [revenueRanges]
-  );
-
-  const salesStageOptions = useMemo(() =>
-    salesStages.map((s, i) => (
-      <option key={i} value={s}>{s}</option>
-    )), [salesStages]
-  );
-
-  const productOptions = useMemo(() =>
-    products.map((p, i) => (
-      <option key={i} value={p}>{p}</option>
-    )), [products]
-  );
-
-  // Enhanced Modal component
-  const Modal = useCallback(({ isOpen, onClose, children }) => {
+  const Modal = ({ isOpen, onClose, children }) => {
     if (!isOpen) return null;
     
     return ReactDOM.createPortal(
@@ -343,298 +382,344 @@ function Projects() {
       </div>,
       document.body
     );
-  }, []);
+  };
 
-  // Loading skeleton component
+  const CustomerCard = ({ customer }) => (
+    <div 
+      className={`customer-card ${selectedCustomers.has(customer.id) ? 'selected' : ''}`}
+      onClick={() => handleCustomerClick(customer.id)}
+    >
+      <input
+        type="checkbox"
+        className="customer-checkbox"
+        checked={selectedCustomers.has(customer.id)}
+        onChange={(e) => {
+          e.stopPropagation();
+          handleCustomerSelect(customer.id);
+        }}
+      />
+      
+      <div className="customer-card-header">
+        <div>
+          <h3 className="customer-name">{customer.customer_name}</h3>
+          <span className={`customer-type-badge ${customer.customer_type?.toLowerCase().replace(' ', '-') || 'new'}`}>
+            {customer.customer_type || 'New'}
+          </span>
+        </div>
+        
+        <div className="customer-actions">
+          <button
+            className="customer-action-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditCustomer(customer);
+            }}
+            title="Edit customer"
+          >
+            <Edit3 size={12} />
+          </button>
+          <button
+            className="customer-action-btn delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteCustomer(customer.id);
+            }}
+            title="Delete customer"
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+      </div>
+
+      <div className="customer-details">
+        <div className="customer-location">
+          <Globe size={10} className="location-icon" />
+          <span>{customer.country}</span>
+        </div>
+        <div className="customer-manager">
+          <User size={10} className="manager-icon" />
+          <span>{customer.account_manager}</span>
+        </div>
+      </div>
+
+      <div className="customer-stats">
+        <div className="stat-item">
+          <Building2 size={10} />
+          <span>0 projects</span>
+        </div>
+        {customer.health_score && (
+          <div className="health-score">
+            <div className={`health-dot ${getHealthScoreColor(customer.health_score)}`}></div>
+            <span>Health: {customer.health_score}/10</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   const LoadingSkeleton = () => (
     <div className="loading-container">
       <div className="loading-content">
         <div className="loading-spinner"></div>
-        <div className="loading-text">Loading customer portfolio...</div>
+        <div className="loading-text">Loading customers...</div>
       </div>
     </div>
   );
 
-  // Error state component
-  const ErrorState = () => (
-    <div className="error-container">
-      <div className="error-content">
-        <div className="error-icon">⚠️</div>
-        <h3 className="error-title">Something went wrong</h3>
-        <p className="error-message">{error}</p>
-        <button onClick={fetchProjects} className="retry-button">
-          Try Again
-        </button>
-      </div>
-    </div>
-  );
-
-  // Empty state component
   const EmptyState = () => (
     <div className="empty-state">
-      <div className="empty-icon-wrapper">
-        <FaBuilding className="empty-icon" />
-      </div>
+      <Building2 size={48} className="empty-icon" />
       <h3 className="empty-title">No customers found</h3>
       <p className="empty-description">
-        No customers match your current filters. Try adjusting your search criteria or add a new customer.
+        {searchTerm || activeFilters.length > 0
+          ? "No customers match your current search or filters. Try adjusting your criteria."
+          : "Get started by adding your first customer to begin managing your portfolio."
+        }
       </p>
-      <button 
-        onClick={() => setShowCustomerModal(true)}
-        className="empty-action-button"
-      >
-        <FaUserPlus />
-        Add Your First Customer
-      </button>
+      {(!searchTerm && activeFilters.length === 0) && (
+        <button 
+          onClick={() => setShowCustomerModal(true)}
+          className="empty-action-button"
+        >
+          <UserPlus size={16} />
+          Add Your First Customer
+        </button>
+      )}
     </div>
   );
 
-  if (loading) {
-    return <LoadingSkeleton />;
-  }
-
-  if (error && projects.length === 0) {
-    return <ErrorState />;
-  }
+  if (loading) return <LoadingSkeleton />;
 
   return (
     <div className="projects-container">
-      {/* Clean Header Section */}
-      <header className="projects-header-section">
-        <div className="header-content">
-          <div className="header-title-wrapper">
-            <div className="header-icon-wrapper">
-              <FaBuilding className="header-icon" />
-            </div>
-            <div className="header-text">
-              <h2 className="projects-title">Customer Portfolio</h2>
-              <p className="projects-subtitle">
-                {projects.length} customer{projects.length !== 1 ? 's' : ''} in your portfolio
-              </p>
-            </div>
-          </div>
-          
-          <div className="header-actions">
-            <button 
-              className="action-button primary" 
-              onClick={() => setShowCustomerModal(true)}
-              aria-label="Add new customer"
-            >
-              <FaUserPlus className="button-icon" />
-              <span>Add Customer</span>
-            </button>
-            <button 
-              className="action-button secondary" 
-              onClick={() => setShowProjectModal(true)}
-              aria-label="Add new project"
-            >
-              <FaPlus className="button-icon" />
-              <span>Add Project</span>
-            </button>
-          </div>
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`toast ${toast.type}`}>
+          {toast.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
+          {toast.message}
+        </div>
+      )}
+
+      {/* Header */}
+      <header className="projects-header">
+        <div className="header-title-section">
+          <h2>Customer Portfolio</h2>
+          <p className="header-subtitle">
+            {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}
+            {selectedCustomers.size > 0 && ` • ${selectedCustomers.size} selected`}
+          </p>
+        </div>
+        
+        <div className="header-actions">
+          <button 
+            className="action-button primary" 
+            onClick={() => setShowCustomerModal(true)}
+          >
+            <UserPlus size={12} className="button-icon" />
+            Add Customer
+          </button>
+          <button 
+            className="action-button secondary" 
+            onClick={() => setShowProjectModal(true)}
+          >
+            <Plus size={12} className="button-icon" />
+            Add Project
+          </button>
         </div>
       </header>
 
-      {/* Enhanced Filters Section */}
-      <section className="filters-section" role="search" aria-label="Filter customers">
-        <div className="filters-header">
-          <div className="filters-title-wrapper">
-            <FaFilter className="filters-icon" />
-            <span className="filters-title">Filters</span>
-          </div>
+      {/* Bulk Actions */}
+      <div className={`bulk-actions ${selectedCustomers.size === 0 ? 'hidden' : ''}`}>
+        <div className="selected-count">
+          {selectedCustomers.size} customer{selectedCustomers.size !== 1 ? 's' : ''} selected
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button 
+            className="bulk-action-button danger"
+            onClick={handleBulkDelete}
+          >
+            <Trash2 size={12} />
+            Delete Selected
+          </button>
+          <button 
+            className="bulk-action-button"
+            onClick={() => setSelectedCustomers(new Set())}
+          >
+            Clear Selection
+          </button>
+        </div>
+      </div>
+
+      {/* Search and Filters */}
+      <section className="search-filters-section">
+        <div className="search-bar">
+          <Search size={16} className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search customers, managers, or countries..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="search-input"
+          />
         </div>
         
-        <div className="filters-grid">
+        <div className="filters-row">
           <div className="filter-group">
-            <label htmlFor="country-filter" className="filter-label">
-              Country
-            </label>
+            <label className="filter-label">Country</label>
             <select 
-              id="country-filter"
-              name="country" 
-              value={filters.country} 
-              onChange={handleFilterChange}
+              value={filters.country}
+              onChange={(e) => handleFilterChange('country', e.target.value)}
               className="filter-select"
             >
               <option value="">All Countries</option>
-              {countryOptions}
+              {filterOptions.countries.map(country => (
+                <option key={country} value={country}>{country}</option>
+              ))}
             </select>
           </div>
           
           <div className="filter-group">
-            <label htmlFor="manager-filter" className="filter-label">
-              Account Manager
-            </label>
+            <label className="filter-label">Account Manager</label>
             <select 
-              id="manager-filter"
-              name="account_manager" 
-              value={filters.account_manager} 
-              onChange={handleFilterChange}
+              value={filters.account_manager}
+              onChange={(e) => handleFilterChange('account_manager', e.target.value)}
               className="filter-select"
             >
               <option value="">All Managers</option>
-              {[...new Set(projects.map(p => p.account_manager).filter(Boolean))].sort().map((am, i) => (
-                <option key={i} value={am}>{am}</option>
+              {filterOptions.managers.map(manager => (
+                <option key={manager} value={manager}>{manager}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="filter-group">
+            <label className="filter-label">Customer Type</label>
+            <select 
+              value={filters.customer_type}
+              onChange={(e) => handleFilterChange('customer_type', e.target.value)}
+              className="filter-select"
+            >
+              <option value="">All Types</option>
+              {filterOptions.types.map(type => (
+                <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </div>
         </div>
+
+        {/* Active Filters */}
+        {activeFilters.length > 0 && (
+          <div className="active-filters">
+            {activeFilters.map(filter => (
+              <div key={filter.key} className="filter-chip">
+                <span>{filter.label}</span>
+                <button
+                  className="filter-chip-remove"
+                  onClick={() => removeFilter(filter.key)}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+            <button
+              className="filter-chip"
+              onClick={clearAllFilters}
+              style={{ background: '#fee2e2', color: '#991b1b' }}
+            >
+              Clear All
+            </button>
+          </div>
+        )}
       </section>
 
-      {/* Enhanced Table Section */}
-      <section className="table-section">
-        <div className="table-container">
-          <div className="table-wrapper">
-            <table className="customers-table" role="table">
-              <thead>
-                <tr>
-                  <th scope="col">Customer Details</th>
-                  <th scope="col">Location</th>
-                  <th scope="col">Account Manager</th>
-                  <th scope="col">Status</th>
-                  <th scope="col" className="actions-column">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {projects.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="empty-row">
-                      <EmptyState />
-                    </td>
-                  </tr>
-                ) : (
-                  projects.map((customer) => (
-                    <tr key={customer.id} id={`customer-${customer.id}`} className="customer-row">
-                      <td className="customer-details-cell">
-                        <button
-                          onClick={() => handleCustomerClick(customer.id, customer.customer_name)}
-                          className="customer-link"
-                          title={`View details for ${customer.customer_name}`}
-                          aria-label={`View details for ${customer.customer_name}`}
-                        >
-                          <div className="customer-icon-wrapper">
-                            <FaUser className="customer-icon" />
-                          </div>
-                          <span className="customer-name">{customer.customer_name}</span>
-                        </button>
-                      </td>
-                      
-                      <td className="location-cell">
-                        <div className="location-wrapper">
-                          <FaGlobe className="location-icon" />
-                          <span className="location-text">{customer.country}</span>
-                        </div>
-                      </td>
-                      
-                      <td className="manager-cell">
-                        <span className="manager-name">{customer.account_manager}</span>
-                      </td>
-                      
-                      <td className="status-cell">
-                        <span className={`status-badge ${
-                          customer.customer_type === 'Internal Initiative' ? 'internal' : 
-                          customer.customer_type === 'Existing' ? 'existing' : 'new'
-                        }`}>
-                          {customer.customer_type || 'New'}
-                        </span>
-                      </td>
-                      
-                      <td className="actions-cell">
-                        <button 
-                          className="delete-button" 
-                          onClick={() => handleDeleteCustomer(customer.id)}
-                          title={`Delete ${customer.customer_name}`}
-                          aria-label={`Delete customer ${customer.customer_name}`}
-                        >
-                          <FaTrash className="delete-icon" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+      {/* Customers Grid */}
+      {filteredCustomers.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+              Showing {filteredCustomers.length} customer{filteredCustomers.length !== 1 ? 's' : ''}
+            </div>
+            <button
+              onClick={handleSelectAll}
+              className="bulk-action-button"
+              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+            >
+              {selectedCustomers.size === filteredCustomers.length ? 'Deselect All' : 'Select All'}
+            </button>
           </div>
-        </div>
-      </section>
-      
-      {/* Enhanced Customer Modal */}
-      <Modal isOpen={showCustomerModal} onClose={handleCloseCustomerModal}>
+          
+          <div className="customers-grid">
+            {filteredCustomers.map(customer => (
+              <CustomerCard key={customer.id} customer={customer} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Customer Modal */}
+      <Modal isOpen={showCustomerModal} onClose={() => { setShowCustomerModal(false); resetCustomerForm(); }}>
         <div className="modal-header">
           <h3 className="modal-title">
-            Add New {newCustomer.customer_type === 'Internal Initiative' ? 'Internal Initiative' : 'Customer'}
+            {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
           </h3>
           <button 
-            onClick={handleCloseCustomerModal}
+            onClick={() => { setShowCustomerModal(false); resetCustomerForm(); }}
             className="modal-close-button"
-            aria-label="Close modal"
           >
-            ×
+            <X size={20} />
           </button>
         </div>
         
-        <form onSubmit={handleAddCustomer} className="modal-form">
+        <form onSubmit={editingCustomer ? handleUpdateCustomer : handleAddCustomer} className="modal-form">
           <div className="form-grid">
             <div className="form-group full-width">
-              <label htmlFor="customer-name" className="form-label">
-                {newCustomer.customer_type === 'Internal Initiative' ? 'Initiative Name' : 'Customer Name'} *
-              </label>
+              <label className="form-label">Customer Name *</label>
               <input 
-                id="customer-name"
                 name="customer_name" 
                 value={newCustomer.customer_name} 
-                onChange={handleNewCustomerChange} 
+                onChange={handleCustomerChange} 
                 required 
                 className="form-input"
-                placeholder={
-                  newCustomer.customer_type === 'Internal Initiative' ? 
-                  'e.g., Q4 Company Retreat, Annual Training' : 
-                  'Enter customer name'
-                }
+                placeholder="Enter customer name"
               />
             </div>
             
             <div className="form-group">
-              <label htmlFor="account-manager" className="form-label">
-                Account Manager *
-              </label>
+              <label className="form-label">Account Manager *</label>
               <input 
-                id="account-manager"
                 name="account_manager" 
                 value={newCustomer.account_manager} 
-                onChange={handleNewCustomerChange} 
+                onChange={handleCustomerChange} 
                 required 
                 className="form-input"
-                placeholder="Enter account manager name"
+                placeholder="Enter account manager"
               />
             </div>
             
             <div className="form-group">
-              <label htmlFor="customer-country" className="form-label">
-                Country *
-              </label>
+              <label className="form-label">Country *</label>
               <select 
-                id="customer-country"
                 name="country" 
                 value={newCustomer.country} 
-                onChange={handleNewCustomerChange} 
+                onChange={handleCustomerChange} 
                 required
                 className="form-select"
               >
                 <option value="">Select Country</option>
-                {countryOptions}
+                {asiaPacificCountries.map(country => (
+                  <option key={country} value={country}>{country}</option>
+                ))}
               </select>
             </div>
             
             <div className="form-group">
-              <label htmlFor="customer-type" className="form-label">
-                Type *
-              </label>
+              <label className="form-label">Customer Type *</label>
               <select 
-                id="customer-type"
                 name="customer_type" 
                 value={newCustomer.customer_type} 
-                onChange={handleNewCustomerChange}
+                onChange={handleCustomerChange}
                 required
                 className="form-select"
               >
@@ -644,292 +729,149 @@ function Projects() {
               </select>
             </div>
             
-            {/* Conditional fields for External customers */}
             {newCustomer.customer_type !== 'Internal Initiative' && (
               <>
                 <div className="form-group">
-                  <label htmlFor="year-closed" className="form-label">
-                    Year First Closed
-                  </label>
-                  <input 
-                    id="year-closed"
-                    name="year_first_closed" 
-                    type="number"
-                    min="2000"
-                    max={new Date().getFullYear()}
-                    value={newCustomer.year_first_closed} 
-                    onChange={handleNewCustomerChange}
-                    className="form-input"
-                    placeholder="e.g., 2022"
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="company-size" className="form-label">
-                    Company Size
-                  </label>
+                  <label className="form-label">Company Size</label>
                   <select 
-                    id="company-size"
                     name="company_size" 
                     value={newCustomer.company_size} 
-                    onChange={handleNewCustomerChange}
+                    onChange={handleCustomerChange}
                     className="form-select"
                   >
-                    <option value="">Select Company Size</option>
-                    {companySizeOptions}
+                    <option value="">Select Size</option>
+                    {companySizes.map(size => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
                   </select>
                 </div>
                 
                 <div className="form-group">
-                  <label htmlFor="annual-revenue" className="form-label">
-                    Annual Revenue
-                  </label>
-                  <select 
-                    id="annual-revenue"
-                    name="annual_revenue" 
-                    value={newCustomer.annual_revenue} 
-                    onChange={handleNewCustomerChange}
-                    className="form-select"
-                  >
-                    <option value="">Select Revenue Range</option>
-                    {revenueOptions}
-                  </select>
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="tech-complexity" className="form-label">
-                    Technical Complexity
-                  </label>
-                  <select 
-                    id="tech-complexity"
-                    name="technical_complexity" 
-                    value={newCustomer.technical_complexity} 
-                    onChange={handleNewCustomerChange}
-                    className="form-select"
-                  >
-                    <option value="Low">Low Complexity</option>
-                    <option value="Medium">Medium Complexity</option>
-                    <option value="High">High Complexity</option>
-                  </select>
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="relationship-strength" className="form-label">
-                    Relationship Strength
-                  </label>
-                  <select 
-                    id="relationship-strength"
-                    name="relationship_strength" 
-                    value={newCustomer.relationship_strength} 
-                    onChange={handleNewCustomerChange}
-                    className="form-select"
-                  >
-                    <option value="Weak">Developing</option>
-                    <option value="Medium">Established</option>
-                    <option value="Strong">Strategic Partnership</option>
-                  </select>
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="health-score" className="form-label">
-                    Health Score (1-10)
-                  </label>
+                  <label className="form-label">Health Score (1-10)</label>
                   <input 
-                    id="health-score"
                     name="health_score" 
                     type="number"
                     min="1"
                     max="10"
                     value={newCustomer.health_score} 
-                    onChange={handleNewCustomerChange}
+                    onChange={handleCustomerChange}
                     className="form-input"
-                    placeholder="Rate from 1-10"
-                  />
-                </div>
-                
-                <div className="form-group full-width">
-                  <label htmlFor="key-stakeholders" className="form-label">
-                    Key Stakeholders (comma-separated)
-                  </label>
-                  <input 
-                    id="key-stakeholders"
-                    name="key_stakeholders" 
-                    value={newCustomer.key_stakeholders.join(', ')} 
-                    onChange={handleNewCustomerChange}
-                    className="form-input"
-                    placeholder="John Smith, Jane Doe, etc."
-                  />
-                </div>
-                
-                <div className="form-group full-width">
-                  <label htmlFor="competitors" className="form-label">
-                    Main Competitors (comma-separated)
-                  </label>
-                  <input 
-                    id="competitors"
-                    name="competitors" 
-                    value={newCustomer.competitors.join(', ')} 
-                    onChange={handleNewCustomerChange}
-                    className="form-input"
-                    placeholder="Company A, Company B, etc."
                   />
                 </div>
               </>
             )}
             
             <div className="form-group full-width">
-              <label htmlFor="customer-notes" className="form-label">
-                {newCustomer.customer_type === 'Internal Initiative' ? 'Initiative Description' : 'Additional Notes'}
-              </label>
+              <label className="form-label">Notes</label>
               <textarea 
-                id="customer-notes"
                 name="notes" 
                 value={newCustomer.notes} 
-                onChange={handleNewCustomerChange}
+                onChange={handleCustomerChange}
                 rows="3"
                 className="form-textarea"
-                placeholder={
-                  newCustomer.customer_type === 'Internal Initiative' ? 
-                  'Describe the internal initiative, goals, timeline, etc.' : 
-                  'Any additional information about this customer...'
-                }
+                placeholder="Additional information..."
               />
             </div>
           </div>
           
           <div className="modal-actions">
-            <button type="button" onClick={handleCloseCustomerModal} className="button-cancel">
+            <button 
+              type="button" 
+              onClick={() => { setShowCustomerModal(false); resetCustomerForm(); }}
+              className="button-cancel"
+            >
               Cancel
             </button>
             <button type="submit" className="button-submit">
-              {newCustomer.customer_type === 'Internal Initiative' ? 'Create Initiative' : 'Save Customer'}
+              {editingCustomer ? 'Update Customer' : 'Add Customer'}
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Enhanced Project Modal */}
-      <Modal isOpen={showProjectModal} onClose={handleCloseProjectModal}>
+      {/* Project Modal */}
+      <Modal isOpen={showProjectModal} onClose={() => { setShowProjectModal(false); resetProjectForm(); }}>
         <div className="modal-header">
           <h3 className="modal-title">Add New Project</h3>
           <button 
-            onClick={handleCloseProjectModal}
+            onClick={() => { setShowProjectModal(false); resetProjectForm(); }}
             className="modal-close-button"
-            aria-label="Close modal"
           >
-            ×
+            <X size={20} />
           </button>
         </div>
         
         <form onSubmit={handleAddProject} className="modal-form">
           <div className="form-grid">
             <div className="form-group full-width">
-              <label htmlFor="project-customer" className="form-label">
-                Select Customer ({customers.length} available)
-              </label>
+              <label className="form-label">Select Customer *</label>
               <select 
-                id="project-customer"
                 name="customer_id" 
                 value={newProject.customer_id} 
-                onChange={handleNewProjectChange} 
+                onChange={handleProjectChange} 
                 required
                 className="form-select"
               >
-                <option value="">
-                  {customers.length === 0 ? 'No customers available - Add one first!' : 'Choose a customer'}
-                </option>
-                {customerOptions}
+                <option value="">Choose a customer</option>
+                {customers.map(customer => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.customer_name} ({customer.country})
+                  </option>
+                ))}
               </select>
-              {customers.length === 0 && (
-                <div className="form-warning">
-                  ⚠️ No customers found. Please add a customer first using the "Add Customer" button.
-                </div>
-              )}
             </div>
             
             <div className="form-group">
-              <label htmlFor="sales-stage" className="form-label">
-                Sales Stage
-              </label>
+              <label className="form-label">Sales Stage *</label>
               <select 
-                id="sales-stage"
                 name="sales_stage" 
                 value={newProject.sales_stage} 
-                onChange={handleNewProjectChange} 
+                onChange={handleProjectChange} 
                 required
                 className="form-select"
               >
-                <option value="">Select Sales Stage</option>
-                {salesStageOptions}
+                <option value="">Select Stage</option>
+                {salesStages.map(stage => (
+                  <option key={stage} value={stage}>{stage}</option>
+                ))}
               </select>
             </div>
             
             <div className="form-group">
-              <label htmlFor="project-product" className="form-label">
-                Product
-              </label>
+              <label className="form-label">Product *</label>
               <select 
-                id="project-product"
                 name="product" 
                 value={newProject.product} 
-                onChange={handleNewProjectChange} 
+                onChange={handleProjectChange} 
                 required
                 className="form-select"
               >
                 <option value="">Select Product</option>
-                {productOptions}
+                {products.map(product => (
+                  <option key={product} value={product}>{product}</option>
+                ))}
               </select>
             </div>
             
-            <div className="form-group">
-              <label htmlFor="deal-value" className="form-label">
-                Deal Value ($)
-              </label>
-              <input 
-                id="deal-value"
-                name="deal_value" 
-                type="number" 
-                value={newProject.deal_value || ''} 
-                onChange={handleNewProjectChange}
-                className="form-input"
-                placeholder="Enter deal value"
-                min="0"
-                step="0.01"
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="backup-presales" className="form-label">
-                Backup Presales Engineer
-              </label>
-              <input 
-                id="backup-presales"
-                name="backup_presales" 
-                value={newProject.backup_presales || ''} 
-                onChange={handleNewProjectChange}
-                className="form-input"
-                placeholder="Enter backup presales name"
-              />
-            </div>
-            
             <div className="form-group full-width">
-              <label htmlFor="project-remarks" className="form-label">
-                Project Remarks
-              </label>
+              <label className="form-label">Project Remarks</label>
               <textarea 
-                id="project-remarks"
                 name="remarks" 
-                value={newProject.remarks || ''} 
-                onChange={handleNewProjectChange}
+                value={newProject.remarks} 
+                onChange={handleProjectChange}
                 className="form-textarea"
-                placeholder="Additional project details, requirements, or notes..."
+                placeholder="Project details and requirements..."
                 rows="3"
               />
             </div>
           </div>
        
           <div className="modal-actions">
-            <button type="button" onClick={handleCloseProjectModal} className="button-cancel">
+            <button 
+              type="button" 
+              onClick={() => { setShowProjectModal(false); resetProjectForm(); }}
+              className="button-cancel"
+            >
               Cancel
             </button>
             <button type="submit" className="button-submit">
