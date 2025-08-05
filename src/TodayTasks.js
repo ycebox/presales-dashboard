@@ -59,9 +59,9 @@ export default function TodayTasksKanban() {
   const getStatusIcon = (status) => {
     switch (status) {
       case "In Progress": 
-        return <Play size={12} className="status-icon in-progress" />;
+        return <Play size={10} className="status-icon in-progress" />;
       case "Not Started": 
-        return <Clock size={12} className="status-icon open" />;
+        return <Clock size={10} className="status-icon open" />;
       default: 
         return null;
     }
@@ -102,25 +102,25 @@ export default function TodayTasksKanban() {
       onClick={() => scrollToProject(task.project_id)}
     >
       <div className="task-header">
+        <div className="task-title">{task.description}</div>
         <div className="project-name">
-          <Building2 size={12} className="project-icon" />
+          <Building2 size={10} className="project-icon" />
           {task.customer_name}
         </div>
-        <div className="task-title">{task.description}</div>
       </div>
       <div className="task-footer">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
           {getStatusIcon(task.status)}
-          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+          <span style={{ fontSize: '0.65rem', color: '#64748b' }}>
             {task.status}
           </span>
         </div>
         <div className="due-date-container">
           <span className={`due-date ${isOverdue(task.due_date) ? "overdue" : ""}`}>
-            <Calendar size={12} />
+            <Calendar size={10} />
             {formatDate(task.due_date)}
           </span>
-          <ArrowRight size={12} className="task-arrow" />
+          <ArrowRight size={10} className="task-arrow" />
         </div>
       </div>
     </div>
