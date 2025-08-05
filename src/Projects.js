@@ -33,7 +33,6 @@ function Projects() {
   });
   const [selectedCustomers, setSelectedCustomers] = useState(new Set());
   const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [showProjectModal, setShowProjectModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [toast, setToast] = useState(null);
   const [newCustomer, setNewCustomer] = useState({
@@ -50,18 +49,6 @@ function Projects() {
     key_stakeholders: [],
     competitors: [],
     notes: ''
-  });
-  const [newProject, setNewProject] = useState({
-    customer_id: '',
-    customer_name: '',
-    country: '',
-    account_manager: '',
-    sales_stage: '',
-    product: '',
-    deal_value: '',
-    backup_presales: '',
-    remarks: '',
-    is_archived: 'false'
   });
 
   // Static data arrays
@@ -317,19 +304,7 @@ function Projects() {
   };
 
   const handleAddProject = async (e) => {
-    e.preventDefault();
-    
-    try {
-      const { error } = await supabase.from('projects').insert([newProject]);
-      if (error) throw error;
-      
-      setShowProjectModal(false);
-      resetProjectForm();
-      showToast('Project added successfully!');
-    } catch (err) {
-      console.error('Error adding project:', err);
-      showToast('Failed to add project', 'error');
-    }
+    // Remove this function since we're removing project modal
   };
 
   const handleDeleteCustomer = async (id) => {
@@ -518,13 +493,6 @@ function Projects() {
             <UserPlus size={12} className="button-icon" />
             Add Customer
           </button>
-          <button 
-            className="action-button secondary" 
-            onClick={() => setShowProjectModal(true)}
-          >
-            <Plus size={12} className="button-icon" />
-            Add Project
-          </button>
         </div>
       </header>
 
@@ -654,7 +622,6 @@ function Projects() {
                   <th>Account Manager</th>
                   <th>Type</th>
                   <th>Health</th>
-                  <th>Projects</th>
                   <th style={{ width: '80px' }}>Actions</th>
                 </tr>
               </thead>
@@ -713,9 +680,6 @@ function Projects() {
                           <span>{customer.health_score}/10</span>
                         </div>
                       )}
-                    </td>
-                    <td style={{ textAlign: 'center', color: '#64748b', fontSize: '0.875rem' }}>
-                      0 projects
                     </td>
                     <td className="actions-cell">
                       <div className="table-actions">
@@ -904,98 +868,6 @@ function Projects() {
             </button>
             <button type="submit" className="button-submit">
               {editingCustomer ? 'Update Customer' : 'Add Customer'}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Project Modal */}
-      <Modal isOpen={showProjectModal} onClose={() => { setShowProjectModal(false); resetProjectForm(); }}>
-        <div className="modal-header">
-          <h3 className="modal-title">Add New Project</h3>
-          <button 
-            onClick={() => { setShowProjectModal(false); resetProjectForm(); }}
-            className="modal-close-button"
-          >
-            <X size={20} />
-          </button>
-        </div>
-        
-        <form onSubmit={handleAddProject} className="modal-form">
-          <div className="form-grid">
-            <div className="form-group full-width">
-              <label className="form-label">Select Customer *</label>
-              <select 
-                name="customer_id" 
-                value={newProject.customer_id} 
-                onChange={handleProjectChange} 
-                required
-                className="form-select"
-              >
-                <option value="">Choose a customer</option>
-                {customers.map(customer => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.customer_name} ({customer.country})
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">Sales Stage *</label>
-              <select 
-                name="sales_stage" 
-                value={newProject.sales_stage} 
-                onChange={handleProjectChange} 
-                required
-                className="form-select"
-              >
-                <option value="">Select Stage</option>
-                {salesStages.map(stage => (
-                  <option key={stage} value={stage}>{stage}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">Product *</label>
-              <select 
-                name="product" 
-                value={newProject.product} 
-                onChange={handleProjectChange} 
-                required
-                className="form-select"
-              >
-                <option value="">Select Product</option>
-                {products.map(product => (
-                  <option key={product} value={product}>{product}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="form-group full-width">
-              <label className="form-label">Project Remarks</label>
-              <textarea 
-                name="remarks" 
-                value={newProject.remarks} 
-                onChange={handleProjectChange}
-                className="form-textarea"
-                placeholder="Project details and requirements..."
-                rows="3"
-              />
-            </div>
-          </div>
-       
-          <div className="modal-actions">
-            <button 
-              type="button" 
-              onClick={() => { setShowProjectModal(false); resetProjectForm(); }}
-              className="button-cancel"
-            >
-              Cancel
-            </button>
-            <button type="submit" className="button-submit">
-              Create Project
             </button>
           </div>
         </form>
