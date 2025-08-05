@@ -632,33 +632,124 @@ function Projects() {
         )}
       </section>
 
-      {/* Customers Grid */}
-      {filteredCustomers.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
-              Showing {filteredCustomers.length} customer{filteredCustomers.length !== 1 ? 's' : ''}
-            </div>
-            <button
-              onClick={handleSelectAll}
-              className="bulk-action-button"
-              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-            >
-              {selectedCustomers.size === filteredCustomers.length ? 'Deselect All' : 'Select All'}
-            </button>
-          </div>
-          
-          <div className="customers-grid">
-            {filteredCustomers.map(customer => (
-              <CustomerCard key={customer.id} customer={customer} />
-            ))}
-          </div>
-        </>
-      )}
+      {/* Customers Table */}
+      <section className="table-section">
+        <div className="table-wrapper">
+          {filteredCustomers.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <table className="customers-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '40px' }}>
+                    <input
+                      type="checkbox"
+                      className="table-checkbox"
+                      checked={selectedCustomers.size === filteredCustomers.length && filteredCustomers.length > 0}
+                      onChange={handleSelectAll}
+                    />
+                  </th>
+                  <th>Customer</th>
+                  <th>Location</th>
+                  <th>Account Manager</th>
+                  <th>Type</th>
+                  <th>Health</th>
+                  <th>Projects</th>
+                  <th style={{ width: '80px' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCustomers.map(customer => (
+                  <tr 
+                    key={customer.id}
+                    className={selectedCustomers.has(customer.id) ? 'selected' : ''}
+                    onClick={() => handleCustomerClick(customer.id)}
+                  >
+                    <td>
+                      <input
+                        type="checkbox"
+                        className="table-checkbox"
+                        checked={selectedCustomers.has(customer.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleCustomerSelect(customer.id);
+                        }}
+                      />
+                    </td>
+                    <td>
+                      <div className="customer-cell">
+                        <div className="customer-avatar">
+                          {customer.customer_name?.charAt(0)?.toUpperCase() || 'C'}
+                        </div>
+                        <div className="customer-info">
+                          <div className="customer-name">{customer.customer_name}</div>
+                          <div className="customer-email">
+                            {customer.customer_type === 'Internal Initiative' ? 'Internal' : 'External Client'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="location-cell">
+                        <Globe size={14} className="location-icon" />
+                        <span>{customer.country}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="manager-cell">
+                        <User size={14} className="manager-icon" />
+                        <span>{customer.account_manager}</span>
+                      </div>
+                    </td>
+                    <td className="status-cell">
+                      <span className={`status-badge ${customer.customer_type?.toLowerCase().replace(/\s+/g, '-') || 'new'}`}>
+                        {customer.customer_type || 'New'}
+                      </span>
+                    </td>
+                    <td className="health-cell">
+                      {customer.health_score && (
+                        <div className="health-score">
+                          <div className={`health-dot ${getHealthScoreColor(customer.health_score)}`}></div>
+                          <span>{customer.health_score}/10</span>
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'center', color: '#64748b', fontSize: '0.875rem' }}>
+                      0 projects
+                    </td>
+                    <td className="actions-cell">
+                      <div className="table-actions">
+                        <button
+                          className="table-action-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditCustomer(customer);
+                          }}
+                          title="Edit customer"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          className="table-action-btn delete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCustomer(customer.id);
+                          }}
+                          title="Delete customer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
 
-      {/* Customer Modal */}
+      {/* Enhanced Customer Modal */}
       <Modal isOpen={showCustomerModal} onClose={() => { setShowCustomerModal(false); resetCustomerForm(); }}>
         <div className="modal-header">
           <h3 className="modal-title">
@@ -673,64 +764,149 @@ function Projects() {
         </div>
         
         <form onSubmit={editingCustomer ? handleUpdateCustomer : handleAddCustomer} className="modal-form">
-          <div className="form-grid">
-            <div className="form-group full-width">
-              <label className="form-label">Customer Name *</label>
-              <input 
-                name="customer_name" 
-                value={newCustomer.customer_name} 
-                onChange={handleCustomerChange} 
-                required 
-                className="form-input"
-                placeholder="Enter customer name"
-              />
+          {/* Basic Information Section */}
+          <div className="form-section">
+            <div className="section-header">
+              <User size={16} className="section-icon" />
+              <h4 className="section-title">Basic Information</h4>
             </div>
-            
-            <div className="form-group">
-              <label className="form-label">Account Manager *</label>
-              <input 
-                name="account_manager" 
-                value={newCustomer.account_manager} 
-                onChange={handleCustomerChange} 
-                required 
-                className="form-input"
-                placeholder="Enter account manager"
-              />
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label className="form-label required">
+                  {newCustomer.customer_type === 'Internal Initiative' ? 'Initiative Name' : 'Customer Name'}
+                </label>
+                <input 
+                  name="customer_name" 
+                  value={newCustomer.customer_name} 
+                  onChange={handleCustomerChange} 
+                  required 
+                  className="form-input"
+                  placeholder={newCustomer.customer_type === 'Internal Initiative' ? 'e.g., Q4 Company Retreat' : 'Enter customer name'}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label required">Account Manager</label>
+                <input 
+                  name="account_manager" 
+                  value={newCustomer.account_manager} 
+                  onChange={handleCustomerChange} 
+                  required 
+                  className="form-input"
+                  placeholder="Enter account manager name"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label required">Customer Type</label>
+                <select 
+                  name="customer_type" 
+                  value={newCustomer.customer_type} 
+                  onChange={handleCustomerChange}
+                  required
+                  className="form-select"
+                >
+                  <option value="New">New Customer</option>
+                  <option value="Existing">Existing Customer</option>
+                  <option value="Internal Initiative">Internal Initiative</option>
+                </select>
+                <div className="form-help">
+                  Choose the appropriate customer classification
+                </div>
+              </div>
             </div>
-            
-            <div className="form-group">
-              <label className="form-label">Country *</label>
-              <select 
-                name="country" 
-                value={newCustomer.country} 
-                onChange={handleCustomerChange} 
-                required
-                className="form-select"
-              >
-                <option value="">Select Country</option>
-                {asiaPacificCountries.map(country => (
-                  <option key={country} value={country}>{country}</option>
-                ))}
-              </select>
+          </div>
+
+          {/* Location & Contact Section */}
+          <div className="form-section">
+            <div className="section-header">
+              <Globe size={16} className="section-icon" />
+              <h4 className="section-title">Location & Contact</h4>
             </div>
-            
-            <div className="form-group">
-              <label className="form-label">Customer Type *</label>
-              <select 
-                name="customer_type" 
-                value={newCustomer.customer_type} 
-                onChange={handleCustomerChange}
-                required
-                className="form-select"
-              >
-                <option value="New">New</option>
-                <option value="Existing">Existing</option>
-                <option value="Internal Initiative">Internal Initiative</option>
-              </select>
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label required">Country</label>
+                <select 
+                  name="country" 
+                  value={newCustomer.country} 
+                  onChange={handleCustomerChange} 
+                  required
+                  className="form-select"
+                >
+                  <option value="">Select Country</option>
+                  {asiaPacificCountries.map(country => (
+                    <option key={country} value={country}>{country}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <div className="input-with-icon">
+                  <input 
+                    name="email" 
+                    type="email"
+                    value={newCustomer.email || ''} 
+                    onChange={handleCustomerChange}
+                    className="form-input"
+                    placeholder="customer@company.com"
+                  />
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Phone Number</label>
+                <input 
+                  name="phone" 
+                  value={newCustomer.phone || ''} 
+                  onChange={handleCustomerChange}
+                  className="form-input"
+                  placeholder="+65 1234 5678"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Website</label>
+                <input 
+                  name="website" 
+                  type="url"
+                  value={newCustomer.website || ''} 
+                  onChange={handleCustomerChange}
+                  className="form-input"
+                  placeholder="https://company.com"
+                />
+              </div>
             </div>
-            
-            {newCustomer.customer_type !== 'Internal Initiative' && (
-              <>
+          </div>
+
+          {/* Company Details (Only for External Customers) */}
+          {newCustomer.customer_type !== 'Internal Initiative' && (
+            <div className="form-section">
+              <div className="section-header">
+                <Building2 size={16} className="section-icon" />
+                <h4 className="section-title">Company Details</h4>
+              </div>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Industry</label>
+                  <select 
+                    name="industry" 
+                    value={newCustomer.industry || ''} 
+                    onChange={handleCustomerChange}
+                    className="form-select"
+                  >
+                    <option value="">Select Industry</option>
+                    <option value="Financial Services">Financial Services</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Retail">Retail</option>
+                    <option value="Manufacturing">Manufacturing</option>
+                    <option value="Government">Government</option>
+                    <option value="Education">Education</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                
                 <div className="form-group">
                   <label className="form-label">Company Size</label>
                   <select 
@@ -739,7 +915,7 @@ function Projects() {
                     onChange={handleCustomerChange}
                     className="form-select"
                   >
-                    <option value="">Select Size</option>
+                    <option value="">Select Company Size</option>
                     {companySizes.map(size => (
                       <option key={size} value={size}>{size}</option>
                     ))}
@@ -747,30 +923,161 @@ function Projects() {
                 </div>
                 
                 <div className="form-group">
-                  <label className="form-label">Health Score (1-10)</label>
+                  <label className="form-label">Annual Revenue</label>
+                  <select 
+                    name="annual_revenue" 
+                    value={newCustomer.annual_revenue} 
+                    onChange={handleCustomerChange}
+                    className="form-select"
+                  >
+                    <option value="">Select Revenue Range</option>
+                    {revenueRanges.map(range => (
+                      <option key={range} value={range}>{range}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">Year First Closed</label>
                   <input 
-                    name="health_score" 
+                    name="year_first_closed" 
                     type="number"
-                    min="1"
-                    max="10"
-                    value={newCustomer.health_score} 
+                    min="2000"
+                    max={new Date().getFullYear()}
+                    value={newCustomer.year_first_closed} 
                     onChange={handleCustomerChange}
                     className="form-input"
+                    placeholder="e.g., 2022"
                   />
+                  <div className="form-help">
+                    Year when first deal was closed with this customer
+                  </div>
                 </div>
-              </>
-            )}
-            
-            <div className="form-group full-width">
-              <label className="form-label">Notes</label>
-              <textarea 
-                name="notes" 
-                value={newCustomer.notes} 
-                onChange={handleCustomerChange}
-                rows="3"
-                className="form-textarea"
-                placeholder="Additional information..."
-              />
+              </div>
+            </div>
+          )}
+
+          {/* Relationship & Assessment (Only for External Customers) */}
+          {newCustomer.customer_type !== 'Internal Initiative' && (
+            <div className="form-section">
+              <div className="section-header">
+                <Clock size={16} className="section-icon" />
+                <h4 className="section-title">Relationship Assessment</h4>
+              </div>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Technical Complexity</label>
+                  <select 
+                    name="technical_complexity" 
+                    value={newCustomer.technical_complexity} 
+                    onChange={handleCustomerChange}
+                    className="form-select"
+                  >
+                    <option value="Low">Low Complexity</option>
+                    <option value="Medium">Medium Complexity</option>
+                    <option value="High">High Complexity</option>
+                  </select>
+                  <div className="form-help">
+                    Assessment of technical requirements complexity
+                  </div>
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">Relationship Strength</label>
+                  <select 
+                    name="relationship_strength" 
+                    value={newCustomer.relationship_strength} 
+                    onChange={handleCustomerChange}
+                    className="form-select"
+                  >
+                    <option value="Weak">Developing</option>
+                    <option value="Medium">Established</option>
+                    <option value="Strong">Strategic Partnership</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">Health Score</label>
+                  <div className="input-group">
+                    <input 
+                      name="health_score" 
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={newCustomer.health_score} 
+                      onChange={handleCustomerChange}
+                      className="form-input"
+                      style={{ flex: 1 }}
+                    />
+                    <span style={{ 
+                      minWidth: '3rem', 
+                      textAlign: 'center', 
+                      fontWeight: '600',
+                      color: '#374151'
+                    }}>
+                      {newCustomer.health_score}/10
+                    </span>
+                  </div>
+                  <div className="form-help">
+                    Overall relationship health (1 = Poor, 10 = Excellent)
+                  </div>
+                </div>
+                
+                <div className="form-group full-width">
+                  <label className="form-label">Key Stakeholders</label>
+                  <input 
+                    name="key_stakeholders" 
+                    value={Array.isArray(newCustomer.key_stakeholders) ? newCustomer.key_stakeholders.join(', ') : ''} 
+                    onChange={handleCustomerChange}
+                    className="form-input"
+                    placeholder="John Smith (CTO), Jane Doe (CFO), etc."
+                  />
+                  <div className="form-help">
+                    Comma-separated list of key contacts and their roles
+                  </div>
+                </div>
+                
+                <div className="form-group full-width">
+                  <label className="form-label">Main Competitors</label>
+                  <input 
+                    name="competitors" 
+                    value={Array.isArray(newCustomer.competitors) ? newCustomer.competitors.join(', ') : ''} 
+                    onChange={handleCustomerChange}
+                    className="form-input"
+                    placeholder="Company A, Company B, etc."
+                  />
+                  <div className="form-help">
+                    Other vendors or solutions competing for this customer
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Additional Notes Section */}
+          <div className="form-section">
+            <div className="section-header">
+              <Edit3 size={16} className="section-icon" />
+              <h4 className="section-title">Additional Information</h4>
+            </div>
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label className="form-label">
+                  {newCustomer.customer_type === 'Internal Initiative' ? 'Initiative Description' : 'Notes'}
+                </label>
+                <textarea 
+                  name="notes" 
+                  value={newCustomer.notes} 
+                  onChange={handleCustomerChange}
+                  rows="4"
+                  className="form-textarea"
+                  placeholder={
+                    newCustomer.customer_type === 'Internal Initiative' ? 
+                    'Describe the internal initiative, goals, timeline, budget, and key stakeholders...' : 
+                    'Any additional information, special requirements, or important notes about this customer...'
+                  }
+                />
+              </div>
             </div>
           </div>
           
