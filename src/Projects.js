@@ -749,7 +749,7 @@ function Projects() {
         </div>
       </section>
 
-      {/* Enhanced Customer Modal */}
+      {/* Simplified Customer Modal */}
       <Modal isOpen={showCustomerModal} onClose={() => { setShowCustomerModal(false); resetCustomerForm(); }}>
         <div className="modal-header">
           <h3 className="modal-title">
@@ -764,149 +764,91 @@ function Projects() {
         </div>
         
         <form onSubmit={editingCustomer ? handleUpdateCustomer : handleAddCustomer} className="modal-form">
-          {/* Basic Information Section */}
-          <div className="form-section">
-            <div className="section-header">
-              <User size={16} className="section-icon" />
-              <h4 className="section-title">Basic Information</h4>
+          <div className="form-grid">
+            {/* Row 1 */}
+            <div className="form-group">
+              <label className="form-label required">Customer Name</label>
+              <input 
+                name="customer_name" 
+                value={newCustomer.customer_name} 
+                onChange={handleCustomerChange} 
+                required 
+                className="form-input"
+                placeholder="Enter customer name"
+              />
             </div>
-            <div className="form-grid">
-              <div className="form-group full-width">
-                <label className="form-label required">
-                  {newCustomer.customer_type === 'Internal Initiative' ? 'Initiative Name' : 'Customer Name'}
-                </label>
-                <input 
-                  name="customer_name" 
-                  value={newCustomer.customer_name} 
-                  onChange={handleCustomerChange} 
-                  required 
-                  className="form-input"
-                  placeholder={newCustomer.customer_type === 'Internal Initiative' ? 'e.g., Q4 Company Retreat' : 'Enter customer name'}
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label required">Account Manager</label>
-                <input 
-                  name="account_manager" 
-                  value={newCustomer.account_manager} 
-                  onChange={handleCustomerChange} 
-                  required 
-                  className="form-input"
-                  placeholder="Enter account manager name"
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label required">Customer Type</label>
-                <select 
-                  name="customer_type" 
-                  value={newCustomer.customer_type} 
-                  onChange={handleCustomerChange}
-                  required
-                  className="form-select"
-                >
-                  <option value="New">New Customer</option>
-                  <option value="Existing">Existing Customer</option>
-                  <option value="Internal Initiative">Internal Initiative</option>
-                </select>
-                <div className="form-help">
-                  Choose the appropriate customer classification
-                </div>
-              </div>
+            
+            <div className="form-group">
+              <label className="form-label required">Account Manager</label>
+              <input 
+                name="account_manager" 
+                value={newCustomer.account_manager} 
+                onChange={handleCustomerChange} 
+                required 
+                className="form-input"
+                placeholder="Enter account manager"
+              />
             </div>
-          </div>
-
-          {/* Location & Contact Section */}
-          <div className="form-section">
-            <div className="section-header">
-              <Globe size={16} className="section-icon" />
-              <h4 className="section-title">Location & Contact</h4>
+            
+            {/* Row 2 */}
+            <div className="form-group">
+              <label className="form-label required">Country</label>
+              <select 
+                name="country" 
+                value={newCustomer.country} 
+                onChange={handleCustomerChange} 
+                required
+                className="form-select"
+              >
+                <option value="">Select Country</option>
+                {asiaPacificCountries.map(country => (
+                  <option key={country} value={country}>{country}</option>
+                ))}
+              </select>
             </div>
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label required">Country</label>
-                <select 
-                  name="country" 
-                  value={newCustomer.country} 
-                  onChange={handleCustomerChange} 
-                  required
-                  className="form-select"
-                >
-                  <option value="">Select Country</option>
-                  {asiaPacificCountries.map(country => (
-                    <option key={country} value={country}>{country}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
-                <div className="input-with-icon">
-                  <input 
-                    name="email" 
-                    type="email"
-                    value={newCustomer.email || ''} 
-                    onChange={handleCustomerChange}
-                    className="form-input"
-                    placeholder="customer@company.com"
-                  />
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Phone Number</label>
-                <input 
-                  name="phone" 
-                  value={newCustomer.phone || ''} 
-                  onChange={handleCustomerChange}
-                  className="form-input"
-                  placeholder="+65 1234 5678"
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Website</label>
-                <input 
-                  name="website" 
-                  type="url"
-                  value={newCustomer.website || ''} 
-                  onChange={handleCustomerChange}
-                  className="form-input"
-                  placeholder="https://company.com"
-                />
-              </div>
+            
+            <div className="form-group">
+              <label className="form-label required">Customer Type</label>
+              <select 
+                name="customer_type" 
+                value={newCustomer.customer_type} 
+                onChange={handleCustomerChange}
+                required
+                className="form-select"
+              >
+                <option value="New">New Customer</option>
+                <option value="Existing">Existing Customer</option>
+                <option value="Internal Initiative">Internal Initiative</option>
+              </select>
             </div>
-          </div>
-
-          {/* Company Details (Only for External Customers) */}
-          {newCustomer.customer_type !== 'Internal Initiative' && (
-            <div className="form-section">
-              <div className="section-header">
-                <Building2 size={16} className="section-icon" />
-                <h4 className="section-title">Company Details</h4>
-              </div>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Industry</label>
-                  <select 
-                    name="industry" 
-                    value={newCustomer.industry || ''} 
-                    onChange={handleCustomerChange}
-                    className="form-select"
-                  >
-                    <option value="">Select Industry</option>
-                    <option value="Financial Services">Financial Services</option>
-                    <option value="Technology">Technology</option>
-                    <option value="Healthcare">Healthcare</option>
-                    <option value="Retail">Retail</option>
-                    <option value="Manufacturing">Manufacturing</option>
-                    <option value="Government">Government</option>
-                    <option value="Education">Education</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                
+            
+            {/* Row 3 - Optional fields */}
+            <div className="form-group">
+              <label className="form-label">Email Address</label>
+              <input 
+                name="email" 
+                type="email"
+                value={newCustomer.email || ''} 
+                onChange={handleCustomerChange}
+                className="form-input"
+                placeholder="customer@company.com"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Phone Number</label>
+              <input 
+                name="phone" 
+                value={newCustomer.phone || ''} 
+                onChange={handleCustomerChange}
+                className="form-input"
+                placeholder="+65 1234 5678"
+              />
+            </div>
+            
+            {/* Row 4 - Company details for external customers only */}
+            {newCustomer.customer_type !== 'Internal Initiative' && (
+              <>
                 <div className="form-group">
                   <label className="form-label">Company Size</label>
                   <select 
@@ -915,7 +857,7 @@ function Projects() {
                     onChange={handleCustomerChange}
                     className="form-select"
                   >
-                    <option value="">Select Company Size</option>
+                    <option value="">Select Size</option>
                     {companySizes.map(size => (
                       <option key={size} value={size}>{size}</option>
                     ))}
@@ -923,161 +865,32 @@ function Projects() {
                 </div>
                 
                 <div className="form-group">
-                  <label className="form-label">Annual Revenue</label>
-                  <select 
-                    name="annual_revenue" 
-                    value={newCustomer.annual_revenue} 
-                    onChange={handleCustomerChange}
-                    className="form-select"
-                  >
-                    <option value="">Select Revenue Range</option>
-                    {revenueRanges.map(range => (
-                      <option key={range} value={range}>{range}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Year First Closed</label>
+                  <label className="form-label">Health Score (1-10)</label>
                   <input 
-                    name="year_first_closed" 
+                    name="health_score" 
                     type="number"
-                    min="2000"
-                    max={new Date().getFullYear()}
-                    value={newCustomer.year_first_closed} 
+                    min="1"
+                    max="10"
+                    value={newCustomer.health_score} 
                     onChange={handleCustomerChange}
                     className="form-input"
-                    placeholder="e.g., 2022"
+                    placeholder="7"
                   />
-                  <div className="form-help">
-                    Year when first deal was closed with this customer
-                  </div>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Relationship & Assessment (Only for External Customers) */}
-          {newCustomer.customer_type !== 'Internal Initiative' && (
-            <div className="form-section">
-              <div className="section-header">
-                <Clock size={16} className="section-icon" />
-                <h4 className="section-title">Relationship Assessment</h4>
-              </div>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Technical Complexity</label>
-                  <select 
-                    name="technical_complexity" 
-                    value={newCustomer.technical_complexity} 
-                    onChange={handleCustomerChange}
-                    className="form-select"
-                  >
-                    <option value="Low">Low Complexity</option>
-                    <option value="Medium">Medium Complexity</option>
-                    <option value="High">High Complexity</option>
-                  </select>
-                  <div className="form-help">
-                    Assessment of technical requirements complexity
-                  </div>
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Relationship Strength</label>
-                  <select 
-                    name="relationship_strength" 
-                    value={newCustomer.relationship_strength} 
-                    onChange={handleCustomerChange}
-                    className="form-select"
-                  >
-                    <option value="Weak">Developing</option>
-                    <option value="Medium">Established</option>
-                    <option value="Strong">Strategic Partnership</option>
-                  </select>
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Health Score</label>
-                  <div className="input-group">
-                    <input 
-                      name="health_score" 
-                      type="range"
-                      min="1"
-                      max="10"
-                      value={newCustomer.health_score} 
-                      onChange={handleCustomerChange}
-                      className="form-input"
-                      style={{ flex: 1 }}
-                    />
-                    <span style={{ 
-                      minWidth: '3rem', 
-                      textAlign: 'center', 
-                      fontWeight: '600',
-                      color: '#374151'
-                    }}>
-                      {newCustomer.health_score}/10
-                    </span>
-                  </div>
-                  <div className="form-help">
-                    Overall relationship health (1 = Poor, 10 = Excellent)
-                  </div>
-                </div>
-                
-                <div className="form-group full-width">
-                  <label className="form-label">Key Stakeholders</label>
-                  <input 
-                    name="key_stakeholders" 
-                    value={Array.isArray(newCustomer.key_stakeholders) ? newCustomer.key_stakeholders.join(', ') : ''} 
-                    onChange={handleCustomerChange}
-                    className="form-input"
-                    placeholder="John Smith (CTO), Jane Doe (CFO), etc."
-                  />
-                  <div className="form-help">
-                    Comma-separated list of key contacts and their roles
-                  </div>
-                </div>
-                
-                <div className="form-group full-width">
-                  <label className="form-label">Main Competitors</label>
-                  <input 
-                    name="competitors" 
-                    value={Array.isArray(newCustomer.competitors) ? newCustomer.competitors.join(', ') : ''} 
-                    onChange={handleCustomerChange}
-                    className="form-input"
-                    placeholder="Company A, Company B, etc."
-                  />
-                  <div className="form-help">
-                    Other vendors or solutions competing for this customer
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Additional Notes Section */}
-          <div className="form-section">
-            <div className="section-header">
-              <Edit3 size={16} className="section-icon" />
-              <h4 className="section-title">Additional Information</h4>
-            </div>
-            <div className="form-grid">
-              <div className="form-group full-width">
-                <label className="form-label">
-                  {newCustomer.customer_type === 'Internal Initiative' ? 'Initiative Description' : 'Notes'}
-                </label>
-                <textarea 
-                  name="notes" 
-                  value={newCustomer.notes} 
-                  onChange={handleCustomerChange}
-                  rows="4"
-                  className="form-textarea"
-                  placeholder={
-                    newCustomer.customer_type === 'Internal Initiative' ? 
-                    'Describe the internal initiative, goals, timeline, budget, and key stakeholders...' : 
-                    'Any additional information, special requirements, or important notes about this customer...'
-                  }
-                />
-              </div>
+              </>
+            )}
+            
+            {/* Row 5 - Notes (full width) */}
+            <div className="form-group full-width">
+              <label className="form-label">Notes</label>
+              <textarea 
+                name="notes" 
+                value={newCustomer.notes} 
+                onChange={handleCustomerChange}
+                rows="2"
+                className="form-textarea"
+                placeholder="Additional information or special requirements..."
+              />
             </div>
           </div>
           
