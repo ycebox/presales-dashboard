@@ -1,4 +1,4 @@
-// CustomerDetails.js - Complete Modern Minimalist Version
+// CustomerDetails.js - Enhanced version with project edit functionality
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -6,12 +6,9 @@ import './CustomerDetails.css';
 import {
   FaHome, FaUsers, FaEdit, FaPlus, FaBriefcase, FaTrash, FaSave, FaTimes,
   FaBuilding, FaGlobe, FaIndustry, FaCalendarAlt, FaChartLine, FaCheckCircle,
-  FaClock, FaExclamationTriangle, FaEnvelope, FaPhone, FaDollarSign, FaTasks,
-  FaArrowRight, FaSparkles, FaTarget, FaAward, FaTrendingUp, FaUserCheck,
-  FaCalendar, FaFlag, FaPaperPlane, FaLightbulb, FaShieldAlt
+  FaClock, FaExclamationTriangle, FaEnvelope, FaPhone, FaDollarSign, FaTasks
 } from 'react-icons/fa';
 
-// Enhanced Stakeholder Modal
 function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeholder = null, editingIndex = null }) {
   const [newStakeholder, setNewStakeholder] = useState({
     name: '',
@@ -39,7 +36,12 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeh
   };
 
   const clearForm = () => {
-    setNewStakeholder({ name: '', role: '', email: '', phone: '' });
+    setNewStakeholder({
+      name: '',
+      role: '',
+      email: '',
+      phone: ''
+    });
   };
 
   const handleClose = () => {
@@ -49,16 +51,17 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeh
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newStakeholder.name.trim()) {
+    
+    if (!newStakeholder.name) {
       alert('Stakeholder name is required');
       return;
     }
 
     const stakeholderInfo = {
-      name: newStakeholder.name.trim(),
-      role: newStakeholder.role.trim() || '',
-      email: newStakeholder.email.trim() || '',
-      phone: newStakeholder.phone.trim() || ''
+      name: newStakeholder.name,
+      role: newStakeholder.role || '',
+      email: newStakeholder.email || '',
+      phone: newStakeholder.phone || ''
     };
 
     onSave(stakeholderInfo, editingIndex);
@@ -69,90 +72,77 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeh
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-container stakeholder-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-backdrop" onClick={handleClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">
-            <div className="modal-icon">
-              <FaUserCheck />
-            </div>
-            <h2>{editingStakeholder ? 'Edit Contact' : 'Add New Contact'}</h2>
-          </div>
-          <button className="modal-close" onClick={handleClose}>
+          <h3>{editingStakeholder ? 'Edit Stakeholder' : 'Add New Stakeholder'}</h3>
+          <button className="modal-close-btn" onClick={handleClose}>
             <FaTimes />
           </button>
         </div>
-        
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-grid">
-            <div className="form-field full-width">
-              <label className="field-label">
-                <FaUsers className="field-icon" />
-                Full Name
-              </label>
+        <form onSubmit={handleSubmit} className="modern-form">
+          <div className="form-group full-width">
+            <label>
+              <FaUsers className="field-icon" />
+              Name *
               <input 
                 name="name" 
                 value={newStakeholder.name} 
                 onChange={handleChange}
-                placeholder="Enter full name"
-                className="field-input"
+                placeholder="Enter stakeholder name"
                 required
-                autoFocus
               />
-            </div>
+            </label>
+          </div>
 
-            <div className="form-field">
-              <label className="field-label">
-                <FaBriefcase className="field-icon" />
-                Role / Title
-              </label>
+          <div className="form-group">
+            <label>
+              <FaBriefcase className="field-icon" />
+              Role/Title
               <input 
                 name="role" 
                 value={newStakeholder.role} 
                 onChange={handleChange}
                 placeholder="e.g., CTO, Project Manager"
-                className="field-input"
               />
-            </div>
+            </label>
+          </div>
 
-            <div className="form-field">
-              <label className="field-label">
-                <FaEnvelope className="field-icon" />
-                Email Address
-              </label>
+          <div className="form-group">
+            <label>
+              <FaEnvelope className="field-icon" />
+              Email
               <input 
                 name="email" 
                 type="email"
                 value={newStakeholder.email} 
                 onChange={handleChange}
-                placeholder="name@company.com"
-                className="field-input"
+                placeholder="email@company.com"
               />
-            </div>
+            </label>
+          </div>
 
-            <div className="form-field">
-              <label className="field-label">
-                <FaPhone className="field-icon" />
-                Phone Number
-              </label>
+          <div className="form-group">
+            <label>
+              <FaPhone className="field-icon" />
+              Phone
               <input 
                 name="phone" 
                 type="tel"
                 value={newStakeholder.phone} 
                 onChange={handleChange}
                 placeholder="+65 1234 5678"
-                className="field-input"
               />
-            </div>
+            </label>
           </div>
           
           <div className="modal-actions">
-            <button type="button" onClick={handleClose} className="btn btn-secondary">
+            <button type="button" onClick={handleClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
+            <button type="submit" className="btn-primary">
               <FaSave />
-              {editingStakeholder ? 'Update Contact' : 'Add Contact'}
+              {editingStakeholder ? 'Update Stakeholder' : 'Add Stakeholder'}
             </button>
           </div>
         </form>
@@ -161,7 +151,6 @@ function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeh
   );
 }
 
-// Enhanced Project Modal
 function ProjectModal({ isOpen, onClose, onSave, customerName, editingProject = null }) {
   const [projectData, setProjectData] = useState({
     customer_name: customerName || '',
@@ -179,6 +168,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName, editingProject = 
 
   useEffect(() => {
     if (editingProject) {
+      // Populate form with existing project data
       setProjectData({
         customer_name: editingProject.customer_name || customerName || '',
         project_name: editingProject.project_name || '',
@@ -193,6 +183,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName, editingProject = 
         project_type: editingProject.project_type || ''
       });
     } else if (customerName) {
+      // Reset form for new project
       setProjectData({
         customer_name: customerName,
         project_name: '',
@@ -285,6 +276,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName, editingProject = 
       let result;
       
       if (editingProject) {
+        // Update existing project
         const { data, error } = await supabase
           .from('projects')
           .update(submissionData)
@@ -294,6 +286,7 @@ function ProjectModal({ isOpen, onClose, onSave, customerName, editingProject = 
         if (error) throw error;
         result = { data, isEdit: true };
       } else {
+        // Create new project
         submissionData.created_at = new Date().toISOString().split('T')[0];
         
         const { data, error } = await supabase
@@ -321,195 +314,162 @@ function ProjectModal({ isOpen, onClose, onSave, customerName, editingProject = 
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-container project-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-backdrop" onClick={handleClose}>
+      <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">
-            <div className="modal-icon">
-              <FaBriefcase />
-            </div>
-            <h2>
-              {editingProject 
-                ? `Edit ${editingProject.project_name || 'Project'}` 
-                : `New Project for ${customerName}`
-              }
-            </h2>
-          </div>
-          <button className="modal-close" onClick={handleClose}>
+          <h3>
+            {editingProject 
+              ? `Edit Project: ${editingProject.project_name || 'Unnamed Project'}` 
+              : `Add New Project for ${customerName}`
+            }
+          </h3>
+          <button className="modal-close-btn" onClick={handleClose}>
             <FaTimes />
           </button>
         </div>
-        
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-grid">
-            <div className="form-field full-width">
-              <label className="field-label">
-                <FaTarget className="field-icon" />
-                Project Name
-              </label>
+        <form onSubmit={handleSubmit} className="modern-form">
+          <div className="form-group full-width">
+            <label>
+              <FaBriefcase className="field-icon" />
+              Project Name *
               <input 
                 name="project_name" 
                 value={projectData.project_name} 
                 onChange={handleChange}
                 placeholder="Enter project name"
-                className="field-input"
                 required
-                autoFocus
               />
-            </div>
+            </label>
+          </div>
 
-            <div className="form-field">
-              <label className="field-label">
-                <FaUsers className="field-icon" />
-                Account Manager
-              </label>
+          <div className="form-group">
+            <label>
+              <FaUsers className="field-icon" />
+              Account Manager
               <input 
                 name="account_manager" 
                 value={projectData.account_manager} 
                 onChange={handleChange}
                 placeholder="Account manager name"
-                className="field-input"
               />
-            </div>
+            </label>
+          </div>
 
-            <div className="form-field">
-              <label className="field-label">
-                <FaTrendingUp className="field-icon" />
-                Sales Stage
-              </label>
-              <select 
-                name="sales_stage" 
-                value={projectData.sales_stage} 
-                onChange={handleChange} 
-                className="field-select"
-                required
-              >
+          <div className="form-group">
+            <label>
+              <FaChartLine className="field-icon" />
+              Sales Stage *
+              <select name="sales_stage" value={projectData.sales_stage} onChange={handleChange} required>
                 <option value="">Select Stage</option>
                 {salesStages.map((stage, i) => (
                   <option key={i} value={stage}>{stage}</option>
                 ))}
               </select>
-            </div>
-            
-            <div className="form-field">
-              <label className="field-label">
-                <FaSparkles className="field-icon" />
-                Product
-              </label>
-              <select 
-                name="product" 
-                value={projectData.product} 
-                onChange={handleChange} 
-                className="field-select"
-                required
-              >
+            </label>
+          </div>
+          
+          <div className="form-group">
+            <label>
+              <FaBuilding className="field-icon" />
+              Product *
+              <select name="product" value={projectData.product} onChange={handleChange} required>
                 <option value="">Select Product</option>
                 {products.map((product, i) => (
                   <option key={i} value={product}>{product}</option>
                 ))}
               </select>
-            </div>
+            </label>
+          </div>
 
-            <div className="form-field">
-              <label className="field-label">
-                <FaFlag className="field-icon" />
-                Project Type
-              </label>
-              <select 
-                name="project_type" 
-                value={projectData.project_type} 
-                onChange={handleChange}
-                className="field-select"
-              >
+          <div className="form-group">
+            <label>
+              <FaTasks className="field-icon" />
+              Project Type
+              <select name="project_type" value={projectData.project_type} onChange={handleChange}>
                 <option value="">Select Type</option>
                 {projectTypes.map((type, i) => (
                   <option key={i} value={type}>{type}</option>
                 ))}
               </select>
-            </div>
-            
-            <div className="form-field">
-              <label className="field-label">
-                <FaDollarSign className="field-icon" />
-                Deal Value (USD)
-              </label>
+            </label>
+          </div>
+          
+          <div className="form-group">
+            <label>
+              <FaDollarSign className="field-icon" />
+              Deal Value
               <input 
                 name="deal_value" 
                 type="number" 
                 step="0.01"
                 value={projectData.deal_value} 
                 onChange={handleChange}
-                placeholder="0.00"
-                className="field-input"
+                placeholder="Enter deal value"
               />
-            </div>
-            
-            <div className="form-field">
-              <label className="field-label">
-                <FaShieldAlt className="field-icon" />
-                Backup Presales
-              </label>
+            </label>
+          </div>
+          
+          <div className="form-group">
+            <label>
+              <FaUsers className="field-icon" />
+              Backup Presales
               <input 
                 name="backup_presales" 
                 value={projectData.backup_presales} 
                 onChange={handleChange}
-                placeholder="Backup contact"
-                className="field-input"
+                placeholder="Backup presales contact"
               />
-            </div>
+            </label>
+          </div>
 
-            <div className="form-field">
-              <label className="field-label">
-                <FaCalendar className="field-icon" />
-                Expected Close Date
-              </label>
+          <div className="form-group">
+            <label>
+              <FaCalendarAlt className="field-icon" />
+              Expected Closing Date
               <input 
                 name="due_date" 
                 type="date"
                 value={projectData.due_date} 
                 onChange={handleChange}
-                className="field-input"
               />
-            </div>
-            
-            <div className="form-field full-width">
-              <label className="field-label">
-                <FaLightbulb className="field-icon" />
-                Project Scope
-              </label>
+            </label>
+          </div>
+          
+          <div className="form-group full-width">
+            <label>
+              <FaEdit className="field-icon" />
+              Scope
               <textarea 
                 name="scope" 
                 value={projectData.scope} 
                 onChange={handleChange}
                 rows="3"
-                placeholder="Describe the project scope and objectives..."
-                className="field-textarea"
+                placeholder="Project scope and objectives"
               />
-            </div>
-            
-            <div className="form-field full-width">
-              <label className="field-label">
-                <FaEdit className="field-icon" />
-                Remarks & Notes
-              </label>
+            </label>
+          </div>
+          
+          <div className="form-group full-width">
+            <label>
+              <FaEdit className="field-icon" />
+              Remarks
               <textarea 
                 name="remarks" 
                 value={projectData.remarks} 
                 onChange={handleChange}
                 rows="3"
-                placeholder="Add any additional notes or remarks..."
-                className="field-textarea"
+                placeholder="Project remarks or notes"
               />
-            </div>
+            </label>
           </div>
           
           <div className="modal-actions">
-            <button type="button" onClick={handleClose} className="btn btn-secondary">
+            <button type="button" onClick={handleClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
+            <button type="submit" className="btn-primary">
               <FaSave />
-              {editingProject ? 'Update Project' : 'Create Project'}
+              {editingProject ? 'Update Project' : 'Save Project'}
             </button>
           </div>
         </form>
@@ -518,7 +478,6 @@ function ProjectModal({ isOpen, onClose, onSave, customerName, editingProject = 
   );
 }
 
-// Enhanced Task Modal
 function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
   const [taskData, setTaskData] = useState({
     description: '',
@@ -545,13 +504,6 @@ function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
     }
   }, [editingTask, isOpen]);
 
-  const taskStatuses = [
-    { value: 'Not Started', icon: FaClock, color: 'gray' },
-    { value: 'In Progress', icon: FaSparkles, color: 'blue' },
-    { value: 'Completed', icon: FaCheckCircle, color: 'green' },
-    { value: 'Cancelled/On-hold', icon: FaExclamationTriangle, color: 'red' }
-  ];
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setTaskData(prev => ({ ...prev, [name]: value }));
@@ -569,94 +521,76 @@ function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container task-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">
-            <div className="modal-icon">
-              <FaTasks />
-            </div>
-            <h2>{editingTask ? 'Edit Task' : 'Add New Task'}</h2>
-          </div>
-          <button className="modal-close" onClick={onClose}>
+          <h3>{editingTask ? 'Edit Task' : 'Add New Task'}</h3>
+          <button className="modal-close-btn" onClick={onClose}>
             <FaTimes />
           </button>
         </div>
-        
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-grid">
-            <div className="form-field full-width">
-              <label className="field-label">
-                <FaTarget className="field-icon" />
-                Task Description
-              </label>
+        <form onSubmit={handleSubmit} className="modern-form">
+          <div className="form-group full-width">
+            <label>
+              <FaTasks className="field-icon" />
+              Task Description *
               <input 
                 name="description" 
                 value={taskData.description} 
                 onChange={handleChange}
-                placeholder="What needs to be done?"
-                className="field-input"
+                placeholder="Enter task description"
                 required
-                autoFocus
               />
-            </div>
+            </label>
+          </div>
 
-            <div className="form-field">
-              <label className="field-label">
-                <FaTrendingUp className="field-icon" />
-                Status
-              </label>
-              <select 
-                name="status" 
-                value={taskData.status} 
-                onChange={handleChange}
-                className="field-select"
-              >
-                {taskStatuses.map((status, i) => (
-                  <option key={i} value={status.value}>
-                    {status.value}
-                  </option>
-                ))}
+          <div className="form-group">
+            <label>
+              <FaChartLine className="field-icon" />
+              Status
+              <select name="status" value={taskData.status} onChange={handleChange}>
+                <option value="Not Started">Not Started</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled/On-hold">Cancelled/On-hold</option>
               </select>
-            </div>
+            </label>
+          </div>
 
-            <div className="form-field">
-              <label className="field-label">
-                <FaCalendar className="field-icon" />
-                Due Date
-              </label>
+          <div className="form-group">
+            <label>
+              <FaCalendarAlt className="field-icon" />
+              Due Date
               <input 
                 name="due_date" 
                 type="date"
                 value={taskData.due_date} 
                 onChange={handleChange}
-                className="field-input"
               />
-            </div>
+            </label>
+          </div>
 
-            <div className="form-field full-width">
-              <label className="field-label">
-                <FaEdit className="field-icon" />
-                Additional Notes
-              </label>
+          <div className="form-group full-width">
+            <label>
+              <FaEdit className="field-icon" />
+              Notes
               <textarea 
                 name="notes" 
                 value={taskData.notes} 
                 onChange={handleChange}
                 rows="3"
-                placeholder="Add any additional details or context..."
-                className="field-textarea"
+                placeholder="Additional notes or details"
               />
-            </div>
+            </label>
           </div>
           
           <div className="modal-actions">
-            <button type="button" onClick={onClose} className="btn btn-secondary">
+            <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
+            <button type="submit" className="btn-primary">
               <FaSave />
-              {editingTask ? 'Update Task' : 'Create Task'}
+              {editingTask ? 'Update Task' : 'Add Task'}
             </button>
           </div>
         </form>
@@ -665,54 +599,33 @@ function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
   );
 }
 
-// Main CustomerDetails Component
 function CustomerDetails() {
   const { customerId } = useParams();
   const navigate = useNavigate();
-  
-  // Core state
   const [customer, setCustomer] = useState(null);
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // Modal states
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showStakeholderModal, setShowStakeholderModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingStakeholder, setEditingStakeholder] = useState(null);
   const [editingStakeholderIndex, setEditingStakeholderIndex] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
-  const [editingProject, setEditingProject] = useState(null);
+  const [editingProject, setEditingProject] = useState(null); // New state for project editing
   
   // Inline editing states
   const [isEditing, setIsEditing] = useState(false);
   const [editCustomer, setEditCustomer] = useState({});
   const [saving, setSaving] = useState(false);
   
-  // Filter states
+  // Project filtering state
   const [activeTab, setActiveTab] = useState('active');
-  const [taskFilter, setTaskFilter] = useState('active');
   
-  // Data arrays for dropdowns
-  const asiaPacificCountries = [
-    "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", 
-    "Japan", "Laos", "Malaysia", "Myanmar", "Nepal", "New Zealand", "Pakistan", 
-    "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands", "South Korea", 
-    "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
-  ].sort();
+  // Task filtering state
+  const [taskFilter, setTaskFilter] = useState('active');
 
-  const industryVerticals = [
-    'Banking', 'Financial Services', 'Insurance', 'Government', 'Healthcare', 'Education', 
-    'Retail', 'Manufacturing', 'Telecommunications', 'Energy & Utilities', 'Transportation', 'Other'
-  ].sort();
-
-  const companySizes = [
-    'Startup (1-10)', 'Small (11-50)', 'Medium (51-200)', 'Large (201-1000)', 'Enterprise (1000+)'
-  ];
-
-  // useEffect hooks for data fetching
   useEffect(() => {
     if (customerId) {
       fetchCustomerDetails();
@@ -726,7 +639,6 @@ function CustomerDetails() {
     }
   }, [customer]);
 
-  // Data fetching functions
   const fetchCustomerDetails = async () => {
     try {
       setLoading(true);
@@ -820,7 +732,7 @@ function CustomerDetails() {
     }
   };
 
-  // Task management handlers
+  // Task handlers
   const handleTaskStatusChange = async (taskId, currentStatus) => {
     try {
       const newStatus = currentStatus === 'Completed' ? 'Not Started' : 'Completed';
@@ -941,7 +853,6 @@ function CustomerDetails() {
     }
   };
 
-  // Stakeholder management handlers
   const handleAddStakeholder = () => {
     setEditingStakeholder(null);
     setEditingStakeholderIndex(null);
@@ -977,16 +888,16 @@ function CustomerDetails() {
       if (data && data.length > 0) {
         setCustomer(data[0]);
         setEditCustomer(data[0]);
-        alert(editingIndex !== null ? 'Contact updated successfully!' : 'Contact added successfully!');
+        alert(editingIndex !== null ? 'Stakeholder updated successfully!' : 'Stakeholder added successfully!');
       }
     } catch (error) {
       console.error('Error saving stakeholder:', error);
-      alert('Error saving contact: ' + error.message);
+      alert('Error saving stakeholder: ' + error.message);
     }
   };
 
   const handleDeleteStakeholder = async (stakeholderIndex) => {
-    if (!window.confirm('Are you sure you want to remove this contact?')) return;
+    if (!window.confirm('Are you sure you want to remove this stakeholder?')) return;
     
     try {
       const currentStakeholders = customer.key_stakeholders || [];
@@ -1003,21 +914,21 @@ function CustomerDetails() {
       if (data && data.length > 0) {
         setCustomer(data[0]);
         setEditCustomer(data[0]);
-        alert('Contact removed successfully!');
+        alert('Stakeholder removed successfully!');
       }
     } catch (error) {
       console.error('Error removing stakeholder:', error);
-      alert('Error removing contact: ' + error.message);
+      alert('Error removing stakeholder: ' + error.message);
     }
   };
 
-  // Project management handlers
+  // Project handlers
   const handleAddProject = () => {
     if (!customer?.customer_name) {
       alert('Customer information not loaded. Please refresh the page.');
       return;
     }
-    setEditingProject(null);
+    setEditingProject(null); // Ensure we're in add mode
     setShowProjectModal(true);
   };
 
@@ -1028,15 +939,18 @@ function CustomerDetails() {
 
   const handleProjectSaved = (projectData, isEdit = false) => {
     if (isEdit) {
+      // Update existing project in state
       setProjects(prev => prev.map(p => 
         p.id === projectData.id ? projectData : p
       ));
       alert('Project updated successfully!');
     } else {
+      // Add new project to state
       setProjects(prev => [projectData, ...prev]);
-      alert('Project created successfully!');
+      alert('Project added successfully!');
     }
     
+    // Reset editing state
     setEditingProject(null);
   };
 
@@ -1050,7 +964,7 @@ function CustomerDetails() {
   };
 
   const handleDeleteProject = async (projectId) => {
-    if (!window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) return;
+    if (!window.confirm('Are you sure you want to delete this project?')) return;
     
     try {
       const { error } = await supabase.from('projects').delete().eq('id', projectId);
@@ -1089,9 +1003,9 @@ function CustomerDetails() {
     return { name: 'Unknown', role: 'Contact', email: '', phone: '' };
   };
 
-  // Formatting helper functions
+  // Helper functions
   const formatDate = (dateString) => {
-    if (!dateString) return 'No date set';
+    if (!dateString) return '-';
     try {
       return new Date(dateString).toLocaleDateString('en-US', {
         year: 'numeric',
@@ -1099,12 +1013,12 @@ function CustomerDetails() {
         day: 'numeric'
       });
     } catch (error) {
-      return 'Invalid date';
+      return '-';
     }
   };
 
   const formatCurrency = (value) => {
-    if (!value || value === 0) return 'Not specified';
+    if (!value) return '-';
     try {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -1113,20 +1027,11 @@ function CustomerDetails() {
         maximumFractionDigits: 0
       }).format(parseFloat(value));
     } catch (error) {
-      return 'Invalid amount';
+      return '-';
     }
   };
 
-  const formatPhoneNumber = (phone) => {
-    if (!phone) return '';
-    const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length >= 10) {
-      return `+${cleaned.slice(0, -10)} ${cleaned.slice(-10, -7)} ${cleaned.slice(-7, -4)} ${cleaned.slice(-4)}`;
-    }
-    return phone;
-  };
-
-  // Project filtering functions
+  // Project filtering
   const getFilteredProjects = () => {
     switch (activeTab) {
       case 'active':
@@ -1139,7 +1044,7 @@ function CustomerDetails() {
     }
   };
 
-  // Task filtering and counting functions
+  // Task filtering and helpers
   const getFilteredTasks = () => {
     if (taskFilter === 'all') {
       return tasks;
@@ -1159,10 +1064,6 @@ function CustomerDetails() {
     return tasks.filter(task => !['Completed', 'Cancelled/On-hold'].includes(task.status)).length;
   };
 
-  const getCompletedTasksCount = () => {
-    return tasks.filter(task => task.status === 'Completed').length;
-  };
-
   const getOverdueTasksCount = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1175,32 +1076,23 @@ function CustomerDetails() {
     }).length;
   };
 
-  const getTotalDealValue = () => {
-    return projects
-      .filter(p => !p.sales_stage?.toLowerCase().startsWith('closed'))
-      .reduce((sum, project) => sum + (parseFloat(project.deal_value) || 0), 0);
-  };
-
-  // Task status and due date helpers
   const getTaskStatusClass = (status) => {
-    const statusMap = {
-      'completed': 'status-completed',
-      'in progress': 'status-in-progress', 
-      'not started': 'status-pending',
-      'cancelled/on-hold': 'status-cancelled'
-    };
-    return statusMap[status?.toLowerCase()] || 'status-pending';
+    switch (status?.toLowerCase()) {
+      case 'completed': return 'status-completed';
+      case 'in progress': return 'status-in-progress';
+      case 'not started': return 'status-not-started';
+      case 'cancelled/on-hold': return 'status-cancelled';
+      default: return 'status-not-started';
+    }
   };
 
   const getTaskStatusIcon = (status) => {
-    const iconMap = {
-      'completed': FaCheckCircle,
-      'in progress': FaSparkles,
-      'not started': FaClock,
-      'cancelled/on-hold': FaExclamationTriangle
-    };
-    const IconComponent = iconMap[status?.toLowerCase()] || FaClock;
-    return <IconComponent />;
+    switch (status?.toLowerCase()) {
+      case 'completed': return <FaCheckCircle />;
+      case 'in progress': return <FaClock />;
+      case 'cancelled/on-hold': return <FaExclamationTriangle />;
+      default: return <FaClock />;
+    }
   };
 
   const getTaskDueStatus = (dueDate, status) => {
@@ -1216,7 +1108,7 @@ function CustomerDetails() {
     if (diffDays < 0) return 'overdue';
     if (diffDays === 0) return 'today';
     if (diffDays <= 3) return 'upcoming';
-    return 'normal';
+    return null;
   };
 
   const formatTaskDueDate = (dueDate, status) => {
@@ -1240,325 +1132,184 @@ function CustomerDetails() {
     }
   };
 
-  // Project sales stage helpers
-  const getSalesStageColor = (stage) => {
-    const stageColors = {
-      'discovery': 'stage-discovery',
-      'demo': 'stage-demo', 
-      'poc': 'stage-poc',
-      'rfi': 'stage-rfi',
-      'rfp': 'stage-rfp',
-      'sow': 'stage-sow',
-      'contracting': 'stage-contracting',
-      'closed-won': 'stage-won',
-      'closed-lost': 'stage-lost',
-      'closed-cancelled/hold': 'stage-cancelled'
-    };
-    return stageColors[stage?.toLowerCase().replace(/[\s/]/g, '-')] || 'stage-default';
-  };
+  // Data for dropdowns
+  const asiaPacificCountries = [
+    "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
+    "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
+    "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
+  ].sort();
 
-  const getSalesStageIcon = (stage) => {
-    const stageIcons = {
-      'discovery': FaLightbulb,
-      'demo': FaPaperPlane,
-      'poc': FaSparkles,
-      'rfi': FaFlag,
-      'rfp': FaTarget,
-      'sow': FaEdit,
-      'contracting': FaShieldAlt,
-      'closed-won': FaAward,
-      'closed-lost': FaExclamationTriangle,
-      'closed-cancelled/hold': FaClock
-    };
-    const IconComponent = stageIcons[stage?.toLowerCase().replace(/[\s/]/g, '-')] || FaFlag;
-    return <IconComponent />;
-  };
+  const industryVerticals = [
+    'Banking', 'Financial Services', 'Insurance', 'Government', 'Healthcare', 'Education', 
+    'Retail', 'Manufacturing', 'Telecommunications', 'Energy & Utilities', 'Transportation', 'Other'
+  ].sort();
 
-  // Customer metrics helpers
-  const getCustomerHealthScore = () => {
-    if (projects.length === 0) return { score: 0, status: 'unknown', color: 'gray' };
-    
-    const activeProjects = getActiveProjectsCount();
-    const overdueItems = getOverdueTasksCount();
-    const completionRate = tasks.length > 0 ? (getCompletedTasksCount() / tasks.length) * 100 : 0;
-    
-    let score = 0;
-    if (activeProjects > 0) score += 30;
-    if (overdueItems === 0) score += 25;
-    if (completionRate >= 80) score += 25;
-    if (completionRate >= 50) score += 20;
-    
-    if (score >= 80) return { score, status: 'excellent', color: 'green' };
-    if (score >= 60) return { score, status: 'good', color: 'blue' };
-    if (score >= 40) return { score, status: 'fair', color: 'yellow' };
-    return { score, status: 'needs-attention', color: 'red' };
-  };
+  const companySizes = [
+    'Startup (1-10)', 'Small (11-50)', 'Medium (51-200)', 'Large (201-1000)', 'Enterprise (1000+)'
+  ];
 
-  const getEngagementLevel = () => {
-    const recentProjects = projects.filter(p => {
-      if (!p.created_at) return false;
-      const projectDate = new Date(p.created_at);
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      return projectDate >= sixMonthsAgo;
-    }).length;
-
-    if (recentProjects >= 3) return { level: 'high', color: 'green', icon: FaTrendingUp };
-    if (recentProjects >= 1) return { level: 'medium', color: 'blue', icon: FaChartLine };
-    return { level: 'low', color: 'orange', icon: FaClock };
-  };
-
-  // Progress calculation
-  const calculateProgress = () => {
-    if (tasks.length === 0) return 0;
-    return Math.round((getCompletedTasksCount() / tasks.length) * 100);
-  };
-
-  // Loading state
   if (loading) {
     return (
-      <div className="app-container">
-        <div className="loading-container">
-          <div className="loading-spinner modern">
-            <div className="spinner-ring"></div>
-            <div className="spinner-ring"></div>
-            <div className="spinner-ring"></div>
-          </div>
-          <div className="loading-content">
-            <h3>Loading customer details</h3>
-            <p>Getting the latest information...</p>
-          </div>
+      <div className="page-wrapper">
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading customer details...</p>
         </div>
       </div>
     );
   }
 
-  // Error state
   if (error || !customer) {
     return (
-      <div className="app-container">
-        <div className="error-container">
-          <div className="error-icon">
-            <FaExclamationTriangle />
-          </div>
-          <div className="error-content">
-            <h2>Something went wrong</h2>
-            <p>{error || 'Customer not found'}</p>
-            <div className="error-actions">
-              <button onClick={() => navigate('/')} className="btn btn-primary">
-                <FaHome />
-                Back to Dashboard
-              </button>
-              <button onClick={fetchCustomerDetails} className="btn btn-secondary">
-                Try Again
-              </button>
-            </div>
-          </div>
+      <div className="page-wrapper">
+        <div className="error-state">
+          <FaExclamationTriangle className="error-icon" />
+          <h2>Oops! Something went wrong</h2>
+          <p>{error || 'Customer not found'}</p>
+          <button onClick={() => navigate('/')} className="btn-primary">
+            <FaHome /> Back to Dashboard
+          </button>
         </div>
       </div>
     );
   }
 
-  // Calculate metrics for display
   const filteredProjects = getFilteredProjects();
   const filteredTasks = getFilteredTasks();
   const pendingTasksCount = getActiveTasksCount();
   const overdueTasksCount = getOverdueTasksCount();
-  const healthScore = getCustomerHealthScore();
-  const engagement = getEngagementLevel();
-  const progress = calculateProgress();
-  const totalValue = getTotalDealValue();
 
   return (
-    <div className="app-container">
-      {/* Navigation Bar */}
-      <nav className="app-nav">
-        <div className="nav-content">
-          <button onClick={() => navigate('/')} className="nav-back">
-            <FaHome />
-            <span>Dashboard</span>
-          </button>
-          
-          <div className="nav-breadcrumb">
-            <span className="breadcrumb-item">Customers</span>
-            <FaArrowRight className="breadcrumb-arrow" />
-            <span className="breadcrumb-current">{customer.customer_name}</span>
-          </div>
+    <div className="page-wrapper">
+      <div className="page-content">
+        {/* Navigation */}
+        <button onClick={() => navigate('/')} className="nav-btn primary">
+          <FaHome />
+          Dashboard
+        </button>
 
-          <div className="nav-actions">
-            <div className="customer-health">
-              <div className={`health-indicator health-${healthScore.color}`}>
-                <div className="health-score">{healthScore.score}%</div>
-                <div className="health-label">Health Score</div>
-              </div>
+        {/* Customer Header */}
+        <div className="customer-header">
+          <div className="customer-title-section">
+            <h1 className="customer-title">
+              {customer.customer_name}
+            </h1>
+            <div className="customer-subtitle">
+              <span className="location-badge">
+                <FaGlobe />
+                {customer.country || 'Location Not Set'}
+              </span>
             </div>
           </div>
         </div>
-      </nav>
 
-      {/* Main Content */}
-      <main className="app-main">
-        {/* Customer Header */}
-        <section className="customer-hero">
-          <div className="hero-content">
-            <div className="hero-main">
-              <div className="customer-avatar">
-                <FaBuilding />
-              </div>
-              <div className="customer-info">
-                <h1 className="customer-name">{customer.customer_name}</h1>
-                <div className="customer-meta">
-                  {customer.country && (
-                    <div className="meta-item">
-                      <FaGlobe />
-                      <span>{customer.country}</span>
-                    </div>
-                  )}
-                  {customer.company_size && (
-                    <div className="meta-item">
-                      <FaUsers />
-                      <span>{customer.company_size}</span>
-                    </div>
-                  )}
-                  {customer.year_first_closed && (
-                    <div className="meta-item">
-                      <FaCalendarAlt />
-                      <span>Customer since {customer.year_first_closed}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="hero-actions">
-              {!isEditing ? (
-                <button onClick={handleEditToggle} className="btn btn-secondary">
-                  <FaEdit />
-                  Edit Details
-                </button>
-              ) : (
-                <div className="edit-actions">
-                  <button 
-                    onClick={handleSaveCustomer} 
-                    className="btn btn-primary"
-                    disabled={saving}
-                  >
-                    <FaSave />
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                  <button 
-                    onClick={handleEditToggle} 
-                    className="btn btn-ghost"
-                    disabled={saving}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {isEditing && (
-            <div className="edit-banner">
-              <FaEdit />
-              <span>Edit mode active - Make your changes and save</span>
-            </div>
-          )}
-        </section>
-
-        {/* Metrics Overview */}
-        <section className="metrics-grid">
-          <div className="metric-card primary">
-            <div className="metric-icon">
+        {/* Overview Cards */}
+        <div className="overview-grid">
+          <div className="overview-card primary">
+            <div className="card-icon">
               <FaBriefcase />
             </div>
-            <div className="metric-content">
-              <div className="metric-value">{getActiveProjectsCount()}</div>
-              <div className="metric-label">Active Projects</div>
-              <div className="metric-trend">
+            <div className="card-content">
+              <div className="card-value">{getActiveProjectsCount()}</div>
+              <div className="card-label">Active Projects</div>
+              <div className="card-trend">
                 <FaChartLine />
-                <span>{getClosedProjectsCount()} completed</span>
+                {getClosedProjectsCount()} completed
               </div>
             </div>
           </div>
 
-          <div className="metric-card success">
-            <div className="metric-icon">
+          <div className="overview-card success">
+            <div className="card-icon">
               <FaTasks />
             </div>
-            <div className="metric-content">
-              <div className="metric-value">{pendingTasksCount}</div>
-              <div className="metric-label">Active Tasks</div>
-              <div className="metric-trend">
-                <FaCheckCircle />
-                <span>{progress}% completed</span>
+            <div className="card-content">
+              <div className="card-value">{pendingTasksCount}</div>
+              <div className="card-label">Pending Tasks</div>
+              <div className="card-trend">
+                <FaCalendarAlt />
+                {tasks.filter(t => getTaskDueStatus(t.due_date, t.status) === 'today').length} due today
               </div>
             </div>
           </div>
 
-          <div className={`metric-card ${overdueTasksCount > 0 ? 'warning' : 'info'}`}>
-            <div className="metric-icon">
-              {overdueTasksCount > 0 ? <FaExclamationTriangle /> : <FaCheckCircle />}
+          <div className={`overview-card ${overdueTasksCount > 0 ? 'urgent' : 'normal'}`}>
+            <div className="card-icon">
+              <FaExclamationTriangle />
             </div>
-            <div className="metric-content">
-              <div className="metric-value">{overdueTasksCount}</div>
-              <div className="metric-label">Overdue Items</div>
-              <div className="metric-trend">
+            <div className="card-content">
+              <div className="card-value">{overdueTasksCount}</div>
+              <div className="card-label">Overdue Items</div>
+              <div className="card-trend">
                 {overdueTasksCount > 0 ? (
                   <>
                     <FaExclamationTriangle />
-                    <span>Needs attention</span>
+                    Needs attention
                   </>
                 ) : (
                   <>
                     <FaCheckCircle />
-                    <span>All current</span>
+                    All current
                   </>
                 )}
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="metric-card accent">
-            <div className="metric-icon">
-              <FaDollarSign />
-            </div>
-            <div className="metric-content">
-              <div className="metric-value">{formatCurrency(totalValue).replace('$', '$')}</div>
-              <div className="metric-label">Pipeline Value</div>
-              <div className="metric-trend">
-                <FaTrendingUp />
-                <span>Active deals</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Main Content Grid */}
-        <div className="content-grid">
+        {/* Main Content */}
+        <div className="main-content">
           {/* Left Column */}
-          <div className="content-primary">
-            {/* Customer Information Card */}
-            <div className="card customer-details">
-              <div className="card-header">
-                <div className="card-title">
-                  <FaBuilding />
-                  <h3>Company Information</h3>
+          <div className="left-column">
+            {/* Customer Information */}
+            <div className="section-card">
+              <div className="section-header">
+                <div className="section-title">
+                  <FaBuilding className="section-icon" />
+                  <h3>Customer Information</h3>
                 </div>
-                <div className="card-actions">
-                  <div className={`engagement-badge engagement-${engagement.color}`}>
-                    <engagement.icon.type />
-                    <span>{engagement.level} engagement</span>
-                  </div>
+                <div className="section-actions">
+                  {isEditing ? (
+                    <>
+                      <button 
+                        onClick={handleSaveCustomer} 
+                        className="btn-success"
+                        disabled={saving}
+                      >
+                        <FaSave />
+                        {saving ? 'Saving...' : 'Save'}
+                      </button>
+                      <button 
+                        onClick={handleEditToggle} 
+                        className="btn-secondary"
+                        disabled={saving}
+                      >
+                        <FaTimes />
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={handleEditToggle} className="btn-primary">
+                      <FaEdit />
+                      Edit
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div className="card-content">
-                <div className="info-grid">
-                  <div className="info-field">
+              {isEditing && (
+                <div className="edit-banner">
+                  <FaEdit />
+                  <span>Editing mode - Make your changes and click Save</span>
+                </div>
+              )}
+
+              <div className="section-content">
+                <div className="customer-info-grid">
+                  <div className="info-item">
                     <label className="info-label">
                       <FaBuilding />
-                      Company Name
+                      Customer Name
                     </label>
                     {isEditing ? (
                       <input
@@ -1574,7 +1325,7 @@ function CustomerDetails() {
                     )}
                   </div>
 
-                  <div className="info-field">
+                  <div className="info-item">
                     <label className="info-label">
                       <FaUsers />
                       Account Manager
@@ -1593,7 +1344,7 @@ function CustomerDetails() {
                     )}
                   </div>
 
-                  <div className="info-field">
+                  <div className="info-item">
                     <label className="info-label">
                       <FaGlobe />
                       Country
@@ -1606,8 +1357,8 @@ function CustomerDetails() {
                         className="info-select"
                       >
                         <option value="">Select Country</option>
-                        {asiaPacificCountries.map((country, i) => (
-                          <option key={i} value={country}>{country}</option>
+                        {asiaPacificCountries.map((c, i) => (
+                          <option key={i} value={c}>{c}</option>
                         ))}
                       </select>
                     ) : (
@@ -1615,9 +1366,9 @@ function CustomerDetails() {
                     )}
                   </div>
 
-                  <div className="info-field">
+                  <div className="info-item">
                     <label className="info-label">
-                      <FaIndustry />
+                      <FaUsers />
                       Company Size
                     </label>
                     {isEditing ? (
@@ -1637,7 +1388,7 @@ function CustomerDetails() {
                     )}
                   </div>
 
-                  <div className="info-field">
+                  <div className="info-item">
                     <label className="info-label">
                       <FaCalendarAlt />
                       Customer Since
@@ -1661,26 +1412,27 @@ function CustomerDetails() {
               </div>
             </div>
 
-            {/* Key Stakeholders Section */}
-            <div className="card stakeholders">
-              <div className="card-header">
-                <div className="card-title">
-                  <FaUsers />
-                  <h3>Key Contacts</h3>
-                  <span className="count-badge">{customer.key_stakeholders?.length || 0}</span>
+            {/* Key Stakeholders */}
+            <div className="section-card">
+              <div className="section-header">
+                <div className="section-title">
+                  <FaUsers className="section-icon" />
+                  <h3>Key Stakeholders</h3>
+                  <span className="stakeholder-counter">
+                    {customer.key_stakeholders?.length || 0}
+                  </span>
                 </div>
-                <div className="card-actions">
-                  <button className="btn btn-primary" onClick={handleAddStakeholder}>
+                <div className="section-actions">
+                  <button className="btn-primary" onClick={handleAddStakeholder}>
                     <FaPlus />
                     Add Contact
                   </button>
                 </div>
               </div>
-
-              <div className="card-content">
-                {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
-                  <div className="stakeholders-grid">
-                    {customer.key_stakeholders.map((stakeholder, index) => {
+              <div className="section-content">
+                <div className="stakeholder-grid">
+                  {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
+                    customer.key_stakeholders.map((stakeholder, index) => {
                       const parsedStakeholder = parseStakeholder(stakeholder);
                       const { name, role, email, phone } = parsedStakeholder;
 
@@ -1688,176 +1440,148 @@ function CustomerDetails() {
                         <div key={index} className="stakeholder-card">
                           <div className="stakeholder-header">
                             <div className="stakeholder-avatar">
-                              <FaUserCheck />
+                              <FaUsers />
                             </div>
                             <div className="stakeholder-actions">
                               <button 
-                                className="action-btn edit"
+                                className="stakeholder-action-btn edit"
                                 onClick={() => handleEditStakeholder(parsedStakeholder, index)}
-                                title="Edit contact"
+                                title="Edit stakeholder"
                               >
                                 <FaEdit />
                               </button>
                               <button 
-                                className="action-btn delete"
+                                className="stakeholder-action-btn delete"
                                 onClick={() => handleDeleteStakeholder(index)}
-                                title="Remove contact"
+                                title="Remove stakeholder"
                               >
                                 <FaTrash />
                               </button>
                             </div>
                           </div>
-
-                          <div className="stakeholder-info">
-                            <h4 className="stakeholder-name">{name}</h4>
-                            <p className="stakeholder-role">{role || 'Contact'}</p>
-                            
-                            <div className="stakeholder-contacts">
-                              {email && (
-                                <a href={`mailto:${email}`} className="contact-link email">
-                                  <FaEnvelope />
-                                  <span>{email}</span>
-                                </a>
-                              )}
-                              {phone && (
-                                <a href={`tel:${phone}`} className="contact-link phone">
-                                  <FaPhone />
-                                  <span>{formatPhoneNumber(phone)}</span>
-                                </a>
-                              )}
-                            </div>
+                          <div className="stakeholder-content">
+                            <div className="stakeholder-name">{name}</div>
+                            <div className="stakeholder-role">{role || 'Contact'}</div>
+                            {email && (
+                              <div className="stakeholder-contact">
+                                <FaEnvelope />
+                                <a href={`mailto:${email}`} className="stakeholder-email">{email}</a>
+                              </div>
+                            )}
+                            {phone && (
+                              <div className="stakeholder-contact">
+                                <FaPhone />
+                                <a href={`tel:${phone}`} className="stakeholder-phone">{phone}</a>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
-                    })}
-                  </div>
-                ) : (
-                  <div className="empty-state">
-                    <div className="empty-icon">
-                      <FaUsers />
+                    })
+                  ) : (
+                    <div className="empty-state">
+                      <div className="empty-icon">
+                        <FaUsers />
+                      </div>
+                      <h4>No stakeholders added</h4>
+                      <p>Add key contacts to manage relationships effectively</p>
+                      <button onClick={handleAddStakeholder} className="btn-primary">
+                        <FaPlus />
+                        Add First Contact
+                      </button>
                     </div>
-                    <h4>No contacts added yet</h4>
-                    <p>Add key stakeholders to build stronger relationships</p>
-                    <button onClick={handleAddStakeholder} className="btn btn-primary">
-                      <FaPlus />
-                      Add First Contact
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Projects Portfolio Section */}
-            <div className="card projects">
-              <div className="card-header">
-                <div className="card-title">
-                  <FaBriefcase />
+            {/* Projects Section */}
+            <div className="section-card">
+              <div className="section-header">
+                <div className="section-title">
+                  <FaBriefcase className="section-icon" />
                   <h3>Projects Portfolio</h3>
                 </div>
-                <div className="card-actions">
-                  <button onClick={handleAddProject} className="btn btn-primary">
+                <div className="section-actions">
+                  <button onClick={handleAddProject} className="btn-primary">
                     <FaPlus />
-                    New Project
+                    Add Project
                   </button>
                 </div>
               </div>
 
-              {/* Project Tabs */}
-              <div className="project-tabs">
+              <div className="projects-tabs">
                 <button 
-                  className={`tab-btn ${activeTab === 'active' ? 'active' : ''}`}
+                  className={`tab-button ${activeTab === 'active' ? 'active' : ''}`}
                   onClick={() => setActiveTab('active')}
                 >
                   <FaChartLine />
-                  <span>Active</span>
-                  <span className="tab-count">{getActiveProjectsCount()}</span>
+                  Active Projects ({getActiveProjectsCount()})
                 </button>
                 <button 
-                  className={`tab-btn ${activeTab === 'closed' ? 'active' : ''}`}
+                  className={`tab-button ${activeTab === 'closed' ? 'active' : ''}`}
                   onClick={() => setActiveTab('closed')}
                 >
                   <FaCheckCircle />
-                  <span>Closed</span>
-                  <span className="tab-count">{getClosedProjectsCount()}</span>
+                  Closed Projects ({getClosedProjectsCount()})
                 </button>
                 <button 
-                  className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+                  className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
                   onClick={() => setActiveTab('all')}
                 >
                   <FaBriefcase />
-                  <span>All</span>
-                  <span className="tab-count">{projects.length}</span>
+                  All Projects ({projects.length})
                 </button>
               </div>
 
-              <div className="card-content">
+              <div className="section-content">
                 {filteredProjects.length > 0 ? (
-                  <div className="projects-list">
+                  <div className="project-list">
                     {filteredProjects.map((project) => (
-                      <div key={project.id} className="project-card">
-                        <div className="project-main">
-                          <div className="project-header">
-                            <button
-                              onClick={() => handleProjectClick(project.id, project.project_name)}
-                              className="project-name-btn"
-                            >
-                              <FaBriefcase />
-                              <span>{project.project_name || 'Unnamed Project'}</span>
-                            </button>
-                            
-                            <div className={`project-stage ${getSalesStageColor(project.sales_stage)}`}>
-                              {getSalesStageIcon(project.sales_stage)}
-                              <span>{project.sales_stage || 'No Stage'}</span>
-                            </div>
-                          </div>
-
-                          <div className="project-details">
-                            <div className="project-meta">
-                              {project.product && (
-                                <div className="meta-item">
-                                  <FaSparkles />
-                                  <span>{project.product}</span>
-                                </div>
-                              )}
-                              {project.account_manager && (
-                                <div className="meta-item">
-                                  <FaUsers />
-                                  <span>{project.account_manager}</span>
-                                </div>
-                              )}
-                              {project.due_date && (
-                                <div className="meta-item">
-                                  <FaCalendar />
-                                  <span>{formatDate(project.due_date)}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {project.deal_value && (
-                              <div className="project-value">
-                                <FaDollarSign />
-                                <span>{formatCurrency(project.deal_value)}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {project.scope && (
-                            <div className="project-scope">
-                              <p>{project.scope}</p>
-                            </div>
-                          )}
+                      <div key={project.id} className="project-item">
+                        <div className="project-header">
+                          <button
+                            onClick={() => handleProjectClick(project.id, project.project_name)}
+                            className="project-name"
+                          >
+                            <FaBriefcase />
+                            {project.project_name || project.customer_name || 'Unnamed Project'}
+                          </button>
+                          <span className={`project-stage stage-${project.sales_stage?.toLowerCase().replace(/[\s-]/g, '-')}`}>
+                            {project.sales_stage || 'No Stage'}
+                          </span>
                         </div>
-
+                        <div className="project-details">
+                          <div className="project-meta">
+                            <span className="project-meta-item">
+                              <FaCalendarAlt />
+                              Due: {formatDate(project.due_date)}
+                            </span>
+                            <span className="project-meta-item">
+                              <FaUsers />
+                              AM: {project.account_manager || 'Not assigned'}
+                            </span>
+                          </div>
+                          <div className="project-value">
+                            <FaDollarSign />
+                            {formatCurrency(project.deal_value)}
+                          </div>
+                        </div>
+                        {project.scope && (
+                          <div className="project-scope">
+                            {project.scope}
+                          </div>
+                        )}
                         <div className="project-actions">
                           <button 
-                            className="action-btn edit" 
+                            className="project-action-btn edit" 
                             onClick={() => handleEditProject(project)}
                             title="Edit project"
                           >
                             <FaEdit />
                           </button>
                           <button 
-                            className="action-btn delete" 
+                            className="project-action-btn delete" 
                             onClick={() => handleDeleteProject(project.id)}
                             title="Delete project"
                           >
@@ -1872,52 +1596,42 @@ function CustomerDetails() {
                     <div className="empty-icon">
                       <FaBriefcase />
                     </div>
-                    <h4>No {activeTab === 'all' ? '' : activeTab + ' '}projects found</h4>
-                    <p>
-                      {activeTab === 'active' 
-                        ? 'Start by creating your first project'
-                        : activeTab === 'closed'
-                        ? 'No closed projects yet'
-                        : 'Create your first project for this customer'
-                      }
-                    </p>
-                    {activeTab !== 'closed' && (
-                      <button onClick={handleAddProject} className="btn btn-primary">
-                        <FaPlus />
-                        Create Project
-                      </button>
-                    )}
+                    <h4>No projects found</h4>
+                    <p>Start by creating your first project for this customer</p>
+                    <button onClick={handleAddProject} className="btn-primary">
+                      <FaPlus />
+                      Add First Project
+                    </button>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Right Sidebar */}
-          <div className="content-sidebar">
-            {/* Task Overview Analytics */}
-            <div className="card task-analytics">
-              <div className="card-header">
-                <div className="card-title">
-                  <FaChartLine />
+          {/* Right Column */}
+          <div className="right-column">
+            {/* Task Summary Analytics */}
+            <div className="section-card">
+              <div className="section-header">
+                <div className="section-title">
+                  <FaChartLine className="section-icon" />
                   <h3>Task Overview</h3>
                 </div>
               </div>
-
-              <div className="card-content">
-                <div className="analytics-grid">
-                  <div className="analytics-item completed">
-                    <div className="analytics-icon">
+              <div className="section-content">
+                <div className="task-analytics-grid">
+                  <div className="analytics-item">
+                    <div className="analytics-icon completed">
                       <FaCheckCircle />
                     </div>
                     <div className="analytics-content">
-                      <div className="analytics-value">{getCompletedTasksCount()}</div>
+                      <div className="analytics-value">{tasks.filter(t => t.status === 'Completed').length}</div>
                       <div className="analytics-label">Completed</div>
                     </div>
                   </div>
                   
-                  <div className="analytics-item active">
-                    <div className="analytics-icon">
+                  <div className="analytics-item">
+                    <div className="analytics-icon active">
                       <FaClock />
                     </div>
                     <div className="analytics-content">
@@ -1926,8 +1640,8 @@ function CustomerDetails() {
                     </div>
                   </div>
                   
-                  <div className="analytics-item overdue">
-                    <div className="analytics-icon">
+                  <div className="analytics-item">
+                    <div className="analytics-icon overdue">
                       <FaExclamationTriangle />
                     </div>
                     <div className="analytics-content">
@@ -1937,108 +1651,95 @@ function CustomerDetails() {
                   </div>
                 </div>
 
+                {/* Progress Bar */}
                 {tasks.length > 0 && (
                   <div className="progress-section">
                     <div className="progress-header">
                       <span className="progress-label">Overall Progress</span>
-                      <span className="progress-percentage">{progress}%</span>
+                      <span className="progress-percentage">
+                        {Math.round((tasks.filter(t => t.status === 'Completed').length / tasks.length) * 100)}%
+                      </span>
                     </div>
                     <div className="progress-bar">
                       <div 
                         className="progress-fill" 
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <div className="progress-detail">
-                      {getCompletedTasksCount()} of {tasks.length} tasks completed
+                        style={{ 
+                          width: `${Math.round((tasks.filter(t => t.status === 'Completed').length / tasks.length) * 100)}%` 
+                        }}
+                      ></div>
                     </div>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Active Tasks Section */}
-            <div className="card tasks">
-              <div className="card-header">
-                <div className="card-title">
-                  <FaTasks />
-                  <h3>Recent Tasks</h3>
+            {/* Active Tasks */}
+            <div className="section-card">
+              <div className="section-header">
+                <div className="section-title">
+                  <FaTasks className="section-icon" />
+                  <h3>Active Tasks</h3>
                 </div>
-                <div className="card-actions">
-                  <div className="filter-toggle">
-                    <button 
-                      className={`filter-btn ${taskFilter === 'active' ? 'active' : ''}`}
-                      onClick={() => setTaskFilter('active')}
-                    >
-                      Active
-                    </button>
-                    <button 
-                      className={`filter-btn ${taskFilter === 'all' ? 'active' : ''}`}
-                      onClick={() => setTaskFilter('all')}
-                    >
-                      All
-                    </button>
-                  </div>
+                <div className="filter-toggle">
+                  <button 
+                    className={taskFilter === 'active' ? 'active' : ''}
+                    onClick={() => setTaskFilter('active')}
+                  >
+                    Active
+                  </button>
+                  <button 
+                    className={taskFilter === 'all' ? 'active' : ''}
+                    onClick={() => setTaskFilter('all')}
+                  >
+                    All
+                  </button>
                 </div>
               </div>
-
-              <div className="card-content">
+              <div className="section-content">
                 {filteredTasks.length > 0 ? (
-                  <div className="tasks-list">
-                    {filteredTasks.slice(0, 10).map((task) => (
-                      <div key={task.id} className="task-item">
-                        <div className="task-main">
-                          <div className="task-checkbox-container">
+                  <div className="task-list compact">
+                    {filteredTasks.slice(0, 8).map((task) => (
+                      <div key={task.id} className="task-item compact">
+                        <div className="task-main-content">
+                          <div className="task-header">
                             <input 
                               type="checkbox" 
                               className="task-checkbox"
                               checked={task.status === 'Completed'}
                               onChange={() => handleTaskStatusChange(task.id, task.status)}
                             />
+                            <div className="task-title">{task.description}</div>
+                            <div className="task-status-badge">
+                              {getTaskStatusIcon(task.status)}
+                              <span className={getTaskStatusClass(task.status)}>
+                                {task.status}
+                              </span>
+                            </div>
                           </div>
-                          
-                          <div className="task-content">
-                            <div className="task-header">
-                              <h4 className="task-title">{task.description}</h4>
-                              <div className={`task-status ${getTaskStatusClass(task.status)}`}>
-                                {getTaskStatusIcon(task.status)}
-                                <span>{task.status}</span>
-                              </div>
-                            </div>
-                            
-                            <div className="task-meta">
-                              <div className="task-project">
-                                <FaBriefcase />
-                                <span>{task.projects?.project_name || 'Unknown Project'}</span>
-                              </div>
-                              
-                              {task.due_date && (
-                                <div className={`task-due ${getTaskDueStatus(task.due_date, task.status) || 'normal'}`}>
-                                  <FaCalendar />
-                                  <span>{formatTaskDueDate(task.due_date, task.status)}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {task.notes && (
-                              <div className="task-notes">
-                                <p>{task.notes}</p>
-                              </div>
+                          <div className="task-meta">
+                            <span className="task-project">
+                              <FaBriefcase />
+                              {task.projects?.project_name || 'Unknown Project'}
+                            </span>
+                            {task.due_date && (
+                              <span className={`task-due due-${getTaskDueStatus(task.due_date, task.status) || 'normal'}`}>
+                                <FaCalendarAlt />
+                                {formatTaskDueDate(task.due_date, task.status)}
+                              </span>
                             )}
                           </div>
                         </div>
-
                         <div className="task-actions">
                           <button 
                             onClick={() => handleEditTask(task)}
-                            className="action-btn edit"
+                            className="task-action-btn edit"
                             title="Edit task"
                           >
                             <FaEdit />
                           </button>
                           <button 
                             onClick={() => handleDeleteTask(task.id)}
-                            className="action-btn delete"
+                            className="task-action-btn delete"
                             title="Delete task"
                           >
                             <FaTrash />
@@ -2046,13 +1747,10 @@ function CustomerDetails() {
                         </div>
                       </div>
                     ))}
-                    
-                    {filteredTasks.length > 10 && (
-                      <div className="tasks-view-more">
-                        <p>Showing 10 of {filteredTasks.length} tasks</p>
-                        <button className="btn btn-ghost">
-                          View All Tasks
-                          <FaArrowRight />
+                    {filteredTasks.length > 8 && (
+                      <div className="task-view-more">
+                        <button className="btn-secondary compact">
+                          View All {filteredTasks.length} Tasks
                         </button>
                       </div>
                     )}
@@ -2064,94 +1762,41 @@ function CustomerDetails() {
                     </div>
                     <h4>No {taskFilter === 'active' ? 'active ' : ''}tasks</h4>
                     <p>Tasks are managed from individual project pages</p>
-                    {projects.length > 0 && (
-                      <button 
-                        onClick={() => handleProjectClick(projects[0].id, projects[0].project_name)}
-                        className="btn btn-secondary"
-                      >
-                        Go to Project
-                        <FaArrowRight />
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
             </div>
-
-            {/* Customer Health Card */}
-            <div className="card health-score">
-              <div className="card-header">
-                <div className="card-title">
-                  <FaShieldAlt />
-                  <h3>Customer Health</h3>
-                </div>
-              </div>
-
-              <div className="card-content">
-                <div className="health-overview">
-                  <div className={`health-circle health-${healthScore.color}`}>
-                    <div className="health-percentage">{healthScore.score}%</div>
-                  </div>
-                  <div className="health-details">
-                    <h4 className={`health-status status-${healthScore.color}`}>
-                      {healthScore.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </h4>
-                    <p className="health-description">
-                      {healthScore.status === 'excellent' && 'Everything looks great! Strong engagement and on-track progress.'}
-                      {healthScore.status === 'good' && 'Healthy relationship with room for improvement.'}
-                      {healthScore.status === 'fair' && 'Some areas need attention to maintain momentum.'}
-                      {healthScore.status === 'needs-attention' && 'Multiple issues require immediate focus.'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="health-factors">
-                  <div className="factor-item">
-                    <FaBriefcase />
-                    <span>Active Projects: {getActiveProjectsCount()}</span>
-                  </div>
-                  <div className="factor-item">
-                    <FaCheckCircle />
-                    <span>Task Completion: {progress}%</span>
-                  </div>
-                  <div className="factor-item">
-                    <FaExclamationTriangle />
-                    <span>Overdue Items: {overdueTasksCount}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Modals */}
       {customer && (
-        <>
-          <StakeholderModal
-            isOpen={showStakeholderModal}
-            onClose={() => {
-              setShowStakeholderModal(false);
-              setEditingStakeholder(null);
-              setEditingStakeholderIndex(null);
-            }}
-            onSave={handleStakeholderSaved}
-            customerName={customer.customer_name}
-            editingStakeholder={editingStakeholder}
-            editingIndex={editingStakeholderIndex}
-          />
+        <StakeholderModal
+          isOpen={showStakeholderModal}
+          onClose={() => {
+            setShowStakeholderModal(false);
+            setEditingStakeholder(null);
+            setEditingStakeholderIndex(null);
+          }}
+          onSave={handleStakeholderSaved}
+          customerName={customer.customer_name}
+          editingStakeholder={editingStakeholder}
+          editingIndex={editingStakeholderIndex}
+        />
+      )}
 
-          <ProjectModal
-            isOpen={showProjectModal}
-            onClose={() => {
-              setShowProjectModal(false);
-              setEditingProject(null);
-            }}
-            onSave={handleProjectSaved}
-            customerName={customer.customer_name}
-            editingProject={editingProject}
-          />
-        </>
+      {customer && (
+        <ProjectModal
+          isOpen={showProjectModal}
+          onClose={() => {
+            setShowProjectModal(false);
+            setEditingProject(null);
+          }}
+          onSave={handleProjectSaved}
+          customerName={customer.customer_name}
+          editingProject={editingProject}
+        />
       )}
 
       <TaskModal
