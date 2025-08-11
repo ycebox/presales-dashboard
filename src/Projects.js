@@ -41,7 +41,6 @@ function Projects() {
     account_manager: '',
     country: '',
     customer_type: 'Existing',
-    email: '',
     health_score: 7,
     notes: ''
   });
@@ -202,7 +201,6 @@ function Projects() {
       account_manager: '',
       country: '',
       customer_type: 'Existing',
-      email: '',
       health_score: 7,
       notes: ''
     });
@@ -278,7 +276,6 @@ function Projects() {
       account_manager: customer.account_manager || '',
       country: customer.country || '',
       customer_type: customer.customer_type || 'Existing',
-      email: customer.email || '',
       health_score: customer.health_score || 7,
       notes: customer.notes || ''
     });
@@ -535,7 +532,7 @@ function Projects() {
                         <div className="customer-info">
                           <div className="customer-name">{customer.customer_name}</div>
                           <div className="customer-email">
-                            {customer.email || (customer.customer_type === 'Internal Initiative' ? 'Internal' : 'External Client')}
+                            {customer.customer_type === 'Internal Initiative' ? 'Internal' : 'External Client'}
                           </div>
                         </div>
                       </div>
@@ -667,18 +664,6 @@ function Projects() {
                       <option key={country} value={country}>{country}</option>
                     ))}
                   </select>
-                </div>
-                
-                <div className="form-group-compact">
-                  <label className="form-label-compact">Email</label>
-                  <input 
-                    name="email" 
-                    type="email"
-                    value={newCustomer.email} 
-                    onChange={handleCustomerChange}
-                    className="form-input-compact"
-                    placeholder="contact@acme.com"
-                  />
                 </div>
               </div>
             </div>
