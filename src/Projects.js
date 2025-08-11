@@ -16,7 +16,8 @@ import {
   MoreHorizontal,
   Check,
   AlertTriangle,
-  Clock
+  Clock,
+  Activity
 } from 'lucide-react';
 import './Projects.css';
 
@@ -40,14 +41,8 @@ function Projects() {
     account_manager: '',
     country: '',
     customer_type: 'Existing',
-    year_first_closed: '',
-    company_size: '',
-    annual_revenue: '',
-    technical_complexity: 'Medium',
-    relationship_strength: 'Medium',
+    email: '',
     health_score: 7,
-    key_stakeholders: [],
-    competitors: [],
     notes: ''
   });
 
@@ -58,18 +53,6 @@ function Projects() {
     "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands", "South Korea", 
     "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
   ].sort();
-
-  const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
-  const salesStages = [
-    'Closed-Cancelled/Hold', 'Closed-Lost', 'Closed-Won', 'Contracting', 'Demo', 
-    'Discovery', 'PoC', 'RFI', 'RFP', 'SoW'
-  ].sort();
-  const companySizes = [
-    'Startup (1-10)', 'Small (11-50)', 'Medium (51-200)', 'Large (201-1000)', 'Enterprise (1000+)'
-  ];
-  const revenueRanges = [
-    'Under $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M', '$100M - $500M', '$500M+'
-  ];
 
   useEffect(() => {
     fetchCustomers();
@@ -198,31 +181,19 @@ function Projects() {
   const handleCustomerChange = (e) => {
     const { name, value, type } = e.target;
     
-    if (name === 'key_stakeholders' || name === 'competitors') {
-      const arrayValue = value.split(',').map(item => item.trim()).filter(item => item);
-      setNewCustomer(prev => ({ ...prev, [name]: arrayValue }));
-    } else if (type === 'number') {
+    if (type === 'number') {
       setNewCustomer(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
     } else {
       setNewCustomer(prev => ({ ...prev, [name]: value }));
     }
   };
 
-  const handleProjectChange = (e) => {
-    const { name, value } = e.target;
-    setNewProject(prev => ({ ...prev, [name]: value }));
+  const handleCustomerTypeChange = (type) => {
+    setNewCustomer(prev => ({ ...prev, customer_type: type }));
+  };
 
-    if (name === 'customer_id' && value) {
-      const selectedCustomer = customers.find(c => c.id === parseInt(value));
-      if (selectedCustomer) {
-        setNewProject(prev => ({
-          ...prev,
-          customer_name: selectedCustomer.customer_name,
-          country: selectedCustomer.country,
-          account_manager: selectedCustomer.account_manager
-        }));
-      }
-    }
+  const handleHealthScoreChange = (e) => {
+    setNewCustomer(prev => ({ ...prev, health_score: parseInt(e.target.value) }));
   };
 
   const resetCustomerForm = () => {
@@ -231,32 +202,11 @@ function Projects() {
       account_manager: '',
       country: '',
       customer_type: 'Existing',
-      year_first_closed: '',
-      company_size: '',
-      annual_revenue: '',
-      technical_complexity: 'Medium',
-      relationship_strength: 'Medium',
+      email: '',
       health_score: 7,
-      key_stakeholders: [],
-      competitors: [],
       notes: ''
     });
     setEditingCustomer(null);
-  };
-
-  const resetProjectForm = () => {
-    setNewProject({
-      customer_id: '',
-      customer_name: '',
-      country: '',
-      account_manager: '',
-      sales_stage: '',
-      product: '',
-      deal_value: '',
-      backup_presales: '',
-      remarks: '',
-      is_archived: 'false'
-    });
   };
 
   const handleAddCustomer = async (e) => {
@@ -303,10 +253,6 @@ function Projects() {
     }
   };
 
-  const handleAddProject = async (e) => {
-    // Remove this function since we're removing project modal
-  };
-
   const handleDeleteCustomer = async (id) => {
     const customer = customers.find(c => c.id === id);
     if (!window.confirm(`Are you sure you want to delete "${customer?.customer_name}"? This action cannot be undone.`)) {
@@ -328,9 +274,13 @@ function Projects() {
   const handleEditCustomer = (customer) => {
     setEditingCustomer(customer);
     setNewCustomer({
-      ...customer,
-      key_stakeholders: customer.key_stakeholders || [],
-      competitors: customer.competitors || []
+      customer_name: customer.customer_name || '',
+      account_manager: customer.account_manager || '',
+      country: customer.country || '',
+      customer_type: customer.customer_type || 'Existing',
+      email: customer.email || '',
+      health_score: customer.health_score || 7,
+      notes: customer.notes || ''
     });
     setShowCustomerModal(true);
   };
@@ -346,91 +296,25 @@ function Projects() {
     return 'poor';
   };
 
+  const getHealthScoreLabel = (score) => {
+    if (score >= 8) return 'Excellent';
+    if (score >= 6) return 'Good';
+    if (score >= 4) return 'Fair';
+    return 'Poor';
+  };
+
   const Modal = ({ isOpen, onClose, children }) => {
     if (!isOpen) return null;
     
     return ReactDOM.createPortal(
-      <div className="modal-backdrop" onClick={onClose}>
-        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-backdrop-compact" onClick={onClose}>
+        <div className="modal-content-compact" onClick={(e) => e.stopPropagation()}>
           {children}
         </div>
       </div>,
       document.body
     );
   };
-
-  const CustomerCard = ({ customer }) => (
-    <div 
-      className={`customer-card ${selectedCustomers.has(customer.id) ? 'selected' : ''}`}
-      onClick={() => handleCustomerClick(customer.id)}
-    >
-      <input
-        type="checkbox"
-        className="customer-checkbox"
-        checked={selectedCustomers.has(customer.id)}
-        onChange={(e) => {
-          e.stopPropagation();
-          handleCustomerSelect(customer.id);
-        }}
-      />
-      
-      <div className="customer-card-header">
-        <div>
-          <h3 className="customer-name">{customer.customer_name}</h3>
-          <span className={`customer-type-badge ${customer.customer_type?.toLowerCase().replace(' ', '-') || 'new'}`}>
-            {customer.customer_type || 'New'}
-          </span>
-        </div>
-        
-        <div className="customer-actions">
-          <button
-            className="customer-action-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEditCustomer(customer);
-            }}
-            title="Edit customer"
-          >
-            <Edit3 size={12} />
-          </button>
-          <button
-            className="customer-action-btn delete"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteCustomer(customer.id);
-            }}
-            title="Delete customer"
-          >
-            <Trash2 size={12} />
-          </button>
-        </div>
-      </div>
-
-      <div className="customer-details">
-        <div className="customer-location">
-          <Globe size={10} className="location-icon" />
-          <span>{customer.country}</span>
-        </div>
-        <div className="customer-manager">
-          <User size={10} className="manager-icon" />
-          <span>{customer.account_manager}</span>
-        </div>
-      </div>
-
-      <div className="customer-stats">
-        <div className="stat-item">
-          <Building2 size={10} />
-          <span>0 projects</span>
-        </div>
-        {customer.health_score && (
-          <div className="health-score">
-            <div className={`health-dot ${getHealthScoreColor(customer.health_score)}`}></div>
-            <span>Health: {customer.health_score}/10</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
 
   const LoadingSkeleton = () => (
     <div className="loading-container">
@@ -651,7 +535,7 @@ function Projects() {
                         <div className="customer-info">
                           <div className="customer-name">{customer.customer_name}</div>
                           <div className="customer-email">
-                            {customer.customer_type === 'Internal Initiative' ? 'Internal' : 'External Client'}
+                            {customer.email || (customer.customer_type === 'Internal Initiative' ? 'Internal' : 'External Client')}
                           </div>
                         </div>
                       </div>
@@ -713,164 +597,160 @@ function Projects() {
         </div>
       </section>
 
-      {/* Simplified Customer Modal */}
+      {/* Compact Customer Modal */}
       <Modal isOpen={showCustomerModal} onClose={() => { setShowCustomerModal(false); resetCustomerForm(); }}>
-        <div className="modal-header">
-          <h3 className="modal-title">
+        <div className="modal-header-compact">
+          <h3 className="modal-title-compact">
+            <UserPlus size={20} className="title-icon-compact" />
             {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
           </h3>
           <button 
             onClick={() => { setShowCustomerModal(false); resetCustomerForm(); }}
-            className="modal-close-button"
+            className="modal-close-button-compact"
           >
             <X size={20} />
           </button>
         </div>
         
-        <form onSubmit={editingCustomer ? handleUpdateCustomer : handleAddCustomer} className="modal-form">
-          <div className="form-grid">
-            {/* Row 1 */}
-            <div className="form-group">
-              <label className="form-label required">Customer Name</label>
-              <input 
-                name="customer_name" 
-                value={newCustomer.customer_name} 
-                onChange={handleCustomerChange} 
-                required 
-                className="form-input"
-                placeholder="Enter customer name"
-              />
-            </div>
+        <form onSubmit={editingCustomer ? handleUpdateCustomer : handleAddCustomer} className="modal-form-compact">
+          <div className="quick-info-compact">
+            <p className="quick-info-text-compact">
+              Add essential customer details. Additional information can be updated later from the customer profile.
+            </p>
+          </div>
+
+          <div className="form-section-compact">
+            <h4 className="section-title-compact">
+              <User size={14} className="section-icon-compact" />
+              Basic Information
+            </h4>
             
-            <div className="form-group">
-              <label className="form-label required">Account Manager</label>
-              <input 
-                name="account_manager" 
-                value={newCustomer.account_manager} 
-                onChange={handleCustomerChange} 
-                required 
-                className="form-input"
-                placeholder="Enter account manager"
-              />
-            </div>
-            
-            {/* Row 2 */}
-            <div className="form-group">
-              <label className="form-label required">Country</label>
-              <select 
-                name="country" 
-                value={newCustomer.country} 
-                onChange={handleCustomerChange} 
-                required
-                className="form-select"
-              >
-                <option value="">Select Country</option>
-                {asiaPacificCountries.map(country => (
-                  <option key={country} value={country}>{country}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label required">Customer Type</label>
-              <select 
-                name="customer_type" 
-                value={newCustomer.customer_type} 
-                onChange={handleCustomerChange}
-                required
-                className="form-select"
-              >
-                <option value="New">New Customer</option>
-                <option value="Existing">Existing Customer</option>
-                <option value="Internal Initiative">Internal Initiative</option>
-              </select>
-            </div>
-            
-            {/* Row 3 - Optional fields */}
-            <div className="form-group">
-              <label className="form-label">Email Address</label>
-              <input 
-                name="email" 
-                type="email"
-                value={newCustomer.email || ''} 
-                onChange={handleCustomerChange}
-                className="form-input"
-                placeholder="customer@company.com"
-              />
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">Phone Number</label>
-              <input 
-                name="phone" 
-                value={newCustomer.phone || ''} 
-                onChange={handleCustomerChange}
-                className="form-input"
-                placeholder="+65 1234 5678"
-              />
-            </div>
-            
-            {/* Row 4 - Company details for external customers only */}
-            {newCustomer.customer_type !== 'Internal Initiative' && (
-              <>
-                <div className="form-group">
-                  <label className="form-label">Company Size</label>
+            <div className="form-grid-compact">
+              <div className="form-row-compact">
+                <div className="form-group-compact">
+                  <label className="form-label-compact required">Customer Name</label>
+                  <input 
+                    name="customer_name" 
+                    value={newCustomer.customer_name} 
+                    onChange={handleCustomerChange} 
+                    required 
+                    className="form-input-compact"
+                    placeholder="Acme Corporation"
+                  />
+                </div>
+                
+                <div className="form-group-compact">
+                  <label className="form-label-compact required">Account Manager</label>
+                  <input 
+                    name="account_manager" 
+                    value={newCustomer.account_manager} 
+                    onChange={handleCustomerChange} 
+                    required 
+                    className="form-input-compact"
+                    placeholder="John Smith"
+                  />
+                </div>
+              </div>
+              
+              <div className="form-row-compact">
+                <div className="form-group-compact">
+                  <label className="form-label-compact required">Country</label>
                   <select 
-                    name="company_size" 
-                    value={newCustomer.company_size} 
-                    onChange={handleCustomerChange}
-                    className="form-select"
+                    name="country" 
+                    value={newCustomer.country} 
+                    onChange={handleCustomerChange} 
+                    required
+                    className="form-select-compact"
                   >
-                    <option value="">Select Size</option>
-                    {companySizes.map(size => (
-                      <option key={size} value={size}>{size}</option>
+                    <option value="">Select Country</option>
+                    {asiaPacificCountries.map(country => (
+                      <option key={country} value={country}>{country}</option>
                     ))}
                   </select>
                 </div>
                 
-                <div className="form-group">
-                  <label className="form-label">Health Score (1-10)</label>
+                <div className="form-group-compact">
+                  <label className="form-label-compact">Email</label>
                   <input 
-                    name="health_score" 
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={newCustomer.health_score} 
+                    name="email" 
+                    type="email"
+                    value={newCustomer.email} 
                     onChange={handleCustomerChange}
-                    className="form-input"
-                    placeholder="7"
+                    className="form-input-compact"
+                    placeholder="contact@acme.com"
                   />
                 </div>
-              </>
-            )}
-            
-            {/* Row 5 - Notes (full width) */}
-            <div className="form-group full-width">
-              <label className="form-label">Notes</label>
-              <textarea 
-                name="notes" 
-                value={newCustomer.notes} 
-                onChange={handleCustomerChange}
-                rows="2"
-                className="form-textarea"
-                placeholder="Additional information or special requirements..."
-              />
+              </div>
             </div>
           </div>
-          
-          <div className="modal-actions">
-            <button 
-              type="button" 
-              onClick={() => { setShowCustomerModal(false); resetCustomerForm(); }}
-              className="button-cancel"
-            >
-              Cancel
-            </button>
-            <button type="submit" className="button-submit">
-              {editingCustomer ? 'Update Customer' : 'Add Customer'}
-            </button>
+
+          <div className="form-section-compact">
+            <h4 className="section-title-compact">
+              <Building2 size={14} className="section-icon-compact" />
+              Customer Type
+            </h4>
+            
+            <div className="type-pills-compact">
+              {['Existing', 'New', 'Internal Initiative'].map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  className={`type-pill-compact ${newCustomer.customer_type === type ? 'active' : ''}`}
+                  onClick={() => handleCustomerTypeChange(type)}
+                >
+                  {type === 'Internal Initiative' ? 'Internal' : type}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="form-section-compact">
+            <h4 className="section-title-compact">
+              <Activity size={14} className="section-icon-compact" />
+              Health Score
+            </h4>
+            
+            <div className="health-score-container-compact">
+              <input 
+                type="range" 
+                className="health-score-slider-compact" 
+                min="1" 
+                max="10" 
+                value={newCustomer.health_score}
+                onChange={handleHealthScoreChange}
+              />
+              <div className="health-score-display-compact">
+                <span className="health-score-value-compact">Score: {newCustomer.health_score}/10</span>
+                <span className={`health-score-label-compact ${getHealthScoreColor(newCustomer.health_score)}`}>
+                  {getHealthScoreLabel(newCustomer.health_score)}
+                </span>
+              </div>
+              <div className="health-labels-compact">
+                <span>Poor</span>
+                <span>Fair</span>
+                <span>Good</span>
+                <span>Excellent</span>
+              </div>
+            </div>
           </div>
         </form>
+        
+        <div className="modal-actions-compact">
+          <button 
+            type="button" 
+            onClick={() => { setShowCustomerModal(false); resetCustomerForm(); }}
+            className="button-cancel-compact"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            onClick={editingCustomer ? handleUpdateCustomer : handleAddCustomer}
+            className="button-submit-compact"
+          >
+            {editingCustomer ? 'Update Customer' : 'Add Customer'}
+          </button>
+        </div>
       </Modal>
     </div>
   );
