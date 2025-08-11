@@ -1,603 +1,13 @@
-// CustomerDetails.js - Enhanced version with project edit functionality
+// CustomerDetails.js - Modern Minimalist Version
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './CustomerDetails.css';
 import {
-  FaHome, FaUsers, FaEdit, FaPlus, FaBriefcase, FaTrash, FaSave, FaTimes,
-  FaBuilding, FaGlobe, FaIndustry, FaCalendarAlt, FaChartLine, FaCheckCircle,
-  FaClock, FaExclamationTriangle, FaEnvelope, FaPhone, FaDollarSign, FaTasks
-} from 'react-icons/fa';
-
-function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeholder = null, editingIndex = null }) {
-  const [newStakeholder, setNewStakeholder] = useState({
-    name: '',
-    role: '',
-    email: '',
-    phone: ''
-  });
-
-  useEffect(() => {
-    if (editingStakeholder) {
-      setNewStakeholder({
-        name: editingStakeholder.name || '',
-        role: editingStakeholder.role || '',
-        email: editingStakeholder.email || '',
-        phone: editingStakeholder.phone || ''
-      });
-    } else {
-      clearForm();
-    }
-  }, [editingStakeholder, isOpen]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setNewStakeholder(prev => ({ ...prev, [name]: value }));
-  };
-
-  const clearForm = () => {
-    setNewStakeholder({
-      name: '',
-      role: '',
-      email: '',
-      phone: ''
-    });
-  };
-
-  const handleClose = () => {
-    clearForm();
-    onClose();
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!newStakeholder.name) {
-      alert('Stakeholder name is required');
-      return;
-    }
-
-    const stakeholderInfo = {
-      name: newStakeholder.name,
-      role: newStakeholder.role || '',
-      email: newStakeholder.email || '',
-      phone: newStakeholder.phone || ''
-    };
-
-    onSave(stakeholderInfo, editingIndex);
-    clearForm();
-    onClose();
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-backdrop" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>{editingStakeholder ? 'Edit Stakeholder' : 'Add New Stakeholder'}</h3>
-          <button className="modal-close-btn" onClick={handleClose}>
-            <FaTimes />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="modern-form">
-          <div className="form-group full-width">
-            <label>
-              <FaUsers className="field-icon" />
-              Name *
-              <input 
-                name="name" 
-                value={newStakeholder.name} 
-                onChange={handleChange}
-                placeholder="Enter stakeholder name"
-                required
-              />
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label>
-              <FaBriefcase className="field-icon" />
-              Role/Title
-              <input 
-                name="role" 
-                value={newStakeholder.role} 
-                onChange={handleChange}
-                placeholder="e.g., CTO, Project Manager"
-              />
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label>
-              <FaEnvelope className="field-icon" />
-              Email
-              <input 
-                name="email" 
-                type="email"
-                value={newStakeholder.email} 
-                onChange={handleChange}
-                placeholder="email@company.com"
-              />
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label>
-              <FaPhone className="field-icon" />
-              Phone
-              <input 
-                name="phone" 
-                type="tel"
-                value={newStakeholder.phone} 
-                onChange={handleChange}
-                placeholder="+65 1234 5678"
-              />
-            </label>
-          </div>
-          
-          <div className="modal-actions">
-            <button type="button" onClick={handleClose} className="btn-secondary">
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary">
-              <FaSave />
-              {editingStakeholder ? 'Update Stakeholder' : 'Add Stakeholder'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function ProjectModal({ isOpen, onClose, onSave, customerName, editingProject = null }) {
-  const [projectData, setProjectData] = useState({
-    customer_name: customerName || '',
-    project_name: '',
-    account_manager: '',
-    scope: '',
-    deal_value: '',
-    product: '',
-    backup_presales: '',
-    sales_stage: '',
-    remarks: '',
-    due_date: '',
-    project_type: ''
-  });
-
-  useEffect(() => {
-    if (editingProject) {
-      // Populate form with existing project data
-      setProjectData({
-        customer_name: editingProject.customer_name || customerName || '',
-        project_name: editingProject.project_name || '',
-        account_manager: editingProject.account_manager || '',
-        scope: editingProject.scope || '',
-        deal_value: editingProject.deal_value || '',
-        product: editingProject.product || '',
-        backup_presales: editingProject.backup_presales || '',
-        sales_stage: editingProject.sales_stage || '',
-        remarks: editingProject.remarks || '',
-        due_date: editingProject.due_date || '',
-        project_type: editingProject.project_type || ''
-      });
-    } else if (customerName) {
-      // Reset form for new project
-      setProjectData({
-        customer_name: customerName,
-        project_name: '',
-        account_manager: '',
-        scope: '',
-        deal_value: '',
-        product: '',
-        backup_presales: '',
-        sales_stage: '',
-        remarks: '',
-        due_date: '',
-        project_type: ''
-      });
-    }
-  }, [customerName, editingProject, isOpen]);
-
-  const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
-  const salesStages = [
-    'Discovery', 'Demo', 'PoC', 'RFI', 'RFP', 'SoW', 
-    'Contracting', 'Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold'
-  ];
-  const projectTypes = ['RFP', 'CR'].sort();
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setProjectData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const clearForm = () => {
-    setProjectData({
-      customer_name: customerName || '',
-      project_name: '',
-      account_manager: '',
-      scope: '',
-      deal_value: '',
-      product: '',
-      backup_presales: '',
-      sales_stage: '',
-      remarks: '',
-      due_date: '',
-      project_type: ''
-    });
-  };
-
-  const handleClose = () => {
-    if (!editingProject) {
-      clearForm();
-    }
-    onClose();
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!customerName && !projectData.customer_name) {
-      alert('Customer name is required');
-      return;
-    }
-
-    if (!projectData.project_name?.trim()) {
-      alert('Project name is required');
-      return;
-    }
-
-    if (!projectData.sales_stage) {
-      alert('Sales stage is required');
-      return;
-    }
-
-    if (!projectData.product) {
-      alert('Product is required');
-      return;
-    }
-
-    try {
-      const submissionData = {
-        customer_name: customerName || projectData.customer_name,
-        project_name: projectData.project_name.trim(),
-        account_manager: projectData.account_manager?.trim() || null,
-        scope: projectData.scope?.trim() || null,
-        deal_value: projectData.deal_value ? parseFloat(projectData.deal_value) : null,
-        product: projectData.product,
-        backup_presales: projectData.backup_presales?.trim() || null,
-        sales_stage: projectData.sales_stage,
-        remarks: projectData.remarks?.trim() || null,
-        due_date: projectData.due_date || null,
-        project_type: projectData.project_type || null
-      };
-
-      let result;
-      
-      if (editingProject) {
-        // Update existing project
-        const { data, error } = await supabase
-          .from('projects')
-          .update(submissionData)
-          .eq('id', editingProject.id)
-          .select();
-        
-        if (error) throw error;
-        result = { data, isEdit: true };
-      } else {
-        // Create new project
-        submissionData.created_at = new Date().toISOString().split('T')[0];
-        
-        const { data, error } = await supabase
-          .from('projects')
-          .insert([submissionData])
-          .select();
-        
-        if (error) throw error;
-        result = { data, isEdit: false };
-      }
-      
-      if (result.data && result.data.length > 0) {
-        onSave(result.data[0], result.isEdit);
-        if (!editingProject) {
-          clearForm();
-        }
-        onClose();
-      }
-    } catch (error) {
-      console.error('Error saving project:', error);
-      alert(`Error ${editingProject ? 'updating' : 'adding'} project: ${error.message}`);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-backdrop" onClick={handleClose}>
-      <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>
-            {editingProject 
-              ? `Edit Project: ${editingProject.project_name || 'Unnamed Project'}` 
-              : `Add New Project for ${customerName}`
-            }
-          </h3>
-          <button className="modal-close-btn" onClick={handleClose}>
-            <FaTimes />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="modern-form">
-          <div className="form-group full-width">
-            <label>
-              <FaBriefcase className="field-icon" />
-              Project Name *
-              <input 
-                name="project_name" 
-                value={projectData.project_name} 
-                onChange={handleChange}
-                placeholder="Enter project name"
-                required
-              />
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label>
-              <FaUsers className="field-icon" />
-              Account Manager
-              <input 
-                name="account_manager" 
-                value={projectData.account_manager} 
-                onChange={handleChange}
-                placeholder="Account manager name"
-              />
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label>
-              <FaChartLine className="field-icon" />
-              Sales Stage *
-              <select name="sales_stage" value={projectData.sales_stage} onChange={handleChange} required>
-                <option value="">Select Stage</option>
-                {salesStages.map((stage, i) => (
-                  <option key={i} value={stage}>{stage}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          
-          <div className="form-group">
-            <label>
-              <FaBuilding className="field-icon" />
-              Product *
-              <select name="product" value={projectData.product} onChange={handleChange} required>
-                <option value="">Select Product</option>
-                {products.map((product, i) => (
-                  <option key={i} value={product}>{product}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label>
-              <FaTasks className="field-icon" />
-              Project Type
-              <select name="project_type" value={projectData.project_type} onChange={handleChange}>
-                <option value="">Select Type</option>
-                {projectTypes.map((type, i) => (
-                  <option key={i} value={type}>{type}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          
-          <div className="form-group">
-            <label>
-              <FaDollarSign className="field-icon" />
-              Deal Value
-              <input 
-                name="deal_value" 
-                type="number" 
-                step="0.01"
-                value={projectData.deal_value} 
-                onChange={handleChange}
-                placeholder="Enter deal value"
-              />
-            </label>
-          </div>
-          
-          <div className="form-group">
-            <label>
-              <FaUsers className="field-icon" />
-              Backup Presales
-              <input 
-                name="backup_presales" 
-                value={projectData.backup_presales} 
-                onChange={handleChange}
-                placeholder="Backup presales contact"
-              />
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label>
-              <FaCalendarAlt className="field-icon" />
-              Expected Closing Date
-              <input 
-                name="due_date" 
-                type="date"
-                value={projectData.due_date} 
-                onChange={handleChange}
-              />
-            </label>
-          </div>
-          
-          <div className="form-group full-width">
-            <label>
-              <FaEdit className="field-icon" />
-              Scope
-              <textarea 
-                name="scope" 
-                value={projectData.scope} 
-                onChange={handleChange}
-                rows="3"
-                placeholder="Project scope and objectives"
-              />
-            </label>
-          </div>
-          
-          <div className="form-group full-width">
-            <label>
-              <FaEdit className="field-icon" />
-              Remarks
-              <textarea 
-                name="remarks" 
-                value={projectData.remarks} 
-                onChange={handleChange}
-                rows="3"
-                placeholder="Project remarks or notes"
-              />
-            </label>
-          </div>
-          
-          <div className="modal-actions">
-            <button type="button" onClick={handleClose} className="btn-secondary">
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary">
-              <FaSave />
-              {editingProject ? 'Update Project' : 'Save Project'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
-  const [taskData, setTaskData] = useState({
-    description: '',
-    status: 'Not Started',
-    due_date: '',
-    notes: ''
-  });
-
-  useEffect(() => {
-    if (editingTask) {
-      setTaskData({
-        description: editingTask.description || '',
-        status: editingTask.status || 'Not Started',
-        due_date: editingTask.due_date || '',
-        notes: editingTask.notes || ''
-      });
-    } else {
-      setTaskData({
-        description: '',
-        status: 'Not Started',
-        due_date: '',
-        notes: ''
-      });
-    }
-  }, [editingTask, isOpen]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setTaskData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!taskData.description.trim()) {
-      alert('Task description is required');
-      return;
-    }
-    onSave(taskData);
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>{editingTask ? 'Edit Task' : 'Add New Task'}</h3>
-          <button className="modal-close-btn" onClick={onClose}>
-            <FaTimes />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="modern-form">
-          <div className="form-group full-width">
-            <label>
-              <FaTasks className="field-icon" />
-              Task Description *
-              <input 
-                name="description" 
-                value={taskData.description} 
-                onChange={handleChange}
-                placeholder="Enter task description"
-                required
-              />
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label>
-              <FaChartLine className="field-icon" />
-              Status
-              <select name="status" value={taskData.status} onChange={handleChange}>
-                <option value="Not Started">Not Started</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled/On-hold">Cancelled/On-hold</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label>
-              <FaCalendarAlt className="field-icon" />
-              Due Date
-              <input 
-                name="due_date" 
-                type="date"
-                value={taskData.due_date} 
-                onChange={handleChange}
-              />
-            </label>
-          </div>
-
-          <div className="form-group full-width">
-            <label>
-              <FaEdit className="field-icon" />
-              Notes
-              <textarea 
-                name="notes" 
-                value={taskData.notes} 
-                onChange={handleChange}
-                rows="3"
-                placeholder="Additional notes or details"
-              />
-            </label>
-          </div>
-          
-          <div className="modal-actions">
-            <button type="button" onClick={onClose} className="btn-secondary">
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary">
-              <FaSave />
-              {editingTask ? 'Update Task' : 'Add Task'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
+  ArrowLeft, Edit3, Save, X, Plus, Building2, Users, MapPin, 
+  Calendar, DollarSign, Briefcase, CheckCircle, Clock, AlertTriangle,
+  Mail, Phone, Trash2, MoreHorizontal, TrendingUp, Target
+} from 'lucide-react';
 
 function CustomerDetails() {
   const { customerId } = useParams();
@@ -607,23 +17,23 @@ function CustomerDetails() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Modal states
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showStakeholderModal, setShowStakeholderModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingStakeholder, setEditingStakeholder] = useState(null);
   const [editingStakeholderIndex, setEditingStakeholderIndex] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
-  const [editingProject, setEditingProject] = useState(null); // New state for project editing
+  const [editingProject, setEditingProject] = useState(null);
   
   // Inline editing states
   const [isEditing, setIsEditing] = useState(false);
   const [editCustomer, setEditCustomer] = useState({});
   const [saving, setSaving] = useState(false);
   
-  // Project filtering state
+  // Filter states
   const [activeTab, setActiveTab] = useState('active');
-  
-  // Task filtering state
   const [taskFilter, setTaskFilter] = useState('active');
 
   useEffect(() => {
@@ -732,73 +142,6 @@ function CustomerDetails() {
     }
   };
 
-  // Task handlers
-  const handleTaskStatusChange = async (taskId, currentStatus) => {
-    try {
-      const newStatus = currentStatus === 'Completed' ? 'Not Started' : 'Completed';
-      
-      const { error } = await supabase
-        .from('project_tasks')
-        .update({ status: newStatus })
-        .eq('id', taskId);
-
-      if (error) throw error;
-      
-      await fetchCustomerTasks();
-    } catch (error) {
-      console.error('Error updating task status:', error);
-      alert('Error updating task status: ' + error.message);
-    }
-  };
-
-  const handleEditTask = (task) => {
-    setEditingTask(task);
-    setShowTaskModal(true);
-  };
-
-  const handleTaskSaved = async (taskData) => {
-    try {
-      if (editingTask) {
-        const { error } = await supabase
-          .from('project_tasks')
-          .update(taskData)
-          .eq('id', editingTask.id);
-
-        if (error) throw error;
-        alert('Task updated successfully!');
-      } else {
-        alert('Task creation not available from customer view. Please use project details.');
-        return;
-      }
-
-      setShowTaskModal(false);
-      setEditingTask(null);
-      await fetchCustomerTasks();
-    } catch (error) {
-      console.error('Error saving task:', error);
-      alert('Error saving task: ' + error.message);
-    }
-  };
-
-  const handleDeleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('project_tasks')
-        .delete()
-        .eq('id', taskId);
-
-      if (error) throw error;
-      
-      alert('Task deleted successfully!');
-      await fetchCustomerTasks();
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      alert('Error deleting task: ' + error.message);
-    }
-  };
-
   // Inline editing handlers
   const handleEditToggle = () => {
     if (isEditing) {
@@ -843,7 +186,6 @@ function CustomerDetails() {
         setCustomer(data[0]);
         setEditCustomer(data[0]);
         setIsEditing(false);
-        alert('Customer updated successfully!');
       }
     } catch (error) {
       console.error('Error updating customer:', error);
@@ -853,6 +195,7 @@ function CustomerDetails() {
     }
   };
 
+  // Stakeholder handlers
   const handleAddStakeholder = () => {
     setEditingStakeholder(null);
     setEditingStakeholderIndex(null);
@@ -888,7 +231,6 @@ function CustomerDetails() {
       if (data && data.length > 0) {
         setCustomer(data[0]);
         setEditCustomer(data[0]);
-        alert(editingIndex !== null ? 'Stakeholder updated successfully!' : 'Stakeholder added successfully!');
       }
     } catch (error) {
       console.error('Error saving stakeholder:', error);
@@ -914,7 +256,6 @@ function CustomerDetails() {
       if (data && data.length > 0) {
         setCustomer(data[0]);
         setEditCustomer(data[0]);
-        alert('Stakeholder removed successfully!');
       }
     } catch (error) {
       console.error('Error removing stakeholder:', error);
@@ -928,7 +269,7 @@ function CustomerDetails() {
       alert('Customer information not loaded. Please refresh the page.');
       return;
     }
-    setEditingProject(null); // Ensure we're in add mode
+    setEditingProject(null);
     setShowProjectModal(true);
   };
 
@@ -939,18 +280,12 @@ function CustomerDetails() {
 
   const handleProjectSaved = (projectData, isEdit = false) => {
     if (isEdit) {
-      // Update existing project in state
       setProjects(prev => prev.map(p => 
         p.id === projectData.id ? projectData : p
       ));
-      alert('Project updated successfully!');
     } else {
-      // Add new project to state
       setProjects(prev => [projectData, ...prev]);
-      alert('Project added successfully!');
     }
-    
-    // Reset editing state
     setEditingProject(null);
   };
 
@@ -971,14 +306,75 @@ function CustomerDetails() {
       if (error) throw error;
       
       setProjects(prev => prev.filter(p => p.id !== projectId));
-      alert('Project deleted successfully!');
     } catch (error) {
       console.error('Error deleting project:', error);
       alert('Error deleting project: ' + error.message);
     }
   };
 
-  // Helper function to parse stakeholder data
+  // Task handlers
+  const handleTaskStatusChange = async (taskId, currentStatus) => {
+    try {
+      const newStatus = currentStatus === 'Completed' ? 'Not Started' : 'Completed';
+      
+      const { error } = await supabase
+        .from('project_tasks')
+        .update({ status: newStatus })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      await fetchCustomerTasks();
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      alert('Error updating task status: ' + error.message);
+    }
+  };
+
+  const handleEditTask = (task) => {
+    setEditingTask(task);
+    setShowTaskModal(true);
+  };
+
+  const handleTaskSaved = async (taskData) => {
+    try {
+      if (editingTask) {
+        const { error } = await supabase
+          .from('project_tasks')
+          .update(taskData)
+          .eq('id', editingTask.id);
+
+        if (error) throw error;
+      }
+
+      setShowTaskModal(false);
+      setEditingTask(null);
+      await fetchCustomerTasks();
+    } catch (error) {
+      console.error('Error saving task:', error);
+      alert('Error saving task: ' + error.message);
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('project_tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      await fetchCustomerTasks();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Error deleting task: ' + error.message);
+    }
+  };
+
+  // Helper functions
   const parseStakeholder = (stakeholder) => {
     if (typeof stakeholder === 'object' && stakeholder !== null) {
       return stakeholder;
@@ -1003,7 +399,6 @@ function CustomerDetails() {
     return { name: 'Unknown', role: 'Contact', email: '', phone: '' };
   };
 
-  // Helper functions
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     try {
@@ -1031,7 +426,6 @@ function CustomerDetails() {
     }
   };
 
-  // Project filtering
   const getFilteredProjects = () => {
     switch (activeTab) {
       case 'active':
@@ -1044,7 +438,6 @@ function CustomerDetails() {
     }
   };
 
-  // Task filtering and helpers
   const getFilteredTasks = () => {
     if (taskFilter === 'all') {
       return tasks;
@@ -1054,10 +447,6 @@ function CustomerDetails() {
 
   const getActiveProjectsCount = () => {
     return projects.filter(p => !p.sales_stage?.toLowerCase().startsWith('closed')).length;
-  };
-
-  const getClosedProjectsCount = () => {
-    return projects.filter(p => p.sales_stage?.toLowerCase().startsWith('closed')).length;
   };
 
   const getActiveTasksCount = () => {
@@ -1076,72 +465,18 @@ function CustomerDetails() {
     }).length;
   };
 
-  const getTaskStatusClass = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'completed': return 'status-completed';
-      case 'in progress': return 'status-in-progress';
-      case 'not started': return 'status-not-started';
-      case 'cancelled/on-hold': return 'status-cancelled';
-      default: return 'status-not-started';
-    }
+  const getHealthScoreColor = (score) => {
+    if (score >= 8) return 'text-green-600';
+    if (score >= 6) return 'text-blue-600';
+    if (score >= 4) return 'text-yellow-600';
+    return 'text-red-600';
   };
 
-  const getTaskStatusIcon = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'completed': return <FaCheckCircle />;
-      case 'in progress': return <FaClock />;
-      case 'cancelled/on-hold': return <FaExclamationTriangle />;
-      default: return <FaClock />;
-    }
-  };
-
-  const getTaskDueStatus = (dueDate, status) => {
-    if (!dueDate || ['Completed', 'Cancelled/On-hold'].includes(status)) return null;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const due = new Date(dueDate);
-    due.setHours(0, 0, 0, 0);
-    
-    const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) return 'overdue';
-    if (diffDays === 0) return 'today';
-    if (diffDays <= 3) return 'upcoming';
-    return null;
-  };
-
-  const formatTaskDueDate = (dueDate, status) => {
-    if (!dueDate) return '';
-    
-    const dueStatus = getTaskDueStatus(dueDate, status);
-    const formattedDate = formatDate(dueDate);
-    
-    switch (dueStatus) {
-      case 'overdue':
-        const today = new Date();
-        const due = new Date(dueDate);
-        const diffDays = Math.ceil((today - due) / (1000 * 60 * 60 * 24));
-        return `${diffDays} day${diffDays > 1 ? 's' : ''} overdue`;
-      case 'today':
-        return 'Due today';
-      case 'upcoming':
-        return `Due ${formattedDate}`;
-      default:
-        return `Due ${formattedDate}`;
-    }
-  };
-
-  // Data for dropdowns
   const asiaPacificCountries = [
-    "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", "Japan", "Laos", "Malaysia",
-    "Myanmar", "Nepal", "New Zealand", "Pakistan", "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands",
-    "South Korea", "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
-  ].sort();
-
-  const industryVerticals = [
-    'Banking', 'Financial Services', 'Insurance', 'Government', 'Healthcare', 'Education', 
-    'Retail', 'Manufacturing', 'Telecommunications', 'Energy & Utilities', 'Transportation', 'Other'
+    "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", 
+    "Japan", "Laos", "Malaysia", "Myanmar", "Nepal", "New Zealand", "Pakistan", 
+    "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands", "South Korea", 
+    "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
   ].sort();
 
   const companySizes = [
@@ -1150,10 +485,10 @@ function CustomerDetails() {
 
   if (loading) {
     return (
-      <div className="page-wrapper">
-        <div className="loading-state">
-          <div className="loading-spinner"></div>
-          <p>Loading customer details...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="loading-spinner mb-4"></div>
+          <p className="text-gray-600">Loading customer details...</p>
         </div>
       </div>
     );
@@ -1161,13 +496,14 @@ function CustomerDetails() {
 
   if (error || !customer) {
     return (
-      <div className="page-wrapper">
-        <div className="error-state">
-          <FaExclamationTriangle className="error-icon" />
-          <h2>Oops! Something went wrong</h2>
-          <p>{error || 'Customer not found'}</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Something went wrong</h2>
+          <p className="text-gray-600 mb-6">{error || 'Customer not found'}</p>
           <button onClick={() => navigate('/')} className="btn-primary">
-            <FaHome /> Back to Dashboard
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
           </button>
         </div>
       </div>
@@ -1176,185 +512,184 @@ function CustomerDetails() {
 
   const filteredProjects = getFilteredProjects();
   const filteredTasks = getFilteredTasks();
-  const pendingTasksCount = getActiveTasksCount();
+  const activeProjectsCount = getActiveProjectsCount();
+  const activeTasksCount = getActiveTasksCount();
   const overdueTasksCount = getOverdueTasksCount();
 
   return (
-    <div className="page-wrapper">
-      <div className="page-content">
-        {/* Navigation */}
-        <button onClick={() => navigate('/')} className="nav-btn primary">
-          <FaHome />
-          Dashboard
-        </button>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <button 
+            onClick={() => navigate('/')} 
+            className="btn-ghost mb-6"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </button>
 
-        {/* Customer Header */}
-        <div className="customer-header">
-          <div className="customer-title-section">
-            <h1 className="customer-title">
-              {customer.customer_name}
-            </h1>
-            <div className="customer-subtitle">
-              <span className="location-badge">
-                <FaGlobe />
-                {customer.country || 'Location Not Set'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Overview Cards */}
-        <div className="overview-grid">
-          <div className="overview-card primary">
-            <div className="card-icon">
-              <FaBriefcase />
-            </div>
-            <div className="card-content">
-              <div className="card-value">{getActiveProjectsCount()}</div>
-              <div className="card-label">Active Projects</div>
-              <div className="card-trend">
-                <FaChartLine />
-                {getClosedProjectsCount()} completed
-              </div>
-            </div>
-          </div>
-
-          <div className="overview-card success">
-            <div className="card-icon">
-              <FaTasks />
-            </div>
-            <div className="card-content">
-              <div className="card-value">{pendingTasksCount}</div>
-              <div className="card-label">Pending Tasks</div>
-              <div className="card-trend">
-                <FaCalendarAlt />
-                {tasks.filter(t => getTaskDueStatus(t.due_date, t.status) === 'today').length} due today
-              </div>
-            </div>
-          </div>
-
-          <div className={`overview-card ${overdueTasksCount > 0 ? 'urgent' : 'normal'}`}>
-            <div className="card-icon">
-              <FaExclamationTriangle />
-            </div>
-            <div className="card-content">
-              <div className="card-value">{overdueTasksCount}</div>
-              <div className="card-label">Overdue Items</div>
-              <div className="card-trend">
-                {overdueTasksCount > 0 ? (
-                  <>
-                    <FaExclamationTriangle />
-                    Needs attention
-                  </>
-                ) : (
-                  <>
-                    <FaCheckCircle />
-                    All current
-                  </>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                {customer.customer_name}
+              </h1>
+              <div className="flex items-center gap-6 text-sm text-gray-600">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  {customer.country || 'Location not specified'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  {customer.account_manager || 'No account manager'}
+                </div>
+                {customer.health_score && (
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    <span className={getHealthScoreColor(customer.health_score)}>
+                      Health: {customer.health_score}/10
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
+            
+            <div className="flex items-center gap-3">
+              {isEditing ? (
+                <>
+                  <button 
+                    onClick={handleSaveCustomer} 
+                    className="btn-primary"
+                    disabled={saving}
+                  >
+                    <Save className="h-4 w-4" />
+                    {saving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button 
+                    onClick={handleEditToggle} 
+                    className="btn-secondary"
+                    disabled={saving}
+                  >
+                    <X className="h-4 w-4" />
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button onClick={handleEditToggle} className="btn-secondary">
+                  <Edit3 className="h-4 w-4" />
+                  Edit
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="main-content">
-          {/* Left Column */}
-          <div className="left-column">
-            {/* Customer Information */}
-            <div className="section-card">
-              <div className="section-header">
-                <div className="section-title">
-                  <FaBuilding className="section-icon" />
-                  <h3>Customer Information</h3>
-                </div>
-                <div className="section-actions">
-                  {isEditing ? (
-                    <>
-                      <button 
-                        onClick={handleSaveCustomer} 
-                        className="btn-success"
-                        disabled={saving}
-                      >
-                        <FaSave />
-                        {saving ? 'Saving...' : 'Save'}
-                      </button>
-                      <button 
-                        onClick={handleEditToggle} 
-                        className="btn-secondary"
-                        disabled={saving}
-                      >
-                        <FaTimes />
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <button onClick={handleEditToggle} className="btn-primary">
-                      <FaEdit />
-                      Edit
-                    </button>
-                  )}
-                </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="stats-card">
+            <div className="flex items-center">
+              <div className="stats-icon bg-blue-50 text-blue-600">
+                <Briefcase className="h-5 w-5" />
               </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Active Projects</p>
+                <p className="text-2xl font-bold text-gray-900">{activeProjectsCount}</p>
+              </div>
+            </div>
+          </div>
 
-              {isEditing && (
-                <div className="edit-banner">
-                  <FaEdit />
-                  <span>Editing mode - Make your changes and click Save</span>
-                </div>
-              )}
+          <div className="stats-card">
+            <div className="flex items-center">
+              <div className="stats-icon bg-green-50 text-green-600">
+                <CheckCircle className="h-5 w-5" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Active Tasks</p>
+                <p className="text-2xl font-bold text-gray-900">{activeTasksCount}</p>
+              </div>
+            </div>
+          </div>
 
-              <div className="section-content">
-                <div className="customer-info-grid">
-                  <div className="info-item">
-                    <label className="info-label">
-                      <FaBuilding />
-                      Customer Name
-                    </label>
+          <div className="stats-card">
+            <div className="flex items-center">
+              <div className={`stats-icon ${overdueTasksCount > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'}`}>
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Overdue</p>
+                <p className="text-2xl font-bold text-gray-900">{overdueTasksCount}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="stats-card">
+            <div className="flex items-center">
+              <div className="stats-icon bg-purple-50 text-purple-600">
+                <Target className="h-5 w-5" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Value</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(projects.reduce((sum, p) => sum + (p.deal_value || 0), 0))}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Customer Information */}
+          <div className="lg:col-span-2 space-y-8">
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">
+                  <Building2 className="h-5 w-5" />
+                  Customer Information
+                </h3>
+              </div>
+              
+              <div className="card-content">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="form-group">
+                    <label className="form-label">Customer Name</label>
                     {isEditing ? (
                       <input
                         type="text"
                         name="customer_name"
                         value={editCustomer.customer_name || ''}
                         onChange={handleEditChange}
-                        className="info-input"
+                        className="form-input"
                         required
                       />
                     ) : (
-                      <div className="info-value">{customer.customer_name}</div>
+                      <p className="form-value">{customer.customer_name}</p>
                     )}
                   </div>
 
-                  <div className="info-item">
-                    <label className="info-label">
-                      <FaUsers />
-                      Account Manager
-                    </label>
+                  <div className="form-group">
+                    <label className="form-label">Account Manager</label>
                     {isEditing ? (
                       <input
                         type="text"
                         name="account_manager"
                         value={editCustomer.account_manager || ''}
                         onChange={handleEditChange}
-                        className="info-input"
+                        className="form-input"
                         placeholder="Account manager name"
                       />
                     ) : (
-                      <div className="info-value">{customer.account_manager || 'Not assigned'}</div>
+                      <p className="form-value">{customer.account_manager || 'Not assigned'}</p>
                     )}
                   </div>
 
-                  <div className="info-item">
-                    <label className="info-label">
-                      <FaGlobe />
-                      Country
-                    </label>
+                  <div className="form-group">
+                    <label className="form-label">Country</label>
                     {isEditing ? (
                       <select
                         name="country"
                         value={editCustomer.country || ''}
                         onChange={handleEditChange}
-                        className="info-select"
+                        className="form-select"
                       >
                         <option value="">Select Country</option>
                         {asiaPacificCountries.map((c, i) => (
@@ -1362,21 +697,18 @@ function CustomerDetails() {
                         ))}
                       </select>
                     ) : (
-                      <div className="info-value">{customer.country || 'Not specified'}</div>
+                      <p className="form-value">{customer.country || 'Not specified'}</p>
                     )}
                   </div>
 
-                  <div className="info-item">
-                    <label className="info-label">
-                      <FaUsers />
-                      Company Size
-                    </label>
+                  <div className="form-group">
+                    <label className="form-label">Company Size</label>
                     {isEditing ? (
                       <select
                         name="company_size"
                         value={editCustomer.company_size || ''}
                         onChange={handleEditChange}
-                        className="info-select"
+                        className="form-select"
                       >
                         <option value="">Select Size</option>
                         {companySizes.map((size, i) => (
@@ -1384,53 +716,167 @@ function CustomerDetails() {
                         ))}
                       </select>
                     ) : (
-                      <div className="info-value">{customer.company_size || 'Not specified'}</div>
+                      <p className="form-value">{customer.company_size || 'Not specified'}</p>
                     )}
                   </div>
 
-                  <div className="info-item">
-                    <label className="info-label">
-                      <FaCalendarAlt />
-                      Customer Since
-                    </label>
+                  <div className="form-group">
+                    <label className="form-label">Customer Since</label>
                     {isEditing ? (
                       <input
                         type="number"
                         name="year_first_closed"
                         value={editCustomer.year_first_closed || ''}
                         onChange={handleEditChange}
-                        className="info-input"
+                        className="form-input"
                         min="2000"
                         max={new Date().getFullYear()}
                         placeholder="e.g., 2022"
                       />
                     ) : (
-                      <div className="info-value">{customer.year_first_closed || 'Not specified'}</div>
+                      <p className="form-value">{customer.year_first_closed || 'Not specified'}</p>
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Health Score</label>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        name="health_score"
+                        value={editCustomer.health_score || ''}
+                        onChange={handleEditChange}
+                        className="form-input"
+                        min="1"
+                        max="10"
+                        placeholder="1-10"
+                      />
+                    ) : (
+                      <p className={`form-value ${getHealthScoreColor(customer.health_score)}`}>
+                        {customer.health_score ? `${customer.health_score}/10` : 'Not specified'}
+                      </p>
                     )}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Key Stakeholders */}
-            <div className="section-card">
-              <div className="section-header">
-                <div className="section-title">
-                  <FaUsers className="section-icon" />
-                  <h3>Key Stakeholders</h3>
-                  <span className="stakeholder-counter">
-                    {customer.key_stakeholders?.length || 0}
-                  </span>
-                </div>
-                <div className="section-actions">
-                  <button className="btn-primary" onClick={handleAddStakeholder}>
-                    <FaPlus />
-                    Add Contact
+            {/* Projects Section */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">
+                  <Briefcase className="h-5 w-5" />
+                  Projects
+                </h3>
+                <button onClick={handleAddProject} className="btn-primary">
+                  <Plus className="h-4 w-4" />
+                  Add Project
+                </button>
+              </div>
+
+              <div className="card-content">
+                {/* Project Tabs */}
+                <div className="tabs">
+                  <button 
+                    className={`tab ${activeTab === 'active' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('active')}
+                  >
+                    Active ({projects.filter(p => !p.sales_stage?.toLowerCase().startsWith('closed')).length})
+                  </button>
+                  <button 
+                    className={`tab ${activeTab === 'closed' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('closed')}
+                  >
+                    Closed ({projects.filter(p => p.sales_stage?.toLowerCase().startsWith('closed')).length})
+                  </button>
+                  <button 
+                    className={`tab ${activeTab === 'all' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('all')}
+                  >
+                    All ({projects.length})
                   </button>
                 </div>
+
+                {/* Projects List */}
+                <div className="space-y-4">
+                  {filteredProjects.length > 0 ? (
+                    filteredProjects.map((project) => (
+                      <div key={project.id} className="project-card">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <button
+                              onClick={() => handleProjectClick(project.id, project.project_name)}
+                              className="project-name"
+                            >
+                              {project.project_name || 'Unnamed Project'}
+                            </button>
+                            <div className="project-meta">
+                              <span className={`project-stage stage-${project.sales_stage?.toLowerCase().replace(/[\s-]/g, '-')}`}>
+                                {project.sales_stage || 'No Stage'}
+                              </span>
+                              <span className="project-value">
+                                {formatCurrency(project.deal_value)}
+                              </span>
+                              <span className="project-date">
+                                Due: {formatDate(project.due_date)}
+                              </span>
+                            </div>
+                            {project.scope && (
+                              <p className="project-scope">{project.scope}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handleEditProject(project)}
+                              className="btn-ghost-sm"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteProject(project.id)}
+                              className="btn-ghost-sm text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="empty-state">
+                      <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">No projects found</h4>
+                      <p className="text-gray-600 mb-4">Start by creating your first project for this customer</p>
+                      <button onClick={handleAddProject} className="btn-primary">
+                        <Plus className="h-4 w-4" />
+                        Add First Project
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="section-content">
-                <div className="stakeholder-grid">
+            </div>
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="space-y-8">
+            {/* Key Stakeholders */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">
+                  <Users className="h-5 w-5" />
+                  Key Stakeholders
+                  <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    {customer.key_stakeholders?.length || 0}
+                  </span>
+                </h3>
+                <button className="btn-secondary" onClick={handleAddStakeholder}>
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              
+              <div className="card-content">
+                <div className="space-y-3">
                   {customer.key_stakeholders && customer.key_stakeholders.length > 0 ? (
                     customer.key_stakeholders.map((stakeholder, index) => {
                       const parsedStakeholder = parseStakeholder(stakeholder);
@@ -1438,56 +884,51 @@ function CustomerDetails() {
 
                       return (
                         <div key={index} className="stakeholder-card">
-                          <div className="stakeholder-header">
-                            <div className="stakeholder-avatar">
-                              <FaUsers />
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center">
+                              <div className="stakeholder-avatar">
+                                {name?.charAt(0)?.toUpperCase() || 'S'}
+                              </div>
+                              <div className="ml-3">
+                                <p className="text-sm font-medium text-gray-900">{name}</p>
+                                <p className="text-xs text-gray-500">{role || 'Contact'}</p>
+                                {email && (
+                                  <a href={`mailto:${email}`} className="text-xs text-blue-600 hover:text-blue-800">
+                                    {email}
+                                  </a>
+                                )}
+                                {phone && (
+                                  <a href={`tel:${phone}`} className="text-xs text-blue-600 hover:text-blue-800 block">
+                                    {phone}
+                                  </a>
+                                )}
+                              </div>
                             </div>
-                            <div className="stakeholder-actions">
+                            <div className="flex items-center gap-1">
                               <button 
-                                className="stakeholder-action-btn edit"
                                 onClick={() => handleEditStakeholder(parsedStakeholder, index)}
-                                title="Edit stakeholder"
+                                className="btn-ghost-sm"
                               >
-                                <FaEdit />
+                                <Edit3 className="h-3 w-3" />
                               </button>
                               <button 
-                                className="stakeholder-action-btn delete"
                                 onClick={() => handleDeleteStakeholder(index)}
-                                title="Remove stakeholder"
+                                className="btn-ghost-sm text-red-600 hover:text-red-700"
                               >
-                                <FaTrash />
+                                <Trash2 className="h-3 w-3" />
                               </button>
                             </div>
-                          </div>
-                          <div className="stakeholder-content">
-                            <div className="stakeholder-name">{name}</div>
-                            <div className="stakeholder-role">{role || 'Contact'}</div>
-                            {email && (
-                              <div className="stakeholder-contact">
-                                <FaEnvelope />
-                                <a href={`mailto:${email}`} className="stakeholder-email">{email}</a>
-                              </div>
-                            )}
-                            {phone && (
-                              <div className="stakeholder-contact">
-                                <FaPhone />
-                                <a href={`tel:${phone}`} className="stakeholder-phone">{phone}</a>
-                              </div>
-                            )}
                           </div>
                         </div>
                       );
                     })
                   ) : (
-                    <div className="empty-state">
-                      <div className="empty-icon">
-                        <FaUsers />
-                      </div>
-                      <h4>No stakeholders added</h4>
-                      <p>Add key contacts to manage relationships effectively</p>
-                      <button onClick={handleAddStakeholder} className="btn-primary">
-                        <FaPlus />
-                        Add First Contact
+                    <div className="empty-state-sm">
+                      <Users className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600 mb-3">No stakeholders added</p>
+                      <button onClick={handleAddStakeholder} className="btn-secondary">
+                        <Plus className="h-4 w-4" />
+                        Add Contact
                       </button>
                     </div>
                   )}
@@ -1495,273 +936,92 @@ function CustomerDetails() {
               </div>
             </div>
 
-            {/* Projects Section */}
-            <div className="section-card">
-              <div className="section-header">
-                <div className="section-title">
-                  <FaBriefcase className="section-icon" />
-                  <h3>Projects Portfolio</h3>
-                </div>
-                <div className="section-actions">
-                  <button onClick={handleAddProject} className="btn-primary">
-                    <FaPlus />
-                    Add Project
-                  </button>
-                </div>
-              </div>
-
-              <div className="projects-tabs">
-                <button 
-                  className={`tab-button ${activeTab === 'active' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('active')}
-                >
-                  <FaChartLine />
-                  Active Projects ({getActiveProjectsCount()})
-                </button>
-                <button 
-                  className={`tab-button ${activeTab === 'closed' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('closed')}
-                >
-                  <FaCheckCircle />
-                  Closed Projects ({getClosedProjectsCount()})
-                </button>
-                <button 
-                  className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('all')}
-                >
-                  <FaBriefcase />
-                  All Projects ({projects.length})
-                </button>
-              </div>
-
-              <div className="section-content">
-                {filteredProjects.length > 0 ? (
-                  <div className="project-list">
-                    {filteredProjects.map((project) => (
-                      <div key={project.id} className="project-item">
-                        <div className="project-header">
-                          <button
-                            onClick={() => handleProjectClick(project.id, project.project_name)}
-                            className="project-name"
-                          >
-                            <FaBriefcase />
-                            {project.project_name || project.customer_name || 'Unnamed Project'}
-                          </button>
-                          <span className={`project-stage stage-${project.sales_stage?.toLowerCase().replace(/[\s-]/g, '-')}`}>
-                            {project.sales_stage || 'No Stage'}
-                          </span>
-                        </div>
-                        <div className="project-details">
-                          <div className="project-meta">
-                            <span className="project-meta-item">
-                              <FaCalendarAlt />
-                              Due: {formatDate(project.due_date)}
-                            </span>
-                            <span className="project-meta-item">
-                              <FaUsers />
-                              AM: {project.account_manager || 'Not assigned'}
-                            </span>
-                          </div>
-                          <div className="project-value">
-                            <FaDollarSign />
-                            {formatCurrency(project.deal_value)}
-                          </div>
-                        </div>
-                        {project.scope && (
-                          <div className="project-scope">
-                            {project.scope}
-                          </div>
-                        )}
-                        <div className="project-actions">
-                          <button 
-                            className="project-action-btn edit" 
-                            onClick={() => handleEditProject(project)}
-                            title="Edit project"
-                          >
-                            <FaEdit />
-                          </button>
-                          <button 
-                            className="project-action-btn delete" 
-                            onClick={() => handleDeleteProject(project.id)}
-                            title="Delete project"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="empty-state">
-                    <div className="empty-icon">
-                      <FaBriefcase />
-                    </div>
-                    <h4>No projects found</h4>
-                    <p>Start by creating your first project for this customer</p>
-                    <button onClick={handleAddProject} className="btn-primary">
-                      <FaPlus />
-                      Add First Project
+            {/* Recent Tasks */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">
+                  <CheckCircle className="h-5 w-5" />
+                  Recent Tasks
+                </h3>
+                <div className="flex items-center gap-2">
+                  <div className="task-filter">
+                    <button 
+                      className={`filter-btn ${taskFilter === 'active' ? 'active' : ''}`}
+                      onClick={() => setTaskFilter('active')}
+                    >
+                      Active
+                    </button>
+                    <button 
+                      className={`filter-btn ${taskFilter === 'all' ? 'active' : ''}`}
+                      onClick={() => setTaskFilter('all')}
+                    >
+                      All
                     </button>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="right-column">
-            {/* Task Summary Analytics */}
-            <div className="section-card">
-              <div className="section-header">
-                <div className="section-title">
-                  <FaChartLine className="section-icon" />
-                  <h3>Task Overview</h3>
                 </div>
               </div>
-              <div className="section-content">
-                <div className="task-analytics-grid">
-                  <div className="analytics-item">
-                    <div className="analytics-icon completed">
-                      <FaCheckCircle />
-                    </div>
-                    <div className="analytics-content">
-                      <div className="analytics-value">{tasks.filter(t => t.status === 'Completed').length}</div>
-                      <div className="analytics-label">Completed</div>
-                    </div>
-                  </div>
-                  
-                  <div className="analytics-item">
-                    <div className="analytics-icon active">
-                      <FaClock />
-                    </div>
-                    <div className="analytics-content">
-                      <div className="analytics-value">{getActiveTasksCount()}</div>
-                      <div className="analytics-label">Active</div>
-                    </div>
-                  </div>
-                  
-                  <div className="analytics-item">
-                    <div className="analytics-icon overdue">
-                      <FaExclamationTriangle />
-                    </div>
-                    <div className="analytics-content">
-                      <div className="analytics-value">{overdueTasksCount}</div>
-                      <div className="analytics-label">Overdue</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                {tasks.length > 0 && (
-                  <div className="progress-section">
-                    <div className="progress-header">
-                      <span className="progress-label">Overall Progress</span>
-                      <span className="progress-percentage">
-                        {Math.round((tasks.filter(t => t.status === 'Completed').length / tasks.length) * 100)}%
-                      </span>
-                    </div>
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
-                        style={{ 
-                          width: `${Math.round((tasks.filter(t => t.status === 'Completed').length / tasks.length) * 100)}%` 
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Active Tasks */}
-            <div className="section-card">
-              <div className="section-header">
-                <div className="section-title">
-                  <FaTasks className="section-icon" />
-                  <h3>Active Tasks</h3>
-                </div>
-                <div className="filter-toggle">
-                  <button 
-                    className={taskFilter === 'active' ? 'active' : ''}
-                    onClick={() => setTaskFilter('active')}
-                  >
-                    Active
-                  </button>
-                  <button 
-                    className={taskFilter === 'all' ? 'active' : ''}
-                    onClick={() => setTaskFilter('all')}
-                  >
-                    All
-                  </button>
-                </div>
-              </div>
-              <div className="section-content">
-                {filteredTasks.length > 0 ? (
-                  <div className="task-list compact">
-                    {filteredTasks.slice(0, 8).map((task) => (
-                      <div key={task.id} className="task-item compact">
-                        <div className="task-main-content">
-                          <div className="task-header">
-                            <input 
-                              type="checkbox" 
-                              className="task-checkbox"
-                              checked={task.status === 'Completed'}
-                              onChange={() => handleTaskStatusChange(task.id, task.status)}
-                            />
-                            <div className="task-title">{task.description}</div>
-                            <div className="task-status-badge">
-                              {getTaskStatusIcon(task.status)}
-                              <span className={getTaskStatusClass(task.status)}>
+              
+              <div className="card-content">
+                <div className="space-y-3">
+                  {filteredTasks.length > 0 ? (
+                    filteredTasks.slice(0, 6).map((task) => (
+                      <div key={task.id} className="task-card">
+                        <div className="flex items-start gap-3">
+                          <input 
+                            type="checkbox" 
+                            className="task-checkbox"
+                            checked={task.status === 'Completed'}
+                            onChange={() => handleTaskStatusChange(task.id, task.status)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {task.description}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`task-status ${task.status?.toLowerCase().replace(/[\s\/]/g, '-')}`}>
                                 {task.status}
                               </span>
-                            </div>
-                          </div>
-                          <div className="task-meta">
-                            <span className="task-project">
-                              <FaBriefcase />
-                              {task.projects?.project_name || 'Unknown Project'}
-                            </span>
-                            {task.due_date && (
-                              <span className={`task-due due-${getTaskDueStatus(task.due_date, task.status) || 'normal'}`}>
-                                <FaCalendarAlt />
-                                {formatTaskDueDate(task.due_date, task.status)}
+                              <span className="text-xs text-gray-500">
+                                {task.projects?.project_name || 'Unknown Project'}
                               </span>
+                            </div>
+                            {task.due_date && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Due: {formatDate(task.due_date)}
+                              </p>
                             )}
                           </div>
-                        </div>
-                        <div className="task-actions">
-                          <button 
-                            onClick={() => handleEditTask(task)}
-                            className="task-action-btn edit"
-                            title="Edit task"
-                          >
-                            <FaEdit />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="task-action-btn delete"
-                            title="Delete task"
-                          >
-                            <FaTrash />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button 
+                              onClick={() => handleEditTask(task)}
+                              className="btn-ghost-sm"
+                            >
+                              <Edit3 className="h-3 w-3" />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="btn-ghost-sm text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    ))}
-                    {filteredTasks.length > 8 && (
-                      <div className="task-view-more">
-                        <button className="btn-secondary compact">
-                          View All {filteredTasks.length} Tasks
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="empty-state compact">
-                    <div className="empty-icon">
-                      <FaTasks />
+                    ))
+                  ) : (
+                    <div className="empty-state-sm">
+                      <CheckCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">No {taskFilter === 'active' ? 'active ' : ''}tasks</p>
+                      <p className="text-xs text-gray-500">Tasks are managed from project pages</p>
                     </div>
-                    <h4>No {taskFilter === 'active' ? 'active ' : ''}tasks</h4>
-                    <p>Tasks are managed from individual project pages</p>
+                  )}
+                </div>
+                
+                {filteredTasks.length > 6 && (
+                  <div className="mt-4 text-center">
+                    <button className="btn-ghost">
+                      View all {filteredTasks.length} tasks
+                    </button>
                   </div>
                 )}
               </div>
@@ -1771,33 +1031,29 @@ function CustomerDetails() {
       </div>
 
       {/* Modals */}
-      {customer && (
-        <StakeholderModal
-          isOpen={showStakeholderModal}
-          onClose={() => {
-            setShowStakeholderModal(false);
-            setEditingStakeholder(null);
-            setEditingStakeholderIndex(null);
-          }}
-          onSave={handleStakeholderSaved}
-          customerName={customer.customer_name}
-          editingStakeholder={editingStakeholder}
-          editingIndex={editingStakeholderIndex}
-        />
-      )}
+      <StakeholderModal
+        isOpen={showStakeholderModal}
+        onClose={() => {
+          setShowStakeholderModal(false);
+          setEditingStakeholder(null);
+          setEditingStakeholderIndex(null);
+        }}
+        onSave={handleStakeholderSaved}
+        customerName={customer.customer_name}
+        editingStakeholder={editingStakeholder}
+        editingIndex={editingStakeholderIndex}
+      />
 
-      {customer && (
-        <ProjectModal
-          isOpen={showProjectModal}
-          onClose={() => {
-            setShowProjectModal(false);
-            setEditingProject(null);
-          }}
-          onSave={handleProjectSaved}
-          customerName={customer.customer_name}
-          editingProject={editingProject}
-        />
-      )}
+      <ProjectModal
+        isOpen={showProjectModal}
+        onClose={() => {
+          setShowProjectModal(false);
+          setEditingProject(null);
+        }}
+        onSave={handleProjectSaved}
+        customerName={customer.customer_name}
+        editingProject={editingProject}
+      />
 
       <TaskModal
         isOpen={showTaskModal}
@@ -1808,6 +1064,533 @@ function CustomerDetails() {
         onSave={handleTaskSaved}
         editingTask={editingTask}
       />
+    </div>
+  );
+}
+
+// Modal Components
+function StakeholderModal({ isOpen, onClose, onSave, customerName, editingStakeholder = null, editingIndex = null }) {
+  const [newStakeholder, setNewStakeholder] = useState({
+    name: '',
+    role: '',
+    email: '',
+    phone: ''
+  });
+
+  useEffect(() => {
+    if (editingStakeholder) {
+      setNewStakeholder({
+        name: editingStakeholder.name || '',
+        role: editingStakeholder.role || '',
+        email: editingStakeholder.email || '',
+        phone: editingStakeholder.phone || ''
+      });
+    } else {
+      clearForm();
+    }
+  }, [editingStakeholder, isOpen]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setNewStakeholder(prev => ({ ...prev, [name]: value }));
+  };
+
+  const clearForm = () => {
+    setNewStakeholder({
+      name: '',
+      role: '',
+      email: '',
+      phone: ''
+    });
+  };
+
+  const handleClose = () => {
+    clearForm();
+    onClose();
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!newStakeholder.name) {
+      alert('Stakeholder name is required');
+      return;
+    }
+
+    const stakeholderInfo = {
+      name: newStakeholder.name,
+      role: newStakeholder.role || '',
+      email: newStakeholder.email || '',
+      phone: newStakeholder.phone || ''
+    };
+
+    onSave(stakeholderInfo, editingIndex);
+    clearForm();
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-backdrop" onClick={handleClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>{editingStakeholder ? 'Edit Stakeholder' : 'Add New Stakeholder'}</h3>
+          <button className="modal-close-btn" onClick={handleClose}>
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="grid grid-cols-1 gap-4">
+            <div className="form-group">
+              <label className="form-label">Name *</label>
+              <input 
+                name="name" 
+                value={newStakeholder.name} 
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter stakeholder name"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Role/Title</label>
+              <input 
+                name="role" 
+                value={newStakeholder.role} 
+                onChange={handleChange}
+                className="form-input"
+                placeholder="e.g., CTO, Project Manager"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input 
+                name="email" 
+                type="email"
+                value={newStakeholder.email} 
+                onChange={handleChange}
+                className="form-input"
+                placeholder="email@company.com"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Phone</label>
+              <input 
+                name="phone" 
+                type="tel"
+                value={newStakeholder.phone} 
+                onChange={handleChange}
+                className="form-input"
+                placeholder="+65 1234 5678"
+              />
+            </div>
+          </div>
+          
+          <div className="modal-actions">
+            <button type="button" onClick={handleClose} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              <Save className="h-4 w-4" />
+              {editingStakeholder ? 'Update Stakeholder' : 'Add Stakeholder'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ProjectModal({ isOpen, onClose, onSave, customerName, editingProject = null }) {
+  const [projectData, setProjectData] = useState({
+    customer_name: customerName || '',
+    project_name: '',
+    account_manager: '',
+    scope: '',
+    deal_value: '',
+    product: '',
+    backup_presales: '',
+    sales_stage: '',
+    remarks: '',
+    due_date: '',
+    project_type: ''
+  });
+
+  const products = ['Marketplace', 'O-City', 'Processing', 'SmartVista'].sort();
+  const salesStages = [
+    'Discovery', 'Demo', 'PoC', 'RFI', 'RFP', 'SoW', 
+    'Contracting', 'Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold'
+  ];
+  const projectTypes = ['RFP', 'CR'].sort();
+
+  useEffect(() => {
+    if (editingProject) {
+      setProjectData({
+        customer_name: editingProject.customer_name || customerName || '',
+        project_name: editingProject.project_name || '',
+        account_manager: editingProject.account_manager || '',
+        scope: editingProject.scope || '',
+        deal_value: editingProject.deal_value || '',
+        product: editingProject.product || '',
+        backup_presales: editingProject.backup_presales || '',
+        sales_stage: editingProject.sales_stage || '',
+        remarks: editingProject.remarks || '',
+        due_date: editingProject.due_date || '',
+        project_type: editingProject.project_type || ''
+      });
+    } else if (customerName) {
+      setProjectData({
+        customer_name: customerName,
+        project_name: '',
+        account_manager: '',
+        scope: '',
+        deal_value: '',
+        product: '',
+        backup_presales: '',
+        sales_stage: '',
+        remarks: '',
+        due_date: '',
+        project_type: ''
+      });
+    }
+  }, [customerName, editingProject, isOpen]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setProjectData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!customerName && !projectData.customer_name) {
+      alert('Customer name is required');
+      return;
+    }
+
+    if (!projectData.project_name?.trim()) {
+      alert('Project name is required');
+      return;
+    }
+
+    if (!projectData.sales_stage) {
+      alert('Sales stage is required');
+      return;
+    }
+
+    if (!projectData.product) {
+      alert('Product is required');
+      return;
+    }
+
+    try {
+      const submissionData = {
+        customer_name: customerName || projectData.customer_name,
+        project_name: projectData.project_name.trim(),
+        account_manager: projectData.account_manager?.trim() || null,
+        scope: projectData.scope?.trim() || null,
+        deal_value: projectData.deal_value ? parseFloat(projectData.deal_value) : null,
+        product: projectData.product,
+        backup_presales: projectData.backup_presales?.trim() || null,
+        sales_stage: projectData.sales_stage,
+        remarks: projectData.remarks?.trim() || null,
+        due_date: projectData.due_date || null,
+        project_type: projectData.project_type || null
+      };
+
+      let result;
+      
+      if (editingProject) {
+        const { data, error } = await supabase
+          .from('projects')
+          .update(submissionData)
+          .eq('id', editingProject.id)
+          .select();
+        
+        if (error) throw error;
+        result = { data, isEdit: true };
+      } else {
+        submissionData.created_at = new Date().toISOString().split('T')[0];
+        
+        const { data, error } = await supabase
+          .from('projects')
+          .insert([submissionData])
+          .select();
+        
+        if (error) throw error;
+        result = { data, isEdit: false };
+      }
+      
+      if (result.data && result.data.length > 0) {
+        onSave(result.data[0], result.isEdit);
+        onClose();
+      }
+    } catch (error) {
+      console.error('Error saving project:', error);
+      alert(`Error ${editingProject ? 'updating' : 'adding'} project: ${error.message}`);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>
+            {editingProject 
+              ? `Edit Project: ${editingProject.project_name || 'Unnamed Project'}` 
+              : `Add New Project for ${customerName}`
+            }
+          </h3>
+          <button className="modal-close-btn" onClick={onClose}>
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-group md:col-span-2">
+              <label className="form-label">Project Name *</label>
+              <input 
+                name="project_name" 
+                value={projectData.project_name} 
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter project name"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Account Manager</label>
+              <input 
+                name="account_manager" 
+                value={projectData.account_manager} 
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Account manager name"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Sales Stage *</label>
+              <select name="sales_stage" value={projectData.sales_stage} onChange={handleChange} className="form-select" required>
+                <option value="">Select Stage</option>
+                {salesStages.map((stage, i) => (
+                  <option key={i} value={stage}>{stage}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Product *</label>
+              <select name="product" value={projectData.product} onChange={handleChange} className="form-select" required>
+                <option value="">Select Product</option>
+                {products.map((product, i) => (
+                  <option key={i} value={product}>{product}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Project Type</label>
+              <select name="project_type" value={projectData.project_type} onChange={handleChange} className="form-select">
+                <option value="">Select Type</option>
+                {projectTypes.map((type, i) => (
+                  <option key={i} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Deal Value</label>
+              <input 
+                name="deal_value" 
+                type="number" 
+                step="0.01"
+                value={projectData.deal_value} 
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter deal value"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Backup Presales</label>
+              <input 
+                name="backup_presales" 
+                value={projectData.backup_presales} 
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Backup presales contact"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Expected Closing Date</label>
+              <input 
+                name="due_date" 
+                type="date"
+                value={projectData.due_date} 
+                onChange={handleChange}
+                className="form-input"
+              />
+            </div>
+            
+            <div className="form-group md:col-span-2">
+              <label className="form-label">Scope</label>
+              <textarea 
+                name="scope" 
+                value={projectData.scope} 
+                onChange={handleChange}
+                rows="3"
+                className="form-textarea"
+                placeholder="Project scope and objectives"
+              />
+            </div>
+            
+            <div className="form-group md:col-span-2">
+              <label className="form-label">Remarks</label>
+              <textarea 
+                name="remarks" 
+                value={projectData.remarks} 
+                onChange={handleChange}
+                rows="3"
+                className="form-textarea"
+                placeholder="Project remarks or notes"
+              />
+            </div>
+          </div>
+          
+          <div className="modal-actions">
+            <button type="button" onClick={onClose} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              <Save className="h-4 w-4" />
+              {editingProject ? 'Update Project' : 'Save Project'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function TaskModal({ isOpen, onClose, onSave, editingTask = null }) {
+  const [taskData, setTaskData] = useState({
+    description: '',
+    status: 'Not Started',
+    due_date: '',
+    notes: ''
+  });
+
+  useEffect(() => {
+    if (editingTask) {
+      setTaskData({
+        description: editingTask.description || '',
+        status: editingTask.status || 'Not Started',
+        due_date: editingTask.due_date || '',
+        notes: editingTask.notes || ''
+      });
+    } else {
+      setTaskData({
+        description: '',
+        status: 'Not Started',
+        due_date: '',
+        notes: ''
+      });
+    }
+  }, [editingTask, isOpen]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setTaskData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!taskData.description.trim()) {
+      alert('Task description is required');
+      return;
+    }
+    onSave(taskData);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>{editingTask ? 'Edit Task' : 'Add New Task'}</h3>
+          <button className="modal-close-btn" onClick={onClose}>
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="grid grid-cols-1 gap-4">
+            <div className="form-group">
+              <label className="form-label">Task Description *</label>
+              <input 
+                name="description" 
+                value={taskData.description} 
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter task description"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <select name="status" value={taskData.status} onChange={handleChange} className="form-select">
+                <option value="Not Started">Not Started</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled/On-hold">Cancelled/On-hold</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Due Date</label>
+              <input 
+                name="due_date" 
+                type="date"
+                value={taskData.due_date} 
+                onChange={handleChange}
+                className="form-input"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Notes</label>
+              <textarea 
+                name="notes" 
+                value={taskData.notes} 
+                onChange={handleChange}
+                rows="3"
+                className="form-textarea"
+                placeholder="Additional notes or details"
+              />
+            </div>
+          </div>
+          
+          <div className="modal-actions">
+            <button type="button" onClick={onClose} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              <Save className="h-4 w-4" />
+              {editingTask ? 'Update Task' : 'Add Task'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
