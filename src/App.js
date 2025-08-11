@@ -8,6 +8,7 @@ import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
 import './App.css';
 
+
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
