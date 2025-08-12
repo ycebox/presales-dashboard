@@ -1,4 +1,4 @@
-/* Modern Projects.css - Table Design Aligned with Kanban */
+/* Modern Projects.css - Table Design Aligned with Kanban (Effects Removed) */
 
 .projects-container {
   padding: 1.5rem;
@@ -47,7 +47,7 @@
   border-radius: 8px;
   border: none;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.2s ease;
 }
 
 .action-button.primary {
@@ -57,7 +57,6 @@
 
 .action-button.primary:hover {
   background: #2563eb;
-  transform: translateY(-1px);
 }
 
 .action-button.secondary {
@@ -67,7 +66,6 @@
 
 .action-button.secondary:hover {
   background: #059669;
-  transform: translateY(-1px);
 }
 
 .button-icon {
@@ -231,7 +229,7 @@
   font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .bulk-action-button:hover {
@@ -288,7 +286,7 @@
 }
 
 .customers-table tbody tr {
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
   cursor: pointer;
 }
 
@@ -475,7 +473,7 @@
   cursor: pointer;
 }
 
-/* COMPACT MODAL STYLES */
+/* COMPACT MODAL STYLES - EFFECTS REMOVED */
 .modal-backdrop-compact {
   position: fixed;
   top: 0;
@@ -501,14 +499,6 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transform: scale(0.95);
-  animation: modalEnter 0.2s ease-out forwards;
-}
-
-@keyframes modalEnter {
-  to {
-    transform: scale(1);
-  }
 }
 
 .modal-header-compact {
@@ -625,12 +615,13 @@
   font-size: 0.875rem;
 }
 
+/* FORM INPUTS - REMOVED PROBLEMATIC EFFECTS */
 .form-input-compact, .form-select-compact {
   padding: 0.625rem 0.75rem;
   border: 1.5px solid #e2e8f0;
   border-radius: 8px;
   font-size: 0.875rem;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   background: white;
   outline: none;
 }
@@ -638,14 +629,13 @@
 .form-input-compact:focus, .form-select-compact:focus {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  transform: translateY(-1px);
 }
 
 .form-input-compact:hover, .form-select-compact:hover {
   border-color: #cbd5e1;
 }
 
-/* Customer Type Pills */
+/* Customer Type Pills - REMOVED PROBLEMATIC EFFECTS */
 .type-pills-compact {
   display: flex;
   gap: 0.5rem;
@@ -669,7 +659,6 @@
   background: #3b82f6;
   border-color: #3b82f6;
   color: white;
-  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
 }
 
@@ -678,7 +667,7 @@
   color: #3b82f6;
 }
 
-/* Health Score Slider */
+/* Health Score Slider - REMOVED PROBLEMATIC EFFECTS */
 .health-score-container-compact {
   margin-top: 0.5rem;
 }
@@ -701,11 +690,10 @@
   background: #3b82f6;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-  transition: all 0.2s ease;
+  transition: box-shadow 0.2s ease;
 }
 
 .health-score-slider-compact::-webkit-slider-thumb:hover {
-  transform: scale(1.1);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
@@ -771,6 +759,7 @@
   background: #f8fafc;
 }
 
+/* BUTTONS - REMOVED PROBLEMATIC EFFECTS */
 .button-cancel-compact {
   padding: 0.625rem 1.25rem;
   background: transparent;
@@ -780,13 +769,12 @@
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .button-cancel-compact:hover {
   background: #f1f5f9;
   border-color: #cbd5e1;
-  transform: translateY(-1px);
 }
 
 .button-submit-compact {
@@ -798,18 +786,17 @@
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
 }
 
 .button-submit-compact:hover {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
 }
 
 .button-submit-compact:active {
-  transform: translateY(0);
+  transform: none;
 }
 
 /* Loading States */
@@ -886,12 +873,11 @@
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .empty-action-button:hover {
   background: #2563eb;
-  transform: translateY(-1px);
 }
 
 /* Toast Notifications */
