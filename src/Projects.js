@@ -46,18 +46,18 @@ function Projects() {
   });
 
   // Static data arrays
-  const asiaPacificCountries = [
+  const asiaPacificCountries = useMemo(() => [
     "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia", 
     "Japan", "Laos", "Malaysia", "Myanmar", "Nepal", "New Zealand", "Pakistan", 
     "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands", "South Korea", 
     "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
-  ].sort();
+  ].sort(), []);
 
   useEffect(() => {
     fetchCustomers();
   }, []);
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -80,7 +80,7 @@ function Projects() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Filter and search customers
   const filteredCustomers = useMemo(() => {
@@ -118,24 +118,24 @@ function Projects() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = useCallback((e) => {
     setSearchTerm(e.target.value);
-  };
+  }, []);
 
-  const handleFilterChange = (key, value) => {
+  const handleFilterChange = useCallback((key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-  };
+  }, []);
 
-  const removeFilter = (key) => {
+  const removeFilter = useCallback((key) => {
     setFilters(prev => ({ ...prev, [key]: '' }));
-  };
+  }, []);
 
-  const clearAllFilters = () => {
+  const clearAllFilters = useCallback(() => {
     setFilters({ country: '', account_manager: '', customer_type: '' });
     setSearchTerm('');
-  };
+  }, []);
 
-  const handleCustomerSelect = (customerId) => {
+  const handleCustomerSelect = useCallback((customerId) => {
     setSelectedCustomers(prev => {
       const newSet = new Set(prev);
       if (newSet.has(customerId)) {
@@ -145,17 +145,17 @@ function Projects() {
       }
       return newSet;
     });
-  };
+  }, []);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (selectedCustomers.size === filteredCustomers.length) {
       setSelectedCustomers(new Set());
     } else {
       setSelectedCustomers(new Set(filteredCustomers.map(c => c.id)));
     }
-  };
+  }, [selectedCustomers.size, filteredCustomers]);
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = useCallback(async () => {
     if (!window.confirm(`Are you sure you want to delete ${selectedCustomers.size} customer(s)? This action cannot be undone.`)) {
       return;
     }
@@ -175,27 +175,32 @@ function Projects() {
       console.error('Error deleting customers:', err);
       showToast('Failed to delete customers', 'error');
     }
-  };
+  }, [selectedCustomers, fetchCustomers, showToast]);
 
-  const handleCustomerChange = (e) => {
+  // FIXED: Memoize customer change handler to prevent recreation on each render
+  const handleCustomerChange = useCallback((e) => {
     const { name, value, type } = e.target;
     
-    if (type === 'number') {
-      setNewCustomer(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
-    } else {
-      setNewCustomer(prev => ({ ...prev, [name]: value }));
-    }
-  };
+    setNewCustomer(prev => {
+      if (type === 'number') {
+        return { ...prev, [name]: parseFloat(value) || 0 };
+      } else {
+        return { ...prev, [name]: value };
+      }
+    });
+  }, []);
 
-  const handleCustomerTypeChange = (type) => {
+  // FIXED: Memoize customer type change handler
+  const handleCustomerTypeChange = useCallback((type) => {
     setNewCustomer(prev => ({ ...prev, customer_type: type }));
-  };
+  }, []);
 
-  const handleHealthScoreChange = (e) => {
+  // FIXED: Memoize health score change handler
+  const handleHealthScoreChange = useCallback((e) => {
     setNewCustomer(prev => ({ ...prev, health_score: parseInt(e.target.value) }));
-  };
+  }, []);
 
-  const resetCustomerForm = () => {
+  const resetCustomerForm = useCallback(() => {
     setNewCustomer({
       customer_name: '',
       account_manager: '',
@@ -205,9 +210,9 @@ function Projects() {
       notes: ''
     });
     setEditingCustomer(null);
-  };
+  }, []);
 
-  const handleAddCustomer = async (e) => {
+  const handleAddCustomer = useCallback(async (e) => {
     e.preventDefault();
     
     try {
@@ -228,9 +233,9 @@ function Projects() {
       console.error('Error adding customer:', err);
       showToast('Failed to add customer', 'error');
     }
-  };
+  }, [newCustomer, fetchCustomers, resetCustomerForm, showToast]);
 
-  const handleUpdateCustomer = async (e) => {
+  const handleUpdateCustomer = useCallback(async (e) => {
     e.preventDefault();
     
     try {
@@ -249,9 +254,9 @@ function Projects() {
       console.error('Error updating customer:', err);
       showToast('Failed to update customer', 'error');
     }
-  };
+  }, [newCustomer, editingCustomer, fetchCustomers, resetCustomerForm, showToast]);
 
-  const handleDeleteCustomer = async (id) => {
+  const handleDeleteCustomer = useCallback(async (id) => {
     const customer = customers.find(c => c.id === id);
     if (!window.confirm(`Are you sure you want to delete "${customer?.customer_name}"? This action cannot be undone.`)) {
       return;
@@ -267,9 +272,9 @@ function Projects() {
       console.error('Error deleting customer:', err);
       showToast('Failed to delete customer', 'error');
     }
-  };
+  }, [customers, fetchCustomers, showToast]);
 
-  const handleEditCustomer = (customer) => {
+  const handleEditCustomer = useCallback((customer) => {
     setEditingCustomer(customer);
     setNewCustomer({
       customer_name: customer.customer_name || '',
@@ -280,27 +285,34 @@ function Projects() {
       notes: customer.notes || ''
     });
     setShowCustomerModal(true);
-  };
+  }, []);
 
-  const handleCustomerClick = (customerId) => {
+  const handleCustomerClick = useCallback((customerId) => {
     navigate(`/customer/${customerId}`);
-  };
+  }, [navigate]);
 
-  const getHealthScoreColor = (score) => {
+  const getHealthScoreColor = useCallback((score) => {
     if (score >= 8) return 'excellent';
     if (score >= 6) return 'good';
     if (score >= 4) return 'fair';
     return 'poor';
-  };
+  }, []);
 
-  const getHealthScoreLabel = (score) => {
+  const getHealthScoreLabel = useCallback((score) => {
     if (score >= 8) return 'Excellent';
     if (score >= 6) return 'Good';
     if (score >= 4) return 'Fair';
     return 'Poor';
-  };
+  }, []);
 
-  const Modal = ({ isOpen, onClose, children }) => {
+  // FIXED: Memoize modal close handler
+  const handleModalClose = useCallback(() => {
+    setShowCustomerModal(false);
+    resetCustomerForm();
+  }, [resetCustomerForm]);
+
+  // FIXED: Memoize Modal component to prevent recreating on each render
+  const Modal = useCallback(({ isOpen, onClose, children }) => {
     if (!isOpen) return null;
     
     return ReactDOM.createPortal(
@@ -311,7 +323,7 @@ function Projects() {
       </div>,
       document.body
     );
-  };
+  }, []);
 
   const LoadingSkeleton = () => (
     <div className="loading-container">
@@ -594,15 +606,15 @@ function Projects() {
         </div>
       </section>
 
-      {/* Compact Customer Modal */}
-      <Modal isOpen={showCustomerModal} onClose={() => { setShowCustomerModal(false); resetCustomerForm(); }}>
+      {/* FIXED: Compact Customer Modal with stable references */}
+      <Modal isOpen={showCustomerModal} onClose={handleModalClose}>
         <div className="modal-header-compact">
           <h3 className="modal-title-compact">
             <UserPlus size={20} className="title-icon-compact" />
             {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
           </h3>
           <button 
-            onClick={() => { setShowCustomerModal(false); resetCustomerForm(); }}
+            onClick={handleModalClose}
             className="modal-close-button-compact"
           >
             <X size={20} />
@@ -633,6 +645,7 @@ function Projects() {
                     required 
                     className="form-input-compact"
                     placeholder="Acme Corporation"
+                    autoComplete="off"
                   />
                 </div>
                 
@@ -645,6 +658,7 @@ function Projects() {
                     required 
                     className="form-input-compact"
                     placeholder="John Smith"
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -723,7 +737,7 @@ function Projects() {
         <div className="modal-actions-compact">
           <button 
             type="button" 
-            onClick={() => { setShowCustomerModal(false); resetCustomerForm(); }}
+            onClick={handleModalClose}
             className="button-cancel-compact"
           >
             Cancel
