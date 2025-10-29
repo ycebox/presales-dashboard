@@ -51,6 +51,15 @@ export default function TodayTasksKanban() {
   }, []);
 
   useEffect(() => {
+  if (showAddModal) {
+    document.body.style.overflow = "hidden";
+  } else {
+    document.body.style.overflow = "auto";
+  }
+  return () => (document.body.style.overflow = "auto");
+}, [showAddModal]);
+  
+  useEffect(() => {
     fetchTasks();
     fetchProjects();
   }, []);
