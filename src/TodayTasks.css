@@ -412,6 +412,7 @@
 @media (max-width: 768px) {
   .kanban-container {
     padding: 1rem;
+     pointer-events: auto;
   }
   
   .kanban-column {
@@ -430,6 +431,9 @@
   align-items: center;
   justify-content: center;
   z-index: 999;
+  pointer-events: auto;
+    backdrop-filter: blur(2px);
+  transition: opacity 0.15s ease-in-out;
 }
 
 .modal.modern {
