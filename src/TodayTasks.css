@@ -426,13 +426,13 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(1px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 999;
   pointer-events: auto;
-    backdrop-filter: blur(2px);
   transition: opacity 0.15s ease-in-out;
 }
 
@@ -441,7 +441,8 @@
   padding: 1.5rem;
   border-radius: 12px;
   width: 360px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  color: #1e293b;
   animation: fadeIn 0.2s ease-in-out;
 }
 
@@ -585,11 +586,19 @@
 
 /* Smooth modal animation */
 @keyframes modalFadeIn {
-  from { opacity: 0; transform: scale(0.97); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .modal.modern {
-  animation: modalFadeIn 0.15s ease-out;
-  pointer-events: all;
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  width: 360px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  animation: modalFadeIn 0.2s ease-out;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transform: none !important;
+  backface-visibility: hidden;
 }
