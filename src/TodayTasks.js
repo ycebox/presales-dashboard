@@ -92,13 +92,13 @@ export default function TodayTasksKanban() {
     }
   };
 
-  const fetchProjects = async () => {
-    const { data, error } = await supabase
-      .from("projects")
-      .select("id, customer_name")
-      .order("customer_name", { ascending: true });
-    if (!error) setProjects(data);
-  };
+const fetchProjects = async () => {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, customer_name, project_name")
+    .order("customer_name", { ascending: true });
+  if (!error) setProjects(data);
+};
 
   const today = new Date().toISOString().split("T")[0];
   const isOverdue = (due) => due && due < today;
@@ -428,10 +428,11 @@ export default function TodayTasksKanban() {
                   }}
                 >
                   <option value="">Select Project</option>
-                  {projects.map(p => (
-                    <option key={p.id} value={p.id}>{p.customer_name}</option>
-                  ))}
-                  <option value="new">+ Create New Project</option>
+                {projects.map(p => (
+  <option key={p.id} value={p.id}>
+    {p.customer_name} – {p.project_name || "(No project name)"}
+  </option>
+))}
                 </select>
               ) : (
                 <div className="new-project-field">
