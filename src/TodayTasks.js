@@ -10,12 +10,15 @@ import {
   MoreVertical,
   Check,
   Pause,
-  RotateCcw
+  RotateCcw,
+  Clipboard,
+  Plus
 } from "lucide-react";
 import './TodayTasks.css';
 
 export default function TodayTasksKanban() {
   const [tasks, setTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [draggedTask, setDraggedTask] = useState(null);
@@ -25,6 +28,17 @@ export default function TodayTasksKanban() {
   const [completedCount, setCompletedCount] = useState(0);
   const [showToast, setShowToast] = useState(null);
 
+  // Add modal & new task states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newTask, setNewTask] = useState({
+    description: "",
+    due_date: "",
+    status: "Not Started",
+    project_id: ""
+  });
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -32,19 +46,18 @@ export default function TodayTasksKanban() {
         setShowDropdown(null);
       }
     };
-
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
   useEffect(() => {
     fetchTasks();
+    fetchProjects();
   }, []);
 
   const fetchTasks = async () => {
     setIsLoading(true);
     setError(null);
-
     try {
       const today = new Date().toISOString().split("T")[0];
       const { data, error } = await supabase
@@ -59,9 +72,7 @@ export default function TodayTasksKanban() {
       }
 
       const filtered = data
-        .filter(task =>
-          ["Not Started", "In Progress"].includes(task.status)
-        )
+        .filter(task => ["Not Started", "In Progress"].includes(task.status))
         .map(task => ({
           ...task,
           customer_name: task.projects?.customer_name || `Project ${task.project_id}`
@@ -69,10 +80,8 @@ export default function TodayTasksKanban() {
 
       setTasks(filtered);
 
-      // Count completed tasks for today
       const completedToday = data.filter(task => 
-        task.status === "Completed" && 
-        task.due_date === today
+        task.status === "Completed" && task.due_date === today
       ).length;
       setCompletedCount(completedToday);
 
@@ -83,17 +92,22 @@ export default function TodayTasksKanban() {
     }
   };
 
+  const fetchProjects = async () => {
+    const { data, error } = await supabase
+      .from("projects")
+      .select("id, customer_name")
+      .order("customer_name", { ascending: true });
+    if (!error) setProjects(data);
+  };
+
   const today = new Date().toISOString().split("T")[0];
   const isOverdue = (due) => due && due < today;
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case "In Progress": 
-        return <Play size={10} className="status-icon in-progress" />;
-      case "Not Started": 
-        return <Clock size={10} className="status-icon open" />;
-      default: 
-        return null;
+      case "In Progress": return <Play size={10} className="status-icon in-progress" />;
+      case "Not Started": return <Clock size={10} className="status-icon open" />;
+      default: return null;
     }
   };
 
@@ -103,51 +117,30 @@ export default function TodayTasksKanban() {
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    if (date.toDateString() === today.toDateString()) {
-      return "Today";
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return "Tomorrow";
-    } else {
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
-      });
-    }
+    if (date.toDateString() === today.toDateString()) return "Today";
+    else if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow";
+    else return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined });
   };
 
   const completeTask = async (task) => {
     setCompletingTask(task.id);
-    
     try {
       const { error } = await supabase
         .from("project_tasks")
         .update({ status: "Completed" })
         .eq("id", task.id);
+      if (error) return;
 
-      if (error) {
-        console.error("Error completing task:", error);
-        return;
-      }
-
-      // Remove from local state with animation
       setTimeout(() => {
-        setTasks(prevTasks => prevTasks.filter(t => t.id !== task.id));
+        setTasks(prev => prev.filter(t => t.id !== task.id));
         setCompletedCount(prev => prev + 1);
       }, 300);
 
-      // Show success toast
-      setShowToast({
-        message: `"${task.description}" completed!`,
-        type: 'success'
-      });
-
-      // Hide toast after 3 seconds
+      setShowToast({ message: `"${task.description}" completed!`, type: 'success' });
       setTimeout(() => setShowToast(null), 3000);
 
     } catch (error) {
-      console.error("Error completing task:", error);
+      console.error(error);
     } finally {
       setTimeout(() => setCompletingTask(null), 300);
     }
@@ -160,23 +153,12 @@ export default function TodayTasksKanban() {
         .from("project_tasks")
         .update({ status: newStatus })
         .eq("id", taskId);
-
-      if (error) {
-        console.error("Error updating task:", error);
-        return false;
-      }
-
-      // Update local state
-      setTasks(prevTasks => 
-        prevTasks.map(task => 
-          task.id === taskId ? { ...task, status: newStatus } : task
-        )
-      );
-      
+      if (error) return false;
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
       setShowDropdown(null);
       return true;
     } catch (error) {
-      console.error("Error updating task:", error);
+      console.error(error);
       return false;
     } finally {
       setUpdatingTask(null);
@@ -195,19 +177,15 @@ export default function TodayTasksKanban() {
 
   const handleDrop = async (e, targetStatus) => {
     e.preventDefault();
-    
     if (!draggedTask || draggedTask.status === targetStatus) {
       setDraggedTask(null);
       return;
     }
-
     await updateTaskStatus(draggedTask.id, targetStatus);
     setDraggedTask(null);
   };
 
-  const handleDragEnd = () => {
-    setDraggedTask(null);
-  };
+  const handleDragEnd = () => setDraggedTask(null);
 
   const getStatusOptions = (currentStatus) => {
     const allStatuses = [
@@ -216,13 +194,58 @@ export default function TodayTasksKanban() {
       { value: "Completed", label: "Completed", icon: Check },
       { value: "On Hold", label: "On Hold", icon: Pause }
     ];
-    
     return allStatuses.filter(status => status.value !== currentStatus);
   };
 
   const scrollToProject = (projectId) => {
     const el = document.getElementById(`project-${projectId}`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const createNewProject = async () => {
+    if (!newProjectName.trim()) return alert("Please enter a project name");
+    const { data, error } = await supabase
+      .from("projects")
+      .insert([{ customer_name: newProjectName }])
+      .select("id, customer_name")
+      .single();
+    if (error) {
+      alert("Failed to create project");
+      return;
+    }
+    setProjects(prev => [...prev, data]);
+    setNewTask({ ...newTask, project_id: data.id });
+    setNewProjectName("");
+    setIsCreatingProject(false);
+    setShowToast({ message: `Project "${data.customer_name}" created!`, type: "success" });
+    setTimeout(() => setShowToast(null), 3000);
+  };
+
+  const addNewTask = async () => {
+    if (!newTask.description || !newTask.project_id)
+      return alert("Please fill all fields");
+
+    const { data, error } = await supabase
+      .from("project_tasks")
+      .insert([newTask])
+      .select("id, description, status, due_date, project_id, projects(customer_name)")
+      .single();
+
+    if (error) {
+      alert("Failed to add task");
+      return;
+    }
+
+    const addedTask = {
+      ...data,
+      customer_name: data.projects?.customer_name || "New Project"
+    };
+    setTasks(prev => [...prev, addedTask]);
+    setShowAddModal(false);
+    setNewTask({ description: "", due_date: "", status: "Not Started", project_id: "" });
+
+    setShowToast({ message: `Task "${addedTask.description}" added!`, type: "success" });
+    setTimeout(() => setShowToast(null), 3000);
   };
 
   const notStartedTasks = tasks.filter(t => t.status === "Not Started");
@@ -247,10 +270,7 @@ export default function TodayTasksKanban() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <button
               className="complete-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                completeTask(task);
-              }}
+              onClick={(e) => { e.stopPropagation(); completeTask(task); }}
               disabled={completingTask === task.id || updatingTask === task.id}
               title="Mark as completed"
             >
@@ -298,9 +318,7 @@ export default function TodayTasksKanban() {
       <div className="task-footer">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
           {getStatusIcon(task.status)}
-          <span style={{ fontSize: '0.65rem', color: '#64748b' }}>
-            {task.status}
-          </span>
+          <span style={{ fontSize: '0.65rem', color: '#64748b' }}>{task.status}</span>
         </div>
         <div className="due-date-container">
           <span className={`due-date ${isOverdue(task.due_date) ? "overdue" : ""}`}>
@@ -318,15 +336,20 @@ export default function TodayTasksKanban() {
       <header className="kanban-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2>Today's Tasks</h2>
-          {completedCount > 0 && (
-            <div className="completed-counter">
-              <Check size={14} />
-              <span>{completedCount} completed today</span>
-            </div>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            {completedCount > 0 && (
+              <div className="completed-counter">
+                <Check size={14} />
+                <span>{completedCount} completed today</span>
+              </div>
+            )}
+            <button className="add-task-btn" onClick={() => setShowAddModal(true)}>
+              <Plus size={14} /> Add Task
+            </button>
+          </div>
         </div>
       </header>
-      
+
       {/* Toast Notification */}
       {showToast && (
         <div className={`toast toast-${showToast.type}`}>
@@ -345,34 +368,91 @@ export default function TodayTasksKanban() {
         </div>
       ) : (
         <div className="kanban-board">
-          <div 
-            className="kanban-column"
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, "Not Started")}
-          >
+          <div className="kanban-column" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, "Not Started")}>
             <h3 className="column-title">Not Started</h3>
             {notStartedTasks.length > 0 ? (
               notStartedTasks.map(task => <TaskCard key={task.id} task={task} />)
             ) : (
-              <div className="empty-column">
-                No tasks to start
-              </div>
+              <div className="empty-column">No tasks to start</div>
             )}
           </div>
 
-          <div 
-            className="kanban-column"
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, "In Progress")}
-          >
+          <div className="kanban-column" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, "In Progress")}>
             <h3 className="column-title">In Progress</h3>
             {inProgressTasks.length > 0 ? (
               inProgressTasks.map(task => <TaskCard key={task.id} task={task} />)
             ) : (
-              <div className="empty-column">
-                No tasks in progress
-              </div>
+              <div className="empty-column">No tasks in progress</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modern Add Task Modal */}
+      {showAddModal && (
+        <div className="modal-overlay">
+          <div className="modal modern">
+            <h3 className="modal-title">Add New Task</h3>
+
+            <div className="modal-section">
+              <h4><Clipboard size={14} /> Task Info</h4>
+              <input
+                type="text"
+                placeholder="Task description"
+                value={newTask.description}
+                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+              />
+              <div className="input-group">
+                <Calendar size={14} />
+                <input
+                  type="date"
+                  value={newTask.due_date}
+                  onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="modal-section">
+              <h4><Building2 size={14} /> Project Link</h4>
+              {!isCreatingProject ? (
+                <select
+                  value={newTask.project_id}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "new") {
+                      setIsCreatingProject(true);
+                      setNewTask({ ...newTask, project_id: "" });
+                    } else {
+                      setNewTask({ ...newTask, project_id: value });
+                    }
+                  }}
+                >
+                  <option value="">Select Project</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>{p.customer_name}</option>
+                  ))}
+                  <option value="new">+ Create New Project</option>
+                </select>
+              ) : (
+                <div className="new-project-field">
+                  <input
+                    type="text"
+                    placeholder="Enter new project name"
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                  />
+                  <div className="modal-inline-actions">
+                    <button onClick={() => setIsCreatingProject(false)} className="cancel-small-btn">Cancel</button>
+                    <button onClick={createNewProject} className="confirm-small-btn">Save</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button className="confirm-btn" onClick={addNewTask}>Save Task</button>
+              <button className="cancel-btn" onClick={() => setShowAddModal(false)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}
