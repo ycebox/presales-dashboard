@@ -341,7 +341,7 @@ const fetchProjects = async () => {
   );
 
   return (
-    <div className="kanban-container">
+      <div className={`kanban-container ${showAddModal ? "no-interact" : ""}`}>
       <header className="kanban-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2>Today's Tasks</h2>
