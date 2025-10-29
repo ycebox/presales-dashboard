@@ -343,9 +343,9 @@ const fetchProjects = async () => {
                 <span>{completedCount} completed today</span>
               </div>
             )}
-            <button className="add-task-btn" onClick={() => setShowAddModal(true)}>
-              <Plus size={14} /> Add Task
-            </button>
+            <button className="confirm-btn add-task-btn" onClick={() => setShowAddModal(true)}>
+  <Plus size={14} style={{ marginRight: "4px" }} /> Add Task
+</button>
           </div>
         </div>
       </header>
