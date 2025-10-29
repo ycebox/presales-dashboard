@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { supabase } from './supabaseClient';
 import {
@@ -486,4 +487,13 @@ export default function TodayTasksKanban() {
               <button className="confirm-btn" onClick={addNewTask}>
                 Save Task
               </button>
-              <button className="cancel-btn" onClick={() => set
+              <button className="cancel-btn" onClick={() => setShowAddModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
