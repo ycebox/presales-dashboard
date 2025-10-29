@@ -534,3 +534,22 @@
 .cancel-btn:hover {
   background-color: #cbd5e1;
 }
+.add-task-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.add-task-btn svg {
+  margin-bottom: 1px;
+}
+
+.add-task-btn:hover {
+  background-color: #1e40af; /* Same as confirm-btn hover */
+}
