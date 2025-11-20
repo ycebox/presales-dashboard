@@ -106,6 +106,55 @@ function Projects() {
     types: [...new Set(customers.map(c => c.customer_type).filter(Boolean))].sort()
   }), [customers]);
 
+  // Portfolio-level stats for regional head view
+  const portfolioStats = useMemo(() => {
+    if (!customers || customers.length === 0) {
+      return null;
+    }
+
+    const total = customers.length;
+    const uniqueCountries = new Set(
+      customers.map(c => c.country).filter(Boolean)
+    ).size;
+
+    let existingCount = 0;
+    let newCount = 0;
+    let internalCount = 0;
+    let sumHealth = 0;
+    let healthCount = 0;
+    let atRiskCount = 0;
+
+    customers.forEach(c => {
+      if (c.customer_type === 'Existing') existingCount += 1;
+      else if (c.customer_type === 'New') newCount += 1;
+      else if (c.customer_type === 'Internal Initiative') internalCount += 1;
+
+      const rawScore = typeof c.health_score === 'number'
+        ? c.health_score
+        : parseFloat(c.health_score);
+
+      if (!isNaN(rawScore)) {
+        sumHealth += rawScore;
+        healthCount += 1;
+        if (rawScore <= 4) {
+          atRiskCount += 1;
+        }
+      }
+    });
+
+    const avgHealth = healthCount > 0 ? sumHealth / healthCount : null;
+
+    return {
+      total,
+      uniqueCountries,
+      existingCount,
+      newCount,
+      internalCount,
+      avgHealth,
+      atRiskCount
+    };
+  }, [customers]);
+
   // Active filters for chips
   const activeFilters = useMemo(() => {
     return Object.entries(filters)
@@ -374,6 +423,15 @@ function Projects() {
           <h2>Customer Portfolio</h2>
           <p className="header-subtitle">
             {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}
+            {portfolioStats && (
+              <>
+                {' • '}
+                {portfolioStats.uniqueCountries} countr{portfolioStats.uniqueCountries === 1 ? 'y' : 'ies'}
+                {portfolioStats.avgHealth !== null && (
+                  <> • Avg health {portfolioStats.avgHealth.toFixed(1)}/10</>
+                )}
+              </>
+            )}
             {selectedCustomers.size > 0 && ` • ${selectedCustomers.size} selected`}
           </p>
         </div>
@@ -410,6 +468,65 @@ function Projects() {
           </button>
         </div>
       </div>
+
+      {/* NEW: Portfolio summary for regional head view */}
+      {portfolioStats && (
+        <section className="portfolio-summary-section">
+          <div className="portfolio-summary-grid">
+            <div className="summary-card">
+              <div className="summary-card-icon summary-card-icon-primary">
+                <Building2 size={18} />
+              </div>
+              <div className="summary-card-content">
+                <p className="summary-card-label">Total customers</p>
+                <p className="summary-card-value">{portfolioStats.total}</p>
+                <p className="summary-card-sub">
+                  {portfolioStats.existingCount} existing · {portfolioStats.newCount} new
+                </p>
+              </div>
+            </div>
+
+            <div className="summary-card">
+              <div className="summary-card-icon summary-card-icon-accent">
+                <Globe size={18} />
+              </div>
+              <div className="summary-card-content">
+                <p className="summary-card-label">Countries covered</p>
+                <p className="summary-card-value">{portfolioStats.uniqueCountries}</p>
+                <p className="summary-card-sub">APAC footprint overview</p>
+              </div>
+            </div>
+
+            <div className="summary-card">
+              <div className="summary-card-icon summary-card-icon-health">
+                <Activity size={18} />
+              </div>
+              <div className="summary-card-content">
+                <p className="summary-card-label">Average health</p>
+                <p className="summary-card-value">
+                  {portfolioStats.avgHealth !== null ? portfolioStats.avgHealth.toFixed(1) : '—'}/10
+                </p>
+                <p className="summary-card-sub">
+                  {portfolioStats.atRiskCount > 0
+                    ? `${portfolioStats.atRiskCount} at risk (≤ 4/10)`
+                    : 'No at-risk customers'}
+                </p>
+              </div>
+            </div>
+
+            <div className="summary-card">
+              <div className="summary-card-icon summary-card-icon-neutral">
+                <User size={18} />
+              </div>
+              <div className="summary-card-content">
+                <p className="summary-card-label">Internal initiatives</p>
+                <p className="summary-card-value">{portfolioStats.internalCount}</p>
+                <p className="summary-card-sub">Non-client, internal work tracked</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Search and Filters */}
       <section className="search-filters-section">
