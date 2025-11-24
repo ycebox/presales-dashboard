@@ -1,12 +1,12 @@
 // App.js
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import Projects from './Projects';
 import TodayTasks from './TodayTasks';
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
-import PresalesOverview from './PresalesOverview'; // NEW: presales overview page
+import PresalesOverview from './PresalesOverview'; // New page
 import './App.css';
 
 function App() {
@@ -15,10 +15,12 @@ function App() {
 
   useEffect(() => {
     autoAuthenticate();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
     return () => subscription?.unsubscribe();
   }, []);
 
@@ -33,6 +35,7 @@ function App() {
 
       const defaultEmail = 'admin@presales.com';
       const defaultPassword = 'presales123';
+
       let { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: defaultEmail,
         password: defaultPassword
@@ -69,18 +72,49 @@ function App() {
     <Router basename="/presales-dashboard">
       <div className="app-wrapper">
         <div className="main-container">
+          
+          {/* ---------- HEADER ---------- */}
           <header className="dashboard-header">
             <div className="header-content">
+
+              {/* Left side title */}
               <div className="header-info">
                 <h1 className="section-title">Jonathan's Command Center</h1>
                 <p className="dashboard-subtitle">The Procrastinator's Paradise</p>
               </div>
+
+              {/* Right side: status + new Presales Overview link */}
               <div className="header-status">
+
+                {/* Online indicator */}
                 <div className="status-indicator"></div>
                 <span className="status-text">Online</span>
+
+                {/* --- NEW: Link to Presales Overview --- */}
+                <Link 
+                  to="/presales-overview"
+                  className="presales-nav-link"
+                  style={{
+                    marginLeft: '16px',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: '#2563eb',
+                    color: 'white',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                    transition: '0.2s',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseOver={(e) => e.target.style.opacity = '0.85'}
+                  onMouseOut={(e) => e.target.style.opacity = '1'}
+                >
+                  Presales Overview
+                </Link>
               </div>
             </div>
           </header>
+          {/* ---------- END HEADER ---------- */}
 
           <Routes>
             {/* Main dashboard */}
@@ -89,12 +123,12 @@ function App() {
               element={
                 <main className="dashboard-main">
                   <div className="dashboard-bottom">
-                    {/* Tasks first */}
+                    {/* Tasks */}
                     <div className="widget-card tasks-widget">
                       <TodayTasks />
                     </div>
 
-                    {/* Then Projects */}
+                    {/* Projects */}
                     <div className="widget-card projects-widget">
                       <Projects />
                     </div>
@@ -103,10 +137,10 @@ function App() {
               }
             />
 
-            {/* NEW: Presales overview (regional head view) */}
+            {/* New Page */}
             <Route path="/presales-overview" element={<PresalesOverview />} />
 
-            {/* Existing detail pages */}
+            {/* Detail Pages */}
             <Route path="/project/:id" element={<ProjectDetails />} />
             <Route path="/customer/:customerId" element={<CustomerDetails />} />
           </Routes>
