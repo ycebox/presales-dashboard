@@ -10,38 +10,51 @@ import {
   Users,
   AlertTriangle,
   CheckCircle2,
-  ArrowLeft
+  ArrowLeft,
+  CalendarDays,
 } from 'lucide-react';
 import './PresalesOverview.css';
 
 function PresalesOverview() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [scheduleEvents, setScheduleEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Load projects, tasks, and (optionally) presales_schedule
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const [{ data: projData, error: projError }, { data: taskData, error: taskError }] =
-          await Promise.all([
-            supabase
-              .from('projects')
-              .select('id, customer_name, country, sales_stage, deal_value')
-              .order('customer_name', { ascending: true }),
-            supabase
-              .from('project_tasks')
-              .select('id, project_id, assignee, status, due_date'),
-          ]);
+        const [projRes, taskRes, scheduleRes] = await Promise.all([
+          supabase
+            .from('projects')
+            .select('id, customer_name, country, sales_stage, deal_value')
+            .order('customer_name', { ascending: true }),
+          supabase
+            .from('project_tasks')
+            .select('id, project_id, assignee, status, due_date'),
+          supabase
+            .from('presales_schedule')
+            .select('id, assignee, type, start_date, end_date, note'),
+        ]);
 
-        if (projError) throw projError;
-        if (taskError) throw taskError;
+        if (projRes.error) throw projRes.error;
+        if (taskRes.error) throw taskRes.error;
 
-        setProjects(projData || []);
-        setTasks(taskData || []);
+        setProjects(projRes.data || []);
+        setTasks(taskRes.data || []);
+
+        if (scheduleRes.error) {
+          // Table might not exist yet; don't block the page
+          console.warn('presales_schedule not loaded:', scheduleRes.error.message);
+          setScheduleEvents([]);
+        } else {
+          setScheduleEvents(scheduleRes.data || []);
+        }
       } catch (err) {
         console.error('Error loading presales overview:', err);
         setError('Failed to load presales overview data.');
@@ -53,7 +66,7 @@ function PresalesOverview() {
     loadData();
   }, []);
 
-  // --- (stats + workload calculations here, unchanged) ---
+  // --------- Summary stats ---------
   const {
     activeDeals,
     wonDeals,
@@ -85,9 +98,10 @@ function PresalesOverview() {
     projects.forEach((p) => {
       if (p.country) countrySet.add(p.country);
 
-      const value = typeof p.deal_value === 'number'
-        ? p.deal_value
-        : parseFloat(p.deal_value || 0);
+      const value =
+        typeof p.deal_value === 'number'
+          ? p.deal_value
+          : parseFloat(p.deal_value || 0);
 
       if (p.sales_stage === 'Done') {
         won += 1;
@@ -112,6 +126,7 @@ function PresalesOverview() {
     };
   }, [projects, tasks]);
 
+  // --------- Workload per assignee ---------
   const workloadByAssignee = useMemo(() => {
     if (!tasks || tasks.length === 0) return [];
 
@@ -134,7 +149,6 @@ function PresalesOverview() {
 
       const entry = map.get(name);
       entry.total += 1;
-
       const isCompleted = t.status === 'Completed';
 
       if (!isCompleted) {
@@ -160,10 +174,13 @@ function PresalesOverview() {
       loadRatio: e.total === 0 ? 0 : e.open / e.total,
     }));
 
+    // Sort by open tasks desc
     arr.sort((a, b) => b.open - a.open);
+
     return arr;
   }, [tasks]);
 
+  // --------- Deals by country ---------
   const dealsByCountry = useMemo(() => {
     if (!projects || projects.length === 0) return [];
 
@@ -184,9 +201,10 @@ function PresalesOverview() {
       const entry = map.get(country);
       entry.total += 1;
 
-      const value = typeof p.deal_value === 'number'
-        ? p.deal_value
-        : parseFloat(p.deal_value || 0);
+      const value =
+        typeof p.deal_value === 'number'
+          ? p.deal_value
+          : parseFloat(p.deal_value || 0);
 
       if (p.sales_stage === 'Done') {
         entry.done += 1;
@@ -198,6 +216,7 @@ function PresalesOverview() {
 
     const arr = Array.from(map.values());
     arr.sort((a, b) => b.pipelineValue - a.pipelineValue);
+
     return arr;
   }, [projects]);
 
@@ -209,6 +228,84 @@ function PresalesOverview() {
       maximumFractionDigits: 0,
     });
   };
+
+  // --------- Calendar / heatmap dates (next 14 days) ---------
+  const daysRange = useMemo(() => {
+    const days = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      days.push(d);
+    }
+    return days;
+  }, []);
+
+  const isSameDay = (d1, d2) => {
+    return (
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate()
+    );
+  };
+
+  const isWithinRange = (day, startStr, endStr) => {
+    if (!startStr || !endStr) return false;
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    return day >= start && day <= end;
+  };
+
+  // Build availability heatmap per presales resource
+  const availabilityGrid = useMemo(() => {
+    if (!workloadByAssignee || workloadByAssignee.length === 0) return [];
+
+    return workloadByAssignee.map((res) => {
+      const row = { assignee: res.assignee, days: [] };
+
+      daysRange.forEach((day) => {
+        let status = 'free';
+        let label = 'Free';
+
+        // Check leave / travel first (from presales_schedule)
+        const ev = scheduleEvents.find(
+          (e) =>
+            e.assignee === res.assignee &&
+            isWithinRange(day, e.start_date, e.end_date)
+        );
+
+        if (ev) {
+          if ((ev.type || '').toLowerCase() === 'travel') {
+            status = 'travel';
+            label = 'Travel';
+          } else {
+            status = 'leave';
+            label = ev.type || 'Leave';
+          }
+        } else {
+          // If not on leave/travel, check if they have tasks due this day
+          const hasTask = tasks.some(
+            (t) =>
+              t.assignee === res.assignee &&
+              t.status !== 'Completed' &&
+              t.due_date &&
+              isSameDay(new Date(t.due_date), day)
+          );
+          if (hasTask) {
+            status = 'busy';
+            label = 'Busy';
+          }
+        }
+
+        row.days.push({ status, label, date: day });
+      });
+
+      return row;
+    });
+  }, [workloadByAssignee, daysRange, scheduleEvents, tasks]);
 
   if (loading) {
     return (
@@ -234,50 +331,27 @@ function PresalesOverview() {
 
   return (
     <div className="presales-page-container">
-      
       {/* ---------- HEADER ---------- */}
       <header className="presales-header">
-
-        {/* NEW: Back to home button */}
-        <Link 
-          to="/"
-          className="back-to-home-link"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            textDecoration: 'none',
-            background: '#f3f4f6',
-            padding: '6px 10px',
-            borderRadius: '8px',
-            fontSize: '0.75rem',
-            fontWeight: 500,
-            color: '#374151',
-            border: '1px solid #e5e7eb',
-            transition: '0.15s'
-          }}
-          onMouseOver={(e) => e.target.style.background = '#e5e7eb'}
-          onMouseOut={(e) => e.target.style.background = '#f3f4f6'}
-        >
-          <ArrowLeft size={14} />
-          Back to Home
-        </Link>
-
-        <div style={{ marginTop: '0.75rem' }}>
-          <h2>Presales Overview</h2>
-          <p>Regional view of APAC deals and presales workload.</p>
+        <div className="presales-header-main">
+          <Link
+            to="/"
+            className="back-to-home-link"
+          >
+            <ArrowLeft size={14} />
+            Back to Home
+          </Link>
+          <div>
+            <h2>Presales Overview</h2>
+            <p>Regional view of APAC deals, workload, and availability.</p>
+          </div>
         </div>
-
       </header>
       {/* ---------- END HEADER ---------- */}
 
-      
-      {/* --- summary cards + main content (unchanged) --- */}
-      
+      {/* Top summary cards */}
       <section className="presales-summary-section">
         <div className="presales-summary-grid">
-          
-          {/* Active deals */}
           <div className="presales-summary-card">
             <div className="psc-icon psc-icon-primary">
               <Briefcase size={18} />
@@ -286,12 +360,13 @@ function PresalesOverview() {
               <p className="psc-label">Active deals</p>
               <p className="psc-value">{activeDeals}</p>
               <p className="psc-sub">
-                {pipelineValue ? `${formatCurrency(pipelineValue)} in pipeline` : 'No value yet'}
+                {pipelineValue
+                  ? `${formatCurrency(pipelineValue)} in pipeline`
+                  : 'No value set yet'}
               </p>
             </div>
           </div>
 
-          {/* Closed deals */}
           <div className="presales-summary-card">
             <div className="psc-icon psc-icon-accent">
               <CheckCircle2 size={18} />
@@ -300,12 +375,13 @@ function PresalesOverview() {
               <p className="psc-label">Closed / Done</p>
               <p className="psc-value">{wonDeals}</p>
               <p className="psc-sub">
-                {wonValue ? `${formatCurrency(wonValue)} closed` : 'No closed deals'}
+                {wonValue
+                  ? `${formatCurrency(wonValue)} closed`
+                  : 'No closed deals yet'}
               </p>
             </div>
           </div>
 
-          {/* Avg deal size */}
           <div className="presales-summary-card">
             <div className="psc-icon psc-icon-orange">
               <Target size={18} />
@@ -319,7 +395,6 @@ function PresalesOverview() {
             </div>
           </div>
 
-          {/* Countries + open tasks */}
           <div className="presales-summary-card">
             <div className="psc-icon psc-icon-neutral">
               <Globe2 size={18} />
@@ -327,47 +402,255 @@ function PresalesOverview() {
             <div className="psc-content">
               <p className="psc-label">Countries & tasks</p>
               <p className="psc-value">
-                {countryCount} <span className="psc-value-suffix">countries</span>
+                {countryCount}{' '}
+                <span className="psc-value-suffix">countries</span>
               </p>
               <p className="psc-sub">
-                {openTasksCount} open task{openTasksCount !== 1 ? 's' : ''}
+                {openTasksCount} open task
+                {openTasksCount !== 1 ? 's' : ''} across APAC
               </p>
             </div>
           </div>
-
         </div>
       </section>
 
-
-      {/* Workload + Deals */}
+      {/* Workload + Deals tables */}
       <section className="presales-main-grid">
-        
-        {/* Workload */}
+        {/* Workload panel */}
         <div className="presales-panel">
           <div className="presales-panel-header">
-            <h3><Users size={16} className="panel-icon" /> Presales workload</h3>
-            <p>Who is handling what.</p>
+            <div>
+              <h3>
+                <Users size={16} className="panel-icon" />
+                Presales workload
+              </h3>
+              <p>Who is handling what, and where the pressure is.</p>
+            </div>
           </div>
-          
-          {/* table */}
-          {/* ... unchanged workload table ... */}
-          
+
+          {workloadByAssignee.length === 0 ? (
+            <div className="presales-empty">
+              <User size={20} />
+              <p>No tasks found. Assign tasks to presales to see workload.</p>
+            </div>
+          ) : (
+            <div className="workload-table-wrapper">
+              <table className="workload-table">
+                <thead>
+                  <tr>
+                    <th>Presales</th>
+                    <th className="th-center">Projects</th>
+                    <th className="th-center">Total tasks</th>
+                    <th className="th-center">Open</th>
+                    <th className="th-center">Overdue</th>
+                    <th>Load</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {workloadByAssignee.map((w) => (
+                    <tr key={w.assignee}>
+                      <td>
+                        <div className="wl-name-cell">
+                          <div className="wl-avatar">
+                            {(w.assignee || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="wl-name-text">
+                            <span className="wl-name-main">{w.assignee}</span>
+                            <span className="wl-name-sub">
+                              {w.projectCount} project
+                              {w.projectCount !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="td-center">{w.projectCount}</td>
+                      <td className="td-center">{w.total}</td>
+                      <td className="td-center">{w.open}</td>
+                      <td className="td-center overdue">{w.overdue}</td>
+                      <td>
+                        <div className="wl-load-bar">
+                          <div className="wl-load-track">
+                            <div
+                              className="wl-load-fill"
+                              style={{
+                                width: `${Math.min(
+                                  w.loadRatio * 100,
+                                  100
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="wl-load-text">
+                            {Math.round(w.loadRatio * 100)}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Deals by country */}
         <div className="presales-panel">
           <div className="presales-panel-header">
-            <h3><Activity size={16} className="panel-icon" /> Deals by country</h3>
-            <p>Where pipeline is concentrated.</p>
+            <div>
+              <h3>
+                <Activity size={16} className="panel-icon" />
+                Deals by country
+              </h3>
+              <p>Where the pipeline is concentrated across APAC.</p>
+            </div>
           </div>
 
-          {/* table */}
-          {/* ... unchanged deals-by-country table ... */}
-
+          {dealsByCountry.length === 0 ? (
+            <div className="presales-empty">
+              <Globe2 size={20} />
+              <p>No deals found. Add projects with country and deal value.</p>
+            </div>
+          ) : (
+            <div className="country-table-wrapper">
+              <table className="country-table">
+                <thead>
+                  <tr>
+                    <th>Country</th>
+                    <th className="th-center">Total deals</th>
+                    <th className="th-center">Active</th>
+                    <th className="th-center">Done</th>
+                    <th className="th-right">Pipeline value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dealsByCountry.map((c) => (
+                    <tr key={c.country}>
+                      <td>
+                        <div className="cty-name-cell">
+                          <span className="cty-flag-placeholder">
+                            {c.country.charAt(0).toUpperCase()}
+                          </span>
+                          <span>{c.country}</span>
+                        </div>
+                      </td>
+                      <td className="td-center">{c.total}</td>
+                      <td className="td-center">{c.active}</td>
+                      <td className="td-center">{c.done}</td>
+                      <td className="td-right">
+                        {c.pipelineValue
+                          ? formatCurrency(c.pipelineValue)
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-
       </section>
 
+      {/* Resource availability heatmap / calendar */}
+      <section className="presales-calendar-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <CalendarDays size={16} className="panel-icon" />
+                Presales availability (next 14 days)
+              </h3>
+              <p>
+                Heatmap of busy days, leave, travel, and free capacity for each
+                presales resource.
+              </p>
+            </div>
+          </div>
+
+          {availabilityGrid.length === 0 ? (
+            <div className="presales-empty">
+              <Users size={20} />
+              <p>
+                No presales workload found yet. Assign tasks and schedule leave /
+                travel to see availability.
+              </p>
+            </div>
+          ) : (
+            <div className="heatmap-wrapper">
+              {/* Legend */}
+              <div className="heatmap-legend">
+                <span className="legend-item">
+                  <span className="legend-dot status-free" />
+                  Free
+                </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-busy" />
+                  Busy (tasks due)
+                </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-leave" />
+                  Leave
+                </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-travel" />
+                  Travel
+                </span>
+              </div>
+
+              {/* Calendar grid */}
+              <div className="heatmap-table">
+                {/* Header row */}
+                <div className="heatmap-header-row">
+                  <div className="heatmap-header-cell heatmap-name-col">
+                    Presales
+                  </div>
+                  {daysRange.map((d, idx) => {
+                    const label = d.toLocaleDateString('en-SG', {
+                      weekday: 'short',
+                      day: 'numeric',
+                    });
+                    return (
+                      <div
+                        key={idx}
+                        className="heatmap-header-cell heatmap-day-col"
+                      >
+                        {label}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Rows */}
+                {availabilityGrid.map((row) => (
+                  <div key={row.assignee} className="heatmap-row">
+                    <div className="heatmap-presales-cell">
+                      <div className="wl-avatar">
+                        {(row.assignee || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <span className="heatmap-presales-name">
+                        {row.assignee}
+                      </span>
+                    </div>
+                    {row.days.map((d, idx) => {
+                      const dateLabel = d.date.toLocaleDateString('en-SG', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      });
+                      return (
+                        <div
+                          key={idx}
+                          className={`heatmap-cell status-${d.status}`}
+                          title={`${row.assignee} · ${dateLabel} · ${d.label}`}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
