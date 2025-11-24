@@ -6,8 +6,8 @@ import Projects from './Projects';
 import TodayTasks from './TodayTasks';
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
+import PresalesOverview from './PresalesOverview'; // NEW: presales overview page
 import './App.css';
-
 
 function App() {
   const [user, setUser] = useState(null);
@@ -83,25 +83,30 @@ function App() {
           </header>
 
           <Routes>
+            {/* Main dashboard */}
             <Route
               path="/"
               element={
-     <main className="dashboard-main">
-  <div className="dashboard-bottom">
-    {/* Tasks first */}
-    <div className="widget-card tasks-widget">
-      <TodayTasks />
-    </div>
+                <main className="dashboard-main">
+                  <div className="dashboard-bottom">
+                    {/* Tasks first */}
+                    <div className="widget-card tasks-widget">
+                      <TodayTasks />
+                    </div>
 
-    {/* Then Projects */}
-    <div className="widget-card projects-widget">
-      <Projects />
-    </div>
-  </div>
-</main>
-
+                    {/* Then Projects */}
+                    <div className="widget-card projects-widget">
+                      <Projects />
+                    </div>
+                  </div>
+                </main>
               }
             />
+
+            {/* NEW: Presales overview (regional head view) */}
+            <Route path="/presales-overview" element={<PresalesOverview />} />
+
+            {/* Existing detail pages */}
             <Route path="/project/:id" element={<ProjectDetails />} />
             <Route path="/customer/:customerId" element={<CustomerDetails />} />
           </Routes>
