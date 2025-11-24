@@ -22,7 +22,7 @@ function PresalesOverview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Load projects, tasks, and (optionally) presales_schedule
+  // Load projects, tasks, and presales_schedule
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -36,7 +36,7 @@ function PresalesOverview() {
             .order('customer_name', { ascending: true }),
           supabase
             .from('project_tasks')
-            .select('id, project_id, assignee, status, due_date'),
+            .select('id, project_id, assignee, status, due_date, start_date, end_date'),
           supabase
             .from('presales_schedule')
             .select('id, assignee, type, start_date, end_date, note'),
@@ -49,7 +49,6 @@ function PresalesOverview() {
         setTasks(taskRes.data || []);
 
         if (scheduleRes.error) {
-          // Table might not exist yet; don't block the page
           console.warn('presales_schedule not loaded:', scheduleRes.error.message);
           setScheduleEvents([]);
         } else {
@@ -103,7 +102,7 @@ function PresalesOverview() {
           ? p.deal_value
           : parseFloat(p.deal_value || 0);
 
-      if (p.sales_stage === 'Done') {
+      if (p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won') {
         won += 1;
         wonVal += isNaN(value) ? 0 : value;
       } else {
@@ -206,7 +205,7 @@ function PresalesOverview() {
           ? p.deal_value
           : parseFloat(p.deal_value || 0);
 
-      if (p.sales_stage === 'Done') {
+      if (p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won') {
         entry.done += 1;
       } else {
         entry.active += 1;
@@ -229,7 +228,7 @@ function PresalesOverview() {
     });
   };
 
-  // --------- Calendar / heatmap dates (next 14 days) ---------
+  // --------- Date helpers for heatmap ---------
   const daysRange = useMemo(() => {
     const days = [];
     const today = new Date();
@@ -242,24 +241,31 @@ function PresalesOverview() {
     return days;
   }, []);
 
+  const toMidnight = (d) => {
+    const c = new Date(d);
+    c.setHours(0, 0, 0, 0);
+    return c;
+  };
+
   const isSameDay = (d1, d2) => {
+    const a = toMidnight(d1);
+    const b = toMidnight(d2);
     return (
-      d1.getFullYear() === d2.getFullYear() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getDate() === d2.getDate()
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
     );
   };
 
   const isWithinRange = (day, startStr, endStr) => {
     if (!startStr || !endStr) return false;
-    const start = new Date(startStr);
-    const end = new Date(endStr);
-    start.setHours(0, 0, 0, 0);
-    end.setHours(0, 0, 0, 0);
-    return day >= start && day <= end;
+    const start = toMidnight(startStr);
+    const end = toMidnight(endStr);
+    const d = toMidnight(day);
+    return d >= start && d <= end;
   };
 
-  // Build availability heatmap per presales resource
+  // --------- Availability heatmap logic (tightened with start/end date) ---------
   const availabilityGrid = useMemo(() => {
     if (!workloadByAssignee || workloadByAssignee.length === 0) return [];
 
@@ -270,7 +276,7 @@ function PresalesOverview() {
         let status = 'free';
         let label = 'Free';
 
-        // Check leave / travel first (from presales_schedule)
+        // 1) Check leave / travel from presales_schedule (highest priority)
         const ev = scheduleEvents.find(
           (e) =>
             e.assignee === res.assignee &&
@@ -283,17 +289,42 @@ function PresalesOverview() {
             label = 'Travel';
           } else {
             status = 'leave';
-            label = ev.type || 'Leave';
+            label = e.type || 'Leave';
           }
         } else {
-          // If not on leave/travel, check if they have tasks due this day
-          const hasTask = tasks.some(
-            (t) =>
-              t.assignee === res.assignee &&
-              t.status !== 'Completed' &&
-              t.due_date &&
-              isSameDay(new Date(t.due_date), day)
-          );
+          // 2) Check tasks for busy days (start/end/due logic)
+          const hasTask = tasks.some((t) => {
+            if (t.assignee !== res.assignee) return false;
+            if (t.status === 'Completed') return false;
+
+            const d = toMidnight(day);
+
+            // a. Range: start_date + end_date
+            if (t.start_date && t.end_date) {
+              return isWithinRange(d, t.start_date, t.end_date);
+            }
+
+            // b. Only start_date: treat as ongoing from that day onward
+            if (t.start_date && !t.end_date) {
+              const start = toMidnight(t.start_date);
+              return d >= start;
+            }
+
+            // c. Only end_date: treat as ongoing up to that day
+            if (!t.start_date && t.end_date) {
+              const end = toMidnight(t.end_date);
+              return d <= end;
+            }
+
+            // d. Fallback: due_date = that specific day
+            if (t.due_date) {
+              const due = toMidnight(t.due_date);
+              return isSameDay(due, d);
+            }
+
+            return false;
+          });
+
           if (hasTask) {
             status = 'busy';
             label = 'Busy';
@@ -331,7 +362,7 @@ function PresalesOverview() {
 
   return (
     <div className="presales-page-container">
-      {/* ---------- HEADER ---------- */}
+      {/* HEADER */}
       <header className="presales-header">
         <div className="presales-header-main">
           <Link
@@ -347,7 +378,6 @@ function PresalesOverview() {
           </div>
         </div>
       </header>
-      {/* ---------- END HEADER ---------- */}
 
       {/* Top summary cards */}
       <section className="presales-summary-section">
@@ -584,7 +614,7 @@ function PresalesOverview() {
                 </span>
                 <span className="legend-item">
                   <span className="legend-dot status-busy" />
-                  Busy (tasks due)
+                  Busy (tasks)
                 </span>
                 <span className="legend-item">
                   <span className="legend-dot status-leave" />
