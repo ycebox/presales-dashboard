@@ -17,7 +17,7 @@ import {
 import './PresalesOverview.css';
 
 const HOURS_PER_DAY = 8;
-const DEFAULT_TASK_HOURS = 4; // if estimated_hours is null
+const DEFAULT_TASK_HOURS = 4; // fallback if estimated_hours is null
 
 function PresalesOverview() {
   const [projects, setProjects] = useState([]);
@@ -33,7 +33,10 @@ function PresalesOverview() {
   const [assignStart, setAssignStart] = useState('');
   const [assignEnd, setAssignEnd] = useState('');
 
-  // ---------- Load data ----------
+  // Calendar view: 14 or 30 days
+  const [calendarView, setCalendarView] = useState('14'); // '14' | '30'
+
+  // ---------- Load data from Supabase ----------
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -191,24 +194,26 @@ function PresalesOverview() {
     };
   }, [projects, tasks]);
 
-  // ---------- Date ranges (today + 14 days, this week, next week) ----------
+  // ---------- Date ranges ----------
   const daysRange = useMemo(() => {
     const days = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    for (let i = 0; i < 14; i++) {
+    const totalDays = calendarView === '30' ? 30 : 14;
+
+    for (let i = 0; i < totalDays; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
       days.push(d);
     }
     return days;
-  }, []);
+  }, [calendarView]);
 
   const thisWeekRange = useMemo(() => {
     const today = new Date();
     const day = today.getDay(); // 0-6 (Sun-Sat)
     const start = new Date(today);
-    start.setDate(today.getDate() - day + 1); // Monday-ish
+    start.setDate(today.getDate() - day + 1); // Monday
     start.setHours(0, 0, 0, 0);
 
     const end = new Date(start);
@@ -268,12 +273,11 @@ function PresalesOverview() {
       const isCompleted = t.status === 'Completed';
       const taskEffort = getTaskEffortHours(t);
 
-      // Projects count
       if (t.project_id) {
         entry.projects.add(t.project_id);
       }
 
-      // Overdue & overdueLast30
+      // overdue counters
       let isOverdue = false;
       if (!isCompleted && t.due_date) {
         const due = new Date(t.due_date);
@@ -288,20 +292,16 @@ function PresalesOverview() {
         }
       }
 
-      // Open tasks & utilization (only consider open)
       if (!isCompleted) {
         entry.open += 1;
 
-        // Map this task into thisWeek/nextWeek hours based on date range
         const taskStart = t.start_date ? toMidnight(t.start_date) : null;
         const taskEnd = t.end_date ? toMidnight(t.end_date) : null;
         const taskDue = t.due_date ? toMidnight(t.due_date) : null;
 
         const addHoursToRange = (range, hoursToSpread) => {
-          // Rough simple model: spread equally across overlapping days
           const { start, end } = range;
 
-          // Determine the days it overlaps
           let rStart = taskStart || taskDue || start;
           let rEnd = taskEnd || taskDue || end;
 
@@ -321,13 +321,10 @@ function PresalesOverview() {
 
           if (days <= 0) days = 1;
           const perDay = hoursToSpread / days;
-          return perDay * days; // total hours in that range
+          return perDay * days;
         };
 
-        // this week
         entry.thisWeekHours += addHoursToRange(thisWeekRange, taskEffort);
-
-        // next week
         entry.nextWeekHours += addHoursToRange(nextWeekRange, taskEffort);
       }
     });
@@ -362,6 +359,29 @@ function PresalesOverview() {
     arr.sort((a, b) => b.open - a.open);
     return arr;
   }, [tasks, thisWeekRange, nextWeekRange, last30DaysRange]);
+
+  // ---------- Team-level health summary ----------
+  const teamSummary = useMemo(() => {
+    if (!workloadByAssignee || workloadByAssignee.length === 0) return null;
+
+    const count = workloadByAssignee.length;
+    const avgNext =
+      workloadByAssignee.reduce((sum, w) => sum + w.utilNextWeek, 0) / count;
+
+    let overloaded = 0;
+    let underused = 0;
+    workloadByAssignee.forEach((w) => {
+      if (w.utilNextWeek >= 90) overloaded += 1;
+      else if (w.utilNextWeek <= 40) underused += 1;
+    });
+
+    return {
+      avgNext: Math.round(avgNext),
+      overloaded,
+      underused,
+      total: count,
+    };
+  }, [workloadByAssignee]);
 
   // ---------- Deals by country ----------
   const dealsByCountry = useMemo(() => {
@@ -406,7 +426,7 @@ function PresalesOverview() {
     return arr;
   }, [projects]);
 
-  // ---------- Availability heatmap (14 days, start/end/due + schedule) ----------
+  // ---------- Availability heatmap ----------
   const availabilityGrid = useMemo(() => {
     if (!workloadByAssignee || workloadByAssignee.length === 0) return [];
 
@@ -476,7 +496,7 @@ function PresalesOverview() {
     });
   }, [workloadByAssignee, daysRange, scheduleEvents, tasks]);
 
-  // ---------- Assignment helper: suggest who to assign ----------
+  // ---------- Assignment helper ----------
   const allSkills = useMemo(() => {
     const set = new Set();
     presalesResources.forEach((r) => {
@@ -512,7 +532,7 @@ function PresalesOverview() {
       busyMap.set(res.assignee, new Set());
     });
 
-    // Mark busy days (tasks + schedule)
+    // mark busy from schedule and tasks
     workloadByAssignee.forEach((res) => {
       const busySet = busyMap.get(res.assignee);
 
@@ -533,8 +553,8 @@ function PresalesOverview() {
 
         rangeDays.forEach((d) => {
           const dd = toMidnight(d);
-
           let overlaps = false;
+
           if (t.start_date && t.end_date) {
             overlaps = isWithinRange(dd, t.start_date, t.end_date);
           } else if (t.start_date && !t.end_date) {
@@ -553,7 +573,7 @@ function PresalesOverview() {
       });
     });
 
-    // Build scored suggestions
+    // score suggestions
     const suggestions = workloadByAssignee.map((w) => {
       const resource = presalesResources.find((r) => r.name === w.assignee);
       const skills = resource
@@ -571,14 +591,13 @@ function PresalesOverview() {
       const freeRatio = freeDays / totalDays;
 
       const skillMatch =
-        !assignSkill || skills.map((s) => s.toLowerCase()).includes(assignSkill.toLowerCase());
+        !assignSkill ||
+        skills.map((s) => s.toLowerCase()).includes(assignSkill.toLowerCase());
       const hasSkillScore = skillMatch ? 1 : 0;
 
-      // prefer those not heavily loaded next week
       const loadPenalty =
         w.utilNextWeek >= 120 ? 0 : w.utilNextWeek >= 90 ? 0.2 : 1;
 
-      // simple scoring: freeRatio + skill bonus + low load
       const score = freeRatio * 2 + hasSkillScore * 1 + loadPenalty;
 
       return {
@@ -606,6 +625,63 @@ function PresalesOverview() {
     scheduleEvents,
     presalesResources,
   ]);
+
+  // ---------- Upcoming crunch days (quality/risk signal) ----------
+  const crunchDays = useMemo(() => {
+    if (!tasks || tasks.length === 0) return [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const rangeEnd = new Date(today);
+    rangeEnd.setDate(today.getDate() + 14);
+    rangeEnd.setHours(23, 59, 59, 999);
+
+    const perDayMap = new Map(); // key: dateString -> { date, perAssigneeCount }
+
+    tasks.forEach((t) => {
+      if (!t.due_date) return;
+      if (t.status === 'Completed') return;
+
+      const due = toMidnight(t.due_date);
+      if (due < today || due > rangeEnd) return;
+
+      const key = due.toDateString();
+      if (!perDayMap.has(key)) {
+        perDayMap.set(key, {
+          date: due,
+          byAssignee: new Map(),
+        });
+      }
+
+      const dayEntry = perDayMap.get(key);
+      const name = t.assignee || 'Unassigned';
+      const current = dayEntry.byAssignee.get(name) || 0;
+      dayEntry.byAssignee.set(name, current + 1);
+    });
+
+    const results = [];
+
+    perDayMap.forEach((value) => {
+      const { date, byAssignee } = value;
+      const heavyAssignees = [];
+      byAssignee.forEach((count, name) => {
+        if (count >= 3) {
+          heavyAssignees.push({ name, count });
+        }
+      });
+
+      if (heavyAssignees.length > 0) {
+        results.push({
+          date,
+          heavyAssignees,
+        });
+      }
+    });
+
+    results.sort((a, b) => a.date - b.date);
+    return results;
+  }, [tasks]);
 
   // ---------- UI states ----------
   if (loading) {
@@ -644,9 +720,32 @@ function PresalesOverview() {
             <p>Regional view of APAC deals, workload, and availability.</p>
           </div>
         </div>
+
+        {teamSummary && (
+          <div className="team-summary-bar">
+            <div className="team-summary-item">
+              <span className="team-summary-label">Avg. next week load</span>
+              <span className="team-summary-value">
+                {teamSummary.avgNext}%
+              </span>
+            </div>
+            <div className="team-summary-item">
+              <span className="team-summary-label">Overloaded (≥90%)</span>
+              <span className="team-summary-value">
+                {teamSummary.overloaded}/{teamSummary.total}
+              </span>
+            </div>
+            <div className="team-summary-item">
+              <span className="team-summary-label">Underused (≤40%)</span>
+              <span className="team-summary-value">
+                {teamSummary.underused}/{teamSummary.total}
+              </span>
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* Top summary cards */}
+      {/* TOP SUMMARY CARDS */}
       <section className="presales-summary-section">
         <div className="presales-summary-grid">
           <div className="presales-summary-card">
@@ -711,9 +810,9 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* Workload + Deals */}
+      {/* WORKLOAD + DEALS */}
       <section className="presales-main-grid">
-        {/* Workload panel */}
+        {/* WORKLOAD PANEL */}
         <div className="presales-panel">
           <div className="presales-panel-header">
             <div>
@@ -783,7 +882,7 @@ function PresalesOverview() {
           )}
         </div>
 
-        {/* Deals by country */}
+        {/* DEALS BY COUNTRY */}
         <div className="presales-panel">
           <div className="presales-panel-header">
             <div>
@@ -840,19 +939,44 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* Availability heatmap */}
+      {/* AVAILABILITY HEATMAP */}
       <section className="presales-calendar-section">
         <div className="presales-panel">
-          <div className="presales-panel-header">
+          <div className="presales-panel-header presales-panel-header-row">
             <div>
               <h3>
                 <CalendarDays size={16} className="panel-icon" />
-                Presales availability (next 14 days)
+                Presales availability (
+                {calendarView === '14' ? 'next 14 days' : 'next 30 days'})
               </h3>
               <p>
                 Heatmap of busy days, leave, travel, and free capacity for each
                 presales resource.
               </p>
+            </div>
+            <div className="calendar-toggle">
+              <button
+                type="button"
+                className={
+                  calendarView === '14'
+                    ? 'calendar-toggle-btn active'
+                    : 'calendar-toggle-btn'
+                }
+                onClick={() => setCalendarView('14')}
+              >
+                14 days
+              </button>
+              <button
+                type="button"
+                className={
+                  calendarView === '30'
+                    ? 'calendar-toggle-btn active'
+                    : 'calendar-toggle-btn'
+                }
+                onClick={() => setCalendarView('30')}
+              >
+                30 days
+              </button>
             </div>
           </div>
 
@@ -938,7 +1062,49 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* Assignment helper */}
+      {/* UPCOMING CRUNCH DAYS (RISK SIGNAL) */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <AlertTriangle size={16} className="panel-icon" />
+                Upcoming crunch days (next 14 days)
+              </h3>
+              <p>Days where someone has 3 or more tasks due on the same day.</p>
+            </div>
+          </div>
+
+          {crunchDays.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No crunch days detected in the next 2 weeks.</p>
+            </div>
+          ) : (
+            <div className="crunch-list">
+              {crunchDays.map((cd) => (
+                <div key={cd.date.toDateString()} className="crunch-item">
+                  <div className="crunch-date">
+                    {cd.date.toLocaleDateString('en-SG', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </div>
+                  <div className="crunch-assignees">
+                    {cd.heavyAssignees.map((h) => (
+                      <span key={h.name} className="crunch-chip">
+                        {h.name}: {h.count} tasks
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ASSIGNMENT HELPER */}
       <section className="presales-assignment-section">
         <div className="presales-panel">
           <div className="presales-panel-header">
