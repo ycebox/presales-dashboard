@@ -1,0 +1,86 @@
+/* theme.css – global look & feel */
+
+/* App background + base font */
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, #0b1120 0, #020617 40%, #020617 100%);
+  color: #e5e7eb;
+}
+
+/* Generic page container */
+.page-container {
+  padding: 24px 32px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Shared glass panel */
+.glass-panel {
+  border-radius: 18px;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.85),
+    rgba(15, 23, 42, 0.5)
+  );
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.95),
+    0 0 0 1px rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Shared header */
+.section-header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f9fafb;
+}
+
+.section-header-subtitle {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Shared table style */
+.table-glass {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.table-glass thead tr {
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.98),
+    rgba(30, 64, 175, 0.9)
+  );
+}
+
+.table-glass th {
+  padding: 8px;
+  text-align: left;
+  color: #e5e7eb;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.95);
+  white-space: nowrap;
+}
+
+.table-glass td {
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.95);
+  color: #e5e7eb;
+}
+
+.table-glass tbody tr:nth-child(even) {
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.table-glass tbody tr:nth-child(odd) {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.table-glass tbody tr:hover {
+  background: radial-gradient(circle at top, rgba(56, 189, 248, 0.2), rgba(15, 23, 42, 0.95));
+}
