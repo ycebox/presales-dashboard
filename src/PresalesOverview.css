@@ -1,3 +1,14 @@
+/* GLOBAL FONT SCALE — doubles all text sizes */
+.presales-page-container {
+  font-size: 1.8rem; /* ~2x larger than your current base */
+}
+
+/* Scale all child elements proportionally */
+.presales-page-container * {
+  font-size: inherit;
+  line-height: 1.35;
+}
+
 /* Root container – glassy dark */
 .presales-page-container {
   padding: 24px 32px 40px;
