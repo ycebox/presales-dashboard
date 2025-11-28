@@ -244,14 +244,38 @@ function PresalesOverview() {
 
   // ---------- Workload per assignee + utilization ----------
   const workloadByAssignee = useMemo(() => {
-    if (!tasks || tasks.length === 0) return [];
+    // If no presales and no tasks at all, nothing to show
+    if (
+      (!tasks || tasks.length === 0) &&
+      (!presalesResources || presalesResources.length === 0)
+    ) {
+      return [];
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const map = new Map();
 
-    tasks.forEach((t) => {
+    // 1) Start with all presales resources so they always appear
+    (presalesResources || [])
+      .filter((r) => r.is_active !== false) // treat null as active
+      .forEach((r) => {
+        map.set(r.name, {
+          assignee: r.name,
+          total: 0,
+          open: 0,
+          overdue: 0,
+          projects: new Set(),
+          overdueLast30: 0,
+          overdueTotalLast30: 0,
+          thisWeekHours: 0,
+          nextWeekHours: 0,
+        });
+      });
+
+    // 2) Add anyone who has tasks but isn't in presales_resources (keeps "Unassigned" etc)
+    (tasks || []).forEach((t) => {
       const name = t.assignee || 'Unassigned';
       if (!map.has(name)) {
         map.set(name, {
@@ -266,8 +290,14 @@ function PresalesOverview() {
           nextWeekHours: 0,
         });
       }
+    });
 
+    // 3) Now walk tasks and update workload metrics
+    (tasks || []).forEach((t) => {
+      const name = t.assignee || 'Unassigned';
       const entry = map.get(name);
+      if (!entry) return;
+
       entry.total += 1;
 
       const isCompleted = t.status === 'Completed';
@@ -356,9 +386,10 @@ function PresalesOverview() {
       };
     });
 
+    // Sort by open tasks (those without tasks will naturally fall at bottom)
     arr.sort((a, b) => b.open - a.open);
     return arr;
-  }, [tasks, thisWeekRange, nextWeekRange, last30DaysRange]);
+  }, [tasks, presalesResources, thisWeekRange, nextWeekRange, last30DaysRange]);
 
   // ---------- Team-level health summary ----------
   const teamSummary = useMemo(() => {
