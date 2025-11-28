@@ -13,8 +13,7 @@ import {
   X,
   Edit3,
   Check,
-  AlertTriangle,
-  Activity
+  AlertTriangle
 } from 'lucide-react';
 import './Projects.css';
 
@@ -37,19 +36,20 @@ function Projects() {
   const [newCustomer, setNewCustomer] = useState({
     customer_name: '',
     account_manager: '',
+    primary_presales: '',
     country: '',
     customer_type: 'Existing',
-    health_score: 7,
-    notes: ''
+    notes: '',
+    status_id: ''
   });
 
   // Customer status lookup
   const [statusOptions, setStatusOptions] = useState([]);
   const [loadingStatuses, setLoadingStatuses] = useState(false);
 
-  // Account managers lookup
-  const [accountManagers, setAccountManagers] = useState([]);
-  const [loadingAccountManagers, setLoadingAccountManagers] = useState(false);
+  // Presales resources lookup
+  const [presalesOptions, setPresalesOptions] = useState([]);
+  const [loadingPresales, setLoadingPresales] = useState(false);
 
   // Static data arrays
   const asiaPacificCountries = useMemo(() => [
@@ -90,31 +90,31 @@ function Projects() {
     fetchStatuses();
   }, []);
 
-  // Load account managers for dropdowns
+  // Load presales resources for dropdown
   useEffect(() => {
-    const fetchAccountManagers = async () => {
+    const fetchPresales = async () => {
       try {
-        setLoadingAccountManagers(true);
+        setLoadingPresales(true);
         const { data, error } = await supabase
-          .from('account_managers')
-          .select('id, name, email, region')
+          .from('presales_resources')
+          .select('id, name, region, role, email')
           .order('name', { ascending: true });
 
         if (error) {
-          console.error('Error fetching account_managers:', error);
-          setAccountManagers([]);
+          console.error('Error fetching presales_resources:', error);
+          setPresalesOptions([]);
         } else {
-          setAccountManagers(data || []);
+          setPresalesOptions(data || []);
         }
       } catch (err) {
-        console.error('Unexpected error fetching account_managers:', err);
-        setAccountManagers([]);
+        console.error('Unexpected error fetching presales_resources:', err);
+        setPresalesOptions([]);
       } finally {
-        setLoadingAccountManagers(false);
+        setLoadingPresales(false);
       }
     };
 
-    fetchAccountManagers();
+    fetchPresales();
   }, []);
 
   // Default: show only Active customers once statuses are loaded
@@ -184,7 +184,7 @@ function Projects() {
     return 'status-badge status-unknown';
   }, []);
 
-  // Filter and search customers (includes new status filter)
+  // Filter and search customers (includes status filter)
   const filteredCustomers = useMemo(() => {
     return customers.filter(customer => {
       const matchesSearch = !searchTerm || 
@@ -214,7 +214,7 @@ function Projects() {
     types: [...new Set(customers.map(c => c.customer_type).filter(Boolean))].sort()
   }), [customers]);
 
-  // Portfolio stats
+  // Portfolio stats (simplified: no more average health)
   const portfolioStats = useMemo(() => {
     if (!customers || customers.length === 0) {
       return null;
@@ -228,38 +228,19 @@ function Projects() {
     let existingCount = 0;
     let newCount = 0;
     let internalCount = 0;
-    let sumHealth = 0;
-    let healthCount = 0;
-    let atRiskCount = 0;
 
     customers.forEach(c => {
       if (c.customer_type === 'Existing') existingCount += 1;
       else if (c.customer_type === 'New') newCount += 1;
       else if (c.customer_type === 'Internal Initiative') internalCount += 1;
-
-      const rawScore = typeof c.health_score === 'number'
-        ? c.health_score
-        : parseFloat(c.health_score);
-
-      if (!isNaN(rawScore)) {
-        sumHealth += rawScore;
-        healthCount += 1;
-        if (rawScore <= 4) {
-          atRiskCount += 1;
-        }
-      }
     });
-
-    const avgHealth = healthCount > 0 ? sumHealth / healthCount : null;
 
     return {
       total,
       uniqueCountries,
       existingCount,
       newCount,
-      internalCount,
-      avgHealth,
-      atRiskCount
+      internalCount
     };
   }, [customers]);
 
@@ -356,23 +337,20 @@ function Projects() {
     setNewCustomer(prev => ({ ...prev, customer_type: type }));
   }, []);
 
-  const handleHealthScoreChange = useCallback((e) => {
-    setNewCustomer(prev => ({ ...prev, health_score: parseInt(e.target.value) }));
-  }, []);
-
   const resetCustomerForm = useCallback(() => {
     setNewCustomer({
       customer_name: '',
       account_manager: '',
+      primary_presales: '',
       country: '',
       customer_type: 'Existing',
-      health_score: 7,
-      notes: ''
+      notes: '',
+      status_id: ''
     });
     setEditingCustomer(null);
   }, []);
 
-  // Add customer: default status = Active (if available)
+  // Add customer: default status = Active if none selected
   const handleAddCustomer = useCallback(async (e) => {
     e.preventDefault();
     
@@ -383,9 +361,13 @@ function Projects() {
           (s.label && s.label.toLowerCase().includes('active'))
       );
 
+      const statusId =
+        newCustomer.status_id ||
+        (activeStatus ? activeStatus.id : null);
+
       const payload = {
         ...newCustomer,
-        status_id: activeStatus ? activeStatus.id : null
+        status_id: statusId ? Number(statusId) : null
       };
       
       const { data, error } = await supabase
@@ -411,9 +393,14 @@ function Projects() {
     e.preventDefault();
     
     try {
+      const payload = {
+        ...newCustomer,
+        status_id: newCustomer.status_id ? Number(newCustomer.status_id) : null
+      };
+
       const { error } = await supabase
         .from('customers')
-        .update(newCustomer)
+        .update(payload)
         .eq('id', editingCustomer.id);
       
       if (error) throw error;
@@ -451,10 +438,11 @@ function Projects() {
     setNewCustomer({
       customer_name: customer.customer_name || '',
       account_manager: customer.account_manager || '',
+      primary_presales: customer.primary_presales || '',
       country: customer.country || '',
       customer_type: customer.customer_type || 'Existing',
-      health_score: customer.health_score || 7,
-      notes: customer.notes || ''
+      notes: customer.notes || '',
+      status_id: customer.status_id ? String(customer.status_id) : ''
     });
     setShowCustomerModal(true);
   }, []);
@@ -462,20 +450,6 @@ function Projects() {
   const handleCustomerClick = useCallback((customerId) => {
     navigate(`/customer/${customerId}`);
   }, [navigate]);
-
-  const getHealthScoreColor = useCallback((score) => {
-    if (score >= 8) return 'excellent';
-    if (score >= 6) return 'good';
-    if (score >= 4) return 'fair';
-    return 'poor';
-  }, []);
-
-  const getHealthScoreLabel = useCallback((score) => {
-    if (score >= 8) return 'Excellent';
-    if (score >= 6) return 'Good';
-    if (score >= 4) return 'Fair';
-    return 'Poor';
-  }, []);
 
   const handleModalClose = useCallback(() => {
     setShowCustomerModal(false);
@@ -548,9 +522,6 @@ function Projects() {
               <>
                 {' • '}
                 {portfolioStats.uniqueCountries} countr{portfolioStats.uniqueCountries === 1 ? 'y' : 'ies'}
-                {portfolioStats.avgHealth !== null && (
-                  <> • Avg health {portfolioStats.avgHealth.toFixed(1)}/10</>
-                )}
               </>
             )}
             {selectedCustomers.size > 0 && ` • ${selectedCustomers.size} selected`}
@@ -590,7 +561,7 @@ function Projects() {
         </div>
       </div>
 
-      {/* Portfolio summary */}
+      {/* Portfolio summary (no more "Average health" card) */}
       {portfolioStats && (
         <section className="portfolio-summary-section">
           <div className="portfolio-summary-grid">
@@ -615,23 +586,6 @@ function Projects() {
                 <p className="summary-card-label">Countries covered</p>
                 <p className="summary-card-value">{portfolioStats.uniqueCountries}</p>
                 <p className="summary-card-sub">APAC footprint overview</p>
-              </div>
-            </div>
-
-            <div className="summary-card">
-              <div className="summary-card-icon summary-card-icon-health">
-                <Activity size={18} />
-              </div>
-              <div className="summary-card-content">
-                <p className="summary-card-label">Average health</p>
-                <p className="summary-card-value">
-                  {portfolioStats.avgHealth !== null ? portfolioStats.avgHealth.toFixed(1) : '—'}/10
-                </p>
-                <p className="summary-card-sub">
-                  {portfolioStats.atRiskCount > 0
-                    ? `${portfolioStats.atRiskCount} at risk (≤ 4/10)`
-                    : 'No at-risk customers'}
-                </p>
               </div>
             </div>
 
@@ -843,7 +797,7 @@ function Projects() {
                               e.stopPropagation();
                               handleEditCustomer(customer);
                             }}
-                            title="Edit customer"
+                            title="Edit customer (including status)"
                           >
                             <Edit3 size={14} />
                           </button>
@@ -913,40 +867,51 @@ function Projects() {
                 
                 <div className="form-group-compact">
                   <label className="form-label-compact required">Account Manager</label>
+                  <input 
+                    name="account_manager" 
+                    value={newCustomer.account_manager} 
+                    onChange={handleCustomerChange} 
+                    required 
+                    className="form-input-compact"
+                    placeholder="John Smith"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
 
-                  {accountManagers.length > 0 ? (
+              {/* Presales selection */}
+              <div className="form-row-compact">
+                <div className="form-group-compact">
+                  <label className="form-label-compact">Primary Presales</label>
+                  {presalesOptions.length > 0 ? (
                     <select
-                      name="account_manager"
-                      value={newCustomer.account_manager}
+                      name="primary_presales"
+                      value={newCustomer.primary_presales}
                       onChange={handleCustomerChange}
-                      required
                       className="form-select-compact"
-                      disabled={loadingAccountManagers}
+                      disabled={loadingPresales}
                     >
                       <option value="">
-                        {loadingAccountManagers ? 'Loading…' : 'Select Account Manager'}
+                        {loadingPresales ? 'Loading…' : 'Select Presales'}
                       </option>
-                      {accountManagers.map((m) => (
-                        <option key={m.id} value={m.name}>
-                          {m.name}
+                      {presalesOptions.map((p) => (
+                        <option key={p.id} value={p.name}>
+                          {p.name}
                         </option>
                       ))}
                     </select>
                   ) : (
-                    <input 
-                      name="account_manager" 
-                      value={newCustomer.account_manager} 
-                      onChange={handleCustomerChange} 
-                      required 
+                    <input
+                      name="primary_presales"
+                      value={newCustomer.primary_presales}
+                      onChange={handleCustomerChange}
                       className="form-input-compact"
-                      placeholder="John Smith"
+                      placeholder="Presales owner (name)"
                       autoComplete="off"
                     />
                   )}
                 </div>
-              </div>
-              
-              <div className="form-row-compact">
+
                 <div className="form-group-compact">
                   <label className="form-label-compact required">Country</label>
                   <select 
@@ -969,10 +934,10 @@ function Projects() {
           <div className="form-section-compact">
             <h4 className="section-title-compact">
               <Building2 size={14} className="section-icon-compact" />
-              Customer Type
+              Customer Type & Status
             </h4>
             
-            <div className="type-pills-compact">
+            <div className="type-pills-compact" style={{ marginBottom: '0.75rem' }}>
               {['Existing', 'New', 'Internal Initiative'].map(type => (
                 <button
                   key={type}
@@ -984,35 +949,26 @@ function Projects() {
                 </button>
               ))}
             </div>
-          </div>
 
-          <div className="form-section-compact">
-            <h4 className="section-title-compact">
-              <Activity size={14} className="section-icon-compact" />
-              Health Score
-            </h4>
-            
-            <div className="health-score-container-compact">
-              <input 
-                type="range" 
-                className="health-score-slider-compact" 
-                min="1" 
-                max="10" 
-                value={newCustomer.health_score}
-                onChange={handleHealthScoreChange}
-              />
-              <div className="health-score-display-compact">
-                <span className="health-score-value-compact">Score: {newCustomer.health_score}/10</span>
-                <span className={`health-score-label-compact ${getHealthScoreColor(newCustomer.health_score)}`}>
-                  {getHealthScoreLabel(newCustomer.health_score)}
-                </span>
-              </div>
-              <div className="health-labels-compact">
-                <span>Poor</span>
-                <span>Fair</span>
-                <span>Good</span>
-                <span>Excellent</span>
-              </div>
+            {/* Status dropdown (for both add & edit) */}
+            <div className="form-group-compact">
+              <label className="form-label-compact">Customer Status</label>
+              <select
+                name="status_id"
+                value={newCustomer.status_id}
+                onChange={handleCustomerChange}
+                className="form-select-compact"
+                disabled={loadingStatuses}
+              >
+                <option value="">
+                  {loadingStatuses ? 'Loading statuses…' : 'Select Status (default Active)'}
+                </option>
+                {statusOptions.map((status) => (
+                  <option key={status.id} value={status.id}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </form>
