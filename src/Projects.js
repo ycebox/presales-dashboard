@@ -10,13 +10,10 @@ import {
   UserPlus,
   Globe,
   Search,
-  Filter,
   X,
   Edit3,
-  MoreHorizontal,
   Check,
   AlertTriangle,
-  Clock,
   Activity
 } from 'lucide-react';
 import './Projects.css';
@@ -31,7 +28,7 @@ function Projects() {
     country: '',
     account_manager: '',
     customer_type: '',
-    status_id: '' // new status filter
+    status_id: '' // status filter
   });
   const [selectedCustomers, setSelectedCustomers] = useState(new Set());
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -44,12 +41,15 @@ function Projects() {
     customer_type: 'Existing',
     health_score: 7,
     notes: ''
-    // status_id will be added on insert (default Active)
   });
 
-  // NEW: Customer status lookup
+  // Customer status lookup
   const [statusOptions, setStatusOptions] = useState([]);
   const [loadingStatuses, setLoadingStatuses] = useState(false);
+
+  // Account managers lookup
+  const [accountManagers, setAccountManagers] = useState([]);
+  const [loadingAccountManagers, setLoadingAccountManagers] = useState(false);
 
   // Static data arrays
   const asiaPacificCountries = useMemo(() => [
@@ -90,12 +90,38 @@ function Projects() {
     fetchStatuses();
   }, []);
 
+  // Load account managers for dropdowns
+  useEffect(() => {
+    const fetchAccountManagers = async () => {
+      try {
+        setLoadingAccountManagers(true);
+        const { data, error } = await supabase
+          .from('account_managers')
+          .select('id, name, email, region')
+          .order('name', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching account_managers:', error);
+          setAccountManagers([]);
+        } else {
+          setAccountManagers(data || []);
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching account_managers:', err);
+        setAccountManagers([]);
+      } finally {
+        setLoadingAccountManagers(false);
+      }
+    };
+
+    fetchAccountManagers();
+  }, []);
+
   // Default: show only Active customers once statuses are loaded
   useEffect(() => {
     if (!statusOptions || statusOptions.length === 0) return;
 
     setFilters(prev => {
-      // If status filter is already set, don't override it
       if (prev.status_id && prev.status_id !== '') return prev;
 
       const activeStatus = statusOptions.find(
@@ -169,7 +195,6 @@ function Projects() {
       const matchesFilters = Object.entries(filters).every(([key, value]) => {
         if (!value) return true;
 
-        // special handling for status_id (string vs number)
         if (key === 'status_id') {
           if (!customer.status_id) return false;
           return String(customer.status_id) === String(value);
@@ -189,7 +214,7 @@ function Projects() {
     types: [...new Set(customers.map(c => c.customer_type).filter(Boolean))].sort()
   }), [customers]);
 
-  // Portfolio-level stats for regional head view
+  // Portfolio stats
   const portfolioStats = useMemo(() => {
     if (!customers || customers.length === 0) {
       return null;
@@ -238,7 +263,7 @@ function Projects() {
     };
   }, [customers]);
 
-  // Active filters for chips (include status)
+  // Active filters for chips (including status)
   const activeFilters = useMemo(() => {
     return Object.entries(filters)
       .filter(([_, value]) => value)
@@ -315,7 +340,6 @@ function Projects() {
     }
   }, [selectedCustomers, fetchCustomers, showToast]);
 
-  // Memoized handlers for Modal form
   const handleCustomerChange = useCallback((e) => {
     const { name, value, type } = e.target;
     
@@ -681,7 +705,7 @@ function Projects() {
             </select>
           </div>
 
-          {/* NEW: Status filter */}
+          {/* Status filter */}
           <div className="filter-group">
             <label className="filter-label">Status</label>
             <select
@@ -748,7 +772,7 @@ function Projects() {
                   <th>Location</th>
                   <th>Account Manager</th>
                   <th>Type</th>
-                  <th>Status</th> {/* replaced Health with Status */}
+                  <th>Status</th>
                   <th style={{ width: '80px' }}>Actions</th>
                 </tr>
               </thead>
@@ -805,7 +829,6 @@ function Projects() {
                           {customer.customer_type || 'New'}
                         </span>
                       </td>
-                      {/* NEW: Status column (Active / Inactive / etc from lookup) */}
                       <td className="status-cell">
                         <span className={statusClass}>
                           <span className="status-dot-pill" />
@@ -890,15 +913,36 @@ function Projects() {
                 
                 <div className="form-group-compact">
                   <label className="form-label-compact required">Account Manager</label>
-                  <input 
-                    name="account_manager" 
-                    value={newCustomer.account_manager} 
-                    onChange={handleCustomerChange} 
-                    required 
-                    className="form-input-compact"
-                    placeholder="John Smith"
-                    autoComplete="off"
-                  />
+
+                  {accountManagers.length > 0 ? (
+                    <select
+                      name="account_manager"
+                      value={newCustomer.account_manager}
+                      onChange={handleCustomerChange}
+                      required
+                      className="form-select-compact"
+                      disabled={loadingAccountManagers}
+                    >
+                      <option value="">
+                        {loadingAccountManagers ? 'Loading…' : 'Select Account Manager'}
+                      </option>
+                      {accountManagers.map((m) => (
+                        <option key={m.id} value={m.name}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input 
+                      name="account_manager" 
+                      value={newCustomer.account_manager} 
+                      onChange={handleCustomerChange} 
+                      required 
+                      className="form-input-compact"
+                      placeholder="John Smith"
+                      autoComplete="off"
+                    />
+                  )}
                 </div>
               </div>
               
