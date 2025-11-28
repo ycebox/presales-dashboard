@@ -13,7 +13,8 @@ import {
   X,
   Edit3,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  Briefcase
 } from 'lucide-react';
 import './Projects.css';
 
@@ -50,6 +51,12 @@ function Projects() {
   // Presales resources lookup
   const [presalesOptions, setPresalesOptions] = useState([]);
   const [loadingPresales, setLoadingPresales] = useState(false);
+
+  // Deals summary (Active Deals card)
+  const [dealsSummary, setDealsSummary] = useState({
+    activeCount: 0,
+    byStage: {}
+  });
 
   // Static data arrays
   const asiaPacificCountries = useMemo(() => [
@@ -115,6 +122,50 @@ function Projects() {
     };
 
     fetchPresales();
+  }, []);
+
+  // Load deals summary for Active Deals card
+  useEffect(() => {
+    const fetchDealsSummary = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('id, sales_stage');
+
+        if (error) {
+          console.error('Error fetching projects for deals summary:', error);
+          setDealsSummary({ activeCount: 0, byStage: {} });
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          setDealsSummary({ activeCount: 0, byStage: {} });
+          return;
+        }
+
+        // Active = anything not starting with "Closed"
+        const activeProjects = data.filter(p => {
+          const stage = (p.sales_stage || '').toString().toLowerCase();
+          return !stage.startsWith('closed');
+        });
+
+        const byStage = {};
+        activeProjects.forEach(p => {
+          const stage = p.sales_stage || 'Unspecified';
+          byStage[stage] = (byStage[stage] || 0) + 1;
+        });
+
+        setDealsSummary({
+          activeCount: activeProjects.length,
+          byStage
+        });
+      } catch (err) {
+        console.error('Unexpected error in deals summary:', err);
+        setDealsSummary({ activeCount: 0, byStage: {} });
+      }
+    };
+
+    fetchDealsSummary();
   }, []);
 
   // Default: show only Active customers once statuses are loaded
@@ -561,7 +612,7 @@ function Projects() {
         </div>
       </div>
 
-      {/* Portfolio summary (no more "Average health" card) */}
+      {/* Portfolio summary (with Active Deals card) */}
       {portfolioStats && (
         <section className="portfolio-summary-section">
           <div className="portfolio-summary-grid">
@@ -586,6 +637,28 @@ function Projects() {
                 <p className="summary-card-label">Countries covered</p>
                 <p className="summary-card-value">{portfolioStats.uniqueCountries}</p>
                 <p className="summary-card-sub">APAC footprint overview</p>
+              </div>
+            </div>
+
+            {/* NEW Active Deals card */}
+            <div className="summary-card">
+              <div className="summary-card-icon summary-card-icon-deals">
+                <Briefcase size={18} />
+              </div>
+              <div className="summary-card-content">
+                <p className="summary-card-label">Active deals</p>
+                <p className="summary-card-value">{dealsSummary.activeCount}</p>
+                <p className="summary-card-sub">
+                  {dealsSummary.activeCount > 0 ? (
+                    <>
+                      {(dealsSummary.byStage['RFP'] || 0)} RFP ·{' '}
+                      {(dealsSummary.byStage['SoW'] || 0)} SoW ·{' '}
+                      {(dealsSummary.byStage['Contracting'] || 0)} Contracting
+                    </>
+                  ) : (
+                    'No active opportunities'
+                  )}
+                </p>
               </div>
             </div>
 
