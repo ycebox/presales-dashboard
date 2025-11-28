@@ -28,7 +28,6 @@ function PresalesOverview() {
   const [error, setError] = useState(null);
 
   // Assignment helper filters
-  const [assignSkill, setAssignSkill] = useState('');
   const [assignPriority, setAssignPriority] = useState('Normal');
   const [assignStart, setAssignStart] = useState('');
   const [assignEnd, setAssignEnd] = useState('');
@@ -58,7 +57,7 @@ function PresalesOverview() {
             .select('id, assignee, type, start_date, end_date, note'),
           supabase
             .from('presales_resources')
-            // NOTE: removed timezone and skills since they don't exist in your table yet
+            // Only existing columns
             .select('id, name, email, region, is_active')
             .order('name', { ascending: true }),
         ]);
@@ -528,24 +527,7 @@ function PresalesOverview() {
     });
   }, [workloadByAssignee, daysRange, scheduleEvents, tasks]);
 
-  // ---------- Assignment helper ----------
-  const allSkills = useMemo(() => {
-    const set = new Set();
-    presalesResources.forEach((r) => {
-      // since we don't have skills column yet, this will just be empty
-      const skills =
-        Array.isArray(r.skills) ?
-          r.skills :
-          typeof r.skills === 'string'
-            ? r.skills.split(',').map((s) => s.trim())
-            : [];
-      skills.forEach((s) => {
-        if (s) set.add(s);
-      });
-    });
-    return Array.from(set).sort();
-  }, [presalesResources]);
-
+  // ---------- Assignment helper (no skills) ----------
   const assignmentSuggestions = useMemo(() => {
     if (!assignStart || !assignEnd || workloadByAssignee.length === 0) {
       return [];
@@ -607,32 +589,18 @@ function PresalesOverview() {
       });
     });
 
-    // score suggestions
+    // score suggestions (purely on free days + next week load)
     const suggestions = workloadByAssignee.map((w) => {
-      const resource = presalesResources.find((r) => r.name === w.assignee);
-      const skills = resource
-        ? Array.isArray(resource.skills)
-          ? resource.skills
-          : typeof resource.skills === 'string'
-          ? resource.skills.split(',').map((s) => s.trim())
-          : []
-        : [];
-
       const busySet = busyMap.get(w.assignee) || new Set();
       const totalDays = rangeDays.length || 1;
       const busyDays = busySet.size;
       const freeDays = totalDays - busyDays;
       const freeRatio = freeDays / totalDays;
 
-      const skillMatch =
-        !assignSkill ||
-        skills.map((s) => s.toLowerCase()).includes(assignSkill.toLowerCase());
-      const hasSkillScore = skillMatch ? 1 : 0;
-
       const loadPenalty =
         w.utilNextWeek >= 120 ? 0 : w.utilNextWeek >= 90 ? 0.2 : 1;
 
-      const score = freeRatio * 2 + hasSkillScore * 1 + loadPenalty;
+      const score = freeRatio * 2 + loadPenalty;
 
       return {
         assignee: w.assignee,
@@ -642,23 +610,13 @@ function PresalesOverview() {
         utilNextWeek: w.utilNextWeek,
         freeDays,
         totalDays,
-        skillMatch,
-        skills,
         score,
       };
     });
 
     suggestions.sort((a, b) => b.score - a.score);
     return suggestions;
-  }, [
-    assignStart,
-    assignEnd,
-    assignSkill,
-    workloadByAssignee,
-    tasks,
-    scheduleEvents,
-    presalesResources,
-  ]);
+  }, [assignStart, assignEnd, workloadByAssignee, tasks, scheduleEvents]);
 
   // ---------- Upcoming crunch days (quality/risk signal) ----------
   const crunchDays = useMemo(() => {
@@ -1148,8 +1106,8 @@ function PresalesOverview() {
                 Assignment helper
               </h3>
               <p>
-                Pick dates and (optional) skill, and see who is the best person
-                to assign a new task to.
+                Pick dates and see who has the most free days with reasonable
+                next-week load.
               </p>
             </div>
           </div>
@@ -1171,21 +1129,6 @@ function PresalesOverview() {
                     onChange={(e) => setAssignEnd(e.target.value)}
                   />
                 </div>
-              </div>
-
-              <div className="assignment-field">
-                <label>Required skill (optional)</label>
-                <select
-                  value={assignSkill}
-                  onChange={(e) => setAssignSkill(e.target.value)}
-                >
-                  <option value="">Any skill</option>
-                  {allSkills.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               <div className="assignment-field">
@@ -1217,7 +1160,6 @@ function PresalesOverview() {
                       <th>Presales</th>
                       <th className="th-center">Free days</th>
                       <th className="th-center">Next week load</th>
-                      <th>Skills</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1246,28 +1188,6 @@ function PresalesOverview() {
                         </td>
                         <td className="td-center">
                           {Math.round(sug.utilNextWeek)}%
-                        </td>
-                        <td>
-                          {sug.skills && sug.skills.length > 0 ? (
-                            <div className="skills-chips">
-                              {sug.skills.map((sk) => (
-                                <span
-                                  key={sk}
-                                  className={
-                                    assignSkill &&
-                                    sk.toLowerCase() ===
-                                      assignSkill.toLowerCase()
-                                      ? 'skill-chip skill-chip-match'
-                                      : 'skill-chip'
-                                  }
-                                >
-                                  {sk}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="skills-none">No skills set</span>
-                          )}
                         </td>
                       </tr>
                     ))}
