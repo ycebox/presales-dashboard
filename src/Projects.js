@@ -52,6 +52,10 @@ function Projects() {
   const [presalesOptions, setPresalesOptions] = useState([]);
   const [loadingPresales, setLoadingPresales] = useState(false);
 
+  // Account managers lookup
+  const [accountManagers, setAccountManagers] = useState([]);
+  const [loadingAccountManagers, setLoadingAccountManagers] = useState(false);
+
   // Deals summary (Active Deals card)
   const [dealsSummary, setDealsSummary] = useState({
     activeCount: 0,
@@ -122,6 +126,33 @@ function Projects() {
     };
 
     fetchPresales();
+  }, []);
+
+  // Load account managers for dropdown
+  useEffect(() => {
+    const fetchAccountManagers = async () => {
+      try {
+        setLoadingAccountManagers(true);
+        const { data, error } = await supabase
+          .from('account_managers')
+          .select('id, name, email, region')
+          .order('name', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching account_managers:', error);
+          setAccountManagers([]);
+        } else {
+          setAccountManagers(data || []);
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching account_managers:', err);
+        setAccountManagers([]);
+      } finally {
+        setLoadingAccountManagers(false);
+      }
+    };
+
+    fetchAccountManagers();
   }, []);
 
   // Load deals summary for Active Deals card
@@ -640,7 +671,7 @@ function Projects() {
               </div>
             </div>
 
-            {/* NEW Active Deals card */}
+            {/* Active Deals card */}
             <div className="summary-card">
               <div className="summary-card-icon summary-card-icon-deals">
                 <Briefcase size={18} />
@@ -940,15 +971,35 @@ function Projects() {
                 
                 <div className="form-group-compact">
                   <label className="form-label-compact required">Account Manager</label>
-                  <input 
-                    name="account_manager" 
-                    value={newCustomer.account_manager} 
-                    onChange={handleCustomerChange} 
-                    required 
-                    className="form-input-compact"
-                    placeholder="John Smith"
-                    autoComplete="off"
-                  />
+                  {accountManagers.length > 0 ? (
+                    <select
+                      name="account_manager"
+                      value={newCustomer.account_manager}
+                      onChange={handleCustomerChange}
+                      className="form-select-compact"
+                      required
+                      disabled={loadingAccountManagers}
+                    >
+                      <option value="">
+                        {loadingAccountManagers ? 'Loading…' : 'Select Account Manager'}
+                      </option>
+                      {accountManagers.map((m) => (
+                        <option key={m.id} value={m.name}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input 
+                      name="account_manager" 
+                      value={newCustomer.account_manager} 
+                      onChange={handleCustomerChange} 
+                      required 
+                      className="form-input-compact"
+                      placeholder="John Smith"
+                      autoComplete="off"
+                    />
+                  )}
                 </div>
               </div>
 
