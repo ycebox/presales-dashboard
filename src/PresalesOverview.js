@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   CalendarDays,
   Filter,
+  Plane,
 } from 'lucide-react';
 import './PresalesOverview.css';
 
@@ -34,6 +35,16 @@ function PresalesOverview() {
 
   // Calendar view: 14 or 30 days
   const [calendarView, setCalendarView] = useState('14'); // '14' | '30'
+
+  // Manage schedule form state
+  const [scheduleAssignee, setScheduleAssignee] = useState('');
+  const [scheduleType, setScheduleType] = useState('Leave');
+  const [scheduleStart, setScheduleStart] = useState('');
+  const [scheduleEnd, setScheduleEnd] = useState('');
+  const [scheduleNote, setScheduleNote] = useState('');
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleMessage, setScheduleMessage] = useState(null);
+  const [scheduleError, setScheduleError] = useState(null);
 
   // ---------- Load data from Supabase ----------
   useEffect(() => {
@@ -77,7 +88,7 @@ function PresalesOverview() {
 
         if (presalesRes.error) {
           console.warn('presales_resources not loaded:', presalesRes.error.message);
-          setPresalesResources([]);
+          setPresalesResources(presalesRes.data || []);
         } else {
           setPresalesResources(presalesRes.data || []);
         }
@@ -675,6 +686,54 @@ function PresalesOverview() {
     return results;
   }, [tasks]);
 
+  // ---------- Add schedule handler ----------
+  const handleAddSchedule = async (e) => {
+    e.preventDefault();
+    setScheduleError(null);
+    setScheduleMessage(null);
+
+    if (!scheduleAssignee || !scheduleType || !scheduleStart || !scheduleEnd) {
+      setScheduleError('Please fill in assignee, type, start and end dates.');
+      return;
+    }
+
+    try {
+      setScheduleSaving(true);
+
+      const { data, error: insertError } = await supabase
+        .from('presales_schedule')
+        .insert([
+          {
+            assignee: scheduleAssignee,
+            type: scheduleType,
+            start_date: scheduleStart,
+            end_date: scheduleEnd,
+            note: scheduleNote || null,
+          },
+        ])
+        .select();
+
+      if (insertError) {
+        console.error('Error adding schedule:', insertError);
+        setScheduleError('Failed to save schedule entry.');
+      } else if (data && data.length > 0) {
+        // Push new schedule entry into local state so heatmap updates
+        setScheduleEvents((prev) => [...prev, data[0]]);
+        setScheduleMessage('Schedule saved.');
+        // Reset form (keep assignee for faster multiple inputs if you like)
+        setScheduleType('Leave');
+        setScheduleStart('');
+        setScheduleEnd('');
+        setScheduleNote('');
+      }
+    } catch (err) {
+      console.error('Error adding schedule:', err);
+      setScheduleError('Unexpected error while saving schedule.');
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
   // ---------- UI states ----------
   if (loading) {
     return (
@@ -1093,6 +1152,111 @@ function PresalesOverview() {
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      {/* MANAGE PRESALES SCHEDULE */}
+      <section className="presales-schedule-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Plane size={16} className="panel-icon" />
+                Manage presales schedule
+              </h3>
+              <p>
+                Log leave, travel, or training so the availability heatmap stays
+                realistic.
+              </p>
+            </div>
+          </div>
+
+          <form className="schedule-form" onSubmit={handleAddSchedule}>
+            <div className="schedule-form-row">
+              <div className="schedule-field">
+                <label>Presales</label>
+                <select
+                  value={scheduleAssignee}
+                  onChange={(e) => setScheduleAssignee(e.target.value)}
+                >
+                  <option value="">Select presales</option>
+                  {presalesResources
+                    .filter((r) => r.is_active !== false)
+                    .map((r) => (
+                      <option key={r.id} value={r.name}>
+                        {r.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Type</label>
+                <select
+                  value={scheduleType}
+                  onChange={(e) => setScheduleType(e.target.value)}
+                >
+                  <option value="Leave">Leave</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Training">Training</option>
+                  <option value="Public Holiday">Public Holiday</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="schedule-form-row">
+              <div className="schedule-field">
+                <label>Start date</label>
+                <input
+                  type="date"
+                  value={scheduleStart}
+                  onChange={(e) => setScheduleStart(e.target.value)}
+                />
+              </div>
+
+              <div className="schedule-field">
+                <label>End date</label>
+                <input
+                  type="date"
+                  value={scheduleEnd}
+                  onChange={(e) => setScheduleEnd(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="schedule-form-row">
+              <div className="schedule-field schedule-field-full">
+                <label>Note (optional)</label>
+                <input
+                  type="text"
+                  placeholder="Example: Family trip, Manila workshop, APAC tour…"
+                  value={scheduleNote}
+                  onChange={(e) => setScheduleNote(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="schedule-form-actions">
+              {scheduleError && (
+                <span className="schedule-message schedule-message-error">
+                  {scheduleError}
+                </span>
+              )}
+              {scheduleMessage && (
+                <span className="schedule-message schedule-message-success">
+                  {scheduleMessage}
+                </span>
+              )}
+              <button
+                type="submit"
+                className="primary-btn"
+                disabled={scheduleSaving}
+              >
+                {scheduleSaving ? 'Saving…' : 'Add schedule entry'}
+              </button>
+            </div>
+          </form>
         </div>
       </section>
 
