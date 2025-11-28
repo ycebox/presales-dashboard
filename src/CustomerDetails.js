@@ -1,4 +1,4 @@
-// CustomerDetails.js - Enhanced version with project edit functionality (Overview Grid Removed)
+// CustomerDetails.js - Enhanced version with Customer Status (dropdown + colored badge)
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -626,6 +626,10 @@ function CustomerDetails() {
   // Task filtering state
   const [taskFilter, setTaskFilter] = useState('active');
 
+  // Customer status lookup
+  const [statusOptions, setStatusOptions] = useState([]);
+  const [loadingStatuses, setLoadingStatuses] = useState(false);
+
   useEffect(() => {
     if (customerId) {
       fetchCustomerDetails();
@@ -638,6 +642,33 @@ function CustomerDetails() {
       fetchCustomerTasks();
     }
   }, [customer]);
+
+  useEffect(() => {
+    // Load customer_statuses lookup
+    const fetchStatuses = async () => {
+      try {
+        setLoadingStatuses(true);
+        const { data, error } = await supabase
+          .from('customer_statuses')
+          .select('id, code, label')
+          .order('id', { ascending: true });
+
+        if (error) {
+          console.error('Error loading customer statuses:', error);
+          setStatusOptions([]);
+        } else {
+          setStatusOptions(data || []);
+        }
+      } catch (err) {
+        console.error('Unexpected error loading customer statuses:', err);
+        setStatusOptions([]);
+      } finally {
+        setLoadingStatuses(false);
+      }
+    };
+
+    fetchStatuses();
+  }, []);
 
   const fetchCustomerDetails = async () => {
     try {
@@ -1000,6 +1031,25 @@ function CustomerDetails() {
     return { name: 'Unknown', role: 'Contact', email: '', phone: '' };
   };
 
+  // Helper: map status to label and color class
+  const getStatusFromId = (statusId) => {
+    if (!statusId || !statusOptions || statusOptions.length === 0) return null;
+    return statusOptions.find((s) => s.id === statusId) || null;
+  };
+
+  const getStatusBadgeClass = (statusCodeOrLabel) => {
+    const value = (statusCodeOrLabel || '').toString().toLowerCase();
+    if (!value) return 'status-badge status-unknown';
+
+    if (value.includes('active')) return 'status-badge status-active';
+    if (value.includes('prospect')) return 'status-badge status-prospect';
+    if (value.includes('hold')) return 'status-badge status-onhold';
+    if (value.includes('dormant')) return 'status-badge status-dormant';
+    if (value.includes('inactive')) return 'status-badge status-inactive';
+
+    return 'status-badge status-unknown';
+  };
+
   // Helper functions
   const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -1174,6 +1224,10 @@ function CustomerDetails() {
   const filteredProjects = getFilteredProjects();
   const filteredTasks = getFilteredTasks();
 
+  const currentStatusObj = getStatusFromId(customer.status_id);
+  const currentStatusLabel = currentStatusObj?.label || 'Status Not Set';
+  const currentStatusClass = getStatusBadgeClass(currentStatusObj?.code || currentStatusObj?.label);
+
   return (
     <div className="page-wrapper">
       <div className="page-content">
@@ -1193,6 +1247,12 @@ function CustomerDetails() {
               <span className="location-badge">
                 <FaGlobe />
                 {customer.country || 'Location Not Set'}
+              </span>
+
+              {/* Status badge in header */}
+              <span className={currentStatusClass}>
+                <span className="status-dot-pill" />
+                {loadingStatuses ? 'Loading status…' : currentStatusLabel}
               </span>
             </div>
           </div>
@@ -1304,6 +1364,44 @@ function CustomerDetails() {
                       </select>
                     ) : (
                       <div className="info-value">{customer.country || 'Not specified'}</div>
+                    )}
+                  </div>
+
+                  {/* Customer Status field */}
+                  <div className="info-item">
+                    <label className="info-label">
+                      <FaChartLine />
+                      Customer Status
+                    </label>
+                    {isEditing ? (
+                      <select
+                        name="status_id"
+                        value={editCustomer.status_id || ''}
+                        onChange={(e) =>
+                          setEditCustomer(prev => ({
+                            ...prev,
+                            status_id: e.target.value ? Number(e.target.value) : null,
+                          }))
+                        }
+                        className="info-select"
+                        disabled={loadingStatuses}
+                      >
+                        <option value="">
+                          {loadingStatuses ? 'Loading statuses…' : 'Select Status'}
+                        </option>
+                        {statusOptions.map((status) => (
+                          <option key={status.id} value={status.id}>
+                            {status.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="info-value">
+                        <span className={currentStatusClass}>
+                          <span className="status-dot-pill" />
+                          {currentStatusLabel}
+                        </span>
+                      </div>
                     )}
                   </div>
 
