@@ -58,8 +58,8 @@ function PresalesOverview() {
             .select('id, assignee, type, start_date, end_date, note'),
           supabase
             .from('presales_resources')
-            // FIX: removed timezone from select
-            .select('id, name, email, region, skills, is_active')
+            // NOTE: removed timezone and skills since they don't exist in your table yet
+            .select('id, name, email, region, is_active')
             .order('name', { ascending: true }),
         ]);
 
@@ -532,11 +532,13 @@ function PresalesOverview() {
   const allSkills = useMemo(() => {
     const set = new Set();
     presalesResources.forEach((r) => {
-      const skills = Array.isArray(r.skills)
-        ? r.skills
-        : typeof r.skills === 'string'
-        ? r.skills.split(',').map((s) => s.trim())
-        : [];
+      // since we don't have skills column yet, this will just be empty
+      const skills =
+        Array.isArray(r.skills) ?
+          r.skills :
+          typeof r.skills === 'string'
+            ? r.skills.split(',').map((s) => s.trim())
+            : [];
       skills.forEach((s) => {
         if (s) set.add(s);
       });
@@ -753,28 +755,529 @@ function PresalesOverview() {
           </div>
         </div>
 
-        {workloadByAssignee.length > 0 && (
+        {teamSummary && (
           <div className="team-summary-bar">
             <div className="team-summary-item">
               <span className="team-summary-label">Avg. next week load</span>
               <span className="team-summary-value">
-                {
-                  Math.round(
-                    workloadByAssignee.reduce(
-                      (sum, w) => sum + w.utilNextWeek,
-                      0
-                    ) / workloadByAssignee.length
-                  )
-                }
-                %
+                {teamSummary.avgNext}%
+              </span>
+            </div>
+            <div className="team-summary-item">
+              <span className="team-summary-label">Overloaded (≥90%)</span>
+              <span className="team-summary-value">
+                {teamSummary.overloaded}/{teamSummary.total}
+              </span>
+            </div>
+            <div className="team-summary-item">
+              <span className="team-summary-label">Underused (≤40%)</span>
+              <span className="team-summary-value">
+                {teamSummary.underused}/{teamSummary.total}
               </span>
             </div>
           </div>
         )}
       </header>
 
-      {/* rest of the component stays the same (workload, deals by country, heatmap, crunch days, assignment helper) */}
-      {/* ... */}
+      {/* TOP SUMMARY CARDS */}
+      <section className="presales-summary-section">
+        <div className="presales-summary-grid">
+          <div className="presales-summary-card">
+            <div className="psc-icon psc-icon-primary">
+              <Briefcase size={18} />
+            </div>
+            <div className="psc-content">
+              <p className="psc-label">Active deals</p>
+              <p className="psc-value">{activeDeals}</p>
+              <p className="psc-sub">
+                {pipelineValue
+                  ? `${formatCurrency(pipelineValue)} in pipeline`
+                  : 'No value set yet'}
+              </p>
+            </div>
+          </div>
+
+          <div className="presales-summary-card">
+            <div className="psc-icon psc-icon-accent">
+              <CheckCircle2 size={18} />
+            </div>
+            <div className="psc-content">
+              <p className="psc-label">Closed / Done</p>
+              <p className="psc-value">{wonDeals}</p>
+              <p className="psc-sub">
+                {wonValue
+                  ? `${formatCurrency(wonValue)} closed`
+                  : 'No closed deals yet'}
+              </p>
+            </div>
+          </div>
+
+          <div className="presales-summary-card">
+            <div className="psc-icon psc-icon-orange">
+              <Target size={18} />
+            </div>
+            <div className="psc-content">
+              <p className="psc-label">Avg. deal size</p>
+              <p className="psc-value">
+                {avgDeal ? formatCurrency(avgDeal) : '—'}
+              </p>
+              <p className="psc-sub">Based on active pipeline</p>
+            </div>
+          </div>
+
+          <div className="presales-summary-card">
+            <div className="psc-icon psc-icon-neutral">
+              <Globe2 size={18} />
+            </div>
+            <div className="psc-content">
+              <p className="psc-label">Countries & tasks</p>
+              <p className="psc-value">
+                {countryCount}{' '}
+                <span className="psc-value-suffix">countries</span>
+              </p>
+              <p className="psc-sub">
+                {openTasksCount} open task
+                {openTasksCount !== 1 ? 's' : ''} across APAC
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* WORKLOAD + DEALS */}
+      <section className="presales-main-grid">
+        {/* WORKLOAD PANEL */}
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Users size={16} className="panel-icon" />
+                Presales workload
+              </h3>
+              <p>How loaded each presales is, this week and next week.</p>
+            </div>
+          </div>
+
+          {workloadByAssignee.length === 0 ? (
+            <div className="presales-empty">
+              <User size={20} />
+              <p>No tasks found. Assign tasks to presales to see workload.</p>
+            </div>
+          ) : (
+            <div className="workload-table-wrapper">
+              <table className="workload-table">
+                <thead>
+                  <tr>
+                    <th>Presales</th>
+                    <th className="th-center">Projects</th>
+                    <th className="th-center">Total</th>
+                    <th className="th-center">Open</th>
+                    <th className="th-center">Overdue</th>
+                    <th className="th-center">This week</th>
+                    <th className="th-center">Next week</th>
+                    <th className="th-center">Last 30d overdue %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {workloadByAssignee.map((w) => (
+                    <tr key={w.assignee}>
+                      <td>
+                        <div className="wl-name-cell">
+                          <div className="wl-avatar">
+                            {(w.assignee || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="wl-name-text">
+                            <span className="wl-name-main">{w.assignee}</span>
+                            <span className="wl-name-sub">
+                              {w.projectCount} project
+                              {w.projectCount !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="td-center">{w.projectCount}</td>
+                      <td className="td-center">{w.total}</td>
+                      <td className="td-center">{w.open}</td>
+                      <td className="td-center overdue">{w.overdue}</td>
+                      <td className="td-center">
+                        {Math.round(w.utilThisWeek)}%
+                      </td>
+                      <td className="td-center">
+                        {Math.round(w.utilNextWeek)}%
+                      </td>
+                      <td className="td-center">
+                        {Math.round(w.overdueRateLast30)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* DEALS BY COUNTRY */}
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Activity size={16} className="panel-icon" />
+                Deals by country
+              </h3>
+              <p>Where the pipeline is concentrated across APAC.</p>
+            </div>
+          </div>
+
+          {dealsByCountry.length === 0 ? (
+            <div className="presales-empty">
+              <Globe2 size={20} />
+              <p>No deals found. Add projects with country and deal value.</p>
+            </div>
+          ) : (
+            <div className="country-table-wrapper">
+              <table className="country-table">
+                <thead>
+                  <tr>
+                    <th>Country</th>
+                    <th className="th-center">Total</th>
+                    <th className="th-center">Active</th>
+                    <th className="th-center">Done</th>
+                    <th className="th-right">Pipeline</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dealsByCountry.map((c) => (
+                    <tr key={c.country}>
+                      <td>
+                        <div className="cty-name-cell">
+                          <span className="cty-flag-placeholder">
+                            {c.country.charAt(0).toUpperCase()}
+                          </span>
+                          <span>{c.country}</span>
+                        </div>
+                      </td>
+                      <td className="td-center">{c.total}</td>
+                      <td className="td-center">{c.active}</td>
+                      <td className="td-center">{c.done}</td>
+                      <td className="td-right">
+                        {c.pipelineValue
+                          ? formatCurrency(c.pipelineValue)
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* AVAILABILITY HEATMAP */}
+      <section className="presales-calendar-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header presales-panel-header-row">
+            <div>
+              <h3>
+                <CalendarDays size={16} className="panel-icon" />
+                Presales availability (
+                {calendarView === '14' ? 'next 14 days' : 'next 30 days'})
+              </h3>
+              <p>
+                Heatmap of busy days, leave, travel, and free capacity for each
+                presales resource.
+              </p>
+            </div>
+            <div className="calendar-toggle">
+              <button
+                type="button"
+                className={
+                  calendarView === '14'
+                    ? 'calendar-toggle-btn active'
+                    : 'calendar-toggle-btn'
+                }
+                onClick={() => setCalendarView('14')}
+              >
+                14 days
+              </button>
+              <button
+                type="button"
+                className={
+                  calendarView === '30'
+                    ? 'calendar-toggle-btn active'
+                    : 'calendar-toggle-btn'
+                }
+                onClick={() => setCalendarView('30')}
+              >
+                30 days
+              </button>
+            </div>
+          </div>
+
+          {availabilityGrid.length === 0 ? (
+            <div className="presales-empty">
+              <Users size={20} />
+              <p>
+                No presales workload found yet. Assign tasks and schedule leave /
+                travel to see availability.
+              </p>
+            </div>
+          ) : (
+            <div className="heatmap-wrapper">
+              <div className="heatmap-legend">
+                <span className="legend-item">
+                  <span className="legend-dot status-free" />
+                  Free
+                </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-busy" />
+                  Busy (tasks)
+                </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-leave" />
+                  Leave
+                </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-travel" />
+                  Travel
+                </span>
+              </div>
+
+              <div className="heatmap-table">
+                <div className="heatmap-header-row">
+                  <div className="heatmap-header-cell heatmap-name-col">
+                    Presales
+                  </div>
+                  {daysRange.map((d, idx) => {
+                    const label = d.toLocaleDateString('en-SG', {
+                      weekday: 'short',
+                      day: 'numeric',
+                    });
+                    return (
+                      <div
+                        key={idx}
+                        className="heatmap-header-cell heatmap-day-col"
+                      >
+                        {label}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {availabilityGrid.map((row) => (
+                  <div key={row.assignee} className="heatmap-row">
+                    <div className="heatmap-presales-cell">
+                      <div className="wl-avatar">
+                        {(row.assignee || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <span className="heatmap-presales-name">
+                        {row.assignee}
+                      </span>
+                    </div>
+                    {row.days.map((d, idx) => {
+                      const dateLabel = d.date.toLocaleDateString('en-SG', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      });
+                      return (
+                        <div
+                          key={idx}
+                          className={`heatmap-cell status-${d.status}`}
+                          title={`${row.assignee} · ${dateLabel} · ${d.label}`}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* UPCOMING CRUNCH DAYS (RISK SIGNAL) */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <AlertTriangle size={16} className="panel-icon" />
+                Upcoming crunch days (next 14 days)
+              </h3>
+              <p>Days where someone has 3 or more tasks due on the same day.</p>
+            </div>
+          </div>
+
+          {crunchDays.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No crunch days detected in the next 2 weeks.</p>
+            </div>
+          ) : (
+            <div className="crunch-list">
+              {crunchDays.map((cd) => (
+                <div key={cd.date.toDateString()} className="crunch-item">
+                  <div className="crunch-date">
+                    {cd.date.toLocaleDateString('en-SG', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </div>
+                  <div className="crunch-assignees">
+                    {cd.heavyAssignees.map((h) => (
+                      <span key={h.name} className="crunch-chip">
+                        {h.name}: {h.count} tasks
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ASSIGNMENT HELPER */}
+      <section className="presales-assignment-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Filter size={16} className="panel-icon" />
+                Assignment helper
+              </h3>
+              <p>
+                Pick dates and (optional) skill, and see who is the best person
+                to assign a new task to.
+              </p>
+            </div>
+          </div>
+
+          <div className="assignment-content">
+            <div className="assignment-filters">
+              <div className="assignment-field">
+                <label>Task window</label>
+                <div className="assignment-dates">
+                  <input
+                    type="date"
+                    value={assignStart}
+                    onChange={(e) => setAssignStart(e.target.value)}
+                  />
+                  <span className="assignment-dash">to</span>
+                  <input
+                    type="date"
+                    value={assignEnd}
+                    onChange={(e) => setAssignEnd(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="assignment-field">
+                <label>Required skill (optional)</label>
+                <select
+                  value={assignSkill}
+                  onChange={(e) => setAssignSkill(e.target.value)}
+                >
+                  <option value="">Any skill</option>
+                  {allSkills.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="assignment-field">
+                <label>Priority</label>
+                <select
+                  value={assignPriority}
+                  onChange={(e) => setAssignPriority(e.target.value)}
+                >
+                  <option value="High">High</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="assignment-list">
+              {!assignStart || !assignEnd ? (
+                <div className="presales-empty small">
+                  <p>Select start and end date to see suggestions.</p>
+                </div>
+              ) : assignmentSuggestions.length === 0 ? (
+                <div className="presales-empty small">
+                  <p>No suggestions found for the selected range.</p>
+                </div>
+              ) : (
+                <table className="assignment-table">
+                  <thead>
+                    <tr>
+                      <th>Presales</th>
+                      <th className="th-center">Free days</th>
+                      <th className="th-center">Next week load</th>
+                      <th>Skills</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assignmentSuggestions.slice(0, 6).map((sug) => (
+                      <tr key={sug.assignee}>
+                        <td>
+                          <div className="wl-name-cell">
+                            <div className="wl-avatar">
+                              {(sug.assignee || 'U')
+                                .charAt(0)
+                                .toUpperCase()}
+                            </div>
+                            <div className="wl-name-text">
+                              <span className="wl-name-main">
+                                {sug.assignee}
+                              </span>
+                              <span className="wl-name-sub">
+                                {sug.projectCount} proj · {sug.open} open
+                                tasks
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="td-center">
+                          {sug.freeDays}/{sug.totalDays}
+                        </td>
+                        <td className="td-center">
+                          {Math.round(sug.utilNextWeek)}%
+                        </td>
+                        <td>
+                          {sug.skills && sug.skills.length > 0 ? (
+                            <div className="skills-chips">
+                              {sug.skills.map((sk) => (
+                                <span
+                                  key={sk}
+                                  className={
+                                    assignSkill &&
+                                    sk.toLowerCase() ===
+                                      assignSkill.toLowerCase()
+                                      ? 'skill-chip skill-chip-match'
+                                      : 'skill-chip'
+                                  }
+                                >
+                                  {sk}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="skills-none">No skills set</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
