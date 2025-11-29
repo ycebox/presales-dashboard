@@ -916,3 +916,31 @@
     align-items: flex-start;
   }
 }
+/* Smaller, lighter ghost button */
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;        /* smaller */
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.45);
+  color: #d1d5db;
+  font-size: 10.5px;        /* smaller */
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background 0.12s ease, border-color 0.12s ease,
+    transform 0.08s ease, opacity 0.1s ease;
+}
+
+.ghost-btn:hover {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(148, 163, 184, 0.7);
+  transform: translateY(-1px);
+}
+
+.ghost-btn:active {
+  transform: translateY(0);
+}
