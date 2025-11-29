@@ -15,6 +15,8 @@ import {
   Filter,
   Plane,
   X,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import './PresalesOverview.css';
 
@@ -47,6 +49,10 @@ function PresalesOverview() {
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleMessage, setScheduleMessage] = useState(null);
   const [scheduleError, setScheduleError] = useState(null);
+
+  // Create vs edit mode
+  const [scheduleMode, setScheduleMode] = useState('create'); // 'create' | 'edit'
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
 
   // ---------- Load data from Supabase ----------
   useEffect(() => {
@@ -679,19 +685,79 @@ function PresalesOverview() {
     return results;
   }, [tasks]);
 
-  // ---------- Add schedule handler (modal) ----------
-  const closeScheduleModal = () => {
-    setShowScheduleModal(false);
-    setScheduleError(null);
-    setScheduleMessage(null);
+  // ---------- Upcoming schedules list (for edit/delete) ----------
+  const upcomingSchedules = useMemo(() => {
+    if (!scheduleEvents || scheduleEvents.length === 0) return [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return [...scheduleEvents]
+      .filter((e) => {
+        if (!e.end_date) return true;
+        const end = toMidnight(e.end_date);
+        return end >= today;
+      })
+      .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+  }, [scheduleEvents]);
+
+  // ---------- Schedule modal helpers ----------
+  const resetScheduleForm = () => {
     setScheduleAssignee('');
     setScheduleType('Leave');
     setScheduleStart('');
     setScheduleEnd('');
     setScheduleNote('');
+    setScheduleError(null);
+    setScheduleMessage(null);
     setScheduleSaving(false);
+    setScheduleMode('create');
+    setEditingScheduleId(null);
   };
 
+  const closeScheduleModal = () => {
+    setShowScheduleModal(false);
+    resetScheduleForm();
+  };
+
+  const openCreateScheduleModal = () => {
+    resetScheduleForm();
+    setScheduleMode('create');
+    setShowScheduleModal(true);
+  };
+
+  const openEditScheduleModal = (entry) => {
+    setScheduleMode('edit');
+    setEditingScheduleId(entry.id);
+    setScheduleAssignee(entry.assignee || '');
+    setScheduleType(entry.type || 'Leave');
+    setScheduleStart(entry.start_date || '');
+    setScheduleEnd(entry.end_date || '');
+    setScheduleNote(entry.note || '');
+    setScheduleError(null);
+    setScheduleMessage(null);
+    setScheduleSaving(false);
+    setShowScheduleModal(true);
+  };
+
+  const handleDeleteSchedule = async (id) => {
+    const ok = window.confirm('Delete this schedule entry?');
+    if (!ok) return;
+
+    const { error: delError } = await supabase
+      .from('presales_schedule')
+      .delete()
+      .eq('id', id);
+
+    if (delError) {
+      console.error('Failed to delete schedule entry:', delError);
+      alert('Failed to delete schedule entry.');
+      return;
+    }
+
+    setScheduleEvents((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  // ---------- Add / Edit schedule handler ----------
   const handleAddSchedule = async (e) => {
     e.preventDefault();
     setScheduleError(null);
@@ -705,30 +771,55 @@ function PresalesOverview() {
     try {
       setScheduleSaving(true);
 
-      const { data, error: insertError } = await supabase
-        .from('presales_schedule')
-        .insert([
-          {
+      if (scheduleMode === 'create') {
+        const { data, error: insertError } = await supabase
+          .from('presales_schedule')
+          .insert([
+            {
+              assignee: scheduleAssignee,
+              type: scheduleType,
+              start_date: scheduleStart,
+              end_date: scheduleEnd,
+              note: scheduleNote || null,
+            },
+          ])
+          .select();
+
+        if (insertError) {
+          console.error('Error adding schedule:', insertError);
+          setScheduleError('Failed to save schedule entry.');
+        } else if (data && data.length > 0) {
+          setScheduleEvents((prev) => [...prev, data[0]]);
+          alert('Schedule entry added.');
+          closeScheduleModal();
+        }
+      } else if (scheduleMode === 'edit' && editingScheduleId) {
+        const { data, error: updateError } = await supabase
+          .from('presales_schedule')
+          .update({
             assignee: scheduleAssignee,
             type: scheduleType,
             start_date: scheduleStart,
             end_date: scheduleEnd,
             note: scheduleNote || null,
-          },
-        ])
-        .select();
+          })
+          .eq('id', editingScheduleId)
+          .select();
 
-      if (insertError) {
-        console.error('Error adding schedule:', insertError);
-        setScheduleError('Failed to save schedule entry.');
-      } else if (data && data.length > 0) {
-        setScheduleEvents((prev) => [...prev, data[0]]);
-        // Simple confirmation then close modal
-        alert('Schedule entry saved.');
-        closeScheduleModal();
+        if (updateError) {
+          console.error('Error updating schedule:', updateError);
+          setScheduleError('Failed to update schedule entry.');
+        } else if (data && data.length > 0) {
+          const updated = data[0];
+          setScheduleEvents((prev) =>
+            prev.map((e) => (e.id === updated.id ? updated : e))
+          );
+          alert('Schedule entry updated.');
+          closeScheduleModal();
+        }
       }
     } catch (err) {
-      console.error('Error adding schedule:', err);
+      console.error('Error saving schedule:', err);
       setScheduleError('Unexpected error while saving schedule.');
     } finally {
       setScheduleSaving(false);
@@ -991,7 +1082,7 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* AVAILABILITY HEATMAP */}
+      {/* AVAILABILITY HEATMAP + SCHEDULE LIST */}
       <section className="presales-calendar-section">
         <div className="presales-panel">
           <div className="presales-panel-header presales-panel-header-row">
@@ -1034,7 +1125,7 @@ function PresalesOverview() {
               <button
                 type="button"
                 className="ghost-btn"
-                onClick={() => setShowScheduleModal(true)}
+                onClick={openCreateScheduleModal}
               >
                 <Plane size={14} />
                 <span>Manage schedule</span>
@@ -1077,9 +1168,11 @@ function PresalesOverview() {
                     Presales
                   </div>
                   {daysRange.map((d, idx) => {
+                    // month added here
                     const label = d.toLocaleDateString('en-SG', {
                       weekday: 'short',
                       day: 'numeric',
+                      month: 'short',
                     });
                     return (
                       <div
@@ -1121,6 +1214,85 @@ function PresalesOverview() {
               </div>
             </div>
           )}
+
+          {/* SCHEDULE LIST (EDIT / DELETE) */}
+          <div className="schedule-list-wrapper">
+            <div className="schedule-list-header">
+              <h4>Upcoming leave & travel</h4>
+              <p>Quick view of what has been booked for the team.</p>
+            </div>
+            {upcomingSchedules.length === 0 ? (
+              <div className="presales-empty small">
+                <p>No upcoming leave or travel logged yet.</p>
+              </div>
+            ) : (
+              <div className="schedule-list-table-wrapper">
+                <table className="schedule-list-table">
+                  <thead>
+                    <tr>
+                      <th>Presales</th>
+                      <th>Type</th>
+                      <th>Dates</th>
+                      <th>Note</th>
+                      <th className="th-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {upcomingSchedules.map((ev) => {
+                      const start =
+                        ev.start_date &&
+                        new Date(ev.start_date).toLocaleDateString('en-SG', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: '2-digit',
+                        });
+                      const end =
+                        ev.end_date &&
+                        new Date(ev.end_date).toLocaleDateString('en-SG', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: '2-digit',
+                        });
+
+                      return (
+                        <tr key={ev.id}>
+                          <td>{ev.assignee}</td>
+                          <td>
+                            <span className="schedule-type-chip">
+                              {ev.type}
+                            </span>
+                          </td>
+                          <td>
+                            {start}
+                            {end && end !== start ? ` – ${end}` : ''}
+                          </td>
+                          <td className="schedule-note-cell">
+                            {ev.note || '—'}
+                          </td>
+                          <td className="td-center">
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              onClick={() => openEditScheduleModal(ev)}
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-btn icon-btn-danger"
+                              onClick={() => handleDeleteSchedule(ev.id)}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -1283,8 +1455,16 @@ function PresalesOverview() {
               <div className="schedule-modal-title">
                 <Plane size={16} />
                 <div>
-                  <h4>Manage presales schedule</h4>
-                  <p>Log leave, travel, and other blocks affecting availability.</p>
+                  <h4>
+                    {scheduleMode === 'edit'
+                      ? 'Edit presales schedule'
+                      : 'Manage presales schedule'}
+                  </h4>
+                  <p>
+                    {scheduleMode === 'edit'
+                      ? 'Update or correct an existing leave/travel entry.'
+                      : 'Log leave, travel, and other blocks affecting availability.'}
+                  </p>
                 </div>
               </div>
               <button
@@ -1386,7 +1566,11 @@ function PresalesOverview() {
                     className="primary-btn"
                     disabled={scheduleSaving}
                   >
-                    {scheduleSaving ? 'Saving…' : 'Add schedule entry'}
+                    {scheduleSaving
+                      ? 'Saving…'
+                      : scheduleMode === 'edit'
+                      ? 'Save changes'
+                      : 'Add schedule entry'}
                   </button>
                 </div>
               </div>
