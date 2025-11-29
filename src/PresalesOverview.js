@@ -719,16 +719,11 @@ function PresalesOverview() {
         console.error('Error adding schedule:', insertError);
         setScheduleError('Failed to save schedule entry.');
       } else if (data && data.length > 0) {
-        // Push new schedule entry into local state so heatmap updates
-        setScheduleEvents((prev) => [...prev, data[0]]);
-        setScheduleMessage('Schedule saved.');
+  setScheduleEvents((prev) => [...prev, data[0]]);
 
-        // Keep modal open but clear dates & note for fast next entry
-        setScheduleType('Leave');
-        setScheduleStart('');
-        setScheduleEnd('');
-        setScheduleNote('');
-      }
+  // Close the modal immediately after successful save
+  closeScheduleModal();
+}
     } catch (err) {
       console.error('Error adding schedule:', err);
       setScheduleError('Unexpected error while saving schedule.');
