@@ -14,6 +14,7 @@ import {
   CalendarDays,
   Filter,
   Plane,
+  X,
 } from 'lucide-react';
 import './PresalesOverview.css';
 
@@ -36,7 +37,8 @@ function PresalesOverview() {
   // Calendar view: 14 or 30 days
   const [calendarView, setCalendarView] = useState('14'); // '14' | '30'
 
-  // Manage schedule form state
+  // Manage schedule form state (modal)
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleAssignee, setScheduleAssignee] = useState('');
   const [scheduleType, setScheduleType] = useState('Leave');
   const [scheduleStart, setScheduleStart] = useState('');
@@ -686,7 +688,7 @@ function PresalesOverview() {
     return results;
   }, [tasks]);
 
-  // ---------- Add schedule handler ----------
+  // ---------- Add schedule handler (modal) ----------
   const handleAddSchedule = async (e) => {
     e.preventDefault();
     setScheduleError(null);
@@ -720,7 +722,8 @@ function PresalesOverview() {
         // Push new schedule entry into local state so heatmap updates
         setScheduleEvents((prev) => [...prev, data[0]]);
         setScheduleMessage('Schedule saved.');
-        // Reset form (keep assignee for faster multiple inputs if you like)
+
+        // Keep modal open but clear dates & note for fast next entry
         setScheduleType('Leave');
         setScheduleStart('');
         setScheduleEnd('');
@@ -732,6 +735,12 @@ function PresalesOverview() {
     } finally {
       setScheduleSaving(false);
     }
+  };
+
+  const closeScheduleModal = () => {
+    setShowScheduleModal(false);
+    setScheduleError(null);
+    setScheduleMessage(null);
   };
 
   // ---------- UI states ----------
@@ -1005,28 +1014,38 @@ function PresalesOverview() {
                 presales resource.
               </p>
             </div>
-            <div className="calendar-toggle">
+            <div className="calendar-header-actions">
+              <div className="calendar-toggle">
+                <button
+                  type="button"
+                  className={
+                    calendarView === '14'
+                      ? 'calendar-toggle-btn active'
+                      : 'calendar-toggle-btn'
+                  }
+                  onClick={() => setCalendarView('14')}
+                >
+                  14 days
+                </button>
+                <button
+                  type="button"
+                  className={
+                    calendarView === '30'
+                      ? 'calendar-toggle-btn active'
+                      : 'calendar-toggle-btn'
+                  }
+                  onClick={() => setCalendarView('30')}
+                >
+                  30 days
+                </button>
+              </div>
               <button
                 type="button"
-                className={
-                  calendarView === '14'
-                    ? 'calendar-toggle-btn active'
-                    : 'calendar-toggle-btn'
-                }
-                onClick={() => setCalendarView('14')}
+                className="ghost-btn"
+                onClick={() => setShowScheduleModal(true)}
               >
-                14 days
-              </button>
-              <button
-                type="button"
-                className={
-                  calendarView === '30'
-                    ? 'calendar-toggle-btn active'
-                    : 'calendar-toggle-btn'
-                }
-                onClick={() => setCalendarView('30')}
-              >
-                30 days
+                <Plane size={14} />
+                <span>Manage schedule</span>
               </button>
             </div>
           </div>
@@ -1155,111 +1174,6 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* MANAGE PRESALES SCHEDULE */}
-      <section className="presales-schedule-section">
-        <div className="presales-panel">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <Plane size={16} className="panel-icon" />
-                Manage presales schedule
-              </h3>
-              <p>
-                Log leave, travel, or training so the availability heatmap stays
-                realistic.
-              </p>
-            </div>
-          </div>
-
-          <form className="schedule-form" onSubmit={handleAddSchedule}>
-            <div className="schedule-form-row">
-              <div className="schedule-field">
-                <label>Presales</label>
-                <select
-                  value={scheduleAssignee}
-                  onChange={(e) => setScheduleAssignee(e.target.value)}
-                >
-                  <option value="">Select presales</option>
-                  {presalesResources
-                    .filter((r) => r.is_active !== false)
-                    .map((r) => (
-                      <option key={r.id} value={r.name}>
-                        {r.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              <div className="schedule-field">
-                <label>Type</label>
-                <select
-                  value={scheduleType}
-                  onChange={(e) => setScheduleType(e.target.value)}
-                >
-                  <option value="Leave">Leave</option>
-                  <option value="Travel">Travel</option>
-                  <option value="Training">Training</option>
-                  <option value="Public Holiday">Public Holiday</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="schedule-form-row">
-              <div className="schedule-field">
-                <label>Start date</label>
-                <input
-                  type="date"
-                  value={scheduleStart}
-                  onChange={(e) => setScheduleStart(e.target.value)}
-                />
-              </div>
-
-              <div className="schedule-field">
-                <label>End date</label>
-                <input
-                  type="date"
-                  value={scheduleEnd}
-                  onChange={(e) => setScheduleEnd(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="schedule-form-row">
-              <div className="schedule-field schedule-field-full">
-                <label>Note (optional)</label>
-                <input
-                  type="text"
-                  placeholder="Example: Family trip, Manila workshop, APAC tour…"
-                  value={scheduleNote}
-                  onChange={(e) => setScheduleNote(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="schedule-form-actions">
-              {scheduleError && (
-                <span className="schedule-message schedule-message-error">
-                  {scheduleError}
-                </span>
-              )}
-              {scheduleMessage && (
-                <span className="schedule-message schedule-message-success">
-                  {scheduleMessage}
-                </span>
-              )}
-              <button
-                type="submit"
-                className="primary-btn"
-                disabled={scheduleSaving}
-              >
-                {scheduleSaving ? 'Saving…' : 'Add schedule entry'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </section>
-
       {/* ASSIGNMENT HELPER */}
       <section className="presales-assignment-section">
         <div className="presales-panel">
@@ -1362,6 +1276,132 @@ function PresalesOverview() {
           </div>
         </div>
       </section>
+
+      {/* MANAGE SCHEDULE MODAL */}
+      {showScheduleModal && (
+        <div
+          className="schedule-modal-backdrop"
+          onClick={closeScheduleModal}
+        >
+          <div
+            className="schedule-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="schedule-modal-header">
+              <div className="schedule-modal-title">
+                <Plane size={16} />
+                <div>
+                  <h4>Manage presales schedule</h4>
+                  <p>Log leave, travel, and other blocks affecting availability.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="schedule-modal-close"
+                onClick={closeScheduleModal}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form className="schedule-form" onSubmit={handleAddSchedule}>
+              <div className="schedule-form-row">
+                <div className="schedule-field">
+                  <label>Presales</label>
+                  <select
+                    value={scheduleAssignee}
+                    onChange={(e) => setScheduleAssignee(e.target.value)}
+                  >
+                    <option value="">Select presales</option>
+                    {presalesResources
+                      .filter((r) => r.is_active !== false)
+                      .map((r) => (
+                        <option key={r.id} value={r.name}>
+                          {r.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="schedule-field">
+                  <label>Type</label>
+                  <select
+                    value={scheduleType}
+                    onChange={(e) => setScheduleType(e.target.value)}
+                  >
+                    <option value="Leave">Leave</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Training">Training</option>
+                    <option value="Public Holiday">Public Holiday</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="schedule-form-row">
+                <div className="schedule-field">
+                  <label>Start date</label>
+                  <input
+                    type="date"
+                    value={scheduleStart}
+                    onChange={(e) => setScheduleStart(e.target.value)}
+                  />
+                </div>
+
+                <div className="schedule-field">
+                  <label>End date</label>
+                  <input
+                    type="date"
+                    value={scheduleEnd}
+                    onChange={(e) => setScheduleEnd(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="schedule-form-row">
+                <div className="schedule-field schedule-field-full">
+                  <label>Note (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Example: Family trip, Manila workshop, APAC tour…"
+                    value={scheduleNote}
+                    onChange={(e) => setScheduleNote(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="schedule-form-actions">
+                {scheduleError && (
+                  <span className="schedule-message schedule-message-error">
+                    {scheduleError}
+                  </span>
+                )}
+                {scheduleMessage && (
+                  <span className="schedule-message schedule-message-success">
+                    {scheduleMessage}
+                  </span>
+                )}
+                <div className="schedule-form-buttons">
+                  <button
+                    type="button"
+                    className="ghost-btn ghost-btn-sm"
+                    onClick={closeScheduleModal}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="primary-btn"
+                    disabled={scheduleSaving}
+                  >
+                    {scheduleSaving ? 'Saving…' : 'Add schedule entry'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
