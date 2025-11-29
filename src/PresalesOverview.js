@@ -17,6 +17,7 @@ import {
   X,
   Edit3,
   Trash2,
+  ListChecks,
 } from 'lucide-react';
 import './PresalesOverview.css';
 
@@ -49,10 +50,17 @@ function PresalesOverview() {
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleMessage, setScheduleMessage] = useState(null);
   const [scheduleError, setScheduleError] = useState(null);
-
-  // Create vs edit mode
   const [scheduleMode, setScheduleMode] = useState('create'); // 'create' | 'edit'
   const [editingScheduleId, setEditingScheduleId] = useState(null);
+
+  // Day detail modal (when clicking a heatmap cell)
+  const [dayDetailOpen, setDayDetailOpen] = useState(false);
+  const [dayDetail, setDayDetail] = useState({
+    assignee: '',
+    date: null,
+    tasks: [],
+    schedules: [],
+  });
 
   // ---------- Load data from Supabase ----------
   useEffect(() => {
@@ -149,6 +157,40 @@ function PresalesOverview() {
     if (!isNaN(est) && est > 0) return est;
     return DEFAULT_TASK_HOURS;
   };
+
+  const isTaskOnDay = (task, day) => {
+    const d = toMidnight(day);
+
+    if (task.start_date && task.end_date) {
+      return isWithinRange(d, task.start_date, task.end_date);
+    }
+
+    if (task.start_date && !task.end_date) {
+      const start = toMidnight(task.start_date);
+      return d >= start;
+    }
+
+    if (!task.start_date && task.end_date) {
+      const end = toMidnight(task.end_date);
+      return d <= end;
+    }
+
+    if (task.due_date) {
+      const due = toMidnight(task.due_date);
+      return isSameDay(due, d);
+    }
+
+    return false;
+  };
+
+  // Map project id -> name
+  const projectMap = useMemo(() => {
+    const map = new Map();
+    (projects || []).forEach((p) => {
+      map.set(p.id, p.customer_name || `Project ${p.id}`);
+    });
+    return map;
+  }, [projects]);
 
   // ---------- Summary stats ----------
   const {
@@ -502,29 +544,7 @@ function PresalesOverview() {
           const hasTask = tasks.some((t) => {
             if (t.assignee !== res.assignee) return false;
             if (t.status === 'Completed') return false;
-
-            const d = toMidnight(day);
-
-            if (t.start_date && t.end_date) {
-              return isWithinRange(d, t.start_date, t.end_date);
-            }
-
-            if (t.start_date && !t.end_date) {
-              const start = toMidnight(t.start_date);
-              return d >= start;
-            }
-
-            if (!t.start_date && t.end_date) {
-              const end = toMidnight(t.end_date);
-              return d <= end;
-            }
-
-            if (t.due_date) {
-              const due = toMidnight(t.due_date);
-              return isSameDay(due, d);
-            }
-
-            return false;
+            return isTaskOnDay(t, day);
           });
 
           if (hasTask) {
@@ -579,23 +599,9 @@ function PresalesOverview() {
         if (t.status === 'Completed') return;
 
         rangeDays.forEach((d) => {
-          const dd = toMidnight(d);
-          let overlaps = false;
-
-          if (t.start_date && t.end_date) {
-            overlaps = isWithinRange(dd, t.start_date, t.end_date);
-          } else if (t.start_date && !t.end_date) {
-            const startT = toMidnight(t.start_date);
-            overlaps = dd >= startT;
-          } else if (!t.start_date && t.end_date) {
-            const endT = toMidnight(t.end_date);
-            overlaps = dd <= endT;
-          } else if (t.due_date) {
-            const due = toMidnight(t.due_date);
-            overlaps = isSameDay(due, dd);
+          if (isTaskOnDay(t, d)) {
+            busySet.add(d.toDateString());
           }
-
-          if (overlaps) busySet.add(d.toDateString());
         });
       });
     });
@@ -826,6 +832,36 @@ function PresalesOverview() {
     }
   };
 
+  // ---------- Day detail modal (when clicking heatmap cell) ----------
+  const openDayDetail = (assignee, date) => {
+    const day = toMidnight(date);
+
+    const dayTasks = (tasks || [])
+      .filter(
+        (t) =>
+          t.assignee === assignee &&
+          t.status !== 'Completed' &&
+          isTaskOnDay(t, day)
+      )
+      .map((t) => ({
+        ...t,
+        projectName: projectMap.get(t.project_id) || 'Unknown project',
+      }));
+
+    const daySchedules = (scheduleEvents || []).filter(
+      (e) =>
+        e.assignee === assignee &&
+        isWithinRange(day, e.start_date, e.end_date)
+    );
+
+    setDayDetail({ assignee, date: day, tasks: dayTasks, schedules: daySchedules });
+    setDayDetailOpen(true);
+  };
+
+  const closeDayDetail = () => {
+    setDayDetailOpen(false);
+  };
+
   // ---------- UI states ----------
   if (loading) {
     return (
@@ -848,6 +884,16 @@ function PresalesOverview() {
       </div>
     );
   }
+
+  const formatDayDetailDate = (d) =>
+    d
+      ? d.toLocaleDateString('en-SG', {
+          weekday: 'short',
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        })
+      : '';
 
   return (
     <div className="presales-page-container">
@@ -1168,7 +1214,6 @@ function PresalesOverview() {
                     Presales
                   </div>
                   {daysRange.map((d, idx) => {
-                    // month added here
                     const label = d.toLocaleDateString('en-SG', {
                       weekday: 'short',
                       day: 'numeric',
@@ -1206,6 +1251,7 @@ function PresalesOverview() {
                           key={idx}
                           className={`heatmap-cell status-${d.status}`}
                           title={`${row.assignee} · ${dateLabel} · ${d.label}`}
+                          onClick={() => openDayDetail(row.assignee, d.date)}
                         />
                       );
                     })}
@@ -1410,176 +1456,4 @@ function PresalesOverview() {
                         <td>
                           <div className="wl-name-cell">
                             <div className="wl-avatar">
-                              {(sug.assignee || 'U')
-                                .charAt(0)
-                                .toUpperCase()}
-                            </div>
-                            <div className="wl-name-text">
-                              <span className="wl-name-main">
-                                {sug.assignee}
-                              </span>
-                              <span className="wl-name-sub">
-                                {sug.projectCount} proj · {sug.open} open
-                                tasks
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="td-center">
-                          {sug.freeDays}/{sug.totalDays}
-                        </td>
-                        <td className="td-center">
-                          {Math.round(sug.utilNextWeek)}%
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* MANAGE SCHEDULE MODAL */}
-      {showScheduleModal && (
-        <div
-          className="schedule-modal-backdrop"
-          onClick={closeScheduleModal}
-        >
-          <div
-            className="schedule-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="schedule-modal-header">
-              <div className="schedule-modal-title">
-                <Plane size={16} />
-                <div>
-                  <h4>
-                    {scheduleMode === 'edit'
-                      ? 'Edit presales schedule'
-                      : 'Manage presales schedule'}
-                  </h4>
-                  <p>
-                    {scheduleMode === 'edit'
-                      ? 'Update or correct an existing leave/travel entry.'
-                      : 'Log leave, travel, and other blocks affecting availability.'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="schedule-modal-close"
-                onClick={closeScheduleModal}
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <form className="schedule-form" onSubmit={handleAddSchedule}>
-              <div className="schedule-form-row">
-                <div className="schedule-field">
-                  <label>Presales</label>
-                  <select
-                    value={scheduleAssignee}
-                    onChange={(e) => setScheduleAssignee(e.target.value)}
-                  >
-                    <option value="">Select presales</option>
-                    {presalesResources
-                      .filter((r) => r.is_active !== false)
-                      .map((r) => (
-                        <option key={r.id} value={r.name}>
-                          {r.name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div className="schedule-field">
-                  <label>Type</label>
-                  <select
-                    value={scheduleType}
-                    onChange={(e) => setScheduleType(e.target.value)}
-                  >
-                    <option value="Leave">Leave</option>
-                    <option value="Travel">Travel</option>
-                    <option value="Training">Training</option>
-                    <option value="Public Holiday">Public Holiday</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="schedule-form-row">
-                <div className="schedule-field">
-                  <label>Start date</label>
-                  <input
-                    type="date"
-                    value={scheduleStart}
-                    onChange={(e) => setScheduleStart(e.target.value)}
-                  />
-                </div>
-
-                <div className="schedule-field">
-                  <label>End date</label>
-                  <input
-                    type="date"
-                    value={scheduleEnd}
-                    onChange={(e) => setScheduleEnd(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="schedule-form-row">
-                <div className="schedule-field schedule-field-full">
-                  <label>Note (optional)</label>
-                  <input
-                    type="text"
-                    placeholder="Example: Family trip, Manila workshop, APAC tour…"
-                    value={scheduleNote}
-                    onChange={(e) => setScheduleNote(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="schedule-form-actions">
-                {scheduleError && (
-                  <span className="schedule-message schedule-message-error">
-                    {scheduleError}
-                  </span>
-                )}
-                {scheduleMessage && (
-                  <span className="schedule-message schedule-message-success">
-                    {scheduleMessage}
-                  </span>
-                )}
-                <div className="schedule-form-buttons">
-                  <button
-                    type="button"
-                    className="ghost-btn ghost-btn-sm"
-                    onClick={closeScheduleModal}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="primary-btn"
-                    disabled={scheduleSaving}
-                  >
-                    {scheduleSaving
-                      ? 'Saving…'
-                      : scheduleMode === 'edit'
-                      ? 'Save changes'
-                      : 'Add schedule entry'}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default PresalesOverview;
+                              {(sug.assignee || '
