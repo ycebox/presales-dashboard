@@ -53,7 +53,7 @@ function PresalesOverview() {
   const [scheduleMode, setScheduleMode] = useState('create'); // 'create' | 'edit'
   const [editingScheduleId, setEditingScheduleId] = useState(null);
 
-  // Day detail modal (when clicking a heatmap cell)
+  // Day detail modal (click heatmap cell)
   const [dayDetailOpen, setDayDetailOpen] = useState(false);
   const [dayDetail, setDayDetail] = useState({
     assignee: '',
@@ -77,7 +77,7 @@ function PresalesOverview() {
           supabase
             .from('project_tasks')
             .select(
-              'id, project_id, assignee, status, due_date, start_date, end_date, estimated_hours, priority, task_type'
+              'id, project_id, assignee, status, due_date, start_date, end_date, estimated_hours, priority, task_type, description, notes'
             ),
           supabase
             .from('presales_schedule')
@@ -832,7 +832,7 @@ function PresalesOverview() {
     }
   };
 
-  // ---------- Day detail modal (when clicking heatmap cell) ----------
+  // ---------- Day detail modal (click heatmap cell) ----------
   const openDayDetail = (assignee, date) => {
     const day = toMidnight(date);
 
@@ -892,6 +892,14 @@ function PresalesOverview() {
           day: '2-digit',
           month: 'short',
           year: 'numeric',
+        })
+      : '';
+
+  const formatShortDate = (d) =>
+    d
+      ? new Date(d).toLocaleDateString('en-SG', {
+          day: '2-digit',
+          month: 'short',
         })
       : '';
 
@@ -1156,6 +1164,8 @@ function PresalesOverview() {
                 >
                   14 days
                 </button>
+              </div>
+              <div className="calendar-toggle">
                 <button
                   type="button"
                   className={
@@ -1342,7 +1352,7 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* UPCOMING CRUNCH DAYS (RISK SIGNAL) */}
+      {/* UPCOMING CRUNCH DAYS */}
       <section className="presales-crunch-section">
         <div className="presales-panel">
           <div className="presales-panel-header">
@@ -1456,4 +1466,297 @@ function PresalesOverview() {
                         <td>
                           <div className="wl-name-cell">
                             <div className="wl-avatar">
-                              {(sug.assignee || '
+                              {(sug.assignee || 'U')
+                                .charAt(0)
+                                .toUpperCase()}
+                            </div>
+                            <div className="wl-name-text">
+                              <span className="wl-name-main">
+                                {sug.assignee}
+                              </span>
+                              <span className="wl-name-sub">
+                                {sug.projectCount} proj · {sug.open} open tasks
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="td-center">
+                          {sug.freeDays}/{sug.totalDays}
+                        </td>
+                        <td className="td-center">
+                          {Math.round(sug.utilNextWeek)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* MANAGE SCHEDULE MODAL */}
+      {showScheduleModal && (
+        <div
+          className="schedule-modal-backdrop"
+          onClick={closeScheduleModal}
+        >
+          <div
+            className="schedule-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="schedule-modal-header">
+              <div className="schedule-modal-title">
+                <Plane size={16} />
+                <div>
+                  <h4>
+                    {scheduleMode === 'edit'
+                      ? 'Edit presales schedule'
+                      : 'Manage presales schedule'}
+                  </h4>
+                  <p>
+                    {scheduleMode === 'edit'
+                      ? 'Update or correct an existing leave/travel entry.'
+                      : 'Log leave, travel, and other blocks affecting availability.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="schedule-modal-close"
+                onClick={closeScheduleModal}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form className="schedule-form" onSubmit={handleAddSchedule}>
+              <div className="schedule-form-row">
+                <div className="schedule-field">
+                  <label>Presales</label>
+                  <select
+                    value={scheduleAssignee}
+                    onChange={(e) => setScheduleAssignee(e.target.value)}
+                  >
+                    <option value="">Select presales</option>
+                    {presalesResources
+                      .filter((r) => r.is_active !== false)
+                      .map((r) => (
+                        <option key={r.id} value={r.name}>
+                          {r.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="schedule-field">
+                  <label>Type</label>
+                  <select
+                    value={scheduleType}
+                    onChange={(e) => setScheduleType(e.target.value)}
+                  >
+                    <option value="Leave">Leave</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Training">Training</option>
+                    <option value="Public Holiday">Public Holiday</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="schedule-form-row">
+                <div className="schedule-field">
+                  <label>Start date</label>
+                  <input
+                    type="date"
+                    value={scheduleStart}
+                    onChange={(e) => setScheduleStart(e.target.value)}
+                  />
+                </div>
+
+                <div className="schedule-field">
+                  <label>End date</label>
+                  <input
+                    type="date"
+                    value={scheduleEnd}
+                    onChange={(e) => setScheduleEnd(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="schedule-form-row">
+                <div className="schedule-field schedule-field-full">
+                  <label>Note (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Example: Family trip, Manila workshop, APAC tour…"
+                    value={scheduleNote}
+                    onChange={(e) => setScheduleNote(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="schedule-form-actions">
+                {scheduleError && (
+                  <span className="schedule-message schedule-message-error">
+                    {scheduleError}
+                  </span>
+                )}
+                {scheduleMessage && (
+                  <span className="schedule-message schedule-message-success">
+                    {scheduleMessage}
+                  </span>
+                )}
+                <div className="schedule-form-buttons">
+                  <button
+                    type="button"
+                    className="ghost-btn ghost-btn-sm"
+                    onClick={closeScheduleModal}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="primary-btn"
+                    disabled={scheduleSaving}
+                  >
+                    {scheduleSaving
+                      ? 'Saving…'
+                      : scheduleMode === 'edit'
+                      ? 'Save changes'
+                      : 'Add schedule entry'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DAY DETAIL MODAL (CLICK HEATMAP CELL) */}
+      {dayDetailOpen && (
+        <div className="schedule-modal-backdrop" onClick={closeDayDetail}>
+          <div
+            className="schedule-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="schedule-modal-header">
+              <div className="schedule-modal-title">
+                <ListChecks size={16} />
+                <div>
+                  <h4>
+                    {dayDetail.assignee || 'Presales'} ·{' '}
+                    {formatDayDetailDate(dayDetail.date)}
+                  </h4>
+                  <p>
+                    Tasks and schedule entries for this day. Use this when
+                    deciding who to assign or to spot overload.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="schedule-modal-close"
+                onClick={closeDayDetail}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="day-detail-body">
+              <div className="day-detail-section">
+                <h5>Tasks</h5>
+                {dayDetail.tasks.length === 0 ? (
+                  <p className="day-detail-empty">No tasks on this day.</p>
+                ) : (
+                  <ul className="day-detail-task-list">
+                    {dayDetail.tasks.map((t) => (
+                      <li key={t.id} className="day-detail-task-item">
+                        <div className="day-detail-task-main">
+                          <span className="day-detail-task-project">
+                            {t.projectName}
+                          </span>
+                          <span className="day-detail-task-status">
+                            {t.status || 'Open'}
+                          </span>
+                        </div>
+                        {t.description && (
+                          <div className="day-detail-task-desc">
+                            {t.description}
+                          </div>
+                        )}
+                        <div className="day-detail-task-meta">
+                          <span>
+                            Type:{' '}
+                            <strong>{t.task_type || 'General task'}</strong>
+                          </span>
+                          {t.priority && (
+                            <span>
+                              Priority: <strong>{t.priority}</strong>
+                            </span>
+                          )}
+                          {t.start_date && (
+                            <span>
+                              Start: {formatShortDate(t.start_date)}
+                            </span>
+                          )}
+                          {t.end_date && (
+                            <span>End: {formatShortDate(t.end_date)}</span>
+                          )}
+                          {t.due_date && (
+                            <span>Due: {formatShortDate(t.due_date)}</span>
+                          )}
+                          {t.estimated_hours && (
+                            <span>
+                              Est.: <strong>{t.estimated_hours}h</strong>
+                            </span>
+                          )}
+                        </div>
+                        {t.notes && (
+                          <div className="day-detail-task-notes">
+                            Notes: {t.notes}
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="day-detail-section">
+                <h5>Schedule (leave / travel / others)</h5>
+                {dayDetail.schedules.length === 0 ? (
+                  <p className="day-detail-empty">No schedule blocks.</p>
+                ) : (
+                  <ul className="day-detail-schedule-list">
+                    {dayDetail.schedules.map((s) => (
+                      <li key={s.id} className="day-detail-schedule-item">
+                        <span className="day-detail-schedule-type">
+                          {s.type}
+                        </span>
+                        <span className="day-detail-schedule-dates">
+                          {formatShortDate(s.start_date)}
+                          {s.end_date && s.end_date !== s.start_date
+                            ? ` – ${formatShortDate(s.end_date)}`
+                            : ''}
+                        </span>
+                        {s.note && (
+                          <span className="day-detail-schedule-note">
+                            {s.note}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default PresalesOverview;
