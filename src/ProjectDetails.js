@@ -140,7 +140,7 @@ const getSalesStageClass = (stage) => {
   return 'stage-active';
 };
 
-// ---------- Task Modal (with dropdown + start/end dates) ----------
+// ---------- Task Modal (with dropdown + start/end dates + estimated hours) ----------
 const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResources = [] }) => {
   const [taskData, setTaskData] = useState({
     description: '',
@@ -149,7 +149,8 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
     end_date: '',
     due_date: '',
     notes: '',
-    assignee: ''
+    assignee: '',
+    estimated_hours: 2
   });
   const [loading, setLoading] = useState(false);
 
@@ -162,7 +163,8 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
         end_date: editingTask.end_date || '',
         due_date: editingTask.due_date || '',
         notes: editingTask.notes || '',
-        assignee: editingTask.assignee || ''
+        assignee: editingTask.assignee || '',
+        estimated_hours: editingTask.estimated_hours ?? 2
       });
     } else {
       setTaskData({
@@ -172,7 +174,8 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
         end_date: '',
         due_date: '',
         notes: '',
-        assignee: ''
+        assignee: '',
+        estimated_hours: 2
       });
     }
   }, [editingTask, isOpen]);
@@ -194,9 +197,18 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
       if (!ok) return;
     }
 
+    const est = parseFloat(taskData.estimated_hours);
+    if (isNaN(est) || est <= 0) {
+      alert('Please enter a valid estimated hours value greater than 0');
+      return;
+    }
+
     setLoading(true);
     try {
-      await onSave(taskData);
+      await onSave({
+        ...taskData,
+        estimated_hours: est
+      });
     } finally {
       setLoading(false);
     }
@@ -297,6 +309,26 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
                   <option key={status} value={status}>{status}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Estimated hours */}
+            <div className="form-group">
+              <label htmlFor="task-estimated-hours" className="form-label">
+                <FaClock className="form-icon" />
+                Estimated Hours
+              </label>
+              <input
+                id="task-estimated-hours"
+                name="estimated_hours"
+                type="number"
+                min="0.5"
+                max="8"
+                step="0.5"
+                value={taskData.estimated_hours}
+                onChange={(e) => handleChange('estimated_hours', e.target.value)}
+                className="form-input"
+                placeholder="e.g. 2"
+              />
             </div>
 
             {/* Start / End date */}
@@ -664,7 +696,7 @@ function ProjectDetails() {
 
   const filteredTasks = showCompleted ? tasks : tasks.filter(task => !['Completed', 'Cancelled/On-hold'].includes(task.status));
 
-  // Event handlers (project save, task save, etc.) – unchanged except task save now carries start/end/due/assignee
+  // Event handlers (project save, task save, etc.)
   const handleEditToggle = () => {
     if (isEditing) {
       setEditProject(project);
@@ -728,11 +760,16 @@ function ProjectDetails() {
   };
 
   const handleTaskSaved = async (taskData) => {
+    const est = taskData.estimated_hours != null ? Number(taskData.estimated_hours) : null;
+
     try {
       if (editingTask) {
         const { error } = await supabase
           .from('project_tasks')
-          .update(taskData)
+          .update({
+            ...taskData,
+            estimated_hours: est
+          })
           .eq('id', editingTask.id);
 
         if (error) throw error;
@@ -740,7 +777,11 @@ function ProjectDetails() {
       } else {
         const { error } = await supabase
           .from('project_tasks')
-          .insert([{ ...taskData, project_id: id }]);
+          .insert([{
+            ...taskData,
+            estimated_hours: est,
+            project_id: id
+          }]);
 
         if (error) throw error;
         alert('Task added successfully!');
@@ -908,9 +949,6 @@ function ProjectDetails() {
           {/* Project Details Section */}
           {/* ... (unchanged content of project info section – same as last version) ... */}
 
-          {/* I’m intentionally not repeating the whole middle section you already have */}
-          {/* since that part is independent of the assignee/dropdown and dates. */}
-
           {/* Tasks Section */}
           <section className="content-card">
             <div className="card-header">
@@ -950,92 +988,107 @@ function ProjectDetails() {
             <div className="card-content">
               {filteredTasks.length > 0 ? (
                 <div className="task-list">
-                  {filteredTasks.map((task) => (
-                    <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)}`}>
-                      <div className="task-checkbox-wrapper">
-                        <div className="custom-checkbox">
-                          <input 
-                            type="checkbox" 
-                            className="task-checkbox"
-                            checked={task.status === 'Completed'}
-                            onChange={() => handleTaskStatusChange(task.id, task.status)}
-                            aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`}
-                          />
-                          <div className="checkbox-visual">
-                            <FaCheckCircle className="check-icon" />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="task-main-content">
-                        <div className="task-header">
-                          <h4 className="task-title">{task.description}</h4>
-                          <div className={`task-status-badge ${getTaskStatusClass(task.status)}`}>
-                            {getTaskStatusIcon(task.status)}
-                            <span className="status-text">
-                              {task.status}
-                            </span>
+                  {filteredTasks.map((task) => {
+                    const estHours = task.estimated_hours != null
+                      ? parseFloat(task.estimated_hours)
+                      : null;
+                    const estHoursValid = !isNaN(estHours) && estHours > 0;
+
+                    return (
+                      <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)}`}>
+                        <div className="task-checkbox-wrapper">
+                          <div className="custom-checkbox">
+                            <input 
+                              type="checkbox" 
+                              className="task-checkbox"
+                              checked={task.status === 'Completed'}
+                              onChange={() => handleTaskStatusChange(task.id, task.status)}
+                              aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`}
+                            />
+                            <div className="checkbox-visual">
+                              <FaCheckCircle className="check-icon" />
+                            </div>
                           </div>
                         </div>
                         
-                        <div className="task-meta-row">
-                          {/* Date info */}
-                          {(task.start_date || task.end_date || task.due_date) && (
-                            <div className="task-meta-item">
-                              <FaCalendarAlt className="meta-icon" />
-                              <span>
-                                {task.start_date && task.end_date
-                                  ? `${formatDate(task.start_date)} → ${formatDate(task.end_date)}`
-                                  : task.due_date
-                                  ? `Due ${formatDate(task.due_date)}`
-                                  : task.start_date
-                                  ? `Starts ${formatDate(task.start_date)}`
-                                  : ''}
+                        <div className="task-main-content">
+                          <div className="task-header">
+                            <h4 className="task-title">{task.description}</h4>
+                            <div className={`task-status-badge ${getTaskStatusClass(task.status)}`}>
+                              {getTaskStatusIcon(task.status)}
+                              <span className="status-text">
+                                {task.status}
                               </span>
                             </div>
-                          )}
+                          </div>
+                          
+                          <div className="task-meta-row">
+                            {/* Date info */}
+                            {(task.start_date || task.end_date || task.due_date) && (
+                              <div className="task-meta-item">
+                                <FaCalendarAlt className="meta-icon" />
+                                <span>
+                                  {task.start_date && task.end_date
+                                    ? `${formatDate(task.start_date)} → ${formatDate(task.end_date)}`
+                                    : task.due_date
+                                    ? `Due ${formatDate(task.due_date)}`
+                                    : task.start_date
+                                    ? `Starts ${formatDate(task.start_date)}`
+                                    : ''}
+                                </span>
+                              </div>
+                            )}
 
-                          {/* Assignee */}
-                          {task.assignee && (
+                            {/* Assignee */}
+                            {task.assignee && (
+                              <div className="task-meta-item">
+                                <FaUsers className="meta-icon" />
+                                <span>Assigned to {task.assignee}</span>
+                              </div>
+                            )}
+
+                            {/* Estimated hours */}
+                            {estHoursValid && (
+                              <div className="task-meta-item">
+                                <FaClock className="meta-icon" />
+                                <span>Est. {estHours % 1 === 0 ? estHours.toFixed(0) : estHours.toFixed(1)}h</span>
+                              </div>
+                            )}
+
+                            {/* Actions */}
+                            <div className="task-actions">
+                              <button
+                                onClick={() => {
+                                  setEditingTask(task);
+                                  setShowTaskModal(true);
+                                }}
+                                className="task-action-button edit"
+                                title="Edit task"
+                                aria-label={`Edit task "${task.description}"`}
+                              >
+                                <FaEdit />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="task-action-button delete"
+                                title="Delete task"
+                                aria-label={`Delete task "${task.description}"`}
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
+                          </div>
+
+                          {task.notes && (
                             <div className="task-meta-item">
-                              <FaUsers className="meta-icon" />
-                              <span>Assigned to {task.assignee}</span>
+                              <FaFileAlt className="meta-icon" />
+                              <span className="task-notes-preview">{task.notes}</span>
                             </div>
                           )}
-
-                          {/* Actions */}
-                          <div className="task-actions">
-                            <button
-                              onClick={() => {
-                                setEditingTask(task);
-                                setShowTaskModal(true);
-                              }}
-                              className="task-action-button edit"
-                              title="Edit task"
-                              aria-label={`Edit task "${task.description}"`}
-                            >
-                              <FaEdit />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTask(task.id)}
-                              className="task-action-button delete"
-                              title="Delete task"
-                              aria-label={`Delete task "${task.description}"`}
-                            >
-                              <FaTrash />
-                            </button>
-                          </div>
                         </div>
-
-                        {task.notes && (
-                          <div className="task-meta-item">
-                            <FaFileAlt className="meta-icon" />
-                            <span className="task-notes-preview">{task.notes}</span>
-                          </div>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <EmptyState
