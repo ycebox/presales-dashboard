@@ -599,9 +599,10 @@ function PresalesOverview() {
       });
   }, [assignStart, assignEnd, presalesResources, tasks, scheduleEvents, workloadByAssignee]);
 
-  // ---------- Availability heatmap data ----------
+  // ---------- Availability heatmap data (aligned to CSS) ----------
   const availabilityGrid = useMemo(() => {
-    if (!presalesResources || presalesResources.length === 0) return { days: [], rows: [] };
+    if (!presalesResources || presalesResources.length === 0)
+      return { days: [], rows: [] };
 
     const totalDays = calendarView === '14' ? 14 : 30;
     const base = toMidnight(new Date());
@@ -628,7 +629,7 @@ function PresalesOverview() {
           (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
         );
 
-        let level = 'free'; // free | light | medium | heavy | away
+        let status = 'free'; // free | busy | leave | travel
         let label = 'Free';
 
         if (daySchedules.length > 0) {
@@ -639,34 +640,33 @@ function PresalesOverview() {
             (s) => (s.type || '').toLowerCase() === 'leave'
           );
           if (hasLeave) {
-            level = 'away';
+            status = 'leave';
             label = 'On leave';
           } else if (hasTravel) {
-            level = 'travel';
+            status = 'travel';
             label = 'Travel';
           } else {
-            level = 'medium';
+            // other schedule types
+            status = 'busy';
             label = 'Scheduled';
           }
         }
 
         const taskCount = dayTasks.length;
         if (taskCount > 0) {
-          if (taskCount >= 4) {
-            level = 'heavy';
-            label = `${taskCount} tasks`;
-          } else if (taskCount >= 2) {
-            level = 'medium';
-            label = `${taskCount} tasks`;
-          } else if (taskCount === 1 && level === 'free') {
-            level = 'light';
-            label = '1 task';
+          if (status === 'free') {
+            status = 'busy';
+            label = `${taskCount} task${taskCount > 1 ? 's' : ''}`;
+          } else if (status === 'travel') {
+            label = `Travel + ${taskCount} task${taskCount > 1 ? 's' : ''}`;
+          } else if (status === 'leave') {
+            label = `Leave + ${taskCount} task${taskCount > 1 ? 's' : ''}`;
           }
         }
 
         return {
           date: d,
-          level,
+          status,
           label,
           tasks: dayTasks,
           schedules: daySchedules,
@@ -1102,6 +1102,7 @@ function PresalesOverview() {
 
       {/* AVAILABILITY HEATMAP + SCHEDULE LIST */}
       <section className="presales-calendar-section">
+        {/* AVAILABILITY / HEATMAP */}
         <div className="presales-panel">
           <div className="presales-panel-header presales-panel-header-row">
             <div>
@@ -1144,11 +1145,11 @@ function PresalesOverview() {
               </div>
               <button
                 type="button"
-                className="schedule-add-btn"
+                className="ghost-btn ghost-btn-sm"
                 onClick={openScheduleModalForCreate}
               >
                 <Plane size={14} />
-                Add leave / travel
+                <span>Add leave / travel</span>
               </button>
             </div>
           </div>
@@ -1159,75 +1160,65 @@ function PresalesOverview() {
               <p>No presales resources found.</p>
             </div>
           ) : (
-            <div className="calendar-grid-wrapper">
-              <table className="calendar-grid-table">
-                <thead>
-                  <tr>
-                    <th>Presales</th>
-                    {availabilityGrid.days.map((d) => (
-                      <th key={d.toISOString()} className="th-center">
-                        {d.toLocaleDateString('en-SG', {
-                          day: '2-digit',
-                          month: 'short',
-                        })}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {availabilityGrid.rows.map((row) => (
-                    <tr key={row.assignee}>
-                      <td>
-                        <div className="wl-name-cell">
-                          <div className="wl-avatar">
-                            {(row.assignee || 'U').charAt(0).toUpperCase()}
-                          </div>
-                          <div className="wl-name-text">
-                            <span className="wl-name-main">{row.assignee}</span>
-                          </div>
-                        </div>
-                      </td>
-                      {row.cells.map((cell) => (
-                        <td key={cell.date.toISOString()} className="td-center">
-                          <button
-                            type="button"
-                            className={`calendar-cell calendar-cell-${cell.level}`}
-                            onClick={() => openDayDetail(row.assignee, cell.date)}
-                            title={cell.label}
-                          />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {/* Legend */}
-              <div className="calendar-legend">
+            <div className="heatmap-wrapper">
+              <div className="heatmap-legend">
                 <span className="legend-item">
-                  <span className="legend-dot legend-free" />
+                  <span className="legend-dot status-free" />
                   Free
                 </span>
                 <span className="legend-item">
-                  <span className="legend-dot legend-light" />
-                  1 task
+                  <span className="legend-dot status-busy" />
+                  Busy (tasks / scheduled)
                 </span>
                 <span className="legend-item">
-                  <span className="legend-dot legend-medium" />
-                  2–3 tasks / scheduled
-                </span>
-                <span className="legend-item">
-                  <span className="legend-dot legend-heavy" />
-                  4+ tasks
-                </span>
-                <span className="legend-item">
-                  <span className="legend-dot legend-travel" />
-                  Travel
-                </span>
-                <span className="legend-item">
-                  <span className="legend-dot legend-away" />
+                  <span className="legend-dot status-leave" />
                   Leave
                 </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-travel" />
+                  Travel
+                </span>
+              </div>
+
+              <div className="heatmap-table">
+                <div className="heatmap-header-row">
+                  <div className="heatmap-header-cell heatmap-name-col">
+                    Presales
+                  </div>
+                  {availabilityGrid.days.map((d) => (
+                    <div
+                      key={d.toISOString()}
+                      className="heatmap-header-cell heatmap-day-col"
+                    >
+                      {d.toLocaleDateString('en-SG', {
+                        day: '2-digit',
+                        month: 'short',
+                      })}
+                    </div>
+                  ))}
+                </div>
+
+                {availabilityGrid.rows.map((row) => (
+                  <div key={row.assignee} className="heatmap-row">
+                    <div className="heatmap-presales-cell">
+                      <div className="wl-avatar">
+                        {(row.assignee || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="heatmap-presales-name">
+                        {row.assignee}
+                      </div>
+                    </div>
+                    {row.cells.map((cell) => (
+                      <button
+                        key={cell.date.toISOString()}
+                        type="button"
+                        className={`heatmap-cell status-${cell.status}`}
+                        title={cell.label}
+                        onClick={() => openDayDetail(row.assignee, cell.date)}
+                      />
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -1251,8 +1242,12 @@ function PresalesOverview() {
               <p>No schedule entries yet.</p>
             </div>
           ) : (
-            <div className="schedule-table-wrapper">
-              <table className="schedule-table">
+            <div className="schedule-list-wrapper schedule-list-table-wrapper">
+              <div className="schedule-list-header">
+                <h4>All schedule entries</h4>
+                <p>Sorted by start date, across all presales.</p>
+              </div>
+              <table className="schedule-list-table">
                 <thead>
                   <tr>
                     <th>Presales</th>
@@ -1282,7 +1277,9 @@ function PresalesOverview() {
                             </div>
                           </div>
                         </td>
-                        <td>{e.type}</td>
+                        <td>
+                          <span className="schedule-type-chip">{e.type}</span>
+                        </td>
                         <td>
                           {formatShortDate(e.start_date)}
                           {e.end_date && e.end_date !== e.start_date
@@ -1456,7 +1453,7 @@ function PresalesOverview() {
 
       {/* SCHEDULE MODAL */}
       {showScheduleModal && (
-        <div className="schedule-modal-overlay">
+        <div className="schedule-modal-backdrop">
           <div className="schedule-modal">
             <div className="schedule-modal-header">
               <div className="schedule-modal-title">
@@ -1557,7 +1554,7 @@ function PresalesOverview() {
                 <div className="schedule-form-buttons">
                   <button
                     type="button"
-                    className="btn-secondary"
+                    className="ghost-btn ghost-btn-sm"
                     onClick={closeScheduleModal}
                     disabled={scheduleSaving}
                   >
@@ -1565,7 +1562,7 @@ function PresalesOverview() {
                   </button>
                   <button
                     type="submit"
-                    className="btn-primary"
+                    className="primary-btn"
                     disabled={scheduleSaving}
                   >
                     {scheduleSaving
@@ -1583,7 +1580,7 @@ function PresalesOverview() {
 
       {/* DAY DETAIL MODAL */}
       {dayDetailOpen && (
-        <div className="schedule-modal-overlay">
+        <div className="schedule-modal-backdrop">
           <div className="schedule-modal">
             <div className="schedule-modal-header">
               <div className="schedule-modal-title">
