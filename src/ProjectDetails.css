@@ -1101,3 +1101,128 @@ body {
     gap: 6px;
   }
 }
+
+/* Weekly commitment by project */
+
+.presales-commitment-section {
+  margin-top: 1.5rem;
+}
+
+.commitment-summary-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  white-space: nowrap;
+}
+
+.commitment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 0.75rem;
+}
+
+.commitment-card {
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.commitment-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.commitment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
+  color: #ffffff;
+}
+
+.commitment-card-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.commitment-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.commitment-hours-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.commitment-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.commitment-project-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.commitment-project-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.commitment-project-name {
+  font-size: 12px;
+  color: #0f172a;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commitment-project-hours {
+  font-size: 12px;
+  color: #0f172a;
+  font-weight: 500;
+}
+
+.commitment-progress-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.commitment-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0f766e, #22c55e);
+  transition: width 0.25s ease;
+}
+
+.commitment-more {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6b7280;
+}
