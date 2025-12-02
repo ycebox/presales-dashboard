@@ -173,9 +173,11 @@ function PresalesOverview() {
             .from('presales_schedule')
             .select('id, assignee, type, start_date, end_date, note'),
           supabase
-            .from('presales_resources')
-            .select('id, name, email, region, is_active')
-            .order('name', { ascending: true }),
+  .from('presales_resources')
+  .select(
+    'id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day'
+  )
+  .order('name', { ascending: true }),
         ]);
 
         if (projRes.error) throw projRes.error;
@@ -295,10 +297,36 @@ function PresalesOverview() {
   const workloadByAssignee = useMemo(() => {
     const map = new Map();
 
+    // Helper: get capacity settings for a presales
+    const getCapacityFor = (name) => {
+      const res = (presalesResources || []).find((p) => {
+        const n = p.name || p.email || 'Unknown';
+        return n === name;
+      });
+
+      const dailyCapacity =
+        res && typeof res.daily_capacity_hours === 'number' && !Number.isNaN(res.daily_capacity_hours)
+          ? res.daily_capacity_hours
+          : HOURS_PER_DAY;
+
+      const targetHours =
+        res && typeof res.target_hours === 'number' && !Number.isNaN(res.target_hours)
+          ? res.target_hours
+          : 6; // default comfortable load
+
+      const maxTasksPerDay =
+        res && Number.isInteger(res.max_tasks_per_day)
+          ? res.max_tasks_per_day
+          : 3;
+
+      return { dailyCapacity, targetHours, maxTasksPerDay };
+    };
+
     // Initialize from presales resources so even those with 0 tasks still appear
     (presalesResources || []).forEach((p) => {
       const name = p.name || p.email || 'Unknown';
       if (!map.has(name)) {
+        const { dailyCapacity, targetHours, maxTasksPerDay } = getCapacityFor(name);
         map.set(name, {
           assignee: name,
           projectIds: new Set(),
@@ -309,10 +337,14 @@ function PresalesOverview() {
           nextWeekHours: 0,
           overdueLast30: 0,
           overdueTotalLast30: 0,
+          dailyCapacity,
+          targetHours,
+          maxTasksPerDay,
         });
       }
     });
 
+    // Helper to allocate hours into a week range
     const addHoursToRange = (range, task, hours) => {
       if (!range || !range.start || !range.end) return 0;
 
@@ -342,9 +374,11 @@ function PresalesOverview() {
       return perDay * days;
     };
 
+    // Apply tasks
     (tasks || []).forEach((t) => {
       const assignee = t.assignee || 'Unassigned';
       if (!map.has(assignee)) {
+        const { dailyCapacity, targetHours, maxTasksPerDay } = getCapacityFor(assignee);
         map.set(assignee, {
           assignee,
           projectIds: new Set(),
@@ -355,6 +389,9 @@ function PresalesOverview() {
           nextWeekHours: 0,
           overdueLast30: 0,
           overdueTotalLast30: 0,
+          dailyCapacity,
+          targetHours,
+          maxTasksPerDay,
         });
       }
 
@@ -400,9 +437,9 @@ function PresalesOverview() {
       }
     });
 
-    const capacityWeekHours = HOURS_PER_DAY * 5;
-
     const arr = Array.from(map.values()).map((e) => {
+      const capacityWeekHours = (e.dailyCapacity || HOURS_PER_DAY) * 5;
+
       const utilThisWeek = capacityWeekHours
         ? Math.min((e.thisWeekHours / capacityWeekHours) * 100, 999)
         : 0;
@@ -427,6 +464,7 @@ function PresalesOverview() {
       };
     });
 
+    // Sort by open tasks (most loaded first)
     arr.sort((a, b) => b.open - a.open);
     return arr;
   }, [tasks, presalesResources, thisWeekRange, nextWeekRange, last30DaysRange, today]);
