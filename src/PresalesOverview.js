@@ -255,10 +255,20 @@ function PresalesOverview() {
     let won = 0;
     let pipe = 0;
     let wonVal = 0;
-    const countries = new Set();
+   const countries = new Set();
 
-    projects.forEach((p) => {
-      countries.add(p.country || 'Unknown');
+projects.forEach((p) => {
+  let country = p.country || p.customer_country || '';
+
+  if (typeof country === 'string') {
+    country = country.trim();
+  }
+
+  if (!country) {
+    country = 'Unknown';
+  }
+
+  countries.add(country);
       const value =
         typeof p.deal_value === 'number'
           ? p.deal_value
@@ -506,17 +516,44 @@ function PresalesOverview() {
 
     const map = new Map();
 
-    projects.forEach((p) => {
-      const country = p.country || 'Unknown';
-      if (!map.has(country)) {
-        map.set(country, {
-          country,
-          total: 0,
-          active: 0,
-          done: 0,
-          pipelineValue: 0,
-        });
-      }
+ projects.forEach((p) => {
+  let country = p.country || p.customer_country || '';
+
+  if (typeof country === 'string') {
+    country = country.trim();
+  }
+
+  if (!country) {
+    country = 'Unknown';
+  }
+
+  if (!map.has(country)) {
+    map.set(country, {
+      country,
+      total: 0,
+      active: 0,
+      done: 0,
+      pipelineValue: 0,
+    });
+  }
+
+  const entry = map.get(country);
+  entry.total += 1;
+
+  const value =
+    typeof p.deal_value === 'number'
+      ? p.deal_value
+      : parseFloat(p.deal_value || 0);
+
+  const isDone = p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won';
+
+  if (isDone) {
+    entry.done += 1;
+  } else {
+    entry.active += 1;
+    entry.pipelineValue += isNaN(value) ? 0 : value;
+  }
+});
 
       const entry = map.get(country);
       entry.total += 1;
