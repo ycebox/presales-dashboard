@@ -1,4 +1,4 @@
-ƒimport React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import {
@@ -776,9 +776,9 @@ function PresalesOverview() {
           : HOURS_PER_DAY;
 
       const maxTasksPerDay =
-        Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0
-          ? res.max_tasks_perDay
-          : (res.max_tasks_per_day || 3);
+  Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0
+    ? res.max_tasks_per_day
+    : (res.max_tasks_per_day || 3);
 
       return { dailyCapacity, maxTasksPerDay };
     };
