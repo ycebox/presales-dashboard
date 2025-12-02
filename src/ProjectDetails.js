@@ -141,7 +141,14 @@ const getSalesStageClass = (stage) => {
 };
 
 // ---------- Task Modal (with dropdown + start/end dates + estimated hours) ----------
-const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResources = [] }) => {
+const TaskModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  editingTask = null,
+  presalesResources = [],
+  tasks = [],
+}) => {
   const [taskData, setTaskData] = useState({
     description: '',
     status: 'Not Started',
@@ -150,22 +157,25 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
     due_date: '',
     notes: '',
     assignee: '',
-    estimated_hours: 2
+    estimated_hours: '',
   });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (editingTask) {
-      setTaskData({
-        description: editingTask.description || '',
-        status: editingTask.status || 'Not Started',
-        start_date: editingTask.start_date || '',
-        end_date: editingTask.end_date || '',
-        due_date: editingTask.due_date || '',
-        notes: editingTask.notes || '',
-        assignee: editingTask.assignee || '',
-        estimated_hours: editingTask.estimated_hours ?? 2
-      });
+  setTaskData({
+  description: editingTask.description || '',
+  status: editingTask.status || 'Not Started',
+  start_date: editingTask.start_date || '',
+  end_date: editingTask.end_date || '',
+  due_date: editingTask.due_date || '',
+  notes: editingTask.notes || '',
+  assignee: editingTask.assignee || '',
+  estimated_hours:
+    typeof editingTask.estimated_hours === 'number'
+      ? editingTask.estimated_hours
+      : '',
+});
     } else {
       setTaskData({
         description: '',
@@ -181,9 +191,161 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
   }, [editingTask, isOpen]);
 
   const handleChange = (field, value) => {
-    setTaskData(prev => ({ ...prev, [field]: value }));
+    if (field === 'estimated_hours') {
+      const num = parseFloat(value);
+      setTaskData((prev) => ({
+        ...prev,
+        estimated_hours: Number.isNaN(num) ? '' : num,
+      }));
+    } else {
+      setTaskData((prev) => ({ ...prev, [field]: value }));
+    }
   };
 
+    const parseLocalDate = (value) => {
+    if (!value) return null;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const getDateRangeFromTaskData = () => {
+    const startStr = taskData.start_date || taskData.due_date || taskData.end_date;
+    const endStr = taskData.end_date || taskData.due_date || taskData.start_date;
+
+    const start = parseLocalDate(startStr);
+    const end = parseLocalDate(endStr);
+
+    if (!start && !end) return [];
+    const s = start || end;
+    const e = end || start;
+    if (!s || !e || e.getTime() < s.getTime()) return [];
+
+    const days = [];
+    const cur = new Date(s);
+    const endMid = new Date(e);
+    while (cur.getTime() <= endMid.getTime()) {
+      days.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return days;
+  };
+
+  const isTaskOnDayLocal = (task, day) => {
+    const d = new Date(day);
+    d.setHours(0, 0, 0, 0);
+
+    const startStr = task.start_date || task.due_date || task.end_date;
+    const endStr = task.end_date || task.due_date || task.start_date;
+
+    const start = parseLocalDate(startStr);
+    const end = parseLocalDate(endStr);
+
+    if (!start && !end) return false;
+    const s = start || end;
+    const e = end || start;
+    return d.getTime() >= s.getTime() && d.getTime() <= e.getTime();
+  };
+
+  const buildCapacityHint = () => {
+    // Need assignee + at least one date
+    if (
+      !taskData.assignee ||
+      (!taskData.start_date && !taskData.end_date && !taskData.due_date)
+    ) {
+      return 'Select an assignee and at least one date to see capacity impact.';
+    }
+
+    const presales = (presalesResources || []).find(
+      (p) => (p.name || p.email) === taskData.assignee
+    );
+    if (!presales) {
+      return 'No capacity settings found for this presales yet.';
+    }
+
+    const dailyCapacity =
+      typeof presales.daily_capacity_hours === 'number' &&
+      !Number.isNaN(presales.daily_capacity_hours)
+        ? presales.daily_capacity_hours
+        : 8;
+
+    const maxTasksPerDay =
+      Number.isInteger(presales.max_tasks_per_day) && presales.max_tasks_per_day > 0
+        ? presales.max_tasks_per_day
+        : 3;
+
+    const days = getDateRangeFromTaskData();
+    if (!days.length) {
+      return 'Select a valid date range to check capacity.';
+    }
+
+    const totalNewHours =
+      typeof taskData.estimated_hours === 'number' && !Number.isNaN(taskData.estimated_hours)
+        ? taskData.estimated_hours
+        : DEFAULT_TASK_HOURS;
+
+    const perDayNewHours = totalNewHours / days.length;
+
+    let worstUtil = 0;
+    let worstTasks = 0;
+    let worstDate = null;
+
+    days.forEach((day) => {
+      const existingTasks = (tasks || []).filter((t) => {
+        if (editingTask && t.id === editingTask.id) return false;
+        if (t.assignee !== taskData.assignee) return false;
+        if (['Completed', 'Done', 'Cancelled/On-hold'].includes(t.status)) return false;
+        return isTaskOnDayLocal(t, day);
+      });
+
+      const existingHours = existingTasks.reduce((sum, t) => {
+        const h =
+          typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours)
+            ? t.estimated_hours
+            : DEFAULT_TASK_HOURS;
+        return sum + h;
+      }, 0);
+
+      const totalHours = existingHours + perDayNewHours;
+      const tasksCount = existingTasks.length + 1;
+      const util = dailyCapacity ? (totalHours / dailyCapacity) * 100 : 0;
+
+      if (
+        util > worstUtil ||
+        tasksCount > worstTasks
+      ) {
+        worstUtil = util;
+        worstTasks = tasksCount;
+        worstDate = day;
+      }
+    });
+
+    if (!worstDate) {
+      return 'No other tasks found on these dates for this presales.';
+    }
+
+    const dateLabel = worstDate.toLocaleDateString('en-SG', {
+      day: '2-digit',
+      month: 'short',
+    });
+
+    let prefix = 'OK load';
+    if (worstUtil > 120 || worstTasks > maxTasksPerDay) {
+      prefix = 'Over capacity';
+    } else if (worstUtil >= 90) {
+      prefix = 'Near capacity';
+    } else if (worstUtil <= 40) {
+      prefix = 'Light load';
+    }
+
+    const roundedUtil = Math.round(worstUtil);
+
+    return `${prefix} on ${dateLabel}: ~${roundedUtil}% load, ${worstTasks} task(s) (limit ${maxTasksPerDay}).`;
+  };
+
+  const capacityHint = buildCapacityHint();
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!taskData.description.trim()) {
@@ -1115,7 +1277,7 @@ function ProjectDetails() {
       </div>
 
       {/* Modals */}
-      <TaskModal
+           <TaskModal
         isOpen={showTaskModal}
         onClose={() => {
           setShowTaskModal(false);
@@ -1124,8 +1286,8 @@ function ProjectDetails() {
         onSave={handleTaskSaved}
         editingTask={editingTask}
         presalesResources={presalesResources}
+        tasks={tasks}
       />
-
       <LogModal
         isOpen={showLogModal}
         onClose={() => {
