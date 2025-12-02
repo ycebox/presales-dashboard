@@ -126,11 +126,12 @@ function PresalesOverview() {
   const [tasks, setTasks] = useState([]);
   const [scheduleEvents, setScheduleEvents] = useState([]);
   const [presalesResources, setPresalesResources] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Assignment helper filters
-  const [assignPriority, setAssignPriority] = useState('Normal');
+  const [assignPriority, setAssignPriority] = useState('Normal'); // kept for UI, not yet used in logic
   const [assignStart, setAssignStart] = useState('');
   const [assignEnd, setAssignEnd] = useState('');
 
@@ -166,13 +167,19 @@ function PresalesOverview() {
       setError(null);
 
       try {
-        const [projRes, taskRes, scheduleRes, presalesRes] = await Promise.all([
-      supabase
-  .from('projects')
-  .select(
-    'id, customer_name, country, sales_stage, deal_value'
-  )
-  .order('customer_name', { ascending: true }),
+        const [
+          projRes,
+          taskRes,
+          scheduleRes,
+          presalesRes,
+          customersRes,
+        ] = await Promise.all([
+          supabase
+            .from('projects')
+            .select(
+              'id, customer_id, customer_name, sales_stage, deal_value'
+            )
+            .order('customer_name', { ascending: true }),
           supabase
             .from('project_tasks')
             .select(
@@ -187,12 +194,16 @@ function PresalesOverview() {
               'id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day'
             )
             .order('name', { ascending: true }),
+          supabase
+            .from('customers')
+            .select('id, customer_name, country'),
         ]);
 
         if (projRes.error) throw projRes.error;
         if (taskRes.error) throw taskRes.error;
         if (scheduleRes.error) throw scheduleRes.error;
         if (presalesRes.error) throw presalesRes.error;
+        if (customersRes.error) throw customersRes.error;
 
         setProjects(projRes.data || []);
         setTasks(taskRes.data || []);
@@ -200,6 +211,7 @@ function PresalesOverview() {
         setPresalesResources(
           (presalesRes.data || []).filter((p) => p.is_active !== false)
         );
+        setCustomers(customersRes.data || []);
       } catch (err) {
         console.error('Error loading presales overview data:', err);
         setError('Failed to load presales overview data.');
@@ -219,6 +231,14 @@ function PresalesOverview() {
     });
     return map;
   }, [projects]);
+
+  const customerMap = useMemo(() => {
+    const map = new Map();
+    (customers || []).forEach((c) => {
+      map.set(c.id, c);
+    });
+    return map;
+  }, [customers]);
 
   const { thisWeek, nextWeek, last30 } = useMemo(() => getWeekRanges(), []);
   const today = useMemo(() => toMidnight(new Date()), []);
@@ -256,33 +276,34 @@ function PresalesOverview() {
     let wonVal = 0;
     const countries = new Set();
 
-projects.forEach((p) => {
-  let country = p.country || '';
-  if (typeof country === 'string') {
-    country = country.trim();
-  }
-  if (!country) {
-    country = 'Unknown';
-  }
+    projects.forEach((p) => {
+      const customer = customerMap.get(p.customer_id);
+      let country = (customer && customer.country) || '';
+      if (typeof country === 'string') {
+        country = country.trim();
+      }
+      if (!country) {
+        country = 'Unknown';
+      }
 
-  countries.add(country);
+      countries.add(country);
 
-  const value =
-    typeof p.deal_value === 'number'
-      ? p.deal_value
-      : parseFloat(p.deal_value || 0);
+      const value =
+        typeof p.deal_value === 'number'
+          ? p.deal_value
+          : parseFloat(p.deal_value || 0);
 
-  const isDone =
-    p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won';
+      const isDone =
+        p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won';
 
-  if (isDone) {
-    won += 1;
-    wonVal += Number.isNaN(value) ? 0 : value;
-  } else {
-    active += 1;
-    pipe += Number.isNaN(value) ? 0 : value;
-  }
-});
+      if (isDone) {
+        won += 1;
+        wonVal += Number.isNaN(value) ? 0 : value;
+      } else {
+        active += 1;
+        pipe += Number.isNaN(value) ? 0 : value;
+      }
+    });
 
     const avg = active > 0 ? pipe / active : 0;
     const openCount = (tasks || []).filter(
@@ -298,7 +319,7 @@ projects.forEach((p) => {
       countryCount: countries.size,
       openTasksCount: openCount,
     };
-  }, [projects, tasks]);
+  }, [projects, tasks, customerMap]);
 
   const formatCurrency = (val) => {
     if (!val || Number.isNaN(val)) return '';
@@ -517,48 +538,49 @@ projects.forEach((p) => {
 
     const map = new Map();
 
-   projects.forEach((p) => {
-  let country = p.country || '';
-  if (typeof country === 'string') {
-    country = country.trim();
-  }
-  if (!country) {
-    country = 'Unknown';
-  }
+    projects.forEach((p) => {
+      const customer = customerMap.get(p.customer_id);
+      let country = (customer && customer.country) || '';
+      if (typeof country === 'string') {
+        country = country.trim();
+      }
+      if (!country) {
+        country = 'Unknown';
+      }
 
-  if (!map.has(country)) {
-    map.set(country, {
-      country,
-      total: 0,
-      active: 0,
-      done: 0,
-      pipelineValue: 0,
+      if (!map.has(country)) {
+        map.set(country, {
+          country,
+          total: 0,
+          active: 0,
+          done: 0,
+          pipelineValue: 0,
+        });
+      }
+
+      const entry = map.get(country);
+      entry.total += 1;
+
+      const value =
+        typeof p.deal_value === 'number'
+          ? p.deal_value
+          : parseFloat(p.deal_value || 0);
+
+      const isDone =
+        p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won';
+
+      if (isDone) {
+        entry.done += 1;
+      } else {
+        entry.active += 1;
+        entry.pipelineValue += Number.isNaN(value) ? 0 : value;
+      }
     });
-  }
-
-  const entry = map.get(country);
-  entry.total += 1;
-
-  const value =
-    typeof p.deal_value === 'number'
-      ? p.deal_value
-      : parseFloat(p.deal_value || 0);
-
-  const isDone =
-    p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won';
-
-  if (isDone) {
-    entry.done += 1;
-  } else {
-    entry.active += 1;
-    entry.pipelineValue += Number.isNaN(value) ? 0 : value;
-  }
-});
 
     return Array.from(map.values()).sort(
       (a, b) => (b.pipelineValue || 0) - (a.pipelineValue || 0)
     );
-  }, [projects]);
+  }, [projects, customerMap]);
 
   // ---------- Crunch days ----------
   const crunchDays = useMemo(() => {
@@ -633,7 +655,8 @@ projects.forEach((p) => {
               isTaskOnDay(t, d)
           );
           const hasSchedule = (scheduleEvents || []).some(
-            (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
+            (s) =>
+              s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
           );
 
           if (!hasTask && !hasSchedule) {
@@ -655,7 +678,14 @@ projects.forEach((p) => {
         if (b.freeDays !== a.freeDays) return b.freeDays - a.freeDays;
         return a.nextWeekLoad - b.nextWeekLoad;
       });
-  }, [assignStart, assignEnd, presalesResources, tasks, scheduleEvents, workloadByAssignee]);
+  }, [
+    assignStart,
+    assignEnd,
+    presalesResources,
+    tasks,
+    scheduleEvents,
+    workloadByAssignee,
+  ]);
 
   // ---------- Availability heatmap ----------
   const availabilityGrid = useMemo(() => {
@@ -706,7 +736,8 @@ projects.forEach((p) => {
         );
 
         const daySchedules = (scheduleEvents || []).filter(
-          (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
+          (s) =>
+            s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
         );
 
         let status = 'free'; // free | busy | leave | travel
@@ -1284,7 +1315,7 @@ projects.forEach((p) => {
           {dealsByCountry.length === 0 ? (
             <div className="presales-empty">
               <Globe2 size={20} />
-              <p>No deals found. Add projects with country and deal value.</p>
+              <p>No deals found. Add customers with country and deal value.</p>
             </div>
           ) : (
             <div className="country-table-wrapper">
