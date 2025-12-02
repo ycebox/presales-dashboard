@@ -22,9 +22,9 @@ import {
 import './PresalesOverview.css';
 
 const HOURS_PER_DAY = 8;
-const DEFAULT_TASK_HOURS = 4; // fallback if estimated_hours is null
+const DEFAULT_TASK_HOURS = 4;
 
-// ---------- Date helpers ----------
+// ---------- Helpers ----------
 const toMidnight = (d) => {
   if (!d) return null;
   const nd = new Date(d);
@@ -70,14 +70,6 @@ const isTaskOnDay = (task, day) => {
   return d.getTime() >= s.getTime() && d.getTime() <= e.getTime();
 };
 
-const getUtilLabel = (pct) => {
-  if (!pct || Number.isNaN(pct)) return '';
-  if (pct >= 120) return 'Over capacity';
-  if (pct >= 90) return 'Near capacity';
-  if (pct <= 40) return 'Light load';
-  return 'Healthy';
-};
-
 const getWeekRanges = () => {
   const today = toMidnight(new Date());
 
@@ -87,7 +79,7 @@ const getWeekRanges = () => {
   thisWeekStart.setDate(thisWeekStart.getDate() + diff);
 
   const thisWeekEnd = new Date(thisWeekStart);
-  thisWeekEnd.setDate(thisWeekStart.getDate() + 4); // Mon-Fri
+  thisWeekEnd.setDate(thisWeekStart.getDate() + 4); // Mon–Fri
 
   const nextWeekStart = new Date(thisWeekStart);
   nextWeekStart.setDate(thisWeekStart.getDate() + 7);
@@ -105,7 +97,6 @@ const getWeekRanges = () => {
   };
 };
 
-// Per-day overlap helper (used when we want to spread effort over a range)
 const getOverlapDays = (range, start, end) => {
   if (!range || !range.start || !range.end) return 0;
   const rs = toMidnight(range.start);
@@ -122,6 +113,14 @@ const getOverlapDays = (range, start, end) => {
   return Math.floor(ms / (1000 * 60 * 60 * 24)) + 1;
 };
 
+const getUtilLabel = (pct) => {
+  if (!pct || Number.isNaN(pct)) return '';
+  if (pct >= 120) return 'Over capacity';
+  if (pct >= 90) return 'Near capacity';
+  if (pct <= 40) return 'Light load';
+  return 'Healthy';
+};
+
 function PresalesOverview() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -135,10 +134,10 @@ function PresalesOverview() {
   const [assignStart, setAssignStart] = useState('');
   const [assignEnd, setAssignEnd] = useState('');
 
-  // Calendar view: 14 or 30 days
-  const [calendarView, setCalendarView] = useState('14'); // '14' | '30'
+  // Calendar view
+  const [calendarView, setCalendarView] = useState('14'); // 14 | 30
 
-  // Manage schedule form state (modal)
+  // Schedule modal state
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleAssignee, setScheduleAssignee] = useState('');
   const [scheduleType, setScheduleType] = useState('Leave');
@@ -151,7 +150,7 @@ function PresalesOverview() {
   const [scheduleMode, setScheduleMode] = useState('create'); // 'create' | 'edit'
   const [editingScheduleId, setEditingScheduleId] = useState(null);
 
-  // Day detail modal (click heatmap cell)
+  // Day detail modal state
   const [dayDetailOpen, setDayDetailOpen] = useState(false);
   const [dayDetail, setDayDetail] = useState({
     assignee: '',
@@ -160,7 +159,7 @@ function PresalesOverview() {
     schedules: [],
   });
 
-  // ---------- Load data from Supabase ----------
+  // ---------- Load data ----------
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -170,7 +169,9 @@ function PresalesOverview() {
         const [projRes, taskRes, scheduleRes, presalesRes] = await Promise.all([
           supabase
             .from('projects')
-            .select('id, customer_name, country, sales_stage, deal_value')
+            .select(
+              'id, customer_name, country, customer_country, sales_stage, deal_value'
+            )
             .order('customer_name', { ascending: true }),
           supabase
             .from('project_tasks')
@@ -181,11 +182,11 @@ function PresalesOverview() {
             .from('presales_schedule')
             .select('id, assignee, type, start_date, end_date, note'),
           supabase
-  .from('presales_resources')
-  .select(
-    'id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day'
-  )
-  .order('name', { ascending: true }),
+            .from('presales_resources')
+            .select(
+              'id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day'
+            )
+            .order('name', { ascending: true }),
         ]);
 
         if (projRes.error) throw projRes.error;
@@ -196,7 +197,9 @@ function PresalesOverview() {
         setProjects(projRes.data || []);
         setTasks(taskRes.data || []);
         setScheduleEvents(scheduleRes.data || []);
-        setPresalesResources((presalesRes.data || []).filter((p) => p.is_active !== false));
+        setPresalesResources(
+          (presalesRes.data || []).filter((p) => p.is_active !== false)
+        );
       } catch (err) {
         console.error('Error loading presales overview data:', err);
         setError('Failed to load presales overview data.');
@@ -208,8 +211,7 @@ function PresalesOverview() {
     loadData();
   }, []);
 
-  // ---------- Maps & base computed ranges ----------
-
+  // ---------- Base helpers ----------
   const projectMap = useMemo(() => {
     const map = new Map();
     (projects || []).forEach((p) => {
@@ -219,15 +221,12 @@ function PresalesOverview() {
   }, [projects]);
 
   const { thisWeek, nextWeek, last30 } = useMemo(() => getWeekRanges(), []);
-
   const today = useMemo(() => toMidnight(new Date()), []);
-
   const thisWeekRange = thisWeek;
   const nextWeekRange = nextWeek;
   const last30DaysRange = last30;
 
-  // ---------- Pipeline & top metrics ----------
-
+  // ---------- Top metrics ----------
   const {
     activeDeals,
     wonDeals,
@@ -255,20 +254,19 @@ function PresalesOverview() {
     let won = 0;
     let pipe = 0;
     let wonVal = 0;
-   const countries = new Set();
+    const countries = new Set();
 
-projects.forEach((p) => {
-  let country = p.country || p.customer_country || '';
+    projects.forEach((p) => {
+      let country = p.country || p.customer_country || '';
+      if (typeof country === 'string') {
+        country = country.trim();
+      }
+      if (!country) {
+        country = 'Unknown';
+      }
 
-  if (typeof country === 'string') {
-    country = country.trim();
-  }
+      countries.add(country);
 
-  if (!country) {
-    country = 'Unknown';
-  }
-
-  countries.add(country);
       const value =
         typeof p.deal_value === 'number'
           ? p.deal_value
@@ -279,10 +277,10 @@ projects.forEach((p) => {
 
       if (isDone) {
         won += 1;
-        wonVal += isNaN(value) ? 0 : value;
+        wonVal += Number.isNaN(value) ? 0 : value;
       } else {
         active += 1;
-        pipe += isNaN(value) ? 0 : value;
+        pipe += Number.isNaN(value) ? 0 : value;
       }
     });
 
@@ -311,11 +309,10 @@ projects.forEach((p) => {
     }).format(val);
   };
 
-  // ---------- Workload by assignee (with estimated hours & utilization) ----------
+  // ---------- Workload by assignee ----------
   const workloadByAssignee = useMemo(() => {
     const map = new Map();
 
-    // Helper: get capacity settings for a presales
     const getCapacityFor = (name) => {
       const res = (presalesResources || []).find((p) => {
         const n = p.name || p.email || 'Unknown';
@@ -323,14 +320,18 @@ projects.forEach((p) => {
       });
 
       const dailyCapacity =
-        res && typeof res.daily_capacity_hours === 'number' && !Number.isNaN(res.daily_capacity_hours)
+        res &&
+        typeof res.daily_capacity_hours === 'number' &&
+        !Number.isNaN(res.daily_capacity_hours)
           ? res.daily_capacity_hours
           : HOURS_PER_DAY;
 
       const targetHours =
-        res && typeof res.target_hours === 'number' && !Number.isNaN(res.target_hours)
+        res &&
+        typeof res.target_hours === 'number' &&
+        !Number.isNaN(res.target_hours)
           ? res.target_hours
-          : 6; // default comfortable load
+          : 6;
 
       const maxTasksPerDay =
         res && Number.isInteger(res.max_tasks_per_day)
@@ -340,11 +341,12 @@ projects.forEach((p) => {
       return { dailyCapacity, targetHours, maxTasksPerDay };
     };
 
-    // Initialize from presales resources so even those with 0 tasks still appear
+    // init from presales resources
     (presalesResources || []).forEach((p) => {
       const name = p.name || p.email || 'Unknown';
       if (!map.has(name)) {
-        const { dailyCapacity, targetHours, maxTasksPerDay } = getCapacityFor(name);
+        const { dailyCapacity, targetHours, maxTasksPerDay } =
+          getCapacityFor(name);
         map.set(name, {
           assignee: name,
           projectIds: new Set(),
@@ -362,7 +364,6 @@ projects.forEach((p) => {
       }
     });
 
-    // Helper to allocate hours into a week range
     const addHoursToRange = (range, task, hours) => {
       if (!range || !range.start || !range.end) return 0;
 
@@ -392,11 +393,11 @@ projects.forEach((p) => {
       return perDay * days;
     };
 
-    // Apply tasks
     (tasks || []).forEach((t) => {
       const assignee = t.assignee || 'Unassigned';
       if (!map.has(assignee)) {
-        const { dailyCapacity, targetHours, maxTasksPerDay } = getCapacityFor(assignee);
+        const { dailyCapacity, targetHours, maxTasksPerDay } =
+          getCapacityFor(assignee);
         map.set(assignee, {
           assignee,
           projectIds: new Set(),
@@ -422,10 +423,8 @@ projects.forEach((p) => {
 
       const isCompleted =
         status === 'completed' || status === 'done' || status === 'closed';
-
       const isOverdue =
         due && !isCompleted && due.getTime() < today.getTime();
-
       const isOpen = !isCompleted;
 
       if (isOpen) {
@@ -435,18 +434,21 @@ projects.forEach((p) => {
         entry.overdue += 1;
       }
 
-      // Overdue trend for last 30 days
-      if (due && isWithinRange(due, last30DaysRange.start, last30DaysRange.end)) {
+      // last 30 days overdue trend
+      if (
+        due &&
+        isWithinRange(due, last30DaysRange.start, last30DaysRange.end)
+      ) {
         entry.overdueTotalLast30 += 1;
         if (isOverdue) {
           entry.overdueLast30 += 1;
         }
       }
 
-      // Hours & utilization – only for open tasks
       if (isOpen) {
         const taskEffort =
-          typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours)
+          typeof t.estimated_hours === 'number' &&
+          !Number.isNaN(t.estimated_hours)
             ? t.estimated_hours
             : DEFAULT_TASK_HOURS;
 
@@ -466,7 +468,6 @@ projects.forEach((p) => {
         : 0;
 
       const loadRatio = e.total === 0 ? 0 : e.open / e.total;
-
       const overdueRateLast30 =
         e.overdueTotalLast30 > 0
           ? (e.overdueLast30 / e.overdueTotalLast30) * 100
@@ -482,12 +483,11 @@ projects.forEach((p) => {
       };
     });
 
-    // Sort by open tasks (most loaded first)
     arr.sort((a, b) => b.open - a.open);
     return arr;
   }, [tasks, presalesResources, thisWeekRange, nextWeekRange, last30DaysRange, today]);
 
-  // ---------- Team-level health summary ----------
+  // ---------- Team summary ----------
   const teamSummary = useMemo(() => {
     if (!workloadByAssignee || workloadByAssignee.length === 0) return null;
 
@@ -497,6 +497,7 @@ projects.forEach((p) => {
 
     let overloaded = 0;
     let underused = 0;
+
     workloadByAssignee.forEach((w) => {
       if (w.utilNextWeek >= 90) overloaded += 1;
       else if (w.utilNextWeek <= 40) underused += 1;
@@ -516,44 +517,24 @@ projects.forEach((p) => {
 
     const map = new Map();
 
- projects.forEach((p) => {
-  let country = p.country || p.customer_country || '';
+    projects.forEach((p) => {
+      let country = p.country || p.customer_country || '';
+      if (typeof country === 'string') {
+        country = country.trim();
+      }
+      if (!country) {
+        country = 'Unknown';
+      }
 
-  if (typeof country === 'string') {
-    country = country.trim();
-  }
-
-  if (!country) {
-    country = 'Unknown';
-  }
-
-  if (!map.has(country)) {
-    map.set(country, {
-      country,
-      total: 0,
-      active: 0,
-      done: 0,
-      pipelineValue: 0,
-    });
-  }
-
-  const entry = map.get(country);
-  entry.total += 1;
-
-  const value =
-    typeof p.deal_value === 'number'
-      ? p.deal_value
-      : parseFloat(p.deal_value || 0);
-
-  const isDone = p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won';
-
-  if (isDone) {
-    entry.done += 1;
-  } else {
-    entry.active += 1;
-    entry.pipelineValue += isNaN(value) ? 0 : value;
-  }
-});
+      if (!map.has(country)) {
+        map.set(country, {
+          country,
+          total: 0,
+          active: 0,
+          done: 0,
+          pipelineValue: 0,
+        });
+      }
 
       const entry = map.get(country);
       entry.total += 1;
@@ -570,119 +551,16 @@ projects.forEach((p) => {
         entry.done += 1;
       } else {
         entry.active += 1;
-        entry.pipelineValue += isNaN(value) ? 0 : value;
+        entry.pipelineValue += Number.isNaN(value) ? 0 : value;
       }
     });
 
-    return Array.from(map.values()).sort((a, b) =>
-      (b.pipelineValue || 0) - (a.pipelineValue || 0)
+    return Array.from(map.values()).sort(
+      (a, b) => (b.pipelineValue || 0) - (a.pipelineValue || 0)
     );
   }, [projects]);
 
-  // ---------- Crunch days (next 14 days with heavy load) ----------
-  const commitmentByProject = useMemo(() => {
-    if (!tasks || tasks.length === 0) return [];
-
-    const resultMap = new Map();
-
-    const addHoursToRange = (range, task, hours) => {
-      if (!range || !range.start || !range.end) return 0;
-
-      const effHours =
-        typeof hours === 'number' && !Number.isNaN(hours)
-          ? hours
-          : DEFAULT_TASK_HOURS;
-
-      const taskStart =
-        parseDate(task.start_date) ||
-        parseDate(task.due_date) ||
-        parseDate(task.end_date);
-      const taskEnd =
-        parseDate(task.end_date) ||
-        parseDate(task.due_date) ||
-        parseDate(task.start_date);
-
-      const days = getOverlapDays(
-        range,
-        taskStart || task.due_date,
-        taskEnd || task.due_date
-      );
-
-      if (days <= 0) return 0;
-
-      const perDay = effHours / days;
-      return perDay * days;
-    };
-
-    (tasks || []).forEach((t) => {
-      if (!t.assignee || !t.project_id) return;
-
-      const status = (t.status || '').toLowerCase();
-      const isCompleted =
-        status === 'completed' || status === 'done' || status === 'closed';
-      if (isCompleted) return;
-
-      const effHours =
-        typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours)
-          ? t.estimated_hours
-          : DEFAULT_TASK_HOURS;
-
-      const thisWeekHours = addHoursToRange(thisWeekRange, t, effHours);
-      const nextWeekHours = addHoursToRange(nextWeekRange, t, effHours);
-
-      if (!thisWeekHours && !nextWeekHours) return;
-
-      const key = t.assignee;
-      if (!resultMap.has(key)) {
-        resultMap.set(key, {
-          assignee: key,
-          projects: new Map(),
-        });
-      }
-      const assEntry = resultMap.get(key);
-      const projectId = t.project_id;
-      const projectName = projectMap.get(projectId) || 'Unknown project';
-
-      if (!assEntry.projects.has(projectId)) {
-        assEntry.projects.set(projectId, {
-          projectId,
-          projectName,
-          thisWeekHours: 0,
-          nextWeekHours: 0,
-        });
-      }
-
-      const pEntry = assEntry.projects.get(projectId);
-      pEntry.thisWeekHours += thisWeekHours;
-      pEntry.nextWeekHours += nextWeekHours;
-    });
-
-    const out = [];
-    resultMap.forEach((value) => {
-      const projectsArr = Array.from(value.projects.values());
-      const totalNextWeek = projectsArr.reduce(
-        (sum, p) => sum + p.nextWeekHours,
-        0
-      );
-
-      projectsArr.sort(
-        (a, b) =>
-          b.nextWeekHours +
-          b.thisWeekHours -
-          (a.nextWeekHours + a.thisWeekHours)
-      );
-
-      out.push({
-        assignee: value.assignee,
-        totalNextWeek,
-        projects: projectsArr,
-      });
-    });
-
-    out.sort((a, b) => b.totalNextWeek - a.totalNextWeek);
-    return out;
-  }, [tasks, projectMap, thisWeekRange, nextWeekRange]);
-  
+  // ---------- Crunch days ----------
   const crunchDays = useMemo(() => {
     if (!tasks || tasks.length === 0) return [];
 
@@ -742,51 +620,45 @@ projects.forEach((p) => {
       cur.setDate(cur.getDate() + 1);
     }
 
-    const capacityWeekHours = HOURS_PER_DAY * 5;
+    return (presalesResources || [])
+      .map((res) => {
+        const name = res.name || res.email || 'Unknown';
 
-    return (presalesResources || []).map((res) => {
-      const name = res.name || res.email || 'Unknown';
-      // Count free days in the selected window (no tasks + no schedule)
-      let freeDays = 0;
+        let freeDays = 0;
+        days.forEach((d) => {
+          const hasTask = (tasks || []).some(
+            (t) =>
+              t.assignee === name &&
+              t.status !== 'Completed' &&
+              isTaskOnDay(t, d)
+          );
+          const hasSchedule = (scheduleEvents || []).some(
+            (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
+          );
 
-      days.forEach((d) => {
-        const hasTask = (tasks || []).some(
-          (t) =>
-            t.assignee === name &&
-            t.status !== 'Completed' &&
-            isTaskOnDay(t, d)
-        );
-        const hasSchedule = (scheduleEvents || []).some(
-          (s) =>
-            s.assignee === name &&
-            isWithinRange(d, s.start_date, s.end_date)
-        );
+          if (!hasTask && !hasSchedule) {
+            freeDays += 1;
+          }
+        });
 
-        if (!hasTask && !hasSchedule) {
-          freeDays += 1;
-        }
-      });
+        const work = workloadByAssignee.find((w) => w.assignee === name);
+        const nextLoad = work ? work.utilNextWeek : 0;
 
-      // Lookup next week utilization for that presales
-      const work = workloadByAssignee.find((w) => w.assignee === name);
-      const nextLoad = work ? work.utilNextWeek : 0;
-
-      return {
-        assignee: name,
-        freeDays,
-        nextWeekLoad: nextLoad,
-      };
-    })
+        return {
+          assignee: name,
+          freeDays,
+          nextWeekLoad: nextLoad,
+        };
+      })
       .filter((s) => s.freeDays > 0)
       .sort((a, b) => {
-        // sort: more free days first, then lower next-week load
         if (b.freeDays !== a.freeDays) return b.freeDays - a.freeDays;
         return a.nextWeekLoad - b.nextWeekLoad;
       });
   }, [assignStart, assignEnd, presalesResources, tasks, scheduleEvents, workloadByAssignee]);
 
-  // ---------- Availability heatmap data (aligned to CSS) ----------
-   const availabilityGrid = useMemo(() => {
+  // ---------- Availability heatmap ----------
+  const availabilityGrid = useMemo(() => {
     if (!presalesResources || presalesResources.length === 0)
       return { days: [], rows: [] };
 
@@ -813,9 +685,9 @@ projects.forEach((p) => {
           : HOURS_PER_DAY;
 
       const maxTasksPerDay =
-  Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0
-    ? res.max_tasks_per_day
-    : (res.max_tasks_per_day || 3);
+        Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0
+          ? res.max_tasks_per_day
+          : 3;
 
       return { dailyCapacity, maxTasksPerDay };
     };
@@ -837,16 +709,15 @@ projects.forEach((p) => {
           (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
         );
 
-        // Base status
         let status = 'free'; // free | busy | leave | travel
         let label = 'Free';
 
         const taskCount = dayTasks.length;
 
-        // Compute total task hours on that day
         const totalHours = dayTasks.reduce((sum, t) => {
           const h =
-            typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours)
+            typeof t.estimated_hours === 'number' &&
+            !Number.isNaN(t.estimated_hours)
               ? t.estimated_hours
               : DEFAULT_TASK_HOURS;
           return sum + h;
@@ -856,7 +727,6 @@ projects.forEach((p) => {
           ? Math.round((totalHours / dailyCapacity) * 100)
           : 0;
 
-        // Schedule-based status first
         if (daySchedules.length > 0) {
           const hasTravel = daySchedules.some(
             (s) => (s.type || '').toLowerCase() === 'travel'
@@ -877,7 +747,6 @@ projects.forEach((p) => {
           }
         }
 
-        // Overlay tasks + capacity
         if (taskCount > 0) {
           if (status === 'free') {
             status = 'busy';
@@ -922,6 +791,111 @@ projects.forEach((p) => {
 
     return { days, rows };
   }, [presalesResources, tasks, scheduleEvents, calendarView]);
+
+  // ---------- Commitment by project ----------
+  const commitmentByProject = useMemo(() => {
+    if (!tasks || tasks.length === 0) return [];
+
+    const resultMap = new Map();
+
+    const addHoursToRange = (range, task, hours) => {
+      if (!range || !range.start || !range.end) return 0;
+
+      const effHours =
+        typeof hours === 'number' && !Number.isNaN(hours)
+          ? hours
+          : DEFAULT_TASK_HOURS;
+
+      const taskStart =
+        parseDate(task.start_date) ||
+        parseDate(task.due_date) ||
+        parseDate(task.end_date);
+      const taskEnd =
+        parseDate(task.end_date) ||
+        parseDate(task.due_date) ||
+        parseDate(task.start_date);
+
+      const days = getOverlapDays(
+        range,
+        taskStart || task.due_date,
+        taskEnd || task.due_date
+      );
+
+      if (days <= 0) return 0;
+
+      const perDay = effHours / days;
+      return perDay * days;
+    };
+
+    (tasks || []).forEach((t) => {
+      if (!t.assignee || !t.project_id) return;
+
+      const status = (t.status || '').toLowerCase();
+      const isCompleted =
+        status === 'completed' || status === 'done' || status === 'closed';
+      if (isCompleted) return;
+
+      const effHours =
+        typeof t.estimated_hours === 'number' &&
+        !Number.isNaN(t.estimated_hours)
+          ? t.estimated_hours
+          : DEFAULT_TASK_HOURS;
+
+      const thisWeekHours = addHoursToRange(thisWeekRange, t, effHours);
+      const nextWeekHours = addHoursToRange(nextWeekRange, t, effHours);
+
+      if (!thisWeekHours && !nextWeekHours) return;
+
+      const key = t.assignee;
+      if (!resultMap.has(key)) {
+        resultMap.set(key, {
+          assignee: key,
+          projects: new Map(),
+        });
+      }
+      const assEntry = resultMap.get(key);
+      const projectId = t.project_id;
+      const projectName = projectMap.get(projectId) || 'Unknown project';
+
+      if (!assEntry.projects.has(projectId)) {
+        assEntry.projects.set(projectId, {
+          projectId,
+          projectName,
+          thisWeekHours: 0,
+          nextWeekHours: 0,
+        });
+      }
+
+      const pEntry = assEntry.projects.get(projectId);
+      pEntry.thisWeekHours += thisWeekHours;
+      pEntry.nextWeekHours += nextWeekHours;
+    });
+
+    const out = [];
+    resultMap.forEach((value) => {
+      const projectsArr = Array.from(value.projects.values());
+      const totalNextWeek = projectsArr.reduce(
+        (sum, p) => sum + p.nextWeekHours,
+        0
+      );
+
+      projectsArr.sort(
+        (a, b) =>
+          b.nextWeekHours +
+          b.thisWeekHours -
+          (a.nextWeekHours + a.thisWeekHours)
+      );
+
+      out.push({
+        assignee: value.assignee,
+        totalNextWeek,
+        projects: projectsArr,
+      });
+    });
+
+    out.sort((a, b) => b.totalNextWeek - a.totalNextWeek);
+    return out;
+  }, [tasks, projectMap, thisWeekRange, nextWeekRange]);
 
   // ---------- Schedule modal handlers ----------
   const openScheduleModalForCreate = () => {
@@ -1037,7 +1011,7 @@ projects.forEach((p) => {
     }
   };
 
-  // ---------- Day detail modal (click heatmap cell) ----------
+  // ---------- Day detail modal ----------
   const openDayDetail = (assignee, date) => {
     const day = toMidnight(date);
 
@@ -1067,7 +1041,7 @@ projects.forEach((p) => {
     setDayDetailOpen(false);
   };
 
-  // ---------- UI states ----------
+  // ---------- UI helpers ----------
   if (loading) {
     return (
       <div className="presales-page-container">
@@ -1108,6 +1082,7 @@ projects.forEach((p) => {
         })
       : '';
 
+  // ---------- RENDER ----------
   return (
     <div className="presales-page-container">
       {/* HEADER */}
@@ -1212,7 +1187,7 @@ projects.forEach((p) => {
         </div>
       </section>
 
-      {/* WORKLOAD + DEALS */}
+      {/* MAIN GRID: WORKLOAD + DEALS BY COUNTRY */}
       <section className="presales-main-grid">
         {/* WORKLOAD PANEL */}
         <div className="presales-panel">
@@ -1267,24 +1242,22 @@ projects.forEach((p) => {
                       <td className="td-center">{w.total}</td>
                       <td className="td-center">{w.open}</td>
                       <td className="td-center overdue">{w.overdue}</td>
-                              
                       <td className="td-center">
-  <div>
-    <div>{Math.round(w.utilThisWeek)}%</div>
-    <div style={{ fontSize: '11px', opacity: 0.8 }}>
-      {getUtilLabel(Math.round(w.utilThisWeek))}
-    </div>
-  </div>
-</td>
-<td className="td-center">
-  <div>
-    <div>{Math.round(w.utilNextWeek)}%</div>
-    <div style={{ fontSize: '11px', opacity: 0.8 }}>
-      {getUtilLabel(Math.round(w.utilNextWeek))}
-    </div>
-  </div>
-</td>
-                        
+                        <div>
+                          <div>{Math.round(w.utilThisWeek)}%</div>
+                          <div style={{ fontSize: '11px', opacity: 0.8 }}>
+                            {getUtilLabel(Math.round(w.utilThisWeek))}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="td-center">
+                        <div>
+                          <div>{Math.round(w.utilNextWeek)}%</div>
+                          <div style={{ fontSize: '11px', opacity: 0.8 }}>
+                            {getUtilLabel(Math.round(w.utilNextWeek))}
+                          </div>
+                        </div>
+                      </td>
                       <td className="td-center">
                         {Math.round(w.overdueRateLast30)}%
                       </td>
@@ -1477,7 +1450,7 @@ projects.forEach((p) => {
           )}
         </div>
 
-        {/* SCHEDULE LIST (raw entries) */}
+        {/* SCHEDULE LIST */}
         <div className="presales-panel">
           <div className="presales-panel-header">
             <div>
@@ -1566,8 +1539,6 @@ projects.forEach((p) => {
       </section>
 
       {/* CRUNCH DAYS */}
-      {/* WEEKLY COMMITMENT BY PROJECT */}
-
       <section className="presales-crunch-section">
         <div className="presales-panel">
           <div className="presales-panel-header">
@@ -1604,6 +1575,93 @@ projects.forEach((p) => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* WEEKLY COMMITMENT BY PROJECT */}
+      <section className="presales-commitment-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header presales-panel-header-row">
+            <div>
+              <h3>
+                <Target size={16} className="panel-icon" />
+                Weekly presales commitment by project
+              </h3>
+              <p>
+                How each presales’ next week hours are distributed across projects.
+              </p>
+            </div>
+            {commitmentByProject.length > 0 && (
+              <div className="commitment-summary-pill">
+                {commitmentByProject.length} presales with planned work next week
+              </div>
+            )}
+          </div>
+
+          {commitmentByProject.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No upcoming work scheduled for this or next week.</p>
+            </div>
+          ) : (
+            <div className="commitment-grid">
+              {commitmentByProject.map((entry) => {
+                const total = entry.totalNextWeek || 0;
+
+                return (
+                  <div key={entry.assignee} className="commitment-card">
+                    <div className="commitment-card-header">
+                      <div className="commitment-avatar">
+                        {(entry.assignee || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="commitment-card-header-text">
+                        <div className="commitment-name">{entry.assignee}</div>
+                        <div className="commitment-hours-label">
+                          Next week: <strong>{total.toFixed(1)}h</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="commitment-card-body">
+                      {entry.projects.slice(0, 5).map((p) => {
+                        const share =
+                          total > 0
+                            ? Math.min((p.nextWeekHours / total) * 100, 100)
+                            : 0;
+                        return (
+                          <div
+                            key={p.projectId}
+                            className="commitment-project-row"
+                          >
+                            <div className="commitment-project-top">
+                              <span className="commitment-project-name">
+                                {p.projectName}
+                              </span>
+                              <span className="commitment-project-hours">
+                                {p.nextWeekHours.toFixed(1)}h
+                              </span>
+                            </div>
+                            <div className="commitment-progress-track">
+                              <div
+                                className="commitment-progress-fill"
+                                style={{ width: `${share}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {entry.projects.length > 5 && (
+                        <div className="commitment-more">
+                          +{entry.projects.length - 5} more project
+                          {entry.projects.length - 5 > 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -1681,9 +1739,7 @@ projects.forEach((p) => {
                         <td>
                           <div className="wl-name-cell">
                             <div className="wl-avatar">
-                              {(sug.assignee || 'U')
-                                .charAt(0)
-                                .toUpperCase()}
+                              {(sug.assignee || 'U').charAt(0).toUpperCase()}
                             </div>
                             <div className="wl-name-text">
                               <span className="wl-name-main">
