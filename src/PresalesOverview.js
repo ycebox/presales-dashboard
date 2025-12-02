@@ -131,7 +131,7 @@ function PresalesOverview() {
   const [error, setError] = useState(null);
 
   // Assignment helper filters
-  const [assignPriority, setAssignPriority] = useState('Normal'); // kept for UI, not yet used in logic
+  const [assignPriority, setAssignPriority] = useState('Normal'); // UI only for now
   const [assignStart, setAssignStart] = useState('');
   const [assignEnd, setAssignEnd] = useState('');
 
@@ -176,9 +176,7 @@ function PresalesOverview() {
         ] = await Promise.all([
           supabase
             .from('projects')
-            .select(
-              'id, customer_id, customer_name, sales_stage, deal_value'
-            )
+            .select('id, customer_name, sales_stage, deal_value')
             .order('customer_name', { ascending: true }),
           supabase
             .from('project_tasks')
@@ -232,13 +230,23 @@ function PresalesOverview() {
     return map;
   }, [projects]);
 
+  // customerName -> customer
   const customerMap = useMemo(() => {
     const map = new Map();
     (customers || []).forEach((c) => {
-      map.set(c.id, c);
+      const key = (c.customer_name || '').trim().toLowerCase();
+      if (key) {
+        map.set(key, c);
+      }
     });
     return map;
   }, [customers]);
+
+  const getCustomerForProject = (p) => {
+    const key = (p.customer_name || '').trim().toLowerCase();
+    if (!key) return null;
+    return customerMap.get(key) || null;
+  };
 
   const { thisWeek, nextWeek, last30 } = useMemo(() => getWeekRanges(), []);
   const today = useMemo(() => toMidnight(new Date()), []);
@@ -277,7 +285,7 @@ function PresalesOverview() {
     const countries = new Set();
 
     projects.forEach((p) => {
-      const customer = customerMap.get(p.customer_id);
+      const customer = getCustomerForProject(p);
       let country = (customer && customer.country) || '';
       if (typeof country === 'string') {
         country = country.trim();
@@ -539,7 +547,7 @@ function PresalesOverview() {
     const map = new Map();
 
     projects.forEach((p) => {
-      const customer = customerMap.get(p.customer_id);
+      const customer = getCustomerForProject(p);
       let country = (customer && customer.country) || '';
       if (typeof country === 'string') {
         country = country.trim();
