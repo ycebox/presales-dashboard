@@ -13,7 +13,7 @@ import {
 } from 'react-icons/fa';
 
 // Constants
-
+const DEFAULT_TASK_HOURS = 4;
 const SMARTVISTA_MODULES = [
   'SVFE - Switch',
   'SVFE - ATM',
@@ -185,7 +185,7 @@ const TaskModal = ({
         due_date: '',
         notes: '',
         assignee: '',
-        estimated_hours: 2
+        estimated_hours: DEFAULT_TASK_HOURS
       });
     }
   }, [editingTask, isOpen]);
@@ -492,7 +492,21 @@ const TaskModal = ({
                 placeholder="e.g. 2"
               />
             </div>
-
+{/* Capacity hint */}
+<div className="form-group full-width">
+  <div
+    style={{
+      fontSize: '12px',
+      opacity: 0.85,
+      display: 'flex',
+      gap: 6,
+      alignItems: 'center'
+    }}
+  >
+    <FaInfo />
+    <span>{capacityHint}</span>
+  </div>
+</div>
             {/* Start / End date */}
             <div className="form-group">
               <label htmlFor="task-start-date" className="form-label">
@@ -807,10 +821,12 @@ function ProjectDetails() {
   useEffect(() => {
     const fetchPresalesResources = async () => {
       try {
-        const { data, error } = await supabase
-          .from('presales_resources')
-          .select('id, name, email, region, is_active')
-          .order('name', { ascending: true });
+  const { data, error } = await supabase
+  .from('presales_resources')
+  .select(
+    'id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day'
+  )
+  .order('name', { ascending: true });
 
         if (error) {
           console.warn('Error loading presales_resources:', error.message);
