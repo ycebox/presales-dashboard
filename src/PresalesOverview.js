@@ -167,12 +167,12 @@ function PresalesOverview() {
 
       try {
         const [projRes, taskRes, scheduleRes, presalesRes] = await Promise.all([
-          supabase
-            .from('projects')
-            .select(
-              'id, customer_name, country, customer_country, sales_stage, deal_value'
-            )
-            .order('customer_name', { ascending: true }),
+      supabase
+  .from('projects')
+  .select(
+    'id, customer_name, country, sales_stage, deal_value'
+  )
+  .order('customer_name', { ascending: true }),
           supabase
             .from('project_tasks')
             .select(
@@ -256,33 +256,33 @@ function PresalesOverview() {
     let wonVal = 0;
     const countries = new Set();
 
-    projects.forEach((p) => {
-      let country = p.country || p.customer_country || '';
-      if (typeof country === 'string') {
-        country = country.trim();
-      }
-      if (!country) {
-        country = 'Unknown';
-      }
+projects.forEach((p) => {
+  let country = p.country || '';
+  if (typeof country === 'string') {
+    country = country.trim();
+  }
+  if (!country) {
+    country = 'Unknown';
+  }
 
-      countries.add(country);
+  countries.add(country);
 
-      const value =
-        typeof p.deal_value === 'number'
-          ? p.deal_value
-          : parseFloat(p.deal_value || 0);
+  const value =
+    typeof p.deal_value === 'number'
+      ? p.deal_value
+      : parseFloat(p.deal_value || 0);
 
-      const isDone =
-        p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won';
+  const isDone =
+    p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won';
 
-      if (isDone) {
-        won += 1;
-        wonVal += Number.isNaN(value) ? 0 : value;
-      } else {
-        active += 1;
-        pipe += Number.isNaN(value) ? 0 : value;
-      }
-    });
+  if (isDone) {
+    won += 1;
+    wonVal += Number.isNaN(value) ? 0 : value;
+  } else {
+    active += 1;
+    pipe += Number.isNaN(value) ? 0 : value;
+  }
+});
 
     const avg = active > 0 ? pipe / active : 0;
     const openCount = (tasks || []).filter(
@@ -517,43 +517,43 @@ function PresalesOverview() {
 
     const map = new Map();
 
-    projects.forEach((p) => {
-      let country = p.country || p.customer_country || '';
-      if (typeof country === 'string') {
-        country = country.trim();
-      }
-      if (!country) {
-        country = 'Unknown';
-      }
+   projects.forEach((p) => {
+  let country = p.country || '';
+  if (typeof country === 'string') {
+    country = country.trim();
+  }
+  if (!country) {
+    country = 'Unknown';
+  }
 
-      if (!map.has(country)) {
-        map.set(country, {
-          country,
-          total: 0,
-          active: 0,
-          done: 0,
-          pipelineValue: 0,
-        });
-      }
-
-      const entry = map.get(country);
-      entry.total += 1;
-
-      const value =
-        typeof p.deal_value === 'number'
-          ? p.deal_value
-          : parseFloat(p.deal_value || 0);
-
-      const isDone =
-        p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won';
-
-      if (isDone) {
-        entry.done += 1;
-      } else {
-        entry.active += 1;
-        entry.pipelineValue += Number.isNaN(value) ? 0 : value;
-      }
+  if (!map.has(country)) {
+    map.set(country, {
+      country,
+      total: 0,
+      active: 0,
+      done: 0,
+      pipelineValue: 0,
     });
+  }
+
+  const entry = map.get(country);
+  entry.total += 1;
+
+  const value =
+    typeof p.deal_value === 'number'
+      ? p.deal_value
+      : parseFloat(p.deal_value || 0);
+
+  const isDone =
+    p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won';
+
+  if (isDone) {
+    entry.done += 1;
+  } else {
+    entry.active += 1;
+    entry.pipelineValue += Number.isNaN(value) ? 0 : value;
+  }
+});
 
     return Array.from(map.values()).sort(
       (a, b) => (b.pipelineValue || 0) - (a.pipelineValue || 0)
