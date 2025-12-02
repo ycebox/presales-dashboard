@@ -1530,57 +1530,6 @@ function PresalesOverview() {
 
       {/* CRUNCH DAYS */}
       {/* WEEKLY COMMITMENT BY PROJECT */}
-      <section className="presales-commitment-section">
-        <div className="presales-panel">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <Target size={16} className="panel-icon" />
-                Weekly presales commitment by project
-              </h3>
-              <p>
-                How each presales’ next week hours are distributed across projects.
-              </p>
-            </div>
-          </div>
-
-          {commitmentByProject.length === 0 ? (
-            <div className="presales-empty small">
-              <p>No upcoming work scheduled for this or next week.</p>
-            </div>
-          ) : (
-            <div className="commitment-list">
-              {commitmentByProject.map((entry) => (
-                <div key={entry.assignee} className="commitment-item">
-                  <div className="commitment-header">
-                    <div className="wl-avatar">
-                      {(entry.assignee || 'U').charAt(0).toUpperCase()}
-                    </div>
-                    <div className="commitment-header-text">
-                      <div className="commitment-name">{entry.assignee}</div>
-                      <div className="commitment-sub">
-                        Next week: {entry.totalNextWeek.toFixed(1)}h
-                      </div>
-                    </div>
-                  </div>
-                  <ul className="commitment-project-list">
-                    {entry.projects.slice(0, 4).map((p) => (
-                      <li key={p.projectId} className="commitment-project-item">
-                        <span className="commitment-project-name">
-                          {p.projectName}
-                        </span>
-                        <span className="commitment-project-hours">
-                          {p.nextWeekHours.toFixed(1)}h
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
 
       <section className="presales-crunch-section">
         <div className="presales-panel">
