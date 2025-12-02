@@ -590,6 +590,48 @@ function PresalesOverview() {
     );
   }, [projects, customerMap]);
 
+  // ---------- TASK MIX ----------
+  const taskMix = useMemo(() => {
+    if (!tasks || tasks.length === 0) return null;
+
+    // Only look at last 30 days
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+
+    const map = new Map();
+    let total = 0;
+
+    tasks.forEach((t) => {
+      const end = t.end_date ? new Date(t.end_date) : null;
+      const start = t.start_date ? new Date(t.start_date) : null;
+      const due = t.due_date ? new Date(t.due_date) : null;
+
+      // Determine "activity date"
+      const date = end || start || due;
+      if (!date || date < cutoff) return;
+
+      const type = (t.task_type || 'Others').trim() || 'Others';
+      total += 1;
+
+      if (!map.has(type)) {
+        map.set(type, { type, count: 0 });
+      }
+      map.get(type).count += 1;
+    });
+
+    if (total === 0) return { total: 0, rows: [] };
+
+    const result = Array.from(map.values()).map((row) => ({
+      ...row,
+      percent: total > 0 ? ((row.count / total) * 100).toFixed(1) : '0.0',
+    }));
+
+    // Sort highest to lowest
+    result.sort((a, b) => b.count - a.count);
+
+    return { total, rows: result };
+  }, [tasks]);
+
   // ---------- Crunch days ----------
   const crunchDays = useMemo(() => {
     if (!tasks || tasks.length === 0) return [];
@@ -1360,6 +1402,54 @@ function PresalesOverview() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* TASK MIX */}
+      <section className="presales-taskmix-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Activity size={16} className="panel-icon" />
+                Task mix (last 30 days)
+              </h3>
+              <p>Where the team is spending time based on task types.</p>
+            </div>
+          </div>
+
+          {!taskMix || taskMix.rows.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No recent tasks found in the last 30 days.</p>
+            </div>
+          ) : (
+            <div className="taskmix-table-wrapper">
+              <table className="taskmix-table">
+                <thead>
+                  <tr>
+                    <th>Task type</th>
+                    <th className="th-center">Count</th>
+                    <th className="th-center">Share</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {taskMix.rows.map((row) => (
+                    <tr key={row.type}>
+                      <td>{row.type}</td>
+                      <td className="td-center">{row.count}</td>
+                      <td className="td-center">{row.percent}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="taskmix-footer">
+                <span>
+                  Total tasks counted: <strong>{taskMix.total}</strong> (last 30
+                  days)
+                </span>
+              </div>
             </div>
           )}
         </div>
