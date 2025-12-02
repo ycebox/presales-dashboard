@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+ƒimport React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import {
@@ -68,6 +68,14 @@ const isTaskOnDay = (task, day) => {
   const e = end || start;
 
   return d.getTime() >= s.getTime() && d.getTime() <= e.getTime();
+};
+
+const getUtilLabel = (pct) => {
+  if (!pct || Number.isNaN(pct)) return '';
+  if (pct >= 120) return 'Over capacity';
+  if (pct >= 90) return 'Near capacity';
+  if (pct <= 40) return 'Light load';
+  return 'Healthy';
 };
 
 const getWeekRanges = () => {
@@ -535,6 +543,109 @@ function PresalesOverview() {
   }, [projects]);
 
   // ---------- Crunch days (next 14 days with heavy load) ----------
+  const commitmentByProject = useMemo(() => {
+    if (!tasks || tasks.length === 0) return [];
+
+    const resultMap = new Map();
+
+    const addHoursToRange = (range, task, hours) => {
+      if (!range || !range.start || !range.end) return 0;
+
+      const effHours =
+        typeof hours === 'number' && !Number.isNaN(hours)
+          ? hours
+          : DEFAULT_TASK_HOURS;
+
+      const taskStart =
+        parseDate(task.start_date) ||
+        parseDate(task.due_date) ||
+        parseDate(task.end_date);
+      const taskEnd =
+        parseDate(task.end_date) ||
+        parseDate(task.due_date) ||
+        parseDate(task.start_date);
+
+      const days = getOverlapDays(
+        range,
+        taskStart || task.due_date,
+        taskEnd || task.due_date
+      );
+
+      if (days <= 0) return 0;
+
+      const perDay = effHours / days;
+      return perDay * days;
+    };
+
+    (tasks || []).forEach((t) => {
+      if (!t.assignee || !t.project_id) return;
+
+      const status = (t.status || '').toLowerCase();
+      const isCompleted =
+        status === 'completed' || status === 'done' || status === 'closed';
+      if (isCompleted) return;
+
+      const effHours =
+        typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours)
+          ? t.estimated_hours
+          : DEFAULT_TASK_HOURS;
+
+      const thisWeekHours = addHoursToRange(thisWeekRange, t, effHours);
+      const nextWeekHours = addHoursToRange(nextWeekRange, t, effHours);
+
+      if (!thisWeekHours && !nextWeekHours) return;
+
+      const key = t.assignee;
+      if (!resultMap.has(key)) {
+        resultMap.set(key, {
+          assignee: key,
+          projects: new Map(),
+        });
+      }
+      const assEntry = resultMap.get(key);
+      const projectId = t.project_id;
+      const projectName = projectMap.get(projectId) || 'Unknown project';
+
+      if (!assEntry.projects.has(projectId)) {
+        assEntry.projects.set(projectId, {
+          projectId,
+          projectName,
+          thisWeekHours: 0,
+          nextWeekHours: 0,
+        });
+      }
+
+      const pEntry = assEntry.projects.get(projectId);
+      pEntry.thisWeekHours += thisWeekHours;
+      pEntry.nextWeekHours += nextWeekHours;
+    });
+
+    const out = [];
+    resultMap.forEach((value) => {
+      const projectsArr = Array.from(value.projects.values());
+      const totalNextWeek = projectsArr.reduce(
+        (sum, p) => sum + p.nextWeekHours,
+        0
+      );
+
+      projectsArr.sort(
+        (a, b) =>
+          b.nextWeekHours +
+          b.thisWeekHours -
+          (a.nextWeekHours + a.thisWeekHours)
+      );
+
+      out.push({
+        assignee: value.assignee,
+        totalNextWeek,
+        projects: projectsArr,
+      });
+    });
+
+    out.sort((a, b) => b.totalNextWeek - a.totalNextWeek);
+    return out;
+  }, [tasks, projectMap, thisWeekRange, nextWeekRange]);
+  
   const crunchDays = useMemo(() => {
     if (!tasks || tasks.length === 0) return [];
 
@@ -638,7 +749,7 @@ function PresalesOverview() {
   }, [assignStart, assignEnd, presalesResources, tasks, scheduleEvents, workloadByAssignee]);
 
   // ---------- Availability heatmap data (aligned to CSS) ----------
-  const availabilityGrid = useMemo(() => {
+   const availabilityGrid = useMemo(() => {
     if (!presalesResources || presalesResources.length === 0)
       return { days: [], rows: [] };
 
@@ -651,8 +762,30 @@ function PresalesOverview() {
       days.push(d);
     }
 
+    const getCapacityFor = (name) => {
+      const res =
+        (presalesResources || []).find((p) => {
+          const n = p.name || p.email || 'Unknown';
+          return n === name;
+        }) || {};
+
+      const dailyCapacity =
+        typeof res.daily_capacity_hours === 'number' &&
+        !Number.isNaN(res.daily_capacity_hours)
+          ? res.daily_capacity_hours
+          : HOURS_PER_DAY;
+
+      const maxTasksPerDay =
+        Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0
+          ? res.max_tasks_perDay
+          : (res.max_tasks_per_day || 3);
+
+      return { dailyCapacity, maxTasksPerDay };
+    };
+
     const rows = (presalesResources || []).map((res) => {
       const name = res.name || res.email || 'Unknown';
+      const { dailyCapacity, maxTasksPerDay } = getCapacityFor(name);
 
       const cells = days.map((d) => {
         const dayTasks = (tasks || []).filter(
@@ -667,9 +800,26 @@ function PresalesOverview() {
           (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
         );
 
+        // Base status
         let status = 'free'; // free | busy | leave | travel
         let label = 'Free';
 
+        const taskCount = dayTasks.length;
+
+        // Compute total task hours on that day
+        const totalHours = dayTasks.reduce((sum, t) => {
+          const h =
+            typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours)
+              ? t.estimated_hours
+              : DEFAULT_TASK_HOURS;
+          return sum + h;
+        }, 0);
+
+        const utilization = dailyCapacity
+          ? Math.round((totalHours / dailyCapacity) * 100)
+          : 0;
+
+        // Schedule-based status first
         if (daySchedules.length > 0) {
           const hasTravel = daySchedules.some(
             (s) => (s.type || '').toLowerCase() === 'travel'
@@ -677,6 +827,7 @@ function PresalesOverview() {
           const hasLeave = daySchedules.some(
             (s) => (s.type || '').toLowerCase() === 'leave'
           );
+
           if (hasLeave) {
             status = 'leave';
             label = 'On leave';
@@ -684,21 +835,36 @@ function PresalesOverview() {
             status = 'travel';
             label = 'Travel';
           } else {
-            // other schedule types
             status = 'busy';
             label = 'Scheduled';
           }
         }
 
-        const taskCount = dayTasks.length;
+        // Overlay tasks + capacity
         if (taskCount > 0) {
           if (status === 'free') {
             status = 'busy';
-            label = `${taskCount} task${taskCount > 1 ? 's' : ''}`;
+          }
+
+          const baseLabel = `${taskCount} task${taskCount > 1 ? 's' : ''}`;
+          const capText =
+            dailyCapacity && totalHours
+              ? ` · ${totalHours.toFixed(1)}h / ${dailyCapacity}h`
+              : '';
+
+          let prefix = '';
+          if (utilization > 120 || taskCount > maxTasksPerDay) {
+            prefix = 'Over capacity: ';
+          } else if (utilization >= 90) {
+            prefix = 'Near capacity: ';
+          }
+
+          if (status === 'leave') {
+            label = `${prefix}Leave + ${baseLabel}${capText}`;
           } else if (status === 'travel') {
-            label = `Travel + ${taskCount} task${taskCount > 1 ? 's' : ''}`;
-          } else if (status === 'leave') {
-            label = `Leave + ${taskCount} task${taskCount > 1 ? 's' : ''}`;
+            label = `${prefix}Travel + ${baseLabel}${capText}`;
+          } else {
+            label = `${prefix}${baseLabel}${capText}`;
           }
         }
 
@@ -1064,12 +1230,24 @@ function PresalesOverview() {
                       <td className="td-center">{w.total}</td>
                       <td className="td-center">{w.open}</td>
                       <td className="td-center overdue">{w.overdue}</td>
+                              
                       <td className="td-center">
-                        {Math.round(w.utilThisWeek)}%
-                      </td>
-                      <td className="td-center">
-                        {Math.round(w.utilNextWeek)}%
-                      </td>
+  <div>
+    <div>{Math.round(w.utilThisWeek)}%</div>
+    <div style={{ fontSize: '11px', opacity: 0.8 }}>
+      {getUtilLabel(Math.round(w.utilThisWeek))}
+    </div>
+  </div>
+</td>
+<td className="td-center">
+  <div>
+    <div>{Math.round(w.utilNextWeek)}%</div>
+    <div style={{ fontSize: '11px', opacity: 0.8 }}>
+      {getUtilLabel(Math.round(w.utilNextWeek))}
+    </div>
+  </div>
+</td>
+                        
                       <td className="td-center">
                         {Math.round(w.overdueRateLast30)}%
                       </td>
@@ -1351,6 +1529,59 @@ function PresalesOverview() {
       </section>
 
       {/* CRUNCH DAYS */}
+      {/* WEEKLY COMMITMENT BY PROJECT */}
+      <section className="presales-commitment-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Target size={16} className="panel-icon" />
+                Weekly presales commitment by project
+              </h3>
+              <p>
+                How each presales’ next week hours are distributed across projects.
+              </p>
+            </div>
+          </div>
+
+          {commitmentByProject.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No upcoming work scheduled for this or next week.</p>
+            </div>
+          ) : (
+            <div className="commitment-list">
+              {commitmentByProject.map((entry) => (
+                <div key={entry.assignee} className="commitment-item">
+                  <div className="commitment-header">
+                    <div className="wl-avatar">
+                      {(entry.assignee || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="commitment-header-text">
+                      <div className="commitment-name">{entry.assignee}</div>
+                      <div className="commitment-sub">
+                        Next week: {entry.totalNextWeek.toFixed(1)}h
+                      </div>
+                    </div>
+                  </div>
+                  <ul className="commitment-project-list">
+                    {entry.projects.slice(0, 4).map((p) => (
+                      <li key={p.projectId} className="commitment-project-item">
+                        <span className="commitment-project-name">
+                          {p.projectName}
+                        </span>
+                        <span className="commitment-project-hours">
+                          {p.nextWeekHours.toFixed(1)}h
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
       <section className="presales-crunch-section">
         <div className="presales-panel">
           <div className="presales-panel-header">
