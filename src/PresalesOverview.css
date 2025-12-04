@@ -1157,3 +1157,40 @@
     width: 100%;
   }
 }
+.presales-taskmix-section {
+  margin-top: 24px;
+}
+
+.taskmix-table-wrapper {
+  overflow-x: auto;
+  padding-top: 4px;
+}
+
+.taskmix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.taskmix-table th,
+.taskmix-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.taskmix-table th {
+  font-weight: 600;
+  color: #555;
+  text-align: left;
+}
+
+.taskmix-table .th-center,
+.taskmix-table .td-center {
+  text-align: center;
+}
+
+.taskmix-footer {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #666;
+}
