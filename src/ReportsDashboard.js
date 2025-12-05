@@ -1,5 +1,5 @@
 // ReportsDashboard.js
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FaChartLine,
   FaTrophy,
@@ -8,12 +8,385 @@ import {
   FaFlag,
   FaGlobeAsia
 } from 'react-icons/fa';
+import { supabase } from './supabaseClient';
 import './ReportsDashboard.css';
 
+// Treat these as "closed" for pipeline purposes
+const CLOSED_STAGES_FOR_PIPELINE = [
+  'Closed-Won',
+  'Closed-Lost',
+  'Closed-Cancelled/Hold',
+  'Done'
+];
+
+const WON_STAGES = ['Closed-Won', 'Won'];
+const LOST_STAGES = ['Closed-Lost', 'Lost'];
+const CANCELLED_STAGES = ['Closed-Cancelled/Hold', 'Cancelled', 'On Hold'];
+
+const formatCurrency = (value) => {
+  const num = Number(value);
+  if (!value && value !== 0) return '–';
+  if (Number.isNaN(num)) return '–';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(num);
+};
+
+const formatPercent = (value) => {
+  if (value === null || value === undefined) return '–';
+  const num = Number(value);
+  if (Number.isNaN(num)) return '–';
+  return `${num.toFixed(0)}%`;
+};
+
 function ReportsDashboard() {
-  // Later we will:
-  // - Add Supabase queries here (projects + project_tasks)
-  // - Compute KPIs for the selected period
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // For now we hardcode "Last 90 days"
+  const [period, setPeriod] = useState('last90'); // future: 'ytd', 'all'
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [projectsRes, tasksRes, customersRes] = await Promise.all([
+          supabase
+            .from('projects')
+            .select('id, project_name, customer_name, sales_stage, deal_value, created_at'),
+          supabase
+            .from('project_tasks')
+            .select('id, task_type, status, due_date, created_at'),
+          supabase
+            .from('customers')
+            .select('id, customer_name, customer_country')
+        ]);
+
+        if (projectsRes.error) throw projectsRes.error;
+        if (tasksRes.error) throw tasksRes.error;
+        if (customersRes.error) throw customersRes.error;
+
+        setProjects(projectsRes.data || []);
+        setTasks(tasksRes.data || []);
+        setCustomers(customersRes.data || []);
+      } catch (err) {
+        console.error('Error loading reports data:', err);
+        setError('Failed to load report data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Time period boundaries (only used for some KPIs)
+  const { periodStart, periodEnd } = useMemo(() => {
+    const today = new Date();
+    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
+    if (period === 'last90') {
+      const start = new Date();
+      start.setDate(start.getDate() - 90);
+      return { periodStart: start, periodEnd: end };
+    }
+
+    if (period === 'ytd') {
+      const start = new Date(today.getFullYear(), 0, 1);
+      return { periodStart: start, periodEnd: end };
+    }
+
+    // 'all' – effectively no filter
+    return { periodStart: null, periodEnd: end };
+  }, [period]);
+
+  const projectsInPeriod = useMemo(() => {
+    if (!periodStart) return projects; // "all time"
+    return projects.filter((p) => {
+      if (!p.created_at) return false;
+      const created = new Date(p.created_at);
+      return created >= periodStart && created <= periodEnd;
+    });
+  }, [projects, periodStart, periodEnd]);
+
+  const tasksInPeriod = useMemo(() => {
+    if (!periodStart) return tasks;
+    return tasks.filter((t) => {
+      if (!t.created_at) return false;
+      const created = new Date(t.created_at);
+      return created >= periodStart && created <= periodEnd;
+    });
+  }, [tasks, periodStart, periodEnd]);
+
+  // Build customer -> country map
+  const customerCountryMap = useMemo(() => {
+    const map = new Map();
+    customers.forEach((c) => {
+      if (c.customer_name) {
+        map.set(c.customer_name, c.customer_country || 'Unknown');
+      }
+    });
+    return map;
+  }, [customers]);
+
+  // ===== KPI SUMMARY =====
+  const {
+    winRate,
+    closedWonValue,
+    activePipelineValue,
+    rfpCount,
+    demosPoCsCount,
+    overduePercent
+  } = useMemo(() => {
+    // Win / loss based on projectsInPeriod
+    const wonProjects = projectsInPeriod.filter((p) =>
+      WON_STAGES.includes(p.sales_stage || '')
+    );
+    const lostProjects = projectsInPeriod.filter((p) =>
+      LOST_STAGES.includes(p.sales_stage || '')
+    );
+    const cancelledProjects = projectsInPeriod.filter((p) =>
+      CANCELLED_STAGES.includes(p.sales_stage || '')
+    );
+
+    const closedForWinRate = [...wonProjects, ...lostProjects];
+    const wonCount = wonProjects.length;
+    const closedCount = closedForWinRate.length;
+
+    const winRateVal =
+      closedCount > 0 ? (wonCount / closedCount) * 100 : null;
+
+    const closedWonValueVal = wonProjects.reduce((sum, p) => {
+      const v = Number(p.deal_value) || 0;
+      return sum + v;
+    }, 0);
+
+    // Active pipeline: any project NOT in closed/cancelled/done group
+    const activeProjects = projects.filter(
+      (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage || '')
+    );
+    const activePipelineValueVal = activeProjects.reduce((sum, p) => {
+      const v = Number(p.deal_value) || 0;
+      return sum + v;
+    }, 0);
+
+    // RFP / Proposals (tasks)
+    const rfpTypes = ['RFP / Proposal', 'RFI'];
+    const rfpCountVal = tasksInPeriod.filter(
+      (t) =>
+        t.status === 'Completed' &&
+        rfpTypes.includes(t.task_type || '')
+    ).length;
+
+    // Demos & PoCs
+    const demoPoCTypes = ['Demo / Walkthrough', 'PoC / Sandbox'];
+    const demosPoCsCountVal = tasksInPeriod.filter(
+      (t) =>
+        t.status === 'Completed' &&
+        demoPoCTypes.includes(t.task_type || '')
+    ).length;
+
+    // Overdue tasks %
+    const now = new Date();
+    const tasksWithDueDate = tasks.filter((t) => t.due_date);
+    const overdueTasks = tasksWithDueDate.filter((t) => {
+      const due = new Date(t.due_date);
+      return due < now && t.status !== 'Completed';
+    });
+
+    const overduePct =
+      tasksWithDueDate.length > 0
+        ? (overdueTasks.length / tasksWithDueDate.length) * 100
+        : null;
+
+    return {
+      winRate: winRateVal,
+      closedWonValue: closedWonValueVal,
+      activePipelineValue: activePipelineValueVal,
+      rfpCount: rfpCountVal,
+      demosPoCsCount: demosPoCsCountVal,
+      overduePercent: overduePct
+    };
+  }, [projects, projectsInPeriod, tasks, tasksInPeriod]);
+
+  // ===== WIN / LOSS OVERVIEW TABLE =====
+  const winLossStats = useMemo(() => {
+    const won = projectsInPeriod.filter((p) =>
+      WON_STAGES.includes(p.sales_stage || '')
+    );
+    const lost = projectsInPeriod.filter((p) =>
+      LOST_STAGES.includes(p.sales_stage || '')
+    );
+    const cancelled = projectsInPeriod.filter((p) =>
+      CANCELLED_STAGES.includes(p.sales_stage || '')
+    );
+    const doneGeneric = projectsInPeriod.filter(
+      (p) => (p.sales_stage || '') === 'Done'
+    );
+
+    const sumValue = (arr) =>
+      arr.reduce((sum, p) => sum + (Number(p.deal_value) || 0), 0);
+
+    return {
+      wonCount: won.length,
+      wonValue: sumValue(won),
+      lostCount: lost.length,
+      lostValue: sumValue(lost),
+      cancelledCount: cancelled.length,
+      cancelledValue: sumValue(cancelled),
+      doneCount: doneGeneric.length,
+      doneValue: sumValue(doneGeneric)
+    };
+  }, [projectsInPeriod]);
+
+  // ===== PIPELINE BY STAGE =====
+  const pipelineByStage = useMemo(() => {
+    if (!projects || projects.length === 0) return [];
+
+    const stageMap = new Map();
+
+    projects.forEach((p) => {
+      const stage = p.sales_stage || 'Unknown';
+      const value = Number(p.deal_value) || 0;
+
+      if (!stageMap.has(stage)) {
+        stageMap.set(stage, {
+          stage,
+          count: 0,
+          value: 0
+        });
+      }
+
+      const entry = stageMap.get(stage);
+      entry.count += 1;
+      entry.value += value;
+    });
+
+    const list = Array.from(stageMap.values());
+
+    // Simple ordering: keep "lead to close" closer together if using standard labels
+    const ORDER = ['Lead', 'Opportunity', 'Proposal', 'RFP', 'SoW', 'Contracting', 'Done'];
+    list.sort((a, b) => {
+      const ia = ORDER.indexOf(a.stage);
+      const ib = ORDER.indexOf(b.stage);
+      if (ia === -1 && ib === -1) return a.stage.localeCompare(b.stage);
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+
+    return list;
+  }, [projects]);
+
+  // ===== ACTIVITY BY TASK TYPE =====
+  const activityByTaskType = useMemo(() => {
+    if (!tasksInPeriod || tasksInPeriod.length === 0) return [];
+
+    const typeMap = new Map();
+    tasksInPeriod.forEach((t) => {
+      const type = t.task_type || 'Uncategorized';
+      if (!typeMap.has(type)) {
+        typeMap.set(type, { type, completed: 0 });
+      }
+      if (t.status === 'Completed') {
+        typeMap.get(type).completed += 1;
+      }
+    });
+
+    const list = Array.from(typeMap.values());
+    // Sort by most completed
+    list.sort((a, b) => b.completed - a.completed);
+    return list;
+  }, [tasksInPeriod]);
+
+  // ===== PIPELINE BY COUNTRY =====
+  const pipelineByCountry = useMemo(() => {
+    if (!projects || projects.length === 0) return [];
+
+    const countryMap = new Map();
+
+    projects.forEach((p) => {
+      const stage = p.sales_stage || '';
+      // Only active pipeline by country
+      if (CLOSED_STAGES_FOR_PIPELINE.includes(stage)) return;
+
+      const customerName = p.customer_name || '';
+      const country = customerCountryMap.get(customerName) || 'Unknown';
+      const value = Number(p.deal_value) || 0;
+
+      if (!countryMap.has(country)) {
+        countryMap.set(country, { country, count: 0, value: 0 });
+      }
+      const entry = countryMap.get(country);
+      entry.count += 1;
+      entry.value += value;
+    });
+
+    const list = Array.from(countryMap.values());
+    list.sort((a, b) => b.value - a.value);
+    return list;
+  }, [projects, customerCountryMap]);
+
+  const totalPipelineValueForCountry = useMemo(() => {
+    return pipelineByCountry.reduce((sum, c) => sum + c.value, 0);
+  }, [pipelineByCountry]);
+
+  const getCountryShare = (value) => {
+    if (!totalPipelineValueForCountry) return null;
+    const pct = (value / totalPipelineValueForCountry) * 100;
+    return pct;
+  };
+
+  // ===== RENDERING =====
+
+  const handleFilterClick = (value) => {
+    setPeriod(value);
+  };
+
+  if (loading) {
+    return (
+      <div className="reports-page">
+        <header className="reports-header">
+          <div className="reports-header-left">
+            <h1 className="reports-title">Presales Reports & Analytics</h1>
+            <p className="reports-subtitle">
+              High-level view of presales performance, pipeline, and activity.
+            </p>
+          </div>
+        </header>
+        <div className="reports-loading">
+          <div className="reports-loading-spinner" />
+          <span>Loading reports...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="reports-page">
+        <header className="reports-header">
+          <div className="reports-header-left">
+            <h1 className="reports-title">Presales Reports & Analytics</h1>
+            <p className="reports-subtitle">
+              High-level view of presales performance, pipeline, and activity.
+            </p>
+          </div>
+        </header>
+        <div className="reports-error">
+          <span>{error}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="reports-page">
@@ -25,15 +398,36 @@ function ReportsDashboard() {
             High-level view of presales performance, pipeline, and activity.
           </p>
         </div>
-        {/* Placeholder for future filters (date range, country, etc.) */}
+
         <div className="reports-filters">
-          <button className="reports-filter-chip reports-filter-chip-active">
+          <button
+            className={
+              period === 'last90'
+                ? 'reports-filter-chip reports-filter-chip-active'
+                : 'reports-filter-chip'
+            }
+            onClick={() => handleFilterClick('last90')}
+          >
             Last 90 days
           </button>
-          <button className="reports-filter-chip">
+          <button
+            className={
+              period === 'ytd'
+                ? 'reports-filter-chip reports-filter-chip-active'
+                : 'reports-filter-chip'
+            }
+            onClick={() => handleFilterClick('ytd')}
+          >
             Year to date
           </button>
-          <button className="reports-filter-chip">
+          <button
+            className={
+              period === 'all'
+                ? 'reports-filter-chip reports-filter-chip-active'
+                : 'reports-filter-chip'
+            }
+            onClick={() => handleFilterClick('all')}
+          >
             All time
           </button>
         </div>
@@ -58,8 +452,12 @@ function ReportsDashboard() {
                 <FaTrophy />
                 <span>Win rate</span>
               </div>
-              <div className="reports-kpi-value">– %</div>
-              <div className="reports-kpi-hint">Closed-won vs closed-lost</div>
+              <div className="reports-kpi-value">
+                {formatPercent(winRate)}
+              </div>
+              <div className="reports-kpi-hint">
+                Closed-won vs closed-lost (based on project stages)
+              </div>
             </div>
 
             <div className="reports-kpi-card">
@@ -67,8 +465,12 @@ function ReportsDashboard() {
                 <FaDollarSign />
                 <span>Closed-won value</span>
               </div>
-              <div className="reports-kpi-value">–</div>
-              <div className="reports-kpi-hint">Deals won in selected period</div>
+              <div className="reports-kpi-value">
+                {formatCurrency(closedWonValue)}
+              </div>
+              <div className="reports-kpi-hint">
+                Deals won in selected period
+              </div>
             </div>
 
             <div className="reports-kpi-card">
@@ -76,8 +478,12 @@ function ReportsDashboard() {
                 <FaChartLine />
                 <span>Active pipeline</span>
               </div>
-              <div className="reports-kpi-value">–</div>
-              <div className="reports-kpi-hint">Open opportunities by value</div>
+              <div className="reports-kpi-value">
+                {formatCurrency(activePipelineValue)}
+              </div>
+              <div className="reports-kpi-hint">
+                Open opportunities by value (all time)
+              </div>
             </div>
 
             <div className="reports-kpi-card">
@@ -85,8 +491,10 @@ function ReportsDashboard() {
                 <FaTasks />
                 <span>RFP / Proposals</span>
               </div>
-              <div className="reports-kpi-value">–</div>
-              <div className="reports-kpi-hint">Completed in selected period</div>
+              <div className="reports-kpi-value">{rfpCount || 0}</div>
+              <div className="reports-kpi-hint">
+                Completed in selected period
+              </div>
             </div>
 
             <div className="reports-kpi-card">
@@ -94,8 +502,10 @@ function ReportsDashboard() {
                 <FaTasks />
                 <span>Demos & PoCs</span>
               </div>
-              <div className="reports-kpi-value">–</div>
-              <div className="reports-kpi-hint">Delivered to customers</div>
+              <div className="reports-kpi-value">{demosPoCsCount || 0}</div>
+              <div className="reports-kpi-hint">
+                Delivered to customers (selected period)
+              </div>
             </div>
 
             <div className="reports-kpi-card">
@@ -103,8 +513,12 @@ function ReportsDashboard() {
                 <FaFlag />
                 <span>Overdue tasks</span>
               </div>
-              <div className="reports-kpi-value">– %</div>
-              <div className="reports-kpi-hint">Share of tasks beyond due date</div>
+              <div className="reports-kpi-value">
+                {formatPercent(overduePercent)}
+              </div>
+              <div className="reports-kpi-hint">
+                Share of tasks beyond due date
+              </div>
             </div>
           </div>
         </section>
@@ -117,7 +531,7 @@ function ReportsDashboard() {
               <h2>Win / Loss Overview</h2>
             </div>
             <p className="reports-section-subtitle">
-              How many deals we won, lost, or cancelled in the selected period.
+              Deals we won, lost, or closed in the selected period (by project stage).
             </p>
           </div>
 
@@ -127,20 +541,25 @@ function ReportsDashboard() {
               <span>Count</span>
               <span>Total value</span>
             </div>
-            <div className="reports-table-row reports-row-muted">
+            <div className="reports-table-row">
               <span>Won</span>
-              <span>–</span>
-              <span>–</span>
+              <span>{winLossStats.wonCount}</span>
+              <span>{formatCurrency(winLossStats.wonValue)}</span>
             </div>
-            <div className="reports-table-row reports-row-muted">
+            <div className="reports-table-row">
               <span>Lost</span>
-              <span>–</span>
-              <span>–</span>
+              <span>{winLossStats.lostCount}</span>
+              <span>{formatCurrency(winLossStats.lostValue)}</span>
             </div>
-            <div className="reports-table-row reports-row-muted">
+            <div className="reports-table-row">
               <span>Cancelled / On hold</span>
-              <span>–</span>
-              <span>–</span>
+              <span>{winLossStats.cancelledCount}</span>
+              <span>{formatCurrency(winLossStats.cancelledValue)}</span>
+            </div>
+            <div className="reports-table-row">
+              <span>Completed (Done)</span>
+              <span>{winLossStats.doneCount}</span>
+              <span>{formatCurrency(winLossStats.doneValue)}</span>
             </div>
           </div>
         </section>
@@ -153,7 +572,7 @@ function ReportsDashboard() {
               <h2>Pipeline by Stage</h2>
             </div>
             <p className="reports-section-subtitle">
-              Distribution of opportunities across sales stages.
+              Distribution of opportunities across sales stages (current snapshot).
             </p>
           </div>
 
@@ -163,27 +582,21 @@ function ReportsDashboard() {
               <span>Deals</span>
               <span>Pipeline value</span>
             </div>
-            {/* Placeholder rows */}
-            <div className="reports-table-row reports-row-muted">
-              <span>Discovery</span>
-              <span>–</span>
-              <span>–</span>
-            </div>
-            <div className="reports-table-row reports-row-muted">
-              <span>Demo / PoC</span>
-              <span>–</span>
-              <span>–</span>
-            </div>
-            <div className="reports-table-row reports-row-muted">
-              <span>RFP / SoW</span>
-              <span>–</span>
-              <span>–</span>
-            </div>
-            <div className="reports-table-row reports-row-muted">
-              <span>Contracting</span>
-              <span>–</span>
-              <span>–</span>
-            </div>
+            {pipelineByStage.length === 0 ? (
+              <div className="reports-table-row reports-row-muted">
+                <span>No projects found</span>
+                <span>–</span>
+                <span>–</span>
+              </div>
+            ) : (
+              pipelineByStage.map((s) => (
+                <div key={s.stage} className="reports-table-row">
+                  <span>{s.stage}</span>
+                  <span>{s.count}</span>
+                  <span>{formatCurrency(s.value)}</span>
+                </div>
+              ))
+            )}
           </div>
         </section>
 
@@ -195,7 +608,7 @@ function ReportsDashboard() {
               <h2>Activity by Task Type</h2>
             </div>
             <p className="reports-section-subtitle">
-              How presales time is used across demos, RFPs, PoCs, and internal work.
+              How presales time is used across demos, RFPs, PoCs, and internal work (selected period).
             </p>
           </div>
 
@@ -204,26 +617,19 @@ function ReportsDashboard() {
               <span>Task type</span>
               <span>Completed (period)</span>
             </div>
-            <div className="reports-table-row reports-row-muted">
-              <span>RFP / Proposal</span>
-              <span>–</span>
-            </div>
-            <div className="reports-table-row reports-row-muted">
-              <span>Demo / Walkthrough</span>
-              <span>–</span>
-            </div>
-            <div className="reports-table-row reports-row-muted">
-              <span>PoC / Sandbox</span>
-              <span>–</span>
-            </div>
-            <div className="reports-table-row reports-row-muted">
-              <span>Discovery / Workshop</span>
-              <span>–</span>
-            </div>
-            <div className="reports-table-row reports-row-muted">
-              <span>Internal / Admin</span>
-              <span>–</span>
-            </div>
+            {activityByTaskType.length === 0 ? (
+              <div className="reports-table-row reports-row-muted">
+                <span>No tasks found for this period</span>
+                <span>–</span>
+              </div>
+            ) : (
+              activityByTaskType.map((t) => (
+                <div key={t.type} className="reports-table-row">
+                  <span>{t.type}</span>
+                  <span>{t.completed}</span>
+                </div>
+              ))
+            )}
           </div>
         </section>
 
@@ -235,7 +641,7 @@ function ReportsDashboard() {
               <h2>Pipeline by Country</h2>
             </div>
             <p className="reports-section-subtitle">
-              Which markets are driving the most opportunities and value.
+              Which markets are driving the most active opportunities and value.
             </p>
           </div>
 
@@ -245,11 +651,28 @@ function ReportsDashboard() {
               <span>Active deals</span>
               <span>Pipeline value</span>
             </div>
-            <div className="reports-table-row reports-row-muted">
-              <span>–</span>
-              <span>–</span>
-              <span>–</span>
-            </div>
+            {pipelineByCountry.length === 0 ? (
+              <div className="reports-table-row reports-row-muted">
+                <span>No active pipeline</span>
+                <span>–</span>
+                <span>–</span>
+              </div>
+            ) : (
+              pipelineByCountry.map((c) => (
+                <div key={c.country} className="reports-table-row">
+                  <span>
+                    {c.country}
+                    {(() => {
+                      const share = getCountryShare(c.value);
+                      if (!share) return null;
+                      return ` (${share.toFixed(0)}%)`;
+                    })()}
+                  </span>
+                  <span>{c.count}</span>
+                  <span>{formatCurrency(c.value)}</span>
+                </div>
+              ))
+            )}
           </div>
         </section>
       </main>
