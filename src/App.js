@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import Projects from './Projects';
-//import TodayTasks from './TodayTasks';
+// TodayTasks removed from main page
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
 import PresalesOverview from './PresalesOverview'; // New page
@@ -79,18 +79,18 @@ function App() {
 
               {/* Left side title */}
               <div className="header-info">
-                <h1 className="section-title">Jonathan's Command Center</h1>
-                <p className="dashboard-subtitle">The Procrastinator's Paradise</p>
+                <h1 className="section-title">Jonathan&apos;s Command Center</h1>
+                <p className="dashboard-subtitle">The Procrastinator&apos;s Paradise</p>
               </div>
 
-              {/* Right side: status + new Presales Overview link */}
+              {/* Right side: status + Presales Overview link */}
               <div className="header-status">
 
                 {/* Online indicator */}
                 <div className="status-indicator"></div>
                 <span className="status-text">Online</span>
 
-                {/* --- NEW: Link to Presales Overview --- */}
+                {/* Link to Presales Overview */}
                 <Link 
                   to="/presales-overview"
                   className="presales-nav-link"
@@ -106,8 +106,8 @@ function App() {
                     transition: '0.2s',
                     whiteSpace: 'nowrap'
                   }}
-                  onMouseOver={(e) => e.target.style.opacity = '0.85'}
-                  onMouseOut={(e) => e.target.style.opacity = '1'}
+                  onMouseOver={(e) => { e.target.style.opacity = '0.85'; }}
+                  onMouseOut={(e) => { e.target.style.opacity = '1'; }}
                 >
                   Presales Overview
                 </Link>
@@ -123,12 +123,7 @@ function App() {
               element={
                 <main className="dashboard-main">
                   <div className="dashboard-bottom">
-                    {/* Tasks */}
-                    <div className="widget-card tasks-widget">
-                      <TodayTasks />
-                    </div>
-
-                    {/* Projects */}
+                    {/* Projects only (TodayTasks removed) */}
                     <div className="widget-card projects-widget">
                       <Projects />
                     </div>
@@ -137,10 +132,10 @@ function App() {
               }
             />
 
-            {/* New Page */}
+            {/* Presales Overview page */}
             <Route path="/presales-overview" element={<PresalesOverview />} />
 
-            {/* Detail Pages */}
+            {/* Detail pages */}
             <Route path="/project/:id" element={<ProjectDetails />} />
             <Route path="/customer/:customerId" element={<CustomerDetails />} />
           </Routes>
