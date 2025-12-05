@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import Projects from './Projects';
-// TodayTasks removed from main page
+// import TodayTasks from './TodayTasks'; // Removed from use
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
 import PresalesOverview from './PresalesOverview'; // New page
@@ -15,18 +15,20 @@ function App() {
 
   useEffect(() => {
     autoAuthenticate();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
     return () => subscription?.unsubscribe();
   }, []);
 
   const autoAuthenticate = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
         setLoading(false);
@@ -38,13 +40,13 @@ function App() {
 
       let { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: defaultEmail,
-        password: defaultPassword
+        password: defaultPassword,
       });
 
       if (signInError && signInError.message.includes('Invalid login credentials')) {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: defaultEmail,
-          password: defaultPassword
+          password: defaultPassword,
         });
         if (!signUpError) {
           setUser(signUpData.user);
@@ -72,11 +74,9 @@ function App() {
     <Router basename="/presales-dashboard">
       <div className="app-wrapper">
         <div className="main-container">
-          
           {/* ---------- HEADER ---------- */}
           <header className="dashboard-header">
             <div className="header-content">
-
               {/* Left side title */}
               <div className="header-info">
                 <h1 className="section-title">Jonathan&apos;s Command Center</h1>
@@ -85,13 +85,12 @@ function App() {
 
               {/* Right side: status + Presales Overview link */}
               <div className="header-status">
-
                 {/* Online indicator */}
                 <div className="status-indicator"></div>
                 <span className="status-text">Online</span>
 
                 {/* Link to Presales Overview */}
-                <Link 
+                <Link
                   to="/presales-overview"
                   className="presales-nav-link"
                   style={{
@@ -104,10 +103,14 @@ function App() {
                     fontWeight: 500,
                     textDecoration: 'none',
                     transition: '0.2s',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
                   }}
-                  onMouseOver={(e) => { e.target.style.opacity = '0.85'; }}
-                  onMouseOut={(e) => { e.target.style.opacity = '1'; }}
+                  onMouseOver={(e) => {
+                    e.target.style.opacity = '0.85';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.opacity = '1';
+                  }}
                 >
                   Presales Overview
                 </Link>
@@ -132,10 +135,10 @@ function App() {
               }
             />
 
-            {/* Presales Overview page */}
+            {/* Presales Overview Page */}
             <Route path="/presales-overview" element={<PresalesOverview />} />
 
-            {/* Detail pages */}
+            {/* Detail Pages */}
             <Route path="/project/:id" element={<ProjectDetails />} />
             <Route path="/customer/:customerId" element={<CustomerDetails />} />
           </Routes>
