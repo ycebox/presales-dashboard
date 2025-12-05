@@ -6,6 +6,7 @@ import Projects from './Projects';
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
 import PresalesOverview from './PresalesOverview';
+import TopDealsToWatch from './TopDealsToWatch'; // ⬅️ NEW
 import './App.css';
 
 function App() {
@@ -115,11 +116,19 @@ function App() {
           {/* ---------- END HEADER ---------- */}
 
           <Routes>
-            {/* Main page — Projects only */}
+            {/* Main page — Top deals + Projects */}
             <Route
               path="/"
               element={
                 <main className="dashboard-main">
+                  {/* Top Deals widget */}
+                  <div className="dashboard-top">
+                    <div className="widget-card">
+                      <TopDealsToWatch />
+                    </div>
+                  </div>
+
+                  {/* Projects */}
                   <div className="dashboard-bottom">
                     <div className="widget-card projects-widget">
                       <Projects />
