@@ -38,6 +38,16 @@ const PRODUCTS = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
 
 const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'];
 
+const TASK_TYPES = [
+  'RFP / Proposal',
+  'Demo / Walkthrough',
+  'PoC / Sandbox',
+  'Discovery / Workshop',
+  'Internal Prep',
+  'Admin / Reporting',
+  'Other',
+];
+
 // Utility Functions
 const normalizeModulesArray = (modules) => {
   if (!modules) return [];
@@ -140,7 +150,7 @@ const getSalesStageClass = (stage) => {
   return 'stage-active';
 };
 
-// ---------- Task Modal (with dropdown + start/end dates + estimated hours) ----------
+// ---------- Task Modal (with dropdown + start/end dates + estimated hours + task_type) ----------
 const TaskModal = ({
   isOpen,
   onClose,
@@ -158,24 +168,26 @@ const TaskModal = ({
     notes: '',
     assignee: '',
     estimated_hours: '',
+    task_type: '',
   });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (editingTask) {
-  setTaskData({
-  description: editingTask.description || '',
-  status: editingTask.status || 'Not Started',
-  start_date: editingTask.start_date || '',
-  end_date: editingTask.end_date || '',
-  due_date: editingTask.due_date || '',
-  notes: editingTask.notes || '',
-  assignee: editingTask.assignee || '',
-  estimated_hours:
-    typeof editingTask.estimated_hours === 'number'
-      ? editingTask.estimated_hours
-      : '',
-});
+      setTaskData({
+        description: editingTask.description || '',
+        status: editingTask.status || 'Not Started',
+        start_date: editingTask.start_date || '',
+        end_date: editingTask.end_date || '',
+        due_date: editingTask.due_date || '',
+        notes: editingTask.notes || '',
+        assignee: editingTask.assignee || '',
+        estimated_hours:
+          typeof editingTask.estimated_hours === 'number'
+            ? editingTask.estimated_hours
+            : '',
+        task_type: editingTask.task_type || '',
+      });
     } else {
       setTaskData({
         description: '',
@@ -185,7 +197,8 @@ const TaskModal = ({
         due_date: '',
         notes: '',
         assignee: '',
-        estimated_hours: DEFAULT_TASK_HOURS
+        estimated_hours: DEFAULT_TASK_HOURS,
+        task_type: '',
       });
     }
   }, [editingTask, isOpen]);
@@ -202,7 +215,7 @@ const TaskModal = ({
     }
   };
 
-    const parseLocalDate = (value) => {
+  const parseLocalDate = (value) => {
     if (!value) return null;
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return null;
@@ -473,6 +486,28 @@ const TaskModal = ({
               </select>
             </div>
 
+            {/* Task type */}
+            <div className="form-group">
+              <label htmlFor="task-type" className="form-label">
+                <FaInfo className="form-icon" />
+                Task Type
+              </label>
+              <select
+                id="task-type"
+                name="task_type"
+                className="form-select"
+                value={taskData.task_type || ''}
+                onChange={(e) => handleChange('task_type', e.target.value)}
+              >
+                <option value="">Select type</option>
+                {TASK_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Estimated hours */}
             <div className="form-group">
               <label htmlFor="task-estimated-hours" className="form-label">
@@ -492,21 +527,23 @@ const TaskModal = ({
                 placeholder="e.g. 2"
               />
             </div>
-{/* Capacity hint */}
-<div className="form-group full-width">
-  <div
-    style={{
-      fontSize: '12px',
-      opacity: 0.85,
-      display: 'flex',
-      gap: 6,
-      alignItems: 'center'
-    }}
-  >
-    <FaInfo />
-    <span>{capacityHint}</span>
-  </div>
-</div>
+
+            {/* Capacity hint */}
+            <div className="form-group full-width">
+              <div
+                style={{
+                  fontSize: '12px',
+                  opacity: 0.85,
+                  display: 'flex',
+                  gap: 6,
+                  alignItems: 'center'
+                }}
+              >
+                <FaInfo />
+                <span>{capacityHint}</span>
+              </div>
+            </div>
+
             {/* Start / End date */}
             <div className="form-group">
               <label htmlFor="task-start-date" className="form-label">
@@ -806,7 +843,7 @@ function ProjectDetails() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [editingLog, setEditingLog] = useState(null);
 
-  // NEW: presales resources for assignee dropdown
+  // presales resources for assignee dropdown
   const [presalesResources, setPresalesResources] = useState([]);
 
   useEffect(() => {
@@ -821,12 +858,12 @@ function ProjectDetails() {
   useEffect(() => {
     const fetchPresalesResources = async () => {
       try {
-  const { data, error } = await supabase
-  .from('presales_resources')
-  .select(
-    'id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day'
-  )
-  .order('name', { ascending: true });
+        const { data, error } = await supabase
+          .from('presales_resources')
+          .select(
+            'id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day'
+          )
+          .order('name', { ascending: true });
 
         if (error) {
           console.warn('Error loading presales_resources:', error.message);
@@ -1125,7 +1162,7 @@ function ProjectDetails() {
         <div className="main-column">
 
           {/* Project Details Section */}
-          {/* ... (unchanged content of project info section – same as last version) ... */}
+          {/* ... keep your existing project info section here ... */}
 
           {/* Tasks Section */}
           <section className="content-card">
@@ -1225,11 +1262,21 @@ function ProjectDetails() {
                               </div>
                             )}
 
+                            {/* Task type */}
+                            {task.task_type && (
+                              <div className="task-meta-item">
+                                <FaInfo className="meta-icon" />
+                                <span>{task.task_type}</span>
+                              </div>
+                            )}
+
                             {/* Estimated hours */}
                             {estHoursValid && (
                               <div className="task-meta-item">
                                 <FaClock className="meta-icon" />
-                                <span>Est. {estHours % 1 === 0 ? estHours.toFixed(0) : estHours.toFixed(1)}h</span>
+                                <span>
+                                  Est. {estHours % 1 === 0 ? estHours.toFixed(0) : estHours.toFixed(1)}h
+                                </span>
                               </div>
                             )}
 
@@ -1288,12 +1335,12 @@ function ProjectDetails() {
           </section>
         </div>
 
-        {/* Right sidebar (progress, activity log) stays same as your last version */}
+        {/* Right sidebar (progress, activity log, etc.) – keep your existing implementation here */}
         {/* ... */}
       </div>
 
       {/* Modals */}
-           <TaskModal
+      <TaskModal
         isOpen={showTaskModal}
         onClose={() => {
           setShowTaskModal(false);
