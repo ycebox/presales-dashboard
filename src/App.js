@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import Projects from './Projects';
-// import TodayTasks from './TodayTasks'; // Removed from use
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
-import PresalesOverview from './PresalesOverview'; // New page
+import PresalesOverview from './PresalesOverview';
+import PipelineHealthSummary from './PipelineHealthSummary'; // ⬅️ NEW
 import './App.css';
 
 function App() {
@@ -125,8 +125,15 @@ function App() {
               path="/"
               element={
                 <main className="dashboard-main">
+                  {/* Top row: Pipeline Health */}
+                  <div className="dashboard-top">
+                    <div className="widget-card">
+                      <PipelineHealthSummary />
+                    </div>
+                  </div>
+
+                  {/* Bottom row: Projects */}
                   <div className="dashboard-bottom">
-                    {/* Projects only (TodayTasks removed) */}
                     <div className="widget-card projects-widget">
                       <Projects />
                     </div>
