@@ -6,7 +6,6 @@ import Projects from './Projects';
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
 import PresalesOverview from './PresalesOverview';
-import PipelineHealthSummary from './PipelineHealthSummary'; // ⬅️ NEW
 import './App.css';
 
 function App() {
@@ -29,6 +28,7 @@ function App() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
       if (user) {
         setUser(user);
         setLoading(false);
@@ -48,9 +48,8 @@ function App() {
           email: defaultEmail,
           password: defaultPassword,
         });
-        if (!signUpError) {
-          setUser(signUpData.user);
-        }
+
+        if (!signUpError) setUser(signUpData.user);
       } else if (!signInError) {
         setUser(data.user);
       }
@@ -74,22 +73,22 @@ function App() {
     <Router basename="/presales-dashboard">
       <div className="app-wrapper">
         <div className="main-container">
+
           {/* ---------- HEADER ---------- */}
           <header className="dashboard-header">
             <div className="header-content">
+
               {/* Left side title */}
               <div className="header-info">
                 <h1 className="section-title">Jonathan&apos;s Command Center</h1>
                 <p className="dashboard-subtitle">The Procrastinator&apos;s Paradise</p>
               </div>
 
-              {/* Right side: status + Presales Overview link */}
+              {/* Right side: status + Presales Overview */}
               <div className="header-status">
-                {/* Online indicator */}
                 <div className="status-indicator"></div>
                 <span className="status-text">Online</span>
 
-                {/* Link to Presales Overview */}
                 <Link
                   to="/presales-overview"
                   className="presales-nav-link"
@@ -105,12 +104,8 @@ function App() {
                     transition: '0.2s',
                     whiteSpace: 'nowrap',
                   }}
-                  onMouseOver={(e) => {
-                    e.target.style.opacity = '0.85';
-                  }}
-                  onMouseOut={(e) => {
-                    e.target.style.opacity = '1';
-                  }}
+                  onMouseOver={(e) => (e.target.style.opacity = '0.85')}
+                  onMouseOut={(e) => (e.target.style.opacity = '1')}
                 >
                   Presales Overview
                 </Link>
@@ -120,19 +115,11 @@ function App() {
           {/* ---------- END HEADER ---------- */}
 
           <Routes>
-            {/* Main dashboard */}
+            {/* Main page — Projects only */}
             <Route
               path="/"
               element={
                 <main className="dashboard-main">
-                  {/* Top row: Pipeline Health */}
-                  <div className="dashboard-top">
-                    <div className="widget-card">
-                      <PipelineHealthSummary />
-                    </div>
-                  </div>
-
-                  {/* Bottom row: Projects */}
                   <div className="dashboard-bottom">
                     <div className="widget-card projects-widget">
                       <Projects />
@@ -142,13 +129,14 @@ function App() {
               }
             />
 
-            {/* Presales Overview Page */}
+            {/* Presales Overview */}
             <Route path="/presales-overview" element={<PresalesOverview />} />
 
-            {/* Detail Pages */}
+            {/* Details */}
             <Route path="/project/:id" element={<ProjectDetails />} />
             <Route path="/customer/:customerId" element={<CustomerDetails />} />
           </Routes>
+
         </div>
       </div>
     </Router>
