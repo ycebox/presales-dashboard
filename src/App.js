@@ -6,7 +6,7 @@ import Projects from './Projects';
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
 import PresalesOverview from './PresalesOverview';
-import TopDealsToWatch from './TopDealsToWatch'; // ⬅️ NEW
+import ReportsDashboard from './ReportsDashboard';
 import './App.css';
 
 function App() {
@@ -85,7 +85,7 @@ function App() {
                 <p className="dashboard-subtitle">The Procrastinator&apos;s Paradise</p>
               </div>
 
-              {/* Right side: status + Presales Overview */}
+              {/* Right side: status + links */}
               <div className="header-status">
                 <div className="status-indicator"></div>
                 <span className="status-text">Online</span>
@@ -110,25 +110,43 @@ function App() {
                 >
                   Presales Overview
                 </Link>
+
+                <Link
+                  to="/reports"
+                  className="presales-nav-link"
+                  style={{
+                    marginLeft: '8px',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: 'transparent',
+                    color: '#e5e7eb',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                    border: '1px solid rgba(148, 163, 184, 0.5)',
+                    transition: '0.2s',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.background = 'rgba(15, 23, 42, 0.9)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.background = 'transparent';
+                  }}
+                >
+                  Reports
+                </Link>
               </div>
             </div>
           </header>
           {/* ---------- END HEADER ---------- */}
 
           <Routes>
-            {/* Main page — Top deals + Projects */}
+            {/* Main page — Projects only */}
             <Route
               path="/"
               element={
                 <main className="dashboard-main">
-                  {/* Top Deals widget */}
-                  <div className="dashboard-top">
-                    <div className="widget-card">
-                      <TopDealsToWatch />
-                    </div>
-                  </div>
-
-                  {/* Projects */}
                   <div className="dashboard-bottom">
                     <div className="widget-card projects-widget">
                       <Projects />
@@ -140,6 +158,9 @@ function App() {
 
             {/* Presales Overview */}
             <Route path="/presales-overview" element={<PresalesOverview />} />
+
+            {/* Reports Dashboard */}
+            <Route path="/reports" element={<ReportsDashboard />} />
 
             {/* Details */}
             <Route path="/project/:id" element={<ProjectDetails />} />
