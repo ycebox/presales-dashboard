@@ -13,7 +13,6 @@ import {
 } from 'react-icons/fa';
 
 // Constants
-const DEFAULT_TASK_HOURS = 4;
 const SMARTVISTA_MODULES = [
   'SVFE - Switch',
   'SVFE - ATM',
@@ -38,16 +37,6 @@ const PRODUCTS = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
 
 const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'];
 
-const TASK_TYPES = [
-  'RFP / Proposal',
-  'Demo / Walkthrough',
-  'PoC / Sandbox',
-  'Discovery / Workshop',
-  'Internal Prep',
-  'Admin / Reporting',
-  'Other',
-];
-
 // Utility Functions
 const normalizeModulesArray = (modules) => {
   if (!modules) return [];
@@ -55,8 +44,8 @@ const normalizeModulesArray = (modules) => {
 
   if (typeof modules === 'string') {
     try {
-      const parsedModules = JSON.parse(modules);
-      if (Array.isArray(parsedModules)) return parsedModules;
+      const parsed = JSON.parse(modules);
+      if (Array.isArray(parsed)) return parsed;
     } catch (e) {
       return [modules];
     }
@@ -66,27 +55,27 @@ const normalizeModulesArray = (modules) => {
 
 const getStatusClass = (status) => {
   if (!status) return 'status-not-specified';
-  const statusLower = status.toLowerCase();
-  if (statusLower.includes('complet')) return 'status-completed';
-  if (statusLower.includes('progress') || statusLower.includes('active') || statusLower.includes('working')) return 'status-in-progress';
-  if (statusLower.includes('plan')) return 'status-planning';
-  if (statusLower.includes('hold') || statusLower.includes('pause')) return 'status-on-hold';
-  if (statusLower.includes('cancel')) return 'status-cancelled';
-  if (statusLower.includes('delay')) return 'status-delayed';
-  if (statusLower.includes('review')) return 'status-under-review';
+  const s = status.toLowerCase();
+  if (s.includes('complet')) return 'status-completed';
+  if (s.includes('progress') || s.includes('active') || s.includes('working')) return 'status-in-progress';
+  if (s.includes('plan')) return 'status-planning';
+  if (s.includes('hold') || s.includes('pause')) return 'status-on-hold';
+  if (s.includes('cancel')) return 'status-cancelled';
+  if (s.includes('delay')) return 'status-delayed';
+  if (s.includes('review')) return 'status-under-review';
   return 'status-in-progress';
 };
 
 const getStatusIcon = (status) => {
   if (!status) return <FaClock />;
-  const statusLower = status.toLowerCase();
-  if (statusLower.includes('complet')) return <FaCheckCircle />;
-  if (statusLower.includes('progress') || statusLower.includes('active') || statusLower.includes('working')) return <FaClock />;
-  if (statusLower.includes('plan')) return <FaLightbulb />;
-  if (statusLower.includes('hold') || statusLower.includes('pause')) return <FaExclamationTriangle />;
-  if (statusLower.includes('cancel')) return <FaTimes />;
-  if (statusLower.includes('delay')) return <FaExclamationTriangle />;
-  if (statusLower.includes('review')) return <FaEye />;
+  const s = status.toLowerCase();
+  if (s.includes('complet')) return <FaCheckCircle />;
+  if (s.includes('progress') || s.includes('active') || s.includes('working')) return <FaClock />;
+  if (s.includes('plan')) return <FaLightbulb />;
+  if (s.includes('hold') || s.includes('pause')) return <FaExclamationTriangle />;
+  if (s.includes('cancel')) return <FaTimes />;
+  if (s.includes('delay')) return <FaExclamationTriangle />;
+  if (s.includes('review')) return <FaEye />;
   return <FaClock />;
 };
 
@@ -98,21 +87,21 @@ const formatDate = (dateString) => {
       month: 'short',
       day: 'numeric'
     });
-  } catch (error) {
+  } catch (e) {
     return '-';
   }
 };
 
 const formatCurrency = (value) => {
-  if (!value) return '-';
+  if (!value && value !== 0) return '-';
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(parseFloat(value));
-  } catch (error) {
+    }).format(Number(value));
+  } catch (e) {
     return '-';
   }
 };
@@ -137,20 +126,24 @@ const getTaskStatusIcon = (status) => {
 };
 
 const getSalesStageIcon = (stage) => {
-  if (stage?.toLowerCase().includes('closed-won')) return <FaCheckCircle className="stage-won" />;
-  if (stage?.toLowerCase().includes('closed-lost')) return <FaExclamationTriangle className="stage-lost" />;
-  if (stage?.toLowerCase().includes('closed-cancelled')) return <FaTimes className="stage-cancelled" />;
+  if (!stage) return <FaRocket className="stage-active" />;
+  const s = stage.toLowerCase();
+  if (s.includes('closed-won')) return <FaCheckCircle className="stage-won" />;
+  if (s.includes('closed-lost')) return <FaExclamationTriangle className="stage-lost" />;
+  if (s.includes('closed-cancelled')) return <FaTimes className="stage-cancelled" />;
   return <FaRocket className="stage-active" />;
 };
 
 const getSalesStageClass = (stage) => {
-  if (stage?.toLowerCase().includes('closed-won')) return 'stage-won';
-  if (stage?.toLowerCase().includes('closed-lost')) return 'stage-lost';
-  if (stage?.toLowerCase().includes('closed-cancelled')) return 'stage-cancelled';
+  if (!stage) return 'stage-active';
+  const s = stage.toLowerCase();
+  if (s.includes('closed-won')) return 'stage-won';
+  if (s.includes('closed-lost')) return 'stage-lost';
+  if (s.includes('closed-cancelled')) return 'stage-cancelled';
   return 'stage-active';
 };
 
-// ---------- Task Modal (with dropdown + start/end dates + estimated hours + task_type) ----------
+// ---------- Task Modal ----------
 const TaskModal = ({
   isOpen,
   onClose,
@@ -158,6 +151,7 @@ const TaskModal = ({
   editingTask = null,
   presalesResources = [],
   tasks = [],
+  taskTypes = [],
 }) => {
   const [taskData, setTaskData] = useState({
     description: '',
@@ -167,8 +161,7 @@ const TaskModal = ({
     due_date: '',
     notes: '',
     assignee: '',
-    estimated_hours: '',
-    task_type: '',
+    task_type: ''
   });
   const [loading, setLoading] = useState(false);
 
@@ -182,11 +175,7 @@ const TaskModal = ({
         due_date: editingTask.due_date || '',
         notes: editingTask.notes || '',
         assignee: editingTask.assignee || '',
-        estimated_hours:
-          typeof editingTask.estimated_hours === 'number'
-            ? editingTask.estimated_hours
-            : '',
-        task_type: editingTask.task_type || '',
+        task_type: editingTask.task_type || ''
       });
     } else {
       setTaskData({
@@ -197,168 +186,15 @@ const TaskModal = ({
         due_date: '',
         notes: '',
         assignee: '',
-        estimated_hours: DEFAULT_TASK_HOURS,
-        task_type: '',
+        task_type: ''
       });
     }
   }, [editingTask, isOpen]);
 
   const handleChange = (field, value) => {
-    if (field === 'estimated_hours') {
-      const num = parseFloat(value);
-      setTaskData((prev) => ({
-        ...prev,
-        estimated_hours: Number.isNaN(num) ? '' : num,
-      }));
-    } else {
-      setTaskData((prev) => ({ ...prev, [field]: value }));
-    }
+    setTaskData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const parseLocalDate = (value) => {
-    if (!value) return null;
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return null;
-    d.setHours(0, 0, 0, 0);
-    return d;
-  };
-
-  const getDateRangeFromTaskData = () => {
-    const startStr = taskData.start_date || taskData.due_date || taskData.end_date;
-    const endStr = taskData.end_date || taskData.due_date || taskData.start_date;
-
-    const start = parseLocalDate(startStr);
-    const end = parseLocalDate(endStr);
-
-    if (!start && !end) return [];
-    const s = start || end;
-    const e = end || start;
-    if (!s || !e || e.getTime() < s.getTime()) return [];
-
-    const days = [];
-    const cur = new Date(s);
-    const endMid = new Date(e);
-    while (cur.getTime() <= endMid.getTime()) {
-      days.push(new Date(cur));
-      cur.setDate(cur.getDate() + 1);
-    }
-    return days;
-  };
-
-  const isTaskOnDayLocal = (task, day) => {
-    const d = new Date(day);
-    d.setHours(0, 0, 0, 0);
-
-    const startStr = task.start_date || task.due_date || task.end_date;
-    const endStr = task.end_date || task.due_date || task.start_date;
-
-    const start = parseLocalDate(startStr);
-    const end = parseLocalDate(endStr);
-
-    if (!start && !end) return false;
-    const s = start || end;
-    const e = end || start;
-    return d.getTime() >= s.getTime() && d.getTime() <= e.getTime();
-  };
-
-  const buildCapacityHint = () => {
-    // Need assignee + at least one date
-    if (
-      !taskData.assignee ||
-      (!taskData.start_date && !taskData.end_date && !taskData.due_date)
-    ) {
-      return 'Select an assignee and at least one date to see capacity impact.';
-    }
-
-    const presales = (presalesResources || []).find(
-      (p) => (p.name || p.email) === taskData.assignee
-    );
-    if (!presales) {
-      return 'No capacity settings found for this presales yet.';
-    }
-
-    const dailyCapacity =
-      typeof presales.daily_capacity_hours === 'number' &&
-      !Number.isNaN(presales.daily_capacity_hours)
-        ? presales.daily_capacity_hours
-        : 8;
-
-    const maxTasksPerDay =
-      Number.isInteger(presales.max_tasks_per_day) && presales.max_tasks_per_day > 0
-        ? presales.max_tasks_per_day
-        : 3;
-
-    const days = getDateRangeFromTaskData();
-    if (!days.length) {
-      return 'Select a valid date range to check capacity.';
-    }
-
-    const totalNewHours =
-      typeof taskData.estimated_hours === 'number' && !Number.isNaN(taskData.estimated_hours)
-        ? taskData.estimated_hours
-        : DEFAULT_TASK_HOURS;
-
-    const perDayNewHours = totalNewHours / days.length;
-
-    let worstUtil = 0;
-    let worstTasks = 0;
-    let worstDate = null;
-
-    days.forEach((day) => {
-      const existingTasks = (tasks || []).filter((t) => {
-        if (editingTask && t.id === editingTask.id) return false;
-        if (t.assignee !== taskData.assignee) return false;
-        if (['Completed', 'Done', 'Cancelled/On-hold'].includes(t.status)) return false;
-        return isTaskOnDayLocal(t, day);
-      });
-
-      const existingHours = existingTasks.reduce((sum, t) => {
-        const h =
-          typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours)
-            ? t.estimated_hours
-            : DEFAULT_TASK_HOURS;
-        return sum + h;
-      }, 0);
-
-      const totalHours = existingHours + perDayNewHours;
-      const tasksCount = existingTasks.length + 1;
-      const util = dailyCapacity ? (totalHours / dailyCapacity) * 100 : 0;
-
-      if (
-        util > worstUtil ||
-        tasksCount > worstTasks
-      ) {
-        worstUtil = util;
-        worstTasks = tasksCount;
-        worstDate = day;
-      }
-    });
-
-    if (!worstDate) {
-      return 'No other tasks found on these dates for this presales.';
-    }
-
-    const dateLabel = worstDate.toLocaleDateString('en-SG', {
-      day: '2-digit',
-      month: 'short',
-    });
-
-    let prefix = 'OK load';
-    if (worstUtil > 120 || worstTasks > maxTasksPerDay) {
-      prefix = 'Over capacity';
-    } else if (worstUtil >= 90) {
-      prefix = 'Near capacity';
-    } else if (worstUtil <= 40) {
-      prefix = 'Light load';
-    }
-
-    const roundedUtil = Math.round(worstUtil);
-
-    return `${prefix} on ${dateLabel}: ~${roundedUtil}% load, ${worstTasks} task(s) (limit ${maxTasksPerDay}).`;
-  };
-
-  const capacityHint = buildCapacityHint();
-  
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!taskData.description.trim()) {
@@ -372,18 +208,9 @@ const TaskModal = ({
       if (!ok) return;
     }
 
-    const est = parseFloat(taskData.estimated_hours);
-    if (isNaN(est) || est <= 0) {
-      alert('Please enter a valid estimated hours value greater than 0');
-      return;
-    }
-
     setLoading(true);
     try {
-      await onSave({
-        ...taskData,
-        estimated_hours: est
-      });
+      await onSave(taskData);
     } finally {
       setLoading(false);
     }
@@ -431,13 +258,12 @@ const TaskModal = ({
               />
             </div>
 
-            {/* Assignee dropdown */}
+            {/* Assignee */}
             <div className="form-group">
               <label htmlFor="task-assignee" className="form-label">
                 <FaUsers className="form-icon" />
                 Assignee
               </label>
-
               {hasPresalesList ? (
                 <select
                   id="task-assignee"
@@ -448,7 +274,7 @@ const TaskModal = ({
                 >
                   <option value="">Unassigned</option>
                   {presalesResources
-                    .filter(r => r.is_active !== false)
+                    .filter((r) => r.is_active !== false)
                     .map((r) => (
                       <option key={r.id} value={r.name}>
                         {r.name}{r.region ? ` (${r.region})` : ''}
@@ -462,7 +288,7 @@ const TaskModal = ({
                   value={taskData.assignee}
                   onChange={(e) => handleChange('assignee', e.target.value)}
                   className="form-input"
-                  placeholder="Who owns this task? (e.g. Jonathan, JP)"
+                  placeholder="Who owns this task?"
                 />
               )}
             </div>
@@ -480,71 +306,46 @@ const TaskModal = ({
                 onChange={(e) => handleChange('status', e.target.value)}
                 className="form-select"
               >
-                {TASK_STATUSES.map(status => (
+                {TASK_STATUSES.map((status) => (
                   <option key={status} value={status}>{status}</option>
                 ))}
               </select>
             </div>
 
-            {/* Task type */}
+            {/* Task Type */}
             <div className="form-group">
               <label htmlFor="task-type" className="form-label">
                 <FaInfo className="form-icon" />
                 Task Type
               </label>
-              <select
-                id="task-type"
-                name="task_type"
-                className="form-select"
-                value={taskData.task_type || ''}
-                onChange={(e) => handleChange('task_type', e.target.value)}
-              >
-                <option value="">Select type</option>
-                {TASK_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+              {taskTypes && taskTypes.length > 0 ? (
+                <select
+                  id="task-type"
+                  name="task_type"
+                  className="form-select"
+                  value={taskData.task_type || ''}
+                  onChange={(e) => handleChange('task_type', e.target.value)}
+                >
+                  <option value="">Select type</option>
+                  {taskTypes.map((t) => (
+                    <option key={t.id} value={t.name}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id="task-type"
+                  name="task_type"
+                  className="form-input"
+                  value={taskData.task_type || ''}
+                  onChange={(e) => handleChange('task_type', e.target.value)}
+                  placeholder="e.g. RFP, Demo, PoC"
+                />
+              )}
             </div>
 
-            {/* Estimated hours */}
-            <div className="form-group">
-              <label htmlFor="task-estimated-hours" className="form-label">
-                <FaClock className="form-icon" />
-                Estimated Hours
-              </label>
-              <input
-                id="task-estimated-hours"
-                name="estimated_hours"
-                type="number"
-                min="0.5"
-                max="8"
-                step="0.5"
-                value={taskData.estimated_hours}
-                onChange={(e) => handleChange('estimated_hours', e.target.value)}
-                className="form-input"
-                placeholder="e.g. 2"
-              />
-            </div>
-
-            {/* Capacity hint */}
-            <div className="form-group full-width">
-              <div
-                style={{
-                  fontSize: '12px',
-                  opacity: 0.85,
-                  display: 'flex',
-                  gap: 6,
-                  alignItems: 'center'
-                }}
-              >
-                <FaInfo />
-                <span>{capacityHint}</span>
-              </div>
-            </div>
-
-            {/* Start / End date */}
+            {/* Start Date */}
             <div className="form-group">
               <label htmlFor="task-start-date" className="form-label">
                 <FaCalendarAlt className="form-icon" />
@@ -560,6 +361,7 @@ const TaskModal = ({
               />
             </div>
 
+            {/* End Date */}
             <div className="form-group">
               <label htmlFor="task-end-date" className="form-label">
                 <FaCalendarAlt className="form-icon" />
@@ -575,7 +377,7 @@ const TaskModal = ({
               />
             </div>
 
-            {/* Due date (still used for upcoming deadlines widget) */}
+            {/* Due Date */}
             <div className="form-group">
               <label htmlFor="task-due-date" className="form-label">
                 <FaCalendarAlt className="form-icon" />
@@ -604,7 +406,7 @@ const TaskModal = ({
                 onChange={(e) => handleChange('notes', e.target.value)}
                 rows="3"
                 className="form-textarea"
-                placeholder="Additional context, requirements, or details..."
+                placeholder="Additional context or details..."
               />
             </div>
           </div>
@@ -625,7 +427,7 @@ const TaskModal = ({
   );
 };
 
-// ---------- LogModal & other components stay the same ----------
+// ---------- Log Modal ----------
 const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
   const [logEntry, setLogEntry] = useState('');
   const [loading, setLoading] = useState(false);
@@ -687,7 +489,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
                 onChange={(e) => setLogEntry(e.target.value)}
                 rows="5"
                 className="form-textarea"
-                placeholder="Document progress, decisions, meeting notes, or any important project updates..."
+                placeholder="Document progress, decisions, meeting notes, or any important updates..."
                 required
               />
             </div>
@@ -709,7 +511,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
   );
 };
 
-// EmptyState, LoadingScreen, ErrorScreen stay the same...
+// ---------- Simple helpers ----------
 const EmptyState = ({ title, description, action, icon }) => (
   <div className="empty-state">
     <div className="empty-icon-wrapper">
@@ -746,7 +548,7 @@ const ErrorScreen = ({ error, onBack }) => (
   </div>
 );
 
-// Custom Hook for Project Data (unchanged)
+// ---------- Hook for project data ----------
 const useProjectData = (projectId) => {
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -770,9 +572,9 @@ const useProjectData = (projectId) => {
 
       setProject(projectData);
       await Promise.all([fetchTasks(), fetchLogs()]);
-    } catch (error) {
-      console.error('Error fetching project:', error);
-      setError('Failed to load project details: ' + error.message);
+    } catch (err) {
+      console.error('Error fetching project:', err);
+      setError('Failed to load project details: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -788,8 +590,8 @@ const useProjectData = (projectId) => {
 
       if (error) throw error;
       setTasks(data || []);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
+    } catch (err) {
+      console.error('Error fetching tasks:', err);
     }
   };
 
@@ -803,8 +605,8 @@ const useProjectData = (projectId) => {
 
       if (error) throw error;
       setLogs(data || []);
-    } catch (error) {
-      console.error('Error fetching logs:', error);
+    } catch (err) {
+      console.error('Error fetching logs:', err);
     }
   };
 
@@ -823,7 +625,7 @@ const useProjectData = (projectId) => {
     error,
     fetchTasks,
     fetchLogs,
-    refetch: fetchProjectDetails
+    refetch: fetchProjectDetails,
   };
 };
 
@@ -831,8 +633,17 @@ const useProjectData = (projectId) => {
 function ProjectDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs } = useProjectData(id);
-  
+  const {
+    project,
+    setProject,
+    tasks,
+    logs,
+    loading,
+    error,
+    fetchTasks,
+    fetchLogs,
+  } = useProjectData(id);
+
   // Local state
   const [isEditing, setIsEditing] = useState(false);
   const [editProject, setEditProject] = useState({});
@@ -843,14 +654,14 @@ function ProjectDetails() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [editingLog, setEditingLog] = useState(null);
 
-  // presales resources for assignee dropdown
   const [presalesResources, setPresalesResources] = useState([]);
+  const [taskTypes, setTaskTypes] = useState([]);
 
   useEffect(() => {
     if (project) {
       setEditProject({
         ...project,
-        smartvista_modules: normalizeModulesArray(project.smartvista_modules)
+        smartvista_modules: normalizeModulesArray(project.smartvista_modules),
       });
     }
   }, [project]);
@@ -860,9 +671,7 @@ function ProjectDetails() {
       try {
         const { data, error } = await supabase
           .from('presales_resources')
-          .select(
-            'id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day'
-          )
+          .select('id, name, email, region, is_active')
           .order('name', { ascending: true });
 
         if (error) {
@@ -881,17 +690,47 @@ function ProjectDetails() {
     fetchPresalesResources();
   }, []);
 
-  // Calculated values
-  const activeTasksCount = tasks.filter(task => !['Completed', 'Cancelled/On-hold'].includes(task.status)).length;
-  const completedTasksCount = tasks.filter(task => task.status === 'Completed').length;
-  const progressPercentage = tasks.length > 0 ? Math.round((completedTasksCount / tasks.length) * 100) : 0;
-  
+  useEffect(() => {
+    const fetchTaskTypes = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('task_types')
+          .select('id, name, is_active, sort_order')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+
+        if (error) {
+          console.warn('Error loading task_types:', error.message);
+          setTaskTypes([]);
+          return;
+        }
+
+        setTaskTypes(data || []);
+      } catch (err) {
+        console.warn('Unexpected error loading task_types:', err);
+        setTaskTypes([]);
+      }
+    };
+
+    fetchTaskTypes();
+  }, []);
+
+  // Derived values
+  const activeTasksCount = tasks.filter(
+    (task) => !['Completed', 'Cancelled/On-hold'].includes(task.status)
+  ).length;
+  const completedTasksCount = tasks.filter(
+    (task) => task.status === 'Completed'
+  ).length;
+  const progressPercentage =
+    tasks.length > 0 ? Math.round((completedTasksCount / tasks.length) * 100) : 0;
+
   const daysRemaining = (() => {
     if (!project?.due_date) return null;
     const today = new Date();
-    const dueDate = new Date(project.due_date);
-    const diffTime = dueDate - today;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const due = new Date(project.due_date);
+    const diff = due - today;
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
   })();
 
   const getDaysRemainingText = () => {
@@ -909,9 +748,13 @@ function ProjectDetails() {
     return 'normal';
   };
 
-  const filteredTasks = showCompleted ? tasks : tasks.filter(task => !['Completed', 'Cancelled/On-hold'].includes(task.status));
+  const filteredTasks = showCompleted
+    ? tasks
+    : tasks.filter(
+        (task) => !['Completed', 'Cancelled/On-hold'].includes(task.status)
+      );
 
-  // Event handlers (project save, task save, etc.)
+  // Handlers
   const handleEditToggle = () => {
     if (isEditing) {
       setEditProject(project);
@@ -924,7 +767,7 @@ function ProjectDetails() {
   const handleEditChange = (e) => {
     const { name, value, type } = e.target;
     const newValue = type === 'number' ? parseFloat(value) || 0 : value;
-    setEditProject(prev => ({ ...prev, [name]: newValue }));
+    setEditProject((prev) => ({ ...prev, [name]: newValue }));
   };
 
   const handleSaveProject = async () => {
@@ -949,9 +792,9 @@ function ProjectDetails() {
         setIsEditing(false);
         alert('Project updated successfully!');
       }
-    } catch (error) {
-      console.error('Error updating project:', error);
-      alert('Error updating project: ' + error.message);
+    } catch (err) {
+      console.error('Error updating project:', err);
+      alert('Error updating project: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -959,8 +802,9 @@ function ProjectDetails() {
 
   const handleTaskStatusChange = async (taskId, currentStatus) => {
     try {
-      const newStatus = currentStatus === 'Completed' ? 'Not Started' : 'Completed';
-      
+      const newStatus =
+        currentStatus === 'Completed' ? 'Not Started' : 'Completed';
+
       const { error } = await supabase
         .from('project_tasks')
         .update({ status: newStatus })
@@ -968,23 +812,18 @@ function ProjectDetails() {
 
       if (error) throw error;
       await fetchTasks();
-    } catch (error) {
-      console.error('Error updating task status:', error);
-      alert('Error updating task status: ' + error.message);
+    } catch (err) {
+      console.error('Error updating task status:', err);
+      alert('Error updating task status: ' + err.message);
     }
   };
 
   const handleTaskSaved = async (taskData) => {
-    const est = taskData.estimated_hours != null ? Number(taskData.estimated_hours) : null;
-
     try {
       if (editingTask) {
         const { error } = await supabase
           .from('project_tasks')
-          .update({
-            ...taskData,
-            estimated_hours: est
-          })
+          .update(taskData)
           .eq('id', editingTask.id);
 
         if (error) throw error;
@@ -992,11 +831,7 @@ function ProjectDetails() {
       } else {
         const { error } = await supabase
           .from('project_tasks')
-          .insert([{
-            ...taskData,
-            estimated_hours: est,
-            project_id: id
-          }]);
+          .insert([{ ...taskData, project_id: id }]);
 
         if (error) throw error;
         alert('Task added successfully!');
@@ -1005,14 +840,16 @@ function ProjectDetails() {
       setShowTaskModal(false);
       setEditingTask(null);
       await fetchTasks();
-    } catch (error) {
-      console.error('Error saving task:', error);
-      alert('Error saving task: ' + error.message);
+    } catch (err) {
+      console.error('Error saving task:', err);
+      alert('Error saving task: ' + err.message);
     }
   };
 
   const handleDeleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task? This action cannot be undone.')) return;
+    if (!window.confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -1023,25 +860,9 @@ function ProjectDetails() {
       if (error) throw error;
       alert('Task deleted successfully!');
       fetchTasks();
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      alert('Error deleting task: ' + error.message);
-    }
-  };
-
-  const handleLogSaved = async (logEntry) => {
-    try {
-      const { error } = await supabase
-        .from('project_logs')
-        .insert([{ project_id: id, entry: logEntry }]);
-
-      if (error) throw error;
-      alert('Log added successfully!');
-      setShowLogModal(false);
-      fetchLogs();
-    } catch (error) {
-      console.error('Error adding log:', error);
-      alert('Error adding log: ' + error.message);
+    } catch (err) {
+      console.error('Error deleting task:', err);
+      alert('Error deleting task: ' + err.message);
     }
   };
 
@@ -1067,14 +888,16 @@ function ProjectDetails() {
       setShowLogModal(false);
       setEditingLog(null);
       fetchLogs();
-    } catch (error) {
-      console.error('Error saving log:', error);
-      alert('Error saving log: ' + error.message);
+    } catch (err) {
+      console.error('Error saving log:', err);
+      alert('Error saving log: ' + err.message);
     }
   };
 
   const handleDeleteLog = async (logId) => {
-    if (!window.confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) return;
+    if (!window.confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) {
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -1085,32 +908,31 @@ function ProjectDetails() {
       if (error) throw error;
       alert('Log deleted successfully!');
       fetchLogs();
-    } catch (error) {
-      console.error('Error deleting log:', error);
-      alert('Error deleting log: ' + error.message);
+    } catch (err) {
+      console.error('Error deleting log:', err);
+      alert('Error deleting log: ' + err.message);
     }
   };
 
   const navigateToCustomer = async () => {
     try {
-      const { data: customers } = await supabase
+      const { data } = await supabase
         .from('customers')
         .select('id')
         .eq('customer_name', project.customer_name)
         .single();
-      
-      if (customers) {
-        navigate(`/customer/${customers.id}`);
+
+      if (data) {
+        navigate(`/customer/${data.id}`);
       } else {
         navigate('/');
       }
-    } catch (error) {
-      console.error('Error finding customer:', error);
+    } catch (err) {
+      console.error('Error finding customer:', err);
       navigate('/');
     }
   };
 
-  // Render
   if (loading) return <LoadingScreen />;
   if (error || !project) return <ErrorScreen error={error} onBack={() => navigate('/')} />;
 
@@ -1145,11 +967,18 @@ function ProjectDetails() {
               </h1>
               <div className="project-meta">
                 <span className="customer-badge">
-                  <span>{project.customer_name}</span>
+                  <span>{project.customer_name || 'No customer'}</span>
                 </span>
                 <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
+                  {getSalesStageIcon(project.sales_stage)}
                   <span>{project.sales_stage || 'No Stage'}</span>
                 </span>
+                {project.deal_value && (
+                  <span className="deal-badge">
+                    <FaDollarSign />
+                    <span>{formatCurrency(project.deal_value)}</span>
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -1160,9 +989,161 @@ function ProjectDetails() {
       <div className="main-content-grid">
         {/* Left Column */}
         <div className="main-column">
+          {/* Project Details */}
+          <section className="content-card">
+            <div className="card-header">
+              <div className="header-title">
+                <FaInfo className="header-icon" />
+                <h3>Project Details</h3>
+              </div>
+              <button 
+                className={`action-button secondary ${isEditing ? 'active' : ''}`}
+                onClick={handleEditToggle}
+              >
+                {isEditing ? <FaTimes /> : <FaEdit />}
+                <span>{isEditing ? 'Cancel' : 'Edit'}</span>
+              </button>
+            </div>
 
-          {/* Project Details Section */}
-          {/* ... keep your existing project info section here ... */}
+            <div className="card-content">
+              {isEditing ? (
+                <div className="project-edit-grid">
+                  <div className="form-group">
+                    <label className="form-label">
+                      <FaBullseye className="form-icon" />
+                      Project Name
+                    </label>
+                    <input
+                      type="text"
+                      name="project_name"
+                      value={editProject.project_name || ''}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      <FaUsers className="form-icon" />
+                      Customer
+                    </label>
+                    <input
+                      type="text"
+                      name="customer_name"
+                      value={editProject.customer_name || ''}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      <FaChartLine className="form-icon" />
+                      Sales Stage
+                    </label>
+                    <select
+                      name="sales_stage"
+                      value={editProject.sales_stage || ''}
+                      onChange={handleEditChange}
+                      className="form-select"
+                    >
+                      <option value="">Select stage</option>
+                      {SALES_STAGES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      <FaDollarSign className="form-icon" />
+                      Deal Value (USD)
+                    </label>
+                    <input
+                      type="number"
+                      name="deal_value"
+                      value={editProject.deal_value || ''}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      <FaCalendarAlt className="form-icon" />
+                      Due Date
+                    </label>
+                    <input
+                      type="date"
+                      name="due_date"
+                      value={editProject.due_date || ''}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group full-width">
+                    <label className="form-label">
+                      <FaLightbulb className="form-icon" />
+                      Scope / Notes
+                    </label>
+                    <textarea
+                      name="project_notes"
+                      value={editProject.project_notes || ''}
+                      onChange={handleEditChange}
+                      rows="3"
+                      className="form-textarea"
+                    />
+                  </div>
+
+                  <div className="project-edit-actions">
+                    <button
+                      className="action-button secondary"
+                      type="button"
+                      onClick={handleEditToggle}
+                      disabled={saving}
+                    >
+                      <FaTimes />
+                      Cancel
+                    </button>
+                    <button
+                      className="action-button primary"
+                      type="button"
+                      onClick={handleSaveProject}
+                      disabled={saving}
+                    >
+                      <FaSave />
+                      {saving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="project-info-grid">
+                  <div className="info-item">
+                    <span className="info-label">Customer</span>
+                    <span className="info-value">{project.customer_name || '-'}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Sales Stage</span>
+                    <span className={`info-value badge ${getSalesStageClass(project.sales_stage)}`}>
+                      {getSalesStageIcon(project.sales_stage)}
+                      {project.sales_stage || '-'}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Deal Value</span>
+                    <span className="info-value">{formatCurrency(project.deal_value)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Due Date</span>
+                    <span className={`info-value ${getDaysRemainingClass()}`}>
+                      {project.due_date ? formatDate(project.due_date) : '-'} · {getDaysRemainingText()}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
 
           {/* Tasks Section */}
           <section className="content-card">
@@ -1203,122 +1184,101 @@ function ProjectDetails() {
             <div className="card-content">
               {filteredTasks.length > 0 ? (
                 <div className="task-list">
-                  {filteredTasks.map((task) => {
-                    const estHours = task.estimated_hours != null
-                      ? parseFloat(task.estimated_hours)
-                      : null;
-                    const estHoursValid = !isNaN(estHours) && estHours > 0;
-
-                    return (
-                      <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)}`}>
-                        <div className="task-checkbox-wrapper">
-                          <div className="custom-checkbox">
-                            <input 
-                              type="checkbox" 
-                              className="task-checkbox"
-                              checked={task.status === 'Completed'}
-                              onChange={() => handleTaskStatusChange(task.id, task.status)}
-                              aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`}
-                            />
-                            <div className="checkbox-visual">
-                              <FaCheckCircle className="check-icon" />
-                            </div>
+                  {filteredTasks.map((task) => (
+                    <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)}`}>
+                      <div className="task-checkbox-wrapper">
+                        <div className="custom-checkbox">
+                          <input 
+                            type="checkbox" 
+                            className="task-checkbox"
+                            checked={task.status === 'Completed'}
+                            onChange={() => handleTaskStatusChange(task.id, task.status)}
+                            aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`}
+                          />
+                          <div className="checkbox-visual">
+                            <FaCheckCircle className="check-icon" />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="task-main-content">
+                        <div className="task-header">
+                          <h4 className="task-title">{task.description}</h4>
+                          <div className={`task-status-badge ${getTaskStatusClass(task.status)}`}>
+                            {getTaskStatusIcon(task.status)}
+                            <span className="status-text">{task.status}</span>
                           </div>
                         </div>
                         
-                        <div className="task-main-content">
-                          <div className="task-header">
-                            <h4 className="task-title">{task.description}</h4>
-                            <div className={`task-status-badge ${getTaskStatusClass(task.status)}`}>
-                              {getTaskStatusIcon(task.status)}
-                              <span className="status-text">
-                                {task.status}
+                        <div className="task-meta-row">
+                          {(task.start_date || task.end_date || task.due_date) && (
+                            <div className="task-meta-item">
+                              <FaCalendarAlt className="meta-icon" />
+                              <span>
+                                {task.start_date && task.end_date
+                                  ? `${formatDate(task.start_date)} → ${formatDate(task.end_date)}`
+                                  : task.due_date
+                                  ? `Due ${formatDate(task.due_date)}`
+                                  : task.start_date
+                                  ? `Starts {formatDate(task.start_date)}`
+                                  : ''}
                               </span>
                             </div>
-                          </div>
-                          
-                          <div className="task-meta-row">
-                            {/* Date info */}
-                            {(task.start_date || task.end_date || task.due_date) && (
-                              <div className="task-meta-item">
-                                <FaCalendarAlt className="meta-icon" />
-                                <span>
-                                  {task.start_date && task.end_date
-                                    ? `${formatDate(task.start_date)} → ${formatDate(task.end_date)}`
-                                    : task.due_date
-                                    ? `Due ${formatDate(task.due_date)}`
-                                    : task.start_date
-                                    ? `Starts ${formatDate(task.start_date)}`
-                                    : ''}
-                                </span>
-                              </div>
-                            )}
+                          )}
 
-                            {/* Assignee */}
-                            {task.assignee && (
-                              <div className="task-meta-item">
-                                <FaUsers className="meta-icon" />
-                                <span>Assigned to {task.assignee}</span>
-                              </div>
-                            )}
-
-                            {/* Task type */}
-                            {task.task_type && (
-                              <div className="task-meta-item">
-                                <FaInfo className="meta-icon" />
-                                <span>{task.task_type}</span>
-                              </div>
-                            )}
-
-                            {/* Estimated hours */}
-                            {estHoursValid && (
-                              <div className="task-meta-item">
-                                <FaClock className="meta-icon" />
-                                <span>
-                                  Est. {estHours % 1 === 0 ? estHours.toFixed(0) : estHours.toFixed(1)}h
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Actions */}
-                            <div className="task-actions">
-                              <button
-                                onClick={() => {
-                                  setEditingTask(task);
-                                  setShowTaskModal(true);
-                                }}
-                                className="task-action-button edit"
-                                title="Edit task"
-                                aria-label={`Edit task "${task.description}"`}
-                              >
-                                <FaEdit />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTask(task.id)}
-                                className="task-action-button delete"
-                                title="Delete task"
-                                aria-label={`Delete task "${task.description}"`}
-                              >
-                                <FaTrash />
-                              </button>
-                            </div>
-                          </div>
-
-                          {task.notes && (
+                          {task.assignee && (
                             <div className="task-meta-item">
-                              <FaFileAlt className="meta-icon" />
-                              <span className="task-notes-preview">{task.notes}</span>
+                              <FaUsers className="meta-icon" />
+                              <span>Assigned to {task.assignee}</span>
                             </div>
                           )}
+
+                          {task.task_type && (
+                            <div className="task-meta-item">
+                              <FaInfo className="meta-icon" />
+                              <span>{task.task_type}</span>
+                            </div>
+                          )}
+
+                          <div className="task-actions">
+                            <button
+                              onClick={() => {
+                                setEditingTask(task);
+                                setShowTaskModal(true);
+                              }}
+                              className="task-action-button edit"
+                              title="Edit task"
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="task-action-button delete"
+                              title="Delete task"
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
                         </div>
+
+                        {task.notes && (
+                          <div className="task-meta-item">
+                            <FaFileAlt className="meta-icon" />
+                            <span className="task-notes-preview">{task.notes}</span>
+                          </div>
+                        )}
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <EmptyState
                   title={`No ${showCompleted ? '' : 'active '}tasks found`}
-                  description={showCompleted ? "All tasks are completed! Great work." : "Create your first task to start tracking project progress"}
+                  description={
+                    showCompleted
+                      ? 'All tasks are completed! Great work.'
+                      : 'Create your first task to start tracking project progress.'
+                  }
                   icon={<FaTasks />}
                   action={
                     <button 
@@ -1335,8 +1295,114 @@ function ProjectDetails() {
           </section>
         </div>
 
-        {/* Right sidebar (progress, activity log, etc.) – keep your existing implementation here */}
-        {/* ... */}
+        {/* Right Column – Progress & Logs */}
+        <div className="side-column">
+          {/* Progress Card */}
+          <section className="content-card">
+            <div className="card-header">
+              <div className="header-title">
+                <FaAward className="header-icon" />
+                <h3>Progress Overview</h3>
+              </div>
+            </div>
+            <div className="card-content">
+              <div className="progress-summary">
+                <div className="progress-bar-container">
+                  <div className="progress-bar-track">
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `${progressPercentage}%` }}
+                    />
+                  </div>
+                  <div className="progress-percentage">{progressPercentage}%</div>
+                </div>
+                <div className="progress-stats">
+                  <div className="progress-stat-item">
+                    <span className="label">Total Tasks</span>
+                    <span className="value">{tasks.length}</span>
+                  </div>
+                  <div className="progress-stat-item">
+                    <span className="label">Completed</span>
+                    <span className="value">{completedTasksCount}</span>
+                  </div>
+                  <div className="progress-stat-item">
+                    <span className="label">Active</span>
+                    <span className="value">{activeTasksCount}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Logs Card */}
+          <section className="content-card">
+            <div className="card-header">
+              <div className="header-title">
+                <FaBookOpen className="header-icon" />
+                <h3>Project Logs</h3>
+              </div>
+              <button 
+                onClick={() => {
+                  setEditingLog(null);
+                  setShowLogModal(true);
+                }} 
+                className="action-button primary"
+              >
+                <FaPlus />
+                <span>Add Log</span>
+              </button>
+            </div>
+            <div className="card-content">
+              {logs && logs.length > 0 ? (
+                <div className="log-list">
+                  {logs.map((log) => (
+                    <div key={log.id} className="log-item">
+                      <div className="log-header">
+                        <span className="log-date">{formatDate(log.created_at)}</span>
+                        <div className="log-actions">
+                          <button
+                            className="task-action-button edit"
+                            onClick={() => {
+                              setEditingLog(log);
+                              setShowLogModal(true);
+                            }}
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            className="task-action-button delete"
+                            onClick={() => handleDeleteLog(log.id)}
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="log-text">{log.entry}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  title="No project logs yet"
+                  description="Use logs to record key decisions, customer feedback, and meeting notes."
+                  icon={<FaBookOpen />}
+                  action={
+                    <button 
+                      onClick={() => {
+                        setEditingLog(null);
+                        setShowLogModal(true);
+                      }} 
+                      className="action-button primary"
+                    >
+                      <FaPlus />
+                      <span>Add First Log</span>
+                    </button>
+                  }
+                />
+              )}
+            </div>
+          </section>
+        </div>
       </div>
 
       {/* Modals */}
@@ -1350,6 +1416,7 @@ function ProjectDetails() {
         editingTask={editingTask}
         presalesResources={presalesResources}
         tasks={tasks}
+        taskTypes={taskTypes}
       />
       <LogModal
         isOpen={showLogModal}
