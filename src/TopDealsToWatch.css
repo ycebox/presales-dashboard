@@ -1,0 +1,202 @@
+.topdeals-card {
+  background: var(--card-bg, #020617);
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.topdeals-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.topdeals-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topdeals-icon {
+  font-size: 1.1rem;
+  color: #f97316;
+}
+
+.topdeals-title h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e5e7eb;
+  margin: 0;
+}
+
+.topdeals-subtitle {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.topdeals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.topdeals-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(55, 65, 81, 0.9);
+}
+
+.topdeals-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.topdeals-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.topdeals-line1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.topdeals-customer {
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.topdeals-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: #facc15;
+  font-size: 0.8rem;
+}
+
+.topdeals-value svg {
+  font-size: 0.7rem;
+}
+
+.topdeals-line2 {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.topdeals-project {
+  font-style: italic;
+}
+
+.topdeals-line3 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 0.7rem;
+}
+
+.topdeals-stage-badge,
+.topdeals-urgency-badge,
+.topdeals-score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(75, 85, 99, 0.9);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.topdeals-stage-badge {
+  color: #38bdf8;
+}
+
+.topdeals-stage-badge svg {
+  font-size: 0.7rem;
+}
+
+.topdeals-score-badge {
+  color: #e5e7eb;
+}
+
+.topdeals-loading,
+.topdeals-error,
+.topdeals-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  padding: 8px 4px;
+}
+
+.topdeals-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(148, 163, 184, 0.4);
+  border-top-color: #f97316;
+  animation: topdeals-spin 0.7s linear infinite;
+}
+
+.topdeals-error svg {
+  color: #f97373;
+}
+
+/* Urgency colors */
+.topdeals-urgency-badge {
+  color: #e5e7eb;
+}
+
+.topdeals-urgency-badge svg {
+  font-size: 0.7rem;
+}
+
+.urgency-overdue {
+  border-color: rgba(248, 113, 113, 0.9);
+  background: rgba(127, 29, 29, 0.8);
+}
+
+.urgency-today {
+  border-color: rgba(251, 191, 36, 0.9);
+  background: rgba(113, 63, 18, 0.8);
+}
+
+.urgency-high {
+  border-color: rgba(251, 191, 36, 0.9);
+  background: rgba(120, 53, 15, 0.7);
+}
+
+.urgency-medium {
+  border-color: rgba(59, 130, 246, 0.9);
+  background: rgba(30, 64, 175, 0.6);
+}
+
+.urgency-normal {
+  border-color: rgba(75, 85, 99, 0.9);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+@keyframes topdeals-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
