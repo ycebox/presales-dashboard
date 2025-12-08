@@ -1,16 +1,16 @@
-/* Root container */
+/* =========== ROOT CONTAINER =========== */
 
 .presales-page-container {
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 16px;
   color: #e5e7eb;
-  background-color: #020617; /* dark slate background */
+  background: radial-gradient(circle at top, #0b1120 0, #020617 45%, #020617 100%);
 }
 
-/* Header */
+/* =========== HEADER =========== */
 
 .presales-header {
   margin-bottom: 20px;
@@ -29,7 +29,7 @@
   color: #9ca3af;
 }
 
-/* Panels */
+/* =========== PANELS & SECTIONS =========== */
 
 .presales-main-grid,
 .presales-calendar-section,
@@ -40,14 +40,14 @@
 }
 
 .presales-panel {
-  background-color: #020617; /* very dark card */
+  background: rgba(15, 23, 42, 0.95); /* deep blue card */
   border-radius: 14px;
   padding: 18px 20px;
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.75);
-  border: 1px solid #1f2937;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
+  border: 1px solid #1e293b;
 }
 
-/* Panel header */
+/* panel header */
 
 .presales-panel-header {
   display: flex;
@@ -70,12 +70,16 @@
   color: #9ca3af;
 }
 
+.presales-panel-header-row {
+  align-items: center;
+}
+
 .panel-icon {
   margin-right: 8px;
   color: #38bdf8;
 }
 
-/* Loading / error / empty */
+/* =========== LOADING / ERROR / EMPTY =========== */
 
 .presales-loading,
 .presales-error,
@@ -120,7 +124,7 @@
   color: #6b7280;
 }
 
-/* Tables: workload, assignment, task mix, schedule */
+/* =========== TABLES (WORKLOAD, ASSIGNMENT, TASK MIX, SCHEDULE) =========== */
 
 .workload-table-wrapper,
 .taskmix-table-wrapper,
@@ -181,7 +185,7 @@
   font-weight: 600;
 }
 
-/* Name cell */
+/* =========== NAME CELL (AVATAR + NAME) =========== */
 
 .wl-name-cell {
   display: flex;
@@ -193,7 +197,7 @@
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  background: #111827;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -223,7 +227,7 @@
   color: #9ca3af;
 }
 
-/* Calendar layout */
+/* =========== CALENDAR SECTION LAYOUT =========== */
 
 .presales-calendar-section {
   display: grid;
@@ -237,19 +241,7 @@
   }
 }
 
-.presales-panel-header-row {
-  align-items: center;
-}
-
-/* Header actions */
-
-.calendar-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Buttons */
+/* =========== BUTTONS =========== */
 
 .primary-btn {
   border-radius: 999px;
@@ -258,7 +250,7 @@
   font-size: 14px;
   font-weight: 600;
   background: linear-gradient(135deg, #38bdf8, #0ea5e9);
-  color: #0b1120;
+  color: #020617;
   cursor: pointer;
 }
 
@@ -273,7 +265,7 @@
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 500;
-  background: #020617;
+  background: transparent;
   color: #e5e7eb;
   display: inline-flex;
   align-items: center;
@@ -287,10 +279,10 @@
 }
 
 .ghost-btn:hover {
-  background: #0f172a;
+  background: #0b1120;
 }
 
-/* Icon buttons */
+/* icon buttons */
 
 .icon-btn {
   border: none;
@@ -309,7 +301,13 @@
   color: #fca5a5;
 }
 
-/* Calendar view toggle */
+/* =========== CALENDAR HEADER ACTIONS & TOGGLE =========== */
+
+.calendar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 .calendar-toggle {
   display: inline-flex;
@@ -331,7 +329,7 @@
   border-color: #38bdf8;
 }
 
-/* Heatmap legend */
+/* =========== HEATMAP LEGEND =========== */
 
 .heatmap-wrapper {
   margin-top: 6px;
@@ -359,10 +357,10 @@
   display: inline-block;
 }
 
-/* Color mapping for status */
+/* status colors (blue-ish theme) */
 
 .status-free {
-  background: #111827;
+  background: #020617;
 }
 
 .status-busy {
@@ -370,27 +368,32 @@
 }
 
 .status-leave {
-  background: #b91c1c;
+  background: #7f1d1d;
 }
 
 .status-travel {
-  background: #facc15;
+  background: #854d0e;
 }
 
-/* Heatmap table */
+/* =========== HEATMAP TABLE LAYOUT (AVAILABILITY) =========== */
 
 .heatmap-table {
   border-radius: 10px;
   border: 1px solid #1f2937;
   overflow-x: auto;
-}
-
-.heatmap-header-row {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(46px, 1fr);
   background: #020617;
 }
+
+/* Make header row and body rows share same grid model */
+
+.heatmap-header-row,
+.heatmap-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(52px, 1fr);
+}
+
+/* header cells */
 
 .heatmap-header-cell {
   padding: 8px 6px;
@@ -399,22 +402,27 @@
   border-bottom: 1px solid #1f2937;
   text-align: center;
   color: #9ca3af;
+  box-sizing: border-box;
 }
 
 .heatmap-name-col {
-  min-width: 180px;
+  min-width: 210px;       /* wider so name + avatar fits */
   text-align: left;
 }
 
+/* day header cells */
+
 .heatmap-day-col {
-  min-width: 60px;
+  min-width: 62px;
 }
 
+/* data rows */
+
 .heatmap-row {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(46px, 1fr);
+  background: #020617;
 }
+
+/* name column inside each row */
 
 .heatmap-presales-cell {
   display: flex;
@@ -424,6 +432,8 @@
   border-right: 1px solid #1f2937;
   border-bottom: 1px solid #1f2937;
   background: #020617;
+  min-width: 210px;       /* must match .heatmap-name-col */
+  box-sizing: border-box;
 }
 
 .heatmap-presales-name {
@@ -432,18 +442,22 @@
   color: #e5e7eb;
 }
 
+/* day cells */
+
 .heatmap-cell {
   height: 30px;
   border-right: 1px solid #1f2937;
   border-bottom: 1px solid #1f2937;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .heatmap-cell:hover {
   outline: 2px solid #38bdf8;
+  outline-offset: -1px;
 }
 
-/* Schedule list */
+/* =========== SCHEDULE LIST (RIGHT SIDE) =========== */
 
 .schedule-list-wrapper {
   margin-top: 6px;
@@ -466,7 +480,7 @@
   align-items: center;
   padding: 4px 8px;
   border-radius: 999px;
-  background: #0f172a;
+  background: #0b1120;
   color: #fbbf24;
   font-size: 12px;
   font-weight: 500;
@@ -478,7 +492,7 @@
   color: #e5e7eb;
 }
 
-/* Unassigned / at-risk grid */
+/* =========== UNASSIGNED / AT-RISK GRID =========== */
 
 .unassigned-at-risk-grid {
   display: grid;
@@ -498,7 +512,7 @@
   color: #f9fafb;
 }
 
-/* Focus section */
+/* =========== FOCUS SECTION (TODAY & THIS WEEK) =========== */
 
 .focus-list {
   display: grid;
@@ -514,9 +528,9 @@
 
 .focus-item {
   border-radius: 10px;
-  border: 1px solid #1f2937;
+  border: 1px solid #1e293b;
   padding: 10px 10px;
-  background: #020617;
+  background: linear-gradient(145deg, #020617, #020617 40%, #0b1120 100%);
 }
 
 .focus-header {
@@ -576,7 +590,7 @@
   font-size: 11px;
 }
 
-/* Assignment helper */
+/* =========== ASSIGNMENT HELPER =========== */
 
 .assignment-content {
   margin-top: 2px;
@@ -612,13 +626,13 @@
   color: #9ca3af;
 }
 
-/* Inputs */
+/* inputs */
 
-.assignment-field input[type='date'],
+.assignment-field input[type="date"],
 .assignment-field select,
-.schedule-field input[type='date'],
+.schedule-field input[type="date"],
 .schedule-field select,
-.schedule-field input[type='text'] {
+.schedule-field input[type="text"] {
   border-radius: 8px;
   border: 1px solid #1f2937;
   padding: 6px 8px;
@@ -627,15 +641,15 @@
   color: #e5e7eb;
 }
 
-.assignment-field input[type='date']:focus,
+.assignment-field input[type="date"]:focus,
 .assignment-field select:focus,
-.schedule-field input[type='date']:focus,
+.schedule-field input[type="date"]:focus,
 .schedule-field select:focus,
-.schedule-field input[type='text']:focus {
+.schedule-field input[type="text"]:focus {
   outline: 1px solid #38bdf8;
 }
 
-/* Task mix */
+/* =========== TASK MIX =========== */
 
 .taskmix-footer {
   margin-top: 6px;
@@ -643,12 +657,12 @@
   color: #9ca3af;
 }
 
-/* Modal (schedule + day detail) */
+/* =========== MODALS (SCHEDULE + DAY DETAIL) =========== */
 
 .schedule-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.7);
+  background: rgba(15, 23, 42, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -660,7 +674,7 @@
   max-width: calc(100% - 32px);
   background: #020617;
   border-radius: 16px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95);
   padding: 18px 18px 16px;
   border: 1px solid #1f2937;
 }
@@ -761,7 +775,7 @@
   gap: 8px;
 }
 
-/* Day detail */
+/* =========== DAY DETAIL MODAL CONTENT =========== */
 
 .day-detail-body {
   margin-top: 4px;
@@ -860,7 +874,7 @@
   color: #e5e7eb;
 }
 
-/* Animations */
+/* =========== ANIMATIONS =========== */
 
 @keyframes spin {
   to {
