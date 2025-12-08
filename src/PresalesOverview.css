@@ -1194,3 +1194,21 @@
   font-size: 12px;
   color: #666;
 }
+.presales-side-panels-grid > .presales-panel {
+  height: 100%;
+}
+.unassigned-tasks-table-wrapper,
+.atrisk-tasks-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.unassigned-tasks-table,
+.atrisk-tasks-table {
+  width: 100%;
+  table-layout: fixed; /* forces equal column sizes */
+}
+.unassigned-tasks-panel .presales-panel-header,
+.atrisk-tasks-panel .presales-panel-header {
+  margin-bottom: 12px;   /* match other panels */
+}
