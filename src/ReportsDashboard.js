@@ -50,7 +50,7 @@ function ReportsDashboard() {
   const [error, setError] = useState(null);
 
   // For now we hardcode "Last 90 days"
-  const [period, setPeriod] = useState('last90'); // future: 'ytd', 'all'
+  const [period, setPeriod] = useState('last90'); // 'last90' | 'ytd' | 'all'
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,9 +65,10 @@ function ReportsDashboard() {
           supabase
             .from('project_tasks')
             .select('id, task_type, status, due_date, created_at'),
+          // 🔧 FIX HERE: use `country` instead of `customer_country`
           supabase
             .from('customers')
-            .select('id, customer_name, customer_country')
+            .select('id, customer_name, country')
         ]);
 
         if (projectsRes.error) throw projectsRes.error;
@@ -88,10 +89,17 @@ function ReportsDashboard() {
     fetchData();
   }, []);
 
-  // Time period boundaries (only used for some KPIs)
+  // Time period boundaries
   const { periodStart, periodEnd } = useMemo(() => {
     const today = new Date();
-    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+    const end = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      23,
+      59,
+      59
+    );
 
     if (period === 'last90') {
       const start = new Date();
@@ -104,7 +112,7 @@ function ReportsDashboard() {
       return { periodStart: start, periodEnd: end };
     }
 
-    // 'all' – effectively no filter
+    // 'all' – effectively no start filter
     return { periodStart: null, periodEnd: end };
   }, [period]);
 
@@ -131,7 +139,10 @@ function ReportsDashboard() {
     const map = new Map();
     customers.forEach((c) => {
       if (c.customer_name) {
-        map.set(c.customer_name, c.customer_country || 'Unknown');
+        // Use whichever field exists; your table has `country`
+        const country =
+          c.country || c.customer_country || 'Unknown';
+        map.set(c.customer_name, country);
       }
     });
     return map;
@@ -153,9 +164,6 @@ function ReportsDashboard() {
     const lostProjects = projectsInPeriod.filter((p) =>
       LOST_STAGES.includes(p.sales_stage || '')
     );
-    const cancelledProjects = projectsInPeriod.filter((p) =>
-      CANCELLED_STAGES.includes(p.sales_stage || '')
-    );
 
     const closedForWinRate = [...wonProjects, ...lostProjects];
     const wonCount = wonProjects.length;
@@ -169,7 +177,7 @@ function ReportsDashboard() {
       return sum + v;
     }, 0);
 
-    // Active pipeline: any project NOT in closed/cancelled/done group
+    // Active pipeline (all time): not in closed/cancelled/done list
     const activeProjects = projects.filter(
       (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage || '')
     );
@@ -186,7 +194,7 @@ function ReportsDashboard() {
         rfpTypes.includes(t.task_type || '')
     ).length;
 
-    // Demos & PoCs
+    // Demos & PoCs (tasks)
     const demoPoCTypes = ['Demo / Walkthrough', 'PoC / Sandbox'];
     const demosPoCsCountVal = tasksInPeriod.filter(
       (t) =>
@@ -194,7 +202,7 @@ function ReportsDashboard() {
         demoPoCTypes.includes(t.task_type || '')
     ).length;
 
-    // Overdue tasks %
+    // Overdue tasks % (all tasks, regardless of period)
     const now = new Date();
     const tasksWithDueDate = tasks.filter((t) => t.due_date);
     const overdueTasks = tasksWithDueDate.filter((t) => {
@@ -272,8 +280,18 @@ function ReportsDashboard() {
 
     const list = Array.from(stageMap.values());
 
-    // Simple ordering: keep "lead to close" closer together if using standard labels
-    const ORDER = ['Lead', 'Opportunity', 'Proposal', 'RFP', 'SoW', 'Contracting', 'Done'];
+    const ORDER = [
+      'Lead',
+      'Opportunity',
+      'Proposal',
+      'RFP',
+      'SoW',
+      'Contracting',
+      'Done',
+      'Closed-Won',
+      'Closed-Lost',
+      'Closed-Cancelled/Hold'
+    ];
     list.sort((a, b) => {
       const ia = ORDER.indexOf(a.stage);
       const ib = ORDER.indexOf(b.stage);
@@ -302,7 +320,6 @@ function ReportsDashboard() {
     });
 
     const list = Array.from(typeMap.values());
-    // Sort by most completed
     list.sort((a, b) => b.completed - a.completed);
     return list;
   }, [tasksInPeriod]);
@@ -341,11 +358,8 @@ function ReportsDashboard() {
 
   const getCountryShare = (value) => {
     if (!totalPipelineValueForCountry) return null;
-    const pct = (value / totalPipelineValueForCountry) * 100;
-    return pct;
+    return (value / totalPipelineValueForCountry) * 100;
   };
-
-  // ===== RENDERING =====
 
   const handleFilterClick = (value) => {
     setPeriod(value);
@@ -456,7 +470,7 @@ function ReportsDashboard() {
                 {formatPercent(winRate)}
               </div>
               <div className="reports-kpi-hint">
-                Closed-won vs closed-lost (based on project stages)
+                Closed-won vs closed-lost (selected period)
               </div>
             </div>
 
@@ -482,7 +496,7 @@ function ReportsDashboard() {
                 {formatCurrency(activePipelineValue)}
               </div>
               <div className="reports-kpi-hint">
-                Open opportunities by value (all time)
+                Open opportunities by value (current)
               </div>
             </div>
 
@@ -517,7 +531,7 @@ function ReportsDashboard() {
                 {formatPercent(overduePercent)}
               </div>
               <div className="reports-kpi-hint">
-                Share of tasks beyond due date
+                Share of tasks beyond due date (all tasks)
               </div>
             </div>
           </div>
