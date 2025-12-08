@@ -1112,3 +1112,16 @@
     font-size: 1.4rem;
   }
 }
+.customers-table-scroll {
+  max-height: 520px;      /* adjust height as you like */
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 16px;
+}
+
+/* Optional: keep header visible while scrolling */
+.customers-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
