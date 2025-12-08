@@ -514,8 +514,6 @@
 /* Heatmap */
 .heatmap-wrapper {
   margin-top: 6px;
-  /* allow horizontal scroll if needed so table doesn’t squash into name column */
-  overflow-x: auto;
 }
 
 .heatmap-legend {
@@ -573,8 +571,7 @@
 .heatmap-header-row,
 .heatmap-row {
   display: grid;
-  /* wider name column to avoid overlap, rest stays auto-fit */
-  grid-template-columns: 200px repeat(auto-fit, minmax(28px, 1fr));
+  grid-template-columns: 160px repeat(auto-fit, minmax(28px, 1fr));
   min-width: 0;
 }
 
@@ -604,4 +601,638 @@
 }
 
 .heatmap-row:nth-child(odd) {
-  background: rgba(15, 23
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.heatmap-presales-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-right: 1px solid rgba(30, 41, 59, 1);
+}
+
+.heatmap-presales-name {
+  font-size: 12px;
+  color: #e5e7eb;
+}
+
+.heatmap-cell {
+  height: 22px;
+  border-right: 1px solid rgba(30, 41, 59, 1);
+  border-bottom: 1px solid rgba(15, 23, 42, 1);
+}
+
+/* Cell background variants */
+.heatmap-cell.status-free {
+  background: radial-gradient(circle at top left, rgba(22, 163, 74, 0.6), rgba(22, 101, 52, 0.9));
+}
+
+.heatmap-cell.status-busy {
+  background: radial-gradient(circle at top, rgba(234, 179, 8, 0.95), rgba(161, 98, 7, 0.95));
+}
+
+.heatmap-cell.status-leave {
+  background: radial-gradient(circle at top, rgba(248, 113, 113, 0.98), rgba(185, 28, 28, 0.98));
+}
+
+.heatmap-cell.status-travel {
+  background: radial-gradient(circle at top, rgba(59, 130, 246, 0.98), rgba(37, 99, 235, 0.98));
+}
+
+/* ===== SCHEDULE LIST TABLE ===== */
+
+.schedule-list-wrapper {
+  margin-top: 14px;
+}
+
+.schedule-list-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.schedule-list-header h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #e5e7eb;
+}
+
+.schedule-list-header p {
+  margin: 0;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.schedule-type-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: rgba(56, 189, 248, 0.2);
+  color: #e0f2fe;
+  border: 1px solid rgba(56, 189, 248, 0.5);
+}
+
+.schedule-note-cell {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== CRUNCH DAYS ===== */
+
+.presales-crunch-section {
+  margin-top: 16px;
+}
+
+.crunch-list {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.crunch-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(55, 65, 81, 0.9);
+}
+
+.crunch-date {
+  font-size: 12px;
+  font-weight: 500;
+  color: #fbbf24;
+}
+
+.crunch-assignees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.crunch-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: rgba(127, 29, 29, 0.35);
+  color: #fecaca;
+}
+
+/* ===== ASSIGNMENT HELPER ===== */
+
+.presales-assignment-section {
+  margin-top: 16px;
+}
+
+.assignment-content {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.assignment-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.assignment-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.assignment-field label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9ca3af;
+}
+
+.assignment-dates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.assignment-dash {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.assignment-field input[type="date"],
+.assignment-field select,
+.schedule-field select,
+.schedule-field input[type="date"],
+.schedule-field-full input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(55, 65, 81, 0.9);
+  background: rgba(15, 23, 42, 0.96);
+  color: #e5e7eb;
+  font-size: 12px;
+}
+
+.assignment-field input[type="date"]:focus,
+.assignment-field select:focus,
+.schedule-field select:focus,
+.schedule-field input[type="date"]:focus,
+.schedule-field-full input:focus {
+  outline: none;
+  border-color: rgba(129, 140, 248, 0.95);
+  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.6);
+}
+
+/* Assignment list */
+
+.assignment-list {
+  margin-top: 2px;
+}
+
+.assignment-table {
+  width: 100%;
+}
+
+/* ===== ICON BUTTONS ===== */
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(55, 65, 81, 0.9);
+  background: rgba(15, 23, 42, 0.95);
+  color: #e5e7eb;
+  cursor: pointer;
+  padding: 0;
+}
+
+.icon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.icon-btn:hover {
+  border-color: rgba(129, 140, 248, 0.95);
+  background: rgba(30, 64, 175, 0.8);
+}
+
+.icon-btn-danger {
+  border-color: rgba(153, 27, 27, 0.85);
+  color: #fecaca;
+}
+
+.icon-btn-danger:hover {
+  background: rgba(127, 29, 29, 0.8);
+}
+
+/* ===== MODALS (SCHEDULE + DAY DETAIL) ===== */
+
+.schedule-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(18px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+.schedule-modal {
+  width: 640px;
+  max-width: calc(100% - 32px);
+  max-height: calc(100% - 40px);
+  border-radius: 20px;
+  background: radial-gradient(
+      circle at top left,
+      rgba(59, 130, 246, 0.24),
+      transparent 55%
+    ),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.96));
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.95),
+    0 0 0 1px rgba(15, 23, 42, 0.9);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Schedule modal used by both forms and day detail */
+
+.schedule-modal-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(55, 65, 81, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.schedule-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.schedule-modal-title svg {
+  width: 18px;
+  height: 18px;
+  color: #a5b4fc;
+}
+
+.schedule-modal-title h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f9fafb;
+}
+
+.schedule-modal-title p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.schedule-modal-close {
+  border: none;
+  background: rgba(15, 23, 42, 0.95);
+  border-radius: 999px;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.schedule-modal-close:hover {
+  background: rgba(30, 64, 175, 0.85);
+  color: #e5e7eb;
+}
+
+/* Schedule form content */
+
+.schedule-form {
+  padding: 12px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schedule-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.schedule-field {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.schedule-field-full {
+  flex: 1 1 100%;
+}
+
+.schedule-field label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9ca3af;
+}
+
+.schedule-form-actions {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.schedule-message {
+  font-size: 11px;
+}
+
+.schedule-message-error {
+  color: #fecaca;
+}
+
+.schedule-message-success {
+  color: #bbf7d0;
+}
+
+.schedule-form-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ===== DAY DETAIL MODAL CONTENT ===== */
+
+.day-detail-body {
+  padding: 10px 16px 14px;
+  overflow-y: auto;
+}
+
+.day-detail-section {
+  margin-bottom: 10px;
+}
+
+.day-detail-section h5 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.day-detail-empty {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Task list */
+
+.day-detail-task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-detail-task-item {
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(55, 65, 81, 0.95);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.day-detail-task-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.day-detail-task-project {
+  font-size: 12px;
+  font-weight: 500;
+  color: #e5e7eb;
+}
+
+.day-detail-task-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.7);
+  color: #bfdbfe;
+  background: rgba(30, 64, 175, 0.35);
+}
+
+.day-detail-task-desc {
+  font-size: 11px;
+  color: #cbd5f5;
+}
+
+.day-detail-task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 10.5px;
+  color: #9ca3af;
+}
+
+.day-detail-task-meta span strong {
+  color: #e5e7eb;
+}
+
+.day-detail-task-notes {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #e5e7eb;
+}
+
+/* Schedule list in day detail */
+
+.day-detail-schedule-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.day-detail-schedule-item {
+  padding: 7px 9px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(55, 65, 81, 0.95);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.day-detail-schedule-type {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.7);
+  color: #e0f2fe;
+  background: rgba(8, 47, 73, 0.8);
+}
+
+.day-detail-schedule-dates {
+  font-size: 11px;
+  color: #e5e7eb;
+}
+
+.day-detail-schedule-note {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 1024px) {
+  .presales-main-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .presales-page-container {
+    padding: 16px 16px 28px;
+  }
+
+  .presales-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .presales-panel {
+    padding: 12px 12px 14px;
+  }
+
+  .presales-header-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .heatmap-header-cell,
+  .heatmap-day-col {
+    font-size: 10px;
+  }
+
+  .heatmap-name-col {
+    min-width: 140px;
+  }
+
+  .schedule-modal {
+    width: 100%;
+  }
+}
+.presales-taskmix-section {
+  margin-top: 24px;
+}
+
+.taskmix-table-wrapper {
+  overflow-x: auto;
+  padding-top: 4px;
+}
+
+.taskmix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.taskmix-table th,
+.taskmix-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.taskmix-table th {
+  font-weight: 600;
+  color: #555;
+  text-align: left;
+}
+
+.taskmix-table .th-center,
+.taskmix-table .td-center {
+  text-align: center;
+}
+
+.taskmix-footer {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #666;
+}
+/* ===== FIX PRESALES AVAILABILITY LAYOUT (OVERRIDE) ===== */
+
+/* Allow the calendar to scroll horizontally if needed */
+.heatmap-wrapper {
+  overflow-x: auto;
+}
+
+/* Make header row and data rows share same grid definition:
+   - First column = presales name (wider)
+   - Remaining columns = days */
+.heatmap-header-row,
+.heatmap-row {
+  display: grid;
+  grid-template-columns: 200px repeat(14, minmax(28px, 1fr));
+  /* If you ever change the number of days, adjust 14 above */
+}
+
+/* Make sure the name column is wide enough and doesn't spill into the day cells */
+.heatmap-name-col {
+  text-align: left;
+}
+
+/* Presales name cell: fix width and avoid wrapping into other columns */
+.heatmap-presales-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-right: 1px solid rgba(30, 41, 59, 1);
+  min-width: 200px;      /* match first column width in grid-template-columns */
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Day cells keep existing colors, just make sure they behave like tiles */
+.heatmap-cell {
+  height: 22px;
+  border-right: 1px solid rgba(30, 41, 59, 1);
+  border-bottom: 1px solid rgba(15, 23, 42, 1);
+}
