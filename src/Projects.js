@@ -810,121 +810,142 @@ function Projects() {
       </section>
 
       {/* Customers Table */}
-      <section className="table-section">
-        <div className="table-wrapper">
-          {filteredCustomers.length === 0 ? (
-            <EmptyState />
-          ) : (
-            <table className="customers-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '40px' }}>
+<section className="table-section">
+  <div className="table-wrapper">
+    {filteredCustomers.length === 0 ? (
+      <EmptyState />
+    ) : (
+      <div className="customers-table-scroll">
+        <table className="customers-table">
+          <thead>
+            <tr>
+              <th style={{ width: '40px' }}>
+                <input
+                  type="checkbox"
+                  className="table-checkbox"
+                  checked={
+                    selectedCustomers.size === filteredCustomers.length &&
+                    filteredCustomers.length > 0
+                  }
+                  onChange={handleSelectAll}
+                />
+              </th>
+              <th>Customer</th>
+              <th>Location</th>
+              <th>Account Manager</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th style={{ width: '80px' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredCustomers.map((customer) => {
+              const statusObj = getCustomerStatus(customer);
+              const statusLabel = statusObj?.label || 'Not Set';
+              const statusClass = getStatusBadgeClass(
+                statusObj?.code || statusObj?.label
+              );
+
+              return (
+                <tr
+                  key={customer.id}
+                  className={
+                    selectedCustomers.has(customer.id) ? 'selected' : ''
+                  }
+                  onClick={() => handleCustomerClick(customer.id)}
+                >
+                  <td>
                     <input
                       type="checkbox"
                       className="table-checkbox"
-                      checked={selectedCustomers.size === filteredCustomers.length && filteredCustomers.length > 0}
-                      onChange={handleSelectAll}
+                      checked={selectedCustomers.has(customer.id)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleCustomerSelect(customer.id);
+                      }}
                     />
-                  </th>
-                  <th>Customer</th>
-                  <th>Location</th>
-                  <th>Account Manager</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th style={{ width: '80px' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCustomers.map(customer => {
-                  const statusObj = getCustomerStatus(customer);
-                  const statusLabel = statusObj?.label || 'Not Set';
-                  const statusClass = getStatusBadgeClass(statusObj?.code || statusObj?.label);
-
-                  return (
-                    <tr 
-                      key={customer.id}
-                      className={selectedCustomers.has(customer.id) ? 'selected' : ''}
-                      onClick={() => handleCustomerClick(customer.id)}
+                  </td>
+                  <td>
+                    <div className="customer-cell">
+                      <div className="customer-avatar">
+                        {customer.customer_name
+                          ?.charAt(0)
+                          ?.toUpperCase() || 'C'}
+                      </div>
+                      <div className="customer-info">
+                        <div className="customer-name">
+                          {customer.customer_name}
+                        </div>
+                        <div className="customer-email">
+                          {customer.customer_type === 'Internal Initiative'
+                            ? 'Internal'
+                            : 'External Client'}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="location-cell">
+                      <Globe size={14} className="location-icon" />
+                      <span>{customer.country}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="manager-cell">
+                      <User size={14} className="manager-icon" />
+                      <span>{customer.account_manager}</span>
+                    </div>
+                  </td>
+                  <td className="status-cell">
+                    <span
+                      className={`status-badge ${
+                        customer.customer_type
+                          ?.toLowerCase()
+                          .replace(/\s+/g, '-') || 'new'
+                      }`}
                     >
-                      <td>
-                        <input
-                          type="checkbox"
-                          className="table-checkbox"
-                          checked={selectedCustomers.has(customer.id)}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            handleCustomerSelect(customer.id);
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <div className="customer-cell">
-                          <div className="customer-avatar">
-                            {customer.customer_name?.charAt(0)?.toUpperCase() || 'C'}
-                          </div>
-                          <div className="customer-info">
-                            <div className="customer-name">{customer.customer_name}</div>
-                            <div className="customer-email">
-                              {customer.customer_type === 'Internal Initiative' ? 'Internal' : 'External Client'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="location-cell">
-                          <Globe size={14} className="location-icon" />
-                          <span>{customer.country}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="manager-cell">
-                          <User size={14} className="manager-icon" />
-                          <span>{customer.account_manager}</span>
-                        </div>
-                      </td>
-                      <td className="status-cell">
-                        <span className={`status-badge ${customer.customer_type?.toLowerCase().replace(/\s+/g, '-') || 'new'}`}>
-                          {customer.customer_type || 'New'}
-                        </span>
-                      </td>
-                      <td className="status-cell">
-                        <span className={statusClass}>
-                          <span className="status-dot-pill" />
-                          {statusLabel}
-                        </span>
-                      </td>
-                      <td className="actions-cell">
-                        <div className="table-actions">
-                          <button
-                            className="table-action-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditCustomer(customer);
-                            }}
-                            title="Edit customer (including status)"
-                          >
-                            <Edit3 size={14} />
-                          </button>
-                          <button
-                            className="table-action-btn delete"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteCustomer(customer.id);
-                            }}
-                            title="Delete customer"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </section>
+                      {customer.customer_type || 'New'}
+                    </span>
+                  </td>
+                  <td className="status-cell">
+                    <span className={statusClass}>
+                      <span className="status-dot-pill" />
+                      {statusLabel}
+                    </span>
+                  </td>
+                  <td className="actions-cell">
+                    <div className="table-actions">
+                      <button
+                        className="table-action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditCustomer(customer);
+                        }}
+                        title="Edit customer (including status)"
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                      <button
+                        className="table-action-btn delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCustomer(customer.id);
+                        }}
+                        title="Delete customer"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</section>
 
       {/* Customer Modal */}
       <Modal isOpen={showCustomerModal} onClose={handleModalClose}>
