@@ -1312,65 +1312,70 @@ function PresalesOverview() {
             </div>
           ) : (
             <div className="unassigned-at-risk-grid">
-              <div className="unassigned-column">
+              <div className="unassigned-column unassigned-tasks-panel">
                 <h4>Unassigned tasks</h4>
                 {unassignedAndAtRisk.unassigned.length === 0 ? (
                   <p className="small-muted">No unassigned tasks.</p>
                 ) : (
-                  <table className="assignment-table">
-                    <thead>
-                      <tr>
-                        <th>Task</th>
-                        <th>Project</th>
-                        <th>Due</th>
-                        <th>Priority</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unassignedAndAtRisk.unassigned
-                        .slice(0, 10)
-                        .map((t) => (
-                          <tr key={t.id}>
-                            <td>{t.description || 'Untitled task'}</td>
-                            <td>
-                              {projectMap.get(t.project_id) || 'Unknown project'}
-                            </td>
-                            <td>{formatShortDate(t.due_date)}</td>
-                            <td>{t.priority || 'Normal'}</td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
+                  <div className="assignment-table-wrapper unassigned-tasks-table-wrapper">
+                    <table className="assignment-table unassigned-tasks-table">
+                      <thead>
+                        <tr>
+                          <th>Task</th>
+                          <th>Project</th>
+                          <th>Due</th>
+                          <th>Priority</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {unassignedAndAtRisk.unassigned
+                          .slice(0, 10)
+                          .map((t) => (
+                            <tr key={t.id}>
+                              <td>{t.description || 'Untitled task'}</td>
+                              <td>
+                                {projectMap.get(t.project_id) ||
+                                  'Unknown project'}
+                              </td>
+                              <td>{formatShortDate(t.due_date)}</td>
+                              <td>{t.priority || 'Normal'}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
 
-              <div className="unassigned-column">
+              <div className="unassigned-column atrisk-tasks-panel">
                 <h4>At-risk tasks (next 7 days)</h4>
                 {unassignedAndAtRisk.atRisk.length === 0 ? (
                   <p className="small-muted">
                     No high-priority or overloaded tasks in the next 7 days.
                   </p>
                 ) : (
-                  <table className="assignment-table">
-                    <thead>
-                      <tr>
-                        <th>Task</th>
-                        <th>Assignee</th>
-                        <th>Due</th>
-                        <th>Priority</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unassignedAndAtRisk.atRisk.slice(0, 10).map((t) => (
-                        <tr key={t.id}>
-                          <td>{t.description || 'Untitled task'}</td>
-                          <td>{t.assignee || 'Unassigned'}</td>
-                          <td>{formatShortDate(t.due_date)}</td>
-                          <td>{t.priority || 'Normal'}</td>
+                  <div className="assignment-table-wrapper atrisk-tasks-table-wrapper">
+                    <table className="assignment-table atrisk-tasks-table">
+                      <thead>
+                        <tr>
+                          <th>Task</th>
+                          <th>Assignee</th>
+                          <th>Due</th>
+                          <th>Priority</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {unassignedAndAtRisk.atRisk.slice(0, 10).map((t) => (
+                          <tr key={t.id}>
+                            <td>{t.description || 'Untitled task'}</td>
+                            <td>{t.assignee || 'Unassigned'}</td>
+                            <td>{formatShortDate(t.due_date)}</td>
+                            <td>{t.priority || 'Normal'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             </div>
