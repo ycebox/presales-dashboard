@@ -1313,7 +1313,7 @@ function PresalesOverview() {
           ) : (
             <div className="unassigned-at-risk-grid">
               <div className="unassigned-column unassigned-tasks-panel">
-                <h4>Unassigned tasks</h4>
+                <h3>Unassigned tasks</h3>
                 {unassignedAndAtRisk.unassigned.length === 0 ? (
                   <p className="small-muted">No unassigned tasks.</p>
                 ) : (
@@ -1348,7 +1348,7 @@ function PresalesOverview() {
               </div>
 
               <div className="unassigned-column atrisk-tasks-panel">
-                <h4>At-risk tasks (next 7 days)</h4>
+                <h3>At-risk tasks (next 7 days)</h3>
                 {unassignedAndAtRisk.atRisk.length === 0 ? (
                   <p className="small-muted">
                     No high-priority or overloaded tasks in the next 7 days.
