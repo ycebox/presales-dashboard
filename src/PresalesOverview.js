@@ -115,6 +115,14 @@ const getUtilLabel = (pct) => {
   return 'Healthy';
 };
 
+const priorityScore = (priority) => {
+  const p = (priority || '').toLowerCase();
+  if (p === 'high') return 1;
+  if (p === 'normal' || p === 'medium') return 2;
+  if (p === 'low') return 3;
+  return 4;
+};
+
 function PresalesOverview() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -168,7 +176,7 @@ function PresalesOverview() {
           supabase
             .from('project_tasks')
             .select(
-              'id, project_id, assignee, status, due_date, start_date, end_date, estimated_hours, priority, task_type, description, notes'
+              'id, project_id, assignee, status, due_date, start_date, end_date, estimated_hours, priority, task_type, description, notes, created_at'
             ),
           supabase
             .from('presales_schedule')
@@ -217,6 +225,18 @@ function PresalesOverview() {
   const thisWeekRange = thisWeek;
   const nextWeekRange = nextWeek;
   const last30DaysRange = last30;
+
+  const tomorrow = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 1);
+    return d;
+  }, [today]);
+
+  const sevenDaysAhead = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 7);
+    return d;
+  }, [today]);
 
   // ---------- Workload by assignee ----------
   const workloadByAssignee = useMemo(() => {
@@ -424,7 +444,6 @@ function PresalesOverview() {
   const taskMix = useMemo(() => {
     if (!tasks || tasks.length === 0) return null;
 
-    // Only look at last 30 days
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 30);
 
@@ -436,7 +455,6 @@ function PresalesOverview() {
       const start = t.start_date ? new Date(t.start_date) : null;
       const due = t.due_date ? new Date(t.due_date) : null;
 
-      // Determine "activity date"
       const date = end || start || due;
       if (!date || date < cutoff) return;
 
@@ -456,7 +474,6 @@ function PresalesOverview() {
       percent: total > 0 ? ((row.count / total) * 100).toFixed(1) : '0.0',
     }));
 
-    // Sort highest to lowest
     result.sort((a, b) => b.count - a.count);
 
     return { total, rows: result };
@@ -691,6 +708,11 @@ function PresalesOverview() {
           label,
           tasks: dayTasks,
           schedules: daySchedules,
+          taskCount,
+          totalHours,
+          utilization,
+          dailyCapacity,
+          maxTasksPerDay,
         };
       });
 
@@ -702,6 +724,316 @@ function PresalesOverview() {
 
     return { days, rows };
   }, [presalesResources, tasks, scheduleEvents, calendarView]);
+
+  // ---------- NEW: Unassigned & At-Risk Tasks ----------
+  const unassignedAndAtRisk = useMemo(() => {
+    if (!tasks || tasks.length === 0) {
+      return { unassigned: [], atRisk: [] };
+    }
+
+    const utilMap = new Map();
+    workloadByAssignee.forEach((w) => {
+      utilMap.set(w.assignee, w.utilNextWeek || 0);
+    });
+
+    const unassigned = [];
+    const atRisk = [];
+
+    (tasks || []).forEach((t) => {
+      const status = (t.status || '').toLowerCase();
+      const isCompleted =
+        status === 'completed' || status === 'done' || status === 'closed';
+      if (isCompleted) return;
+
+      const due = parseDate(t.due_date);
+      const priority = (t.priority || 'Normal').toLowerCase();
+      const assignee = t.assignee;
+
+      // Unassigned
+      if (!assignee) {
+        unassigned.push(t);
+      }
+
+      // At-risk conditions
+      if (!due) return;
+
+      const dueInNext7 =
+        due.getTime() >= today.getTime() &&
+        due.getTime() <= sevenDaysAhead.getTime();
+
+      const assigneeLoad = assignee ? utilMap.get(assignee) || 0 : 0;
+      const isHighPriority = priority === 'high';
+      const isAssigneeOverloaded = assigneeLoad >= 90;
+
+      if (assignee && dueInNext7 && (isHighPriority || isAssigneeOverloaded)) {
+        atRisk.push(t);
+      }
+    });
+
+    return { unassigned, atRisk };
+  }, [tasks, workloadByAssignee, today, sevenDaysAhead]);
+
+  // ---------- NEW: Today & This Week Focus ----------
+  const focusByPresales = useMemo(() => {
+    if (!tasks || tasks.length === 0) return [];
+
+    const result = [];
+
+    workloadByAssignee.forEach((w) => {
+      const name = w.assignee;
+      const personTasks = (tasks || []).filter((t) => {
+        const status = (t.status || '').toLowerCase();
+        const isCompleted =
+          status === 'completed' || status === 'done' || status === 'closed';
+        return t.assignee === name && !isCompleted;
+      });
+
+      if (personTasks.length === 0) return;
+
+      const todayTasks = personTasks.filter((t) => isTaskOnDay(t, today));
+
+      const weekTasks = personTasks.filter((t) => {
+        const due = parseDate(t.due_date);
+        if (!due) return false;
+        return isWithinRange(due, thisWeekRange.start, thisWeekRange.end);
+      });
+
+      const sortTasks = (list) =>
+        list
+          .slice()
+          .sort((a, b) => {
+            const ps = priorityScore(a.priority) - priorityScore(b.priority);
+            if (ps !== 0) return ps;
+            const da = parseDate(a.due_date) || parseDate(a.start_date) || today;
+            const db = parseDate(b.due_date) || parseDate(b.start_date) || today;
+            return da - db;
+          });
+
+      const todayTop = sortTasks(todayTasks).slice(0, 3);
+      const weekTop = sortTasks(weekTasks).slice(0, 5);
+
+      if (todayTop.length === 0 && weekTop.length === 0) return;
+
+      result.push({
+        assignee: name,
+        todayTasks: todayTop,
+        weekTasks: weekTop,
+      });
+    });
+
+    return result;
+  }, [tasks, workloadByAssignee, today, thisWeekRange]);
+
+  // ---------- NEW: Capacity Guardrail Breaches ----------
+  const guardrailBreaches = useMemo(() => {
+    if (!availabilityGrid.rows || availabilityGrid.rows.length === 0) return [];
+
+    const breaches = [];
+
+    availabilityGrid.rows.forEach((row) => {
+      row.cells.forEach((cell) => {
+        const overTasks =
+          cell.taskCount > (cell.maxTasksPerDay || 3);
+        const overHours =
+          cell.dailyCapacity &&
+          cell.totalHours > cell.dailyCapacity * 1.2;
+
+        if (overTasks || overHours) {
+          const reasons = [];
+          if (overTasks) {
+            reasons.push(
+              `${cell.taskCount} tasks (max ${cell.maxTasksPerDay})`
+            );
+          }
+          if (overHours) {
+            reasons.push(
+              `${cell.totalHours.toFixed(1)}h / ${cell.dailyCapacity}h`
+            );
+          }
+
+          breaches.push({
+            assignee: row.assignee,
+            date: cell.date,
+            reasons: reasons.join(' · '),
+          });
+        }
+      });
+    });
+
+    breaches.sort((a, b) => a.date - b.date);
+    return breaches.slice(0, 20);
+  }, [availabilityGrid]);
+
+  // ---------- NEW: High-Value Deals Coverage ----------
+  const highValueDealsCoverage = useMemo(() => {
+    if (!projects || projects.length === 0 || !tasks) return [];
+
+    const HIGH_VALUE_THRESHOLD = 300000;
+    const criticalStages = ['Opportunity', 'Proposal', 'RFP', 'SoW', 'Contracting'];
+
+    const result = [];
+
+    projects.forEach((p) => {
+      const stage = p.sales_stage || '';
+      const valueNum = Number(p.deal_value) || 0;
+      const isClosed =
+        stage.toLowerCase().startsWith('closed') || stage === 'Done';
+
+      if (isClosed) return;
+
+      const isHighValue = valueNum >= HIGH_VALUE_THRESHOLD;
+      const isCriticalStage = criticalStages.includes(stage);
+
+      if (!isHighValue && !isCriticalStage) return;
+
+      const projectTasks = (tasks || []).filter((t) => t.project_id === p.id);
+      const openTasks = projectTasks.filter((t) => {
+        const status = (t.status || '').toLowerCase();
+        return !(
+          status === 'completed' ||
+          status === 'done' ||
+          status === 'closed'
+        );
+      });
+
+      const assigneeSet = new Set(
+        openTasks
+          .map((t) => t.assignee)
+          .filter((a) => a && a.trim().length > 0)
+      );
+
+      result.push({
+        projectId: p.id,
+        customerName: p.customer_name || 'Unknown customer',
+        stage,
+        dealValue: valueNum,
+        openTasksCount: openTasks.length,
+        assigneeCount: assigneeSet.size,
+      });
+    });
+
+    result.sort((a, b) => b.dealValue - a.dealValue);
+    return result;
+  }, [projects, tasks]);
+
+  // ---------- NEW: Task Aging ----------
+  const taskAgingStats = useMemo(() => {
+    if (!tasks || tasks.length === 0) return { buckets: [], oldestAssignees: [] };
+
+    const bucketsMap = new Map();
+    const oldestMap = new Map();
+
+    const addBucket = (label) => {
+      if (!bucketsMap.has(label)) {
+        bucketsMap.set(label, { label, count: 0 });
+      }
+    };
+
+    addBucket('0–7 days');
+    addBucket('8–14 days');
+    addBucket('15–30 days');
+    addBucket('>30 days');
+
+    (tasks || []).forEach((t) => {
+      const status = (t.status || '').toLowerCase();
+      const isCompleted =
+        status === 'completed' || status === 'done' || status === 'closed';
+      if (isCompleted) return;
+
+      const created =
+        t.created_at
+          ? new Date(t.created_at)
+          : t.start_date
+          ? new Date(t.start_date)
+          : t.due_date
+          ? new Date(t.due_date)
+          : null;
+
+      if (!created) return;
+
+      const daysOpen = Math.floor(
+        (today.getTime() - toMidnight(created).getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
+
+      let bucketLabel;
+      if (daysOpen <= 7) bucketLabel = '0–7 days';
+      else if (daysOpen <= 14) bucketLabel = '8–14 days';
+      else if (daysOpen <= 30) bucketLabel = '15–30 days';
+      else bucketLabel = '>30 days';
+
+      addBucket(bucketLabel);
+      bucketsMap.get(bucketLabel).count += 1;
+
+      const assignee = t.assignee || 'Unassigned';
+      const existing = oldestMap.get(assignee);
+      if (!existing || daysOpen > existing.daysOpen) {
+        oldestMap.set(assignee, { assignee, daysOpen });
+      }
+    });
+
+    const buckets = Array.from(bucketsMap.values()).sort((a, b) => {
+      const order = ['0–7 days', '8–14 days', '15–30 days', '>30 days'];
+      return order.indexOf(a.label) - order.indexOf(b.label);
+    });
+
+    const oldestAssignees = Array.from(oldestMap.values())
+      .filter((x) => x.daysOpen > 0)
+      .sort((a, b) => b.daysOpen - a.daysOpen)
+      .slice(0, 5);
+
+    return { buckets, oldestAssignees };
+  }, [tasks, today]);
+
+  // ---------- NEW: Upcoming Deadlines ----------
+  const upcomingDeadlines = useMemo(() => {
+    if (!tasks || tasks.length === 0) {
+      return { dueTomorrow: [], highPriorityNext7: [] };
+    }
+
+    const dueTomorrow = [];
+    const highPriorityNext7 = [];
+
+    (tasks || []).forEach((t) => {
+      const status = (t.status || '').toLowerCase();
+      const isCompleted =
+        status === 'completed' || status === 'done' || status === 'closed';
+      if (isCompleted) return;
+
+      const due = parseDate(t.due_date);
+      if (!due) return;
+
+      const priority = (t.priority || 'Normal').toLowerCase();
+
+      // Due tomorrow (any priority)
+      if (due.getTime() === tomorrow.getTime()) {
+        dueTomorrow.push(t);
+      }
+
+      // High priority in next 7 days
+      const inNext7 =
+        due.getTime() >= today.getTime() &&
+        due.getTime() <= sevenDaysAhead.getTime();
+
+      if (priority === 'high' && inNext7) {
+        highPriorityNext7.push(t);
+      }
+    });
+
+    const sortTasks = (list) =>
+      list
+        .slice()
+        .sort((a, b) => {
+          const da = parseDate(a.due_date) || today;
+          const db = parseDate(b.due_date) || today;
+          return da - db;
+        });
+
+    return {
+      dueTomorrow: sortTasks(dueTomorrow),
+      highPriorityNext7: sortTasks(highPriorityNext7),
+    };
+  }, [tasks, today, tomorrow, sevenDaysAhead]);
 
   // ---------- Schedule modal handlers ----------
   const openScheduleModalForCreate = () => {
@@ -1007,6 +1339,294 @@ function PresalesOverview() {
         </div>
       </section>
 
+      {/* UNASSIGNED & AT-RISK TASKS */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <AlertTriangle size={16} className="panel-icon" />
+                Unassigned & at-risk tasks
+              </h3>
+              <p>Tasks that need attention before they become a problem.</p>
+            </div>
+          </div>
+
+          {unassignedAndAtRisk.unassigned.length === 0 &&
+          unassignedAndAtRisk.atRisk.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No unassigned or at-risk tasks detected right now.</p>
+            </div>
+          ) : (
+            <div className="unassigned-at-risk-grid">
+              <div className="unassigned-column">
+                <h4>Unassigned tasks</h4>
+                {unassignedAndAtRisk.unassigned.length === 0 ? (
+                  <p className="small-muted">No unassigned tasks.</p>
+                ) : (
+                  <table className="assignment-table">
+                    <thead>
+                      <tr>
+                        <th>Task</th>
+                        <th>Project</th>
+                        <th>Due</th>
+                        <th>Priority</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unassignedAndAtRisk.unassigned
+                        .slice(0, 10)
+                        .map((t) => (
+                          <tr key={t.id}>
+                            <td>{t.description || 'Untitled task'}</td>
+                            <td>
+                              {projectMap.get(t.project_id) || 'Unknown project'}
+                            </td>
+                            <td>{formatShortDate(t.due_date)}</td>
+                            <td>{t.priority || 'Normal'}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="unassigned-column">
+                <h4>At-risk tasks (next 7 days)</h4>
+                {unassignedAndAtRisk.atRisk.length === 0 ? (
+                  <p className="small-muted">
+                    No high-priority or overloaded tasks in the next 7 days.
+                  </p>
+                ) : (
+                  <table className="assignment-table">
+                    <thead>
+                      <tr>
+                        <th>Task</th>
+                        <th>Assignee</th>
+                        <th>Due</th>
+                        <th>Priority</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unassignedAndAtRisk.atRisk.slice(0, 10).map((t) => (
+                        <tr key={t.id}>
+                          <td>{t.description || 'Untitled task'}</td>
+                          <td>{t.assignee || 'Unassigned'}</td>
+                          <td>{formatShortDate(t.due_date)}</td>
+                          <td>{t.priority || 'Normal'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* TODAY & THIS WEEK FOCUS */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <CalendarDays size={16} className="panel-icon" />
+                Today & this week focus
+              </h3>
+              <p>Top tasks each presales should focus on.</p>
+            </div>
+          </div>
+
+          {focusByPresales.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No focus tasks found for today or this week.</p>
+            </div>
+          ) : (
+            <div className="focus-list">
+              {focusByPresales.map((f) => (
+                <div key={f.assignee} className="focus-item">
+                  <div className="focus-header">
+                    <div className="wl-avatar">
+                      {(f.assignee || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="wl-name-text">
+                      <span className="wl-name-main">{f.assignee}</span>
+                    </div>
+                  </div>
+                  <div className="focus-columns">
+                    <div className="focus-column">
+                      <h4>Today</h4>
+                      {f.todayTasks.length === 0 ? (
+                        <p className="small-muted">No specific tasks for today.</p>
+                      ) : (
+                        <ul className="focus-task-list">
+                          {f.todayTasks.map((t) => (
+                            <li key={t.id}>
+                              <div className="focus-task-main">
+                                <span className="focus-task-title">
+                                  {t.description || 'Untitled task'}
+                                </span>
+                              </div>
+                              <div className="focus-task-meta">
+                                <span>
+                                  {projectMap.get(t.project_id) ||
+                                    'Unknown project'}
+                                </span>
+                                {t.priority && (
+                                  <span className="focus-priority">
+                                    {t.priority}
+                                  </span>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    <div className="focus-column">
+                      <h4>This week</h4>
+                      {f.weekTasks.length === 0 ? (
+                        <p className="small-muted">
+                          No priority tasks tagged for this week.
+                        </p>
+                      ) : (
+                        <ul className="focus-task-list">
+                          {f.weekTasks.map((t) => (
+                            <li key={t.id}>
+                              <div className="focus-task-main">
+                                <span className="focus-task-title">
+                                  {t.description || 'Untitled task'}
+                                </span>
+                              </div>
+                              <div className="focus-task-meta">
+                                <span>
+                                  {projectMap.get(t.project_id) ||
+                                    'Unknown project'}
+                                </span>
+                                <span>
+                                  Due: {formatShortDate(t.due_date) || 'n/a'}
+                                </span>
+                                {t.priority && (
+                                  <span className="focus-priority">
+                                    {t.priority}
+                                  </span>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* CAPACITY GUARDRAIL BREACHES */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <AlertTriangle size={16} className="panel-icon" />
+                Capacity guardrail breaches
+              </h3>
+              <p>Where planned work exceeds daily task or hour limits.</p>
+            </div>
+          </div>
+
+          {guardrailBreaches.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No upcoming capacity breaches detected.</p>
+            </div>
+          ) : (
+            <div className="crunch-list">
+              {guardrailBreaches.map((b, idx) => (
+                <div key={`${b.assignee}-${idx}-${b.date.toISOString()}`} className="crunch-item">
+                  <div className="crunch-date">
+                    {b.date.toLocaleDateString('en-SG', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </div>
+                  <div className="crunch-assignees">
+                    <span className="crunch-chip">
+                      {b.assignee}: {b.reasons}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* HIGH-VALUE DEALS COVERAGE */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Activity size={16} className="panel-icon" />
+                High-value / critical deals coverage
+              </h3>
+              <p>Check if big or critical deals have enough presales focus.</p>
+            </div>
+          </div>
+
+          {highValueDealsCoverage.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No high-value or critical-stage deals found.</p>
+            </div>
+          ) : (
+            <div className="taskmix-table-wrapper">
+              <table className="taskmix-table">
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Stage</th>
+                    <th className="th-center">Open tasks</th>
+                    <th className="th-center">Presales on it</th>
+                    <th className="th-center">Deal value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {highValueDealsCoverage.slice(0, 12).map((d) => (
+                    <tr key={d.projectId}>
+                      <td>{d.customerName}</td>
+                      <td>{d.stage || 'N/A'}</td>
+                      <td className="td-center">{d.openTasksCount}</td>
+                      <td className="td-center">{d.assigneeCount}</td>
+                      <td className="td-center">
+                        {Number.isFinite(d.dealValue)
+                          ? d.dealValue.toLocaleString('en-US', {
+                              maximumFractionDigits: 0,
+                            })
+                          : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="taskmix-footer">
+                <span>
+                  Showing top{' '}
+                  <strong>
+                    {Math.min(12, highValueDealsCoverage.length)}
+                  </strong>{' '}
+                  high-value / critical deals.
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* AVAILABILITY HEATMAP + SCHEDULE LIST */}
       <section className="presales-calendar-section">
         {/* AVAILABILITY / HEATMAP */}
@@ -1261,6 +1881,137 @@ function PresalesOverview() {
         </div>
       </section>
 
+      {/* UPCOMING DEADLINES & TASK AGING */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Activity size={16} className="panel-icon" />
+                Deadlines & task aging
+              </h3>
+              <p>See what’s coming up and which work is getting old.</p>
+            </div>
+          </div>
+
+          <div className="unassigned-at-risk-grid">
+            <div className="unassigned-column">
+              <h4>High-priority deadlines</h4>
+
+              {upcomingDeadlines.highPriorityNext7.length === 0 &&
+              upcomingDeadlines.dueTomorrow.length === 0 ? (
+                <p className="small-muted">
+                  No high-priority tasks due soon.
+                </p>
+              ) : (
+                <>
+                  {upcomingDeadlines.dueTomorrow.length > 0 && (
+                    <>
+                      <h5>Due tomorrow</h5>
+                      <ul className="focus-task-list">
+                        {upcomingDeadlines.dueTomorrow.slice(0, 5).map((t) => (
+                          <li key={t.id}>
+                            <div className="focus-task-main">
+                              <span className="focus-task-title">
+                                {t.description || 'Untitled task'}
+                              </span>
+                            </div>
+                            <div className="focus-task-meta">
+                              <span>
+                                {projectMap.get(t.project_id) ||
+                                  'Unknown project'}
+                              </span>
+                              <span>{t.assignee || 'Unassigned'}</span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+
+                  {upcomingDeadlines.highPriorityNext7.length > 0 && (
+                    <>
+                      <h5>High priority (next 7 days)</h5>
+                      <ul className="focus-task-list">
+                        {upcomingDeadlines.highPriorityNext7
+                          .slice(0, 8)
+                          .map((t) => (
+                            <li key={t.id}>
+                              <div className="focus-task-main">
+                                <span className="focus-task-title">
+                                  {t.description || 'Untitled task'}
+                                </span>
+                              </div>
+                              <div className="focus-task-meta">
+                                <span>
+                                  {projectMap.get(t.project_id) ||
+                                    'Unknown project'}
+                                </span>
+                                <span>
+                                  Due: {formatShortDate(t.due_date) || 'n/a'}
+                                </span>
+                                <span>{t.assignee || 'Unassigned'}</span>
+                              </div>
+                            </li>
+                          ))}
+                      </ul>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="unassigned-column">
+              <h4>Task aging</h4>
+              {(!taskAgingStats.buckets ||
+                taskAgingStats.buckets.length === 0) && (
+                <p className="small-muted">No open tasks found.</p>
+              )}
+
+              {taskAgingStats.buckets && taskAgingStats.buckets.length > 0 && (
+                <table className="assignment-table">
+                  <thead>
+                    <tr>
+                      <th>Age bucket</th>
+                      <th className="th-center">Open tasks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {taskAgingStats.buckets.map((b) => (
+                      <tr key={b.label}>
+                        <td>{b.label}</td>
+                        <td className="td-center">{b.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {taskAgingStats.oldestAssignees &&
+                taskAgingStats.oldestAssignees.length > 0 && (
+                  <>
+                    <h5 style={{ marginTop: '8px' }}>Oldest owners</h5>
+                    <ul className="focus-task-list">
+                      {taskAgingStats.oldestAssignees.map((o) => (
+                        <li key={o.assignee}>
+                          <div className="focus-task-main">
+                            <span className="focus-task-title">
+                              {o.assignee}
+                            </span>
+                          </div>
+                          <div className="focus-task-meta">
+                            <span>Oldest open task: {o.daysOpen} days</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ASSIGNMENT HELPER */}
       <section className="presales-assignment-section">
         <div className="presales-panel">
@@ -1356,7 +2107,7 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* TASK MIX – moved to bottom, after Assignment helper */}
+      {/* TASK MIX – bottom */}
       <section className="presales-taskmix-section">
         <div className="presales-panel">
           <div className="presales-panel-header">
