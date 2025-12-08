@@ -1,16 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import {
   Activity,
-  Briefcase,
-  Globe2,
-  Target,
   Users,
   User,
   AlertTriangle,
-  CheckCircle2,
-  ArrowLeft,
   CalendarDays,
   Filter,
   Plane,
@@ -126,7 +120,6 @@ function PresalesOverview() {
   const [tasks, setTasks] = useState([]);
   const [scheduleEvents, setScheduleEvents] = useState([]);
   const [presalesResources, setPresalesResources] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -167,13 +160,7 @@ function PresalesOverview() {
       setError(null);
 
       try {
-        const [
-          projRes,
-          taskRes,
-          scheduleRes,
-          presalesRes,
-          customersRes,
-        ] = await Promise.all([
+        const [projRes, taskRes, scheduleRes, presalesRes] = await Promise.all([
           supabase
             .from('projects')
             .select('id, customer_name, sales_stage, deal_value')
@@ -192,16 +179,12 @@ function PresalesOverview() {
               'id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day'
             )
             .order('name', { ascending: true }),
-          supabase
-            .from('customers')
-            .select('id, customer_name, country'),
         ]);
 
         if (projRes.error) throw projRes.error;
         if (taskRes.error) throw taskRes.error;
         if (scheduleRes.error) throw scheduleRes.error;
         if (presalesRes.error) throw presalesRes.error;
-        if (customersRes.error) throw customersRes.error;
 
         setProjects(projRes.data || []);
         setTasks(taskRes.data || []);
@@ -209,7 +192,6 @@ function PresalesOverview() {
         setPresalesResources(
           (presalesRes.data || []).filter((p) => p.is_active !== false)
         );
-        setCustomers(customersRes.data || []);
       } catch (err) {
         console.error('Error loading presales overview data:', err);
         setError('Failed to load presales overview data.');
@@ -230,113 +212,11 @@ function PresalesOverview() {
     return map;
   }, [projects]);
 
-  // customerName -> customer
-  const customerMap = useMemo(() => {
-    const map = new Map();
-    (customers || []).forEach((c) => {
-      const key = (c.customer_name || '').trim().toLowerCase();
-      if (key) {
-        map.set(key, c);
-      }
-    });
-    return map;
-  }, [customers]);
-
-  const getCustomerForProject = (p) => {
-    const key = (p.customer_name || '').trim().toLowerCase();
-    if (!key) return null;
-    return customerMap.get(key) || null;
-  };
-
   const { thisWeek, nextWeek, last30 } = useMemo(() => getWeekRanges(), []);
   const today = useMemo(() => toMidnight(new Date()), []);
   const thisWeekRange = thisWeek;
   const nextWeekRange = nextWeek;
   const last30DaysRange = last30;
-
-  // ---------- Top metrics ----------
-  const {
-    activeDeals,
-    wonDeals,
-    pipelineValue,
-    wonValue,
-    avgDeal,
-    countryCount,
-    openTasksCount,
-  } = useMemo(() => {
-    if (!projects || projects.length === 0) {
-      return {
-        activeDeals: 0,
-        wonDeals: 0,
-        pipelineValue: 0,
-        wonValue: 0,
-        avgDeal: 0,
-        countryCount: 0,
-        openTasksCount: (tasks || []).filter(
-          (t) => t.status !== 'Completed' && t.status !== 'Done'
-        ).length,
-      };
-    }
-
-    let active = 0;
-    let won = 0;
-    let pipe = 0;
-    let wonVal = 0;
-    const countries = new Set();
-
-    projects.forEach((p) => {
-      const customer = getCustomerForProject(p);
-      let country = (customer && customer.country) || '';
-      if (typeof country === 'string') {
-        country = country.trim();
-      }
-      if (!country) {
-        country = 'Unknown';
-      }
-
-      countries.add(country);
-
-      const value =
-        typeof p.deal_value === 'number'
-          ? p.deal_value
-          : parseFloat(p.deal_value || 0);
-
-      const isDone =
-        p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won';
-
-      if (isDone) {
-        won += 1;
-        wonVal += Number.isNaN(value) ? 0 : value;
-      } else {
-        active += 1;
-        pipe += Number.isNaN(value) ? 0 : value;
-      }
-    });
-
-    const avg = active > 0 ? pipe / active : 0;
-    const openCount = (tasks || []).filter(
-      (t) => t.status !== 'Completed' && t.status !== 'Done'
-    ).length;
-
-    return {
-      activeDeals: active,
-      wonDeals: won,
-      pipelineValue: pipe,
-      wonValue: wonVal,
-      avgDeal: avg,
-      countryCount: countries.size,
-      openTasksCount: openCount,
-    };
-  }, [projects, tasks, customerMap]);
-
-  const formatCurrency = (val) => {
-    if (!val || Number.isNaN(val)) return '';
-    return new Intl.NumberFormat('en-SG', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
 
   // ---------- Workload by assignee ----------
   const workloadByAssignee = useMemo(() => {
@@ -539,56 +419,6 @@ function PresalesOverview() {
       total: count,
     };
   }, [workloadByAssignee]);
-
-  // ---------- Deals by country ----------
-  const dealsByCountry = useMemo(() => {
-    if (!projects || projects.length === 0) return [];
-
-    const map = new Map();
-
-    projects.forEach((p) => {
-      const customer = getCustomerForProject(p);
-      let country = (customer && customer.country) || '';
-      if (typeof country === 'string') {
-        country = country.trim();
-      }
-      if (!country) {
-        country = 'Unknown';
-      }
-
-      if (!map.has(country)) {
-        map.set(country, {
-          country,
-          total: 0,
-          active: 0,
-          done: 0,
-          pipelineValue: 0,
-        });
-      }
-
-      const entry = map.get(country);
-      entry.total += 1;
-
-      const value =
-        typeof p.deal_value === 'number'
-          ? p.deal_value
-          : parseFloat(p.deal_value || 0);
-
-      const isDone =
-        p.sales_stage === 'Done' || p.sales_stage === 'Closed-Won';
-
-      if (isDone) {
-        entry.done += 1;
-      } else {
-        entry.active += 1;
-        entry.pipelineValue += Number.isNaN(value) ? 0 : value;
-      }
-    });
-
-    return Array.from(map.values()).sort(
-      (a, b) => (b.pipelineValue || 0) - (a.pipelineValue || 0)
-    );
-  }, [projects, customerMap]);
 
   // ---------- TASK MIX ----------
   const taskMix = useMemo(() => {
@@ -1064,13 +894,9 @@ function PresalesOverview() {
       {/* HEADER */}
       <header className="presales-header">
         <div className="presales-header-main">
-          <Link to="/" className="back-to-home-link">
-            <ArrowLeft size={14} />
-            Back to Home
-          </Link>
           <div>
             <h2>Presales Overview</h2>
-            <p>Regional view of APAC deals, workload, and availability.</p>
+            <p>Regional view of APAC workload and availability.</p>
           </div>
         </div>
 
@@ -1098,72 +924,7 @@ function PresalesOverview() {
         )}
       </header>
 
-      {/* TOP SUMMARY CARDS */}
-      <section className="presales-summary-section">
-        <div className="presales-summary-grid">
-          <div className="presales-summary-card">
-            <div className="psc-icon psc-icon-primary">
-              <Briefcase size={18} />
-            </div>
-            <div className="psc-content">
-              <p className="psc-label">Active deals</p>
-              <p className="psc-value">{activeDeals}</p>
-              <p className="psc-sub">
-                {pipelineValue
-                  ? `${formatCurrency(pipelineValue)} in pipeline`
-                  : 'No value set yet'}
-              </p>
-            </div>
-          </div>
-
-          <div className="presales-summary-card">
-            <div className="psc-icon psc-icon-accent">
-              <CheckCircle2 size={18} />
-            </div>
-            <div className="psc-content">
-              <p className="psc-label">Closed / Done</p>
-              <p className="psc-value">{wonDeals}</p>
-              <p className="psc-sub">
-                {wonValue
-                  ? `${formatCurrency(wonValue)} closed`
-                  : 'No closed deals yet'}
-              </p>
-            </div>
-          </div>
-
-          <div className="presales-summary-card">
-            <div className="psc-icon psc-icon-orange">
-              <Target size={18} />
-            </div>
-            <div className="psc-content">
-              <p className="psc-label">Avg. deal size</p>
-              <p className="psc-value">
-                {avgDeal ? formatCurrency(avgDeal) : '—'}
-              </p>
-              <p className="psc-sub">Based on active pipeline</p>
-            </div>
-          </div>
-
-          <div className="presales-summary-card">
-            <div className="psc-icon psc-icon-neutral">
-              <Globe2 size={18} />
-            </div>
-            <div className="psc-content">
-              <p className="psc-label">Countries & tasks</p>
-              <p className="psc-value">
-                {countryCount}{' '}
-                <span className="psc-value-suffix">countries</span>
-              </p>
-              <p className="psc-sub">
-                {openTasksCount} open task
-                {openTasksCount !== 1 ? 's' : ''} across APAC
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* MAIN GRID: WORKLOAD + DEALS BY COUNTRY */}
+      {/* MAIN GRID: WORKLOAD */}
       <section className="presales-main-grid">
         {/* WORKLOAD PANEL */}
         <div className="presales-panel">
@@ -1241,110 +1002,6 @@ function PresalesOverview() {
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
-        </div>
-
-        {/* DEALS BY COUNTRY */}
-        <div className="presales-panel">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <Activity size={16} className="panel-icon" />
-                Deals by country
-              </h3>
-              <p>Where the pipeline is concentrated across APAC.</p>
-            </div>
-          </div>
-
-          {dealsByCountry.length === 0 ? (
-            <div className="presales-empty">
-              <Globe2 size={20} />
-              <p>No deals found. Add customers with country and deal value.</p>
-            </div>
-          ) : (
-            <div className="country-table-wrapper">
-              <table className="country-table">
-                <thead>
-                  <tr>
-                    <th>Country</th>
-                    <th className="th-center">Total</th>
-                    <th className="th-center">Active</th>
-                    <th className="th-center">Done</th>
-                    <th className="th-right">Pipeline</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dealsByCountry.map((c) => (
-                    <tr key={c.country}>
-                      <td>
-                        <div className="cty-name-cell">
-                          <span className="cty-flag-placeholder">
-                            {c.country.charAt(0).toUpperCase()}
-                          </span>
-                          <span>{c.country}</span>
-                        </div>
-                      </td>
-                      <td className="td-center">{c.total}</td>
-                      <td className="td-center">{c.active}</td>
-                      <td className="td-center">{c.done}</td>
-                      <td className="td-right">
-                        {c.pipelineValue
-                          ? formatCurrency(c.pipelineValue)
-                          : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* TASK MIX */}
-      <section className="presales-taskmix-section">
-        <div className="presales-panel">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <Activity size={16} className="panel-icon" />
-                Task mix (last 30 days)
-              </h3>
-              <p>Where the team is spending time based on task types.</p>
-            </div>
-          </div>
-
-          {!taskMix || taskMix.rows.length === 0 ? (
-            <div className="presales-empty small">
-              <p>No recent tasks found in the last 30 days.</p>
-            </div>
-          ) : (
-            <div className="taskmix-table-wrapper">
-              <table className="taskmix-table">
-                <thead>
-                  <tr>
-                    <th>Task type</th>
-                    <th className="th-center">Count</th>
-                    <th className="th-center">Share</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {taskMix.rows.map((row) => (
-                    <tr key={row.type}>
-                      <td>{row.type}</td>
-                      <td className="td-center">{row.count}</td>
-                      <td className="td-center">{row.percent}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="taskmix-footer">
-                <span>
-                  Total tasks counted: <strong>{taskMix.total}</strong> (last 30
-                  days)
-                </span>
-              </div>
             </div>
           )}
         </div>
@@ -1696,6 +1353,54 @@ function PresalesOverview() {
               )}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* TASK MIX – moved to bottom, after Assignment helper */}
+      <section className="presales-taskmix-section">
+        <div className="presales-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Activity size={16} className="panel-icon" />
+                Task mix (last 30 days)
+              </h3>
+              <p>Where the team is spending time based on task types.</p>
+            </div>
+          </div>
+
+          {!taskMix || taskMix.rows.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No recent tasks found in the last 30 days.</p>
+            </div>
+          ) : (
+            <div className="taskmix-table-wrapper">
+              <table className="taskmix-table">
+                <thead>
+                  <tr>
+                    <th>Task type</th>
+                    <th className="th-center">Count</th>
+                    <th className="th-center">Share</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {taskMix.rows.map((row) => (
+                    <tr key={row.type}>
+                      <td>{row.type}</td>
+                      <td className="td-center">{row.count}</td>
+                      <td className="td-center">{row.percent}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="taskmix-footer">
+                <span>
+                  Total tasks counted: <strong>{taskMix.total}</strong> (last 30
+                  days)
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
