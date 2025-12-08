@@ -1236,3 +1236,18 @@
   border-right: 1px solid rgba(30, 41, 59, 1);
   border-bottom: 1px solid rgba(15, 23, 42, 1);
 }
+/* Make the panels in the main grid stretch to same height */
+.presales-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+  align-items: stretch; /* ensure equal height */
+}
+
+/* Ensure the panels inside the main grid fill the grid cell */
+.presales-main-grid > .presales-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
