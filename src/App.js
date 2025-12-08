@@ -85,13 +85,14 @@ function App() {
                 <p className="dashboard-subtitle">The Procrastinator&apos;s Paradise</p>
               </div>
 
-              {/* Right side: status + links */}
+              {/* Right side: status + nav links */}
               <div className="header-status">
                 <div className="status-indicator"></div>
                 <span className="status-text">Online</span>
 
+                {/* Home link */}
                 <Link
-                  to="/presales-overview"
+                  to="/"
                   className="presales-nav-link"
                   style={{
                     marginLeft: '16px',
@@ -108,9 +109,37 @@ function App() {
                   onMouseOver={(e) => (e.target.style.opacity = '0.85')}
                   onMouseOut={(e) => (e.target.style.opacity = '1')}
                 >
+                  Home
+                </Link>
+
+                {/* Presales Overview */}
+                <Link
+                  to="/presales-overview"
+                  className="presales-nav-link"
+                  style={{
+                    marginLeft: '8px',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: 'transparent',
+                    color: '#e5e7eb',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                    border: '1px solid rgba(148, 163, 184, 0.5)',
+                    transition: '0.2s',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.background = 'rgba(15, 23, 42, 0.9)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.background = 'transparent';
+                  }}
+                >
                   Presales Overview
                 </Link>
 
+                {/* Reports */}
                 <Link
                   to="/reports"
                   className="presales-nav-link"
