@@ -226,12 +226,6 @@ function PresalesOverview() {
   const nextWeekRange = nextWeek;
   const last30DaysRange = last30;
 
-  const tomorrow = useMemo(() => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + 1);
-    return d;
-  }, [today]);
-
   const sevenDaysAhead = useMemo(() => {
     const d = new Date(today);
     d.setDate(d.getDate() + 7);
@@ -264,12 +258,13 @@ function PresalesOverview() {
 
       const maxTasksPerDay =
         res && Number.isInteger(res.max_tasks_per_day)
-          ? res.maxTasksPerDay
+          ? res.max_tasks_per_day
           : 3;
 
       return { dailyCapacity, targetHours, maxTasksPerDay };
     };
 
+    // init from presales resources
     (presalesResources || []).forEach((p) => {
       const name = p.name || p.email || 'Unknown';
       if (!map.has(name)) {
@@ -362,6 +357,7 @@ function PresalesOverview() {
         entry.overdue += 1;
       }
 
+      // last 30 days overdue trend
       if (
         due &&
         isWithinRange(due, last30DaysRange.start, last30DaysRange.end)
@@ -413,30 +409,6 @@ function PresalesOverview() {
     arr.sort((a, b) => b.open - a.open);
     return arr;
   }, [tasks, presalesResources, thisWeekRange, nextWeekRange, last30DaysRange, today]);
-
-  // ---------- Team summary ----------
-  const teamSummary = useMemo(() => {
-    if (!workloadByAssignee || workloadByAssignee.length === 0) return null;
-
-    const count = workloadByAssignee.length;
-    const avgNext =
-      workloadByAssignee.reduce((sum, w) => sum + w.utilNextWeek, 0) / count;
-
-    let overloaded = 0;
-    let underused = 0;
-
-    workloadByAssignee.forEach((w) => {
-      if (w.utilNextWeek >= 90) overloaded += 1;
-      else if (w.utilNextWeek <= 40) underused += 1;
-    });
-
-    return {
-      avgNext: Math.round(avgNext),
-      overloaded,
-      underused,
-      total: count,
-    };
-  }, [workloadByAssignee]);
 
   // ---------- TASK MIX ----------
   const taskMix = useMemo(() => {
@@ -702,10 +674,12 @@ function PresalesOverview() {
       const priority = (t.priority || 'Normal').toLowerCase();
       const assignee = t.assignee;
 
+      // Unassigned
       if (!assignee) {
         unassigned.push(t);
       }
 
+      // At-risk conditions
       if (!due) return;
 
       const dueInNext7 =
@@ -826,54 +800,6 @@ function PresalesOverview() {
     result.sort((a, b) => b.dealValue - a.dealValue);
     return result;
   }, [projects, tasks]);
-
-  // ---------- Upcoming Deadlines (kept only for at-risk panel logic, not separate section) ----------
-  const upcomingDeadlines = useMemo(() => {
-    if (!tasks || tasks.length === 0) {
-      return { dueTomorrow: [], highPriorityNext7: [] };
-    }
-
-    const dueTomorrow = [];
-    const highPriorityNext7 = [];
-
-    (tasks || []).forEach((t) => {
-      const status = (t.status || '').toLowerCase();
-      const isCompleted =
-        status === 'completed' || status === 'done' || status === 'closed';
-      if (isCompleted) return;
-
-      const due = parseDate(t.due_date);
-      if (!due) return;
-
-      const priority = (t.priority || 'Normal').toLowerCase();
-
-      if (due.getTime() === tomorrow.getTime()) {
-        dueTomorrow.push(t);
-      }
-
-      const inNext7 =
-        due.getTime() >= today.getTime() &&
-        due.getTime() <= sevenDaysAhead.getTime();
-
-      if (priority === 'high' && inNext7) {
-        highPriorityNext7.push(t);
-      }
-    });
-
-    const sortTasks = (list) =>
-      list
-        .slice()
-        .sort((a, b) => {
-          const da = parseDate(a.due_date) || today;
-          const db = parseDate(b.due_date) || today;
-          return da - db;
-        });
-
-    return {
-      dueTomorrow: sortTasks(dueTomorrow),
-      highPriorityNext7: sortTasks(highPriorityNext7),
-    };
-  }, [tasks, today, tomorrow, sevenDaysAhead]);
 
   // ---------- Schedule modal handlers ----------
   const openScheduleModalForCreate = () => {
@@ -1035,7 +961,7 @@ function PresalesOverview() {
     return (
       <div className="presales-page-container">
         <div className="presales-error">
-          <AlertTriangle size={20} />
+          <AlertTriangle size={24} />
           <p>{error}</p>
         </div>
       </div>
@@ -1068,50 +994,27 @@ function PresalesOverview() {
         <div className="presales-header-main">
           <div>
             <h2>Presales Overview</h2>
-            <p>Regional view of APAC workload and availability.</p>
+            <p>Central view of workload, availability, and task focus.</p>
           </div>
         </div>
-
-        {teamSummary && (
-          <div className="team-summary-bar">
-            <div className="team-summary-item">
-              <span className="team-summary-label">Avg. next week load</span>
-              <span className="team-summary-value">
-                {teamSummary.avgNext}%
-              </span>
-            </div>
-            <div className="team-summary-item">
-              <span className="team-summary-label">Overloaded (≥90%)</span>
-              <span className="team-summary-value">
-                {teamSummary.overloaded}/{teamSummary.total}
-              </span>
-            </div>
-            <div className="team-summary-item">
-              <span className="team-summary-label">Underused (≤40%)</span>
-              <span className="team-summary-value">
-                {teamSummary.underused}/{teamSummary.total}
-              </span>
-            </div>
-          </div>
-        )}
       </header>
 
       {/* 1. WORKLOAD */}
       <section className="presales-main-grid">
-        <div className="presales-panel">
+        <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
             <div>
               <h3>
-                <Users size={16} className="panel-icon" />
+                <Users size={20} className="panel-icon" />
                 Presales workload
               </h3>
-              <p>How loaded each presales is, this week and next week.</p>
+              <p>See who’s loaded, who’s free, and where the risk is.</p>
             </div>
           </div>
 
           {workloadByAssignee.length === 0 ? (
             <div className="presales-empty">
-              <User size={20} />
+              <User size={28} />
               <p>No tasks found. Assign tasks to presales to see workload.</p>
             </div>
           ) : (
@@ -1153,7 +1056,7 @@ function PresalesOverview() {
                       <td className="td-center">
                         <div>
                           <div>{Math.round(w.utilThisWeek)}%</div>
-                          <div style={{ fontSize: '11px', opacity: 0.8 }}>
+                          <div className="wl-util-label">
                             {getUtilLabel(Math.round(w.utilThisWeek))}
                           </div>
                         </div>
@@ -1161,7 +1064,7 @@ function PresalesOverview() {
                       <td className="td-center">
                         <div>
                           <div>{Math.round(w.utilNextWeek)}%</div>
-                          <div style={{ fontSize: '11px', opacity: 0.8 }}>
+                          <div className="wl-util-label">
                             {getUtilLabel(Math.round(w.utilNextWeek))}
                           </div>
                         </div>
@@ -1178,19 +1081,19 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* 2. PRESALES AVAILABILITY (NEXT 14 / 30 DAYS) – directly after workload */}
+      {/* 2. PRESALES AVAILABILITY (NEXT 14 / 30 DAYS) */}
       <section className="presales-calendar-section">
-        <div className="presales-panel">
+        <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header presales-panel-header-row">
             <div>
               <h3>
-                <CalendarDays size={16} className="panel-icon" />
+                <CalendarDays size={20} className="panel-icon" />
                 Presales availability (
                 {calendarView === '14' ? 'next 14 days' : 'next 30 days'})
               </h3>
               <p>
-                Heatmap of busy days, leave, travel, and free capacity for each
-                presales resource.
+                See who is free, busy, on leave, or travelling so you can assign
+                tasks safely.
               </p>
             </div>
             <div className="calendar-header-actions">
@@ -1225,7 +1128,7 @@ function PresalesOverview() {
                 className="ghost-btn ghost-btn-sm"
                 onClick={openScheduleModalForCreate}
               >
-                <Plane size={14} />
+                <Plane size={16} />
                 <span>Add leave / travel</span>
               </button>
             </div>
@@ -1233,7 +1136,7 @@ function PresalesOverview() {
 
           {availabilityGrid.rows.length === 0 ? (
             <div className="presales-empty">
-              <CalendarDays size={20} />
+              <CalendarDays size={28} />
               <p>No presales resources found.</p>
             </div>
           ) : (
@@ -1245,7 +1148,7 @@ function PresalesOverview() {
                 </span>
                 <span className="legend-item">
                   <span className="legend-dot status-busy" />
-                  Busy (tasks / scheduled)
+                  Busy
                 </span>
                 <span className="legend-item">
                   <span className="legend-dot status-leave" />
@@ -1306,23 +1209,23 @@ function PresalesOverview() {
           <div className="presales-panel-header">
             <div>
               <h3>
-                <ListChecks size={16} className="panel-icon" />
+                <ListChecks size={18} className="panel-icon" />
                 Leave / travel schedule
               </h3>
-              <p>Quick view of upcoming leave, travel, and other schedule blocks.</p>
+              <p>Upcoming leave, travel, training and other blocks.</p>
             </div>
           </div>
 
           {scheduleEvents.length === 0 ? (
             <div className="presales-empty">
-              <Plane size={20} />
+              <Plane size={24} />
               <p>No schedule entries yet.</p>
             </div>
           ) : (
             <div className="schedule-list-wrapper schedule-list-table-wrapper">
               <div className="schedule-list-header">
                 <h4>All schedule entries</h4>
-                <p>Sorted by start date, across all presales.</p>
+                <p>Sorted by start date across all presales.</p>
               </div>
               <table className="schedule-list-table">
                 <thead>
@@ -1370,14 +1273,14 @@ function PresalesOverview() {
                             className="icon-btn"
                             onClick={() => openScheduleModalForEdit(e)}
                           >
-                            <Edit3 size={14} />
+                            <Edit3 size={16} />
                           </button>
                           <button
                             type="button"
                             className="icon-btn icon-btn-danger"
                             onClick={() => handleDeleteSchedule(e.id)}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={16} />
                           </button>
                         </td>
                       </tr>
@@ -1391,11 +1294,11 @@ function PresalesOverview() {
 
       {/* 3. UNASSIGNED & AT-RISK TASKS */}
       <section className="presales-crunch-section">
-        <div className="presales-panel">
+        <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
             <div>
               <h3>
-                <AlertTriangle size={16} className="panel-icon" />
+                <AlertTriangle size={18} className="panel-icon" />
                 Unassigned & at-risk tasks
               </h3>
               <p>Tasks that need attention before they become a problem.</p>
@@ -1477,11 +1380,11 @@ function PresalesOverview() {
 
       {/* 4. TODAY & THIS WEEK FOCUS */}
       <section className="presales-crunch-section">
-        <div className="presales-panel">
+        <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
             <div>
               <h3>
-                <CalendarDays size={16} className="panel-icon" />
+                <CalendarDays size={18} className="panel-icon" />
                 Today & this week focus
               </h3>
               <p>Top tasks each presales should focus on.</p>
@@ -1578,11 +1481,11 @@ function PresalesOverview() {
 
       {/* 5. HIGH-VALUE / CRITICAL DEALS COVERAGE */}
       <section className="presales-crunch-section">
-        <div className="presales-panel">
+        <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
             <div>
               <h3>
-                <Activity size={16} className="panel-icon" />
+                <Activity size={18} className="panel-icon" />
                 High-value / critical deals coverage
               </h3>
               <p>Check if big or critical deals have enough presales focus.</p>
@@ -1639,17 +1542,14 @@ function PresalesOverview() {
 
       {/* 6. ASSIGNMENT HELPER */}
       <section className="presales-assignment-section">
-        <div className="presales-panel">
+        <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
             <div>
               <h3>
-                <Filter size={16} className="panel-icon" />
+                <Filter size={18} className="panel-icon" />
                 Assignment helper
               </h3>
-              <p>
-                Pick dates and see who has the most free days with reasonable
-                next-week load.
-              </p>
+              <p>Pick dates and see who is safest to assign.</p>
             </div>
           </div>
 
@@ -1734,11 +1634,11 @@ function PresalesOverview() {
 
       {/* 7. TASK MIX – bottom */}
       <section className="presales-taskmix-section">
-        <div className="presales-panel">
+        <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
             <div>
               <h3>
-                <Activity size={16} className="panel-icon" />
+                <Activity size={18} className="panel-icon" />
                 Task mix (last 30 days)
               </h3>
               <p>Where the team is spending time based on task types.</p>
@@ -1801,7 +1701,7 @@ function PresalesOverview() {
                 className="schedule-modal-close"
                 onClick={closeScheduleModal}
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
@@ -1926,7 +1826,7 @@ function PresalesOverview() {
                 className="schedule-modal-close"
                 onClick={closeDayDetail}
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
