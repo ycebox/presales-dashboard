@@ -5,9 +5,9 @@
   max-width: 1400px;
   margin: 0 auto;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 16px; /* base, then headings / tables are larger */
-  color: #111827;
-  background-color: #f3f4f6;
+  font-size: 16px;
+  color: #e5e7eb;
+  background-color: #020617; /* dark slate background */
 }
 
 /* Header */
@@ -20,12 +20,13 @@
   font-size: 28px;
   font-weight: 700;
   margin: 0 0 4px;
+  color: #f9fafb;
 }
 
 .presales-header-main p {
   margin: 0;
   font-size: 16px;
-  color: #4b5563;
+  color: #9ca3af;
 }
 
 /* Panels */
@@ -39,15 +40,14 @@
 }
 
 .presales-panel {
-  background-color: #ffffff;
+  background-color: #020617; /* very dark card */
   border-radius: 14px;
   padding: 18px 20px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.75);
+  border: 1px solid #1f2937;
 }
 
-.presales-panel-large {
-  /* visually stronger for main blocks */
-}
+/* Panel header */
 
 .presales-panel-header {
   display: flex;
@@ -61,16 +61,18 @@
   align-items: center;
   font-size: 20px;
   margin: 0 0 2px;
+  color: #e5e7eb;
 }
 
 .presales-panel-header p {
   margin: 0;
   font-size: 14px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .panel-icon {
   margin-right: 8px;
+  color: #38bdf8;
 }
 
 /* Loading / error / empty */
@@ -91,21 +93,21 @@
 .presales-empty p {
   margin: 0;
   font-size: 15px;
-  color: #4b5563;
+  color: #9ca3af;
 }
 
 .presales-error p {
   margin: 0;
   font-size: 15px;
-  color: #b91c1c;
+  color: #fecaca;
 }
 
 .presales-spinner {
   width: 26px;
   height: 26px;
   border-radius: 999px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #2563eb;
+  border: 3px solid #1f2937;
+  border-top-color: #38bdf8;
   animation: spin 0.8s linear infinite;
 }
 
@@ -115,10 +117,10 @@
 
 .small-muted {
   font-size: 13px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
-/* Tables: workload, assignment, task mix, etc */
+/* Tables: workload, assignment, task mix, schedule */
 
 .workload-table-wrapper,
 .taskmix-table-wrapper,
@@ -142,10 +144,11 @@
 .schedule-list-table th {
   text-align: left;
   padding: 10px 8px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #1f2937;
   font-weight: 600;
   font-size: 14px;
-  color: #4b5563;
+  color: #9ca3af;
+  background-color: #020617;
 }
 
 .workload-table td,
@@ -153,8 +156,16 @@
 .taskmix-table td,
 .schedule-list-table td {
   padding: 10px 8px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid #0f172a;
   font-size: 14px;
+  color: #e5e7eb;
+}
+
+.workload-table tr:nth-child(even),
+.assignment-table tr:nth-child(even),
+.taskmix-table tr:nth-child(even),
+.schedule-list-table tr:nth-child(even) {
+  background-color: #020617;
 }
 
 .th-center {
@@ -166,7 +177,7 @@
 }
 
 .overdue {
-  color: #b91c1c;
+  color: #fca5a5;
   font-weight: 600;
 }
 
@@ -182,13 +193,13 @@
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  background: #e5e7eb;
+  background: #111827;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 16px;
-  color: #111827;
+  color: #e5e7eb;
 }
 
 .wl-name-text {
@@ -199,19 +210,20 @@
 .wl-name-main {
   font-size: 14px;
   font-weight: 600;
+  color: #f9fafb;
 }
 
 .wl-name-sub {
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .wl-util-label {
   font-size: 11px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
-/* Heatmap */
+/* Calendar layout */
 
 .presales-calendar-section {
   display: grid;
@@ -229,29 +241,12 @@
   align-items: center;
 }
 
+/* Header actions */
+
 .calendar-header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.calendar-toggle {
-  display: inline-flex;
-}
-
-.calendar-toggle-btn {
-  border-radius: 999px;
-  border: 1px solid #d1d5db;
-  padding: 6px 10px;
-  background: #ffffff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.calendar-toggle-btn.active {
-  background: #2563eb;
-  color: #ffffff;
-  border-color: #2563eb;
 }
 
 /* Buttons */
@@ -262,8 +257,8 @@
   padding: 8px 14px;
   font-size: 14px;
   font-weight: 600;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: #ffffff;
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  color: #0b1120;
   cursor: pointer;
 }
 
@@ -274,12 +269,12 @@
 
 .ghost-btn {
   border-radius: 999px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #1f2937;
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 500;
-  background: #ffffff;
-  color: #111827;
+  background: #020617;
+  color: #e5e7eb;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -291,23 +286,52 @@
   font-size: 12px;
 }
 
+.ghost-btn:hover {
+  background: #0f172a;
+}
+
+/* Icon buttons */
+
 .icon-btn {
   border: none;
   background: transparent;
   padding: 4px;
   border-radius: 999px;
   cursor: pointer;
+  color: #e5e7eb;
 }
 
 .icon-btn:hover {
-  background: #e5e7eb;
+  background: #111827;
 }
 
 .icon-btn-danger {
-  color: #b91c1c;
+  color: #fca5a5;
 }
 
-/* Heatmap visuals */
+/* Calendar view toggle */
+
+.calendar-toggle {
+  display: inline-flex;
+}
+
+.calendar-toggle-btn {
+  border-radius: 999px;
+  border: 1px solid #1f2937;
+  padding: 6px 10px;
+  background: #020617;
+  font-size: 13px;
+  cursor: pointer;
+  color: #e5e7eb;
+}
+
+.calendar-toggle-btn.active {
+  background: #38bdf8;
+  color: #020617;
+  border-color: #38bdf8;
+}
+
+/* Heatmap legend */
 
 .heatmap-wrapper {
   margin-top: 6px;
@@ -319,7 +343,7 @@
   gap: 10px;
   margin-bottom: 6px;
   font-size: 13px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .legend-item {
@@ -335,16 +359,18 @@
   display: inline-block;
 }
 
+/* Color mapping for status */
+
 .status-free {
-  background: #e5e7eb;
+  background: #111827;
 }
 
 .status-busy {
-  background: #bfdbfe;
+  background: #1d4ed8;
 }
 
 .status-leave {
-  background: #fecaca;
+  background: #b91c1c;
 }
 
 .status-travel {
@@ -355,7 +381,7 @@
 
 .heatmap-table {
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #1f2937;
   overflow-x: auto;
 }
 
@@ -363,15 +389,16 @@
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(46px, 1fr);
-  background: #f9fafb;
+  background: #020617;
 }
 
 .heatmap-header-cell {
   padding: 8px 6px;
   font-size: 12px;
-  border-right: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #1f2937;
+  border-bottom: 1px solid #1f2937;
   text-align: center;
+  color: #9ca3af;
 }
 
 .heatmap-name-col {
@@ -394,25 +421,26 @@
   align-items: center;
   gap: 8px;
   padding: 8px 6px;
-  border-right: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;
-  background: #ffffff;
+  border-right: 1px solid #1f2937;
+  border-bottom: 1px solid #1f2937;
+  background: #020617;
 }
 
 .heatmap-presales-name {
   font-size: 13px;
   font-weight: 500;
+  color: #e5e7eb;
 }
 
 .heatmap-cell {
   height: 30px;
-  border-right: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #1f2937;
+  border-bottom: 1px solid #1f2937;
   cursor: pointer;
 }
 
 .heatmap-cell:hover {
-  outline: 2px solid #2563eb;
+  outline: 2px solid #38bdf8;
 }
 
 /* Schedule list */
@@ -424,12 +452,13 @@
 .schedule-list-header h4 {
   margin: 0 0 2px;
   font-size: 15px;
+  color: #e5e7eb;
 }
 
 .schedule-list-header p {
   margin: 0 0 6px;
   font-size: 13px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .schedule-type-chip {
@@ -437,8 +466,8 @@
   align-items: center;
   padding: 4px 8px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: #0f172a;
+  color: #fbbf24;
   font-size: 12px;
   font-weight: 500;
 }
@@ -446,10 +475,10 @@
 .schedule-note-cell {
   max-width: 220px;
   font-size: 13px;
-  color: #4b5563;
+  color: #e5e7eb;
 }
 
-/* Unassigned / at-risk */
+/* Unassigned / at-risk grid */
 
 .unassigned-at-risk-grid {
   display: grid;
@@ -466,6 +495,7 @@
 .unassigned-column h4 {
   margin: 0 0 6px;
   font-size: 16px;
+  color: #f9fafb;
 }
 
 /* Focus section */
@@ -484,9 +514,9 @@
 
 .focus-item {
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #1f2937;
   padding: 10px 10px;
-  background: #f9fafb;
+  background: #020617;
 }
 
 .focus-header {
@@ -511,6 +541,7 @@
 .focus-column h4 {
   margin: 0 0 4px;
   font-size: 14px;
+  color: #e5e7eb;
 }
 
 .focus-task-list {
@@ -525,10 +556,7 @@
 .focus-task-main {
   font-size: 13px;
   font-weight: 500;
-}
-
-.focus-task-title {
-  display: inline-block;
+  color: #e5e7eb;
 }
 
 .focus-task-meta {
@@ -537,14 +565,14 @@
   gap: 8px;
   margin-top: 2px;
   font-size: 12px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .focus-priority {
   padding: 2px 6px;
   border-radius: 999px;
-  background: #fee2e2;
-  color: #b91c1c;
+  background: #451a1a;
+  color: #fecaca;
   font-size: 11px;
 }
 
@@ -570,7 +598,7 @@
 .assignment-field label {
   font-size: 13px;
   font-weight: 500;
-  color: #4b5563;
+  color: #e5e7eb;
 }
 
 .assignment-dates {
@@ -581,8 +609,10 @@
 
 .assignment-dash {
   font-size: 13px;
-  color: #6b7280;
+  color: #9ca3af;
 }
+
+/* Inputs */
 
 .assignment-field input[type='date'],
 .assignment-field select,
@@ -590,9 +620,19 @@
 .schedule-field select,
 .schedule-field input[type='text'] {
   border-radius: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #1f2937;
   padding: 6px 8px;
   font-size: 13px;
+  background-color: #020617;
+  color: #e5e7eb;
+}
+
+.assignment-field input[type='date']:focus,
+.assignment-field select:focus,
+.schedule-field input[type='date']:focus,
+.schedule-field select:focus,
+.schedule-field input[type='text']:focus {
+  outline: 1px solid #38bdf8;
 }
 
 /* Task mix */
@@ -600,7 +640,7 @@
 .taskmix-footer {
   margin-top: 6px;
   font-size: 13px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 /* Modal (schedule + day detail) */
@@ -608,7 +648,7 @@
 .schedule-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.35);
+  background: rgba(15, 23, 42, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -618,10 +658,11 @@
 .schedule-modal {
   width: 680px;
   max-width: calc(100% - 32px);
-  background: #ffffff;
+  background: #020617;
   border-radius: 16px;
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.4);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9);
   padding: 18px 18px 16px;
+  border: 1px solid #1f2937;
 }
 
 .schedule-modal-header {
@@ -640,12 +681,13 @@
 .schedule-modal-title h4 {
   margin: 0;
   font-size: 18px;
+  color: #f9fafb;
 }
 
 .schedule-modal-title p {
   margin: 0;
   font-size: 13px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .schedule-modal-close {
@@ -654,10 +696,11 @@
   border-radius: 999px;
   padding: 4px;
   cursor: pointer;
+  color: #e5e7eb;
 }
 
 .schedule-modal-close:hover {
-  background: #e5e7eb;
+  background: #111827;
 }
 
 .schedule-form {
@@ -690,7 +733,7 @@
 .schedule-field label {
   font-size: 13px;
   font-weight: 500;
-  color: #4b5563;
+  color: #e5e7eb;
 }
 
 .schedule-form-actions {
@@ -706,11 +749,11 @@
 }
 
 .schedule-message-error {
-  color: #b91c1c;
+  color: #fecaca;
 }
 
 .schedule-message-success {
-  color: #15803d;
+  color: #4ade80;
 }
 
 .schedule-form-buttons {
@@ -736,11 +779,12 @@
 .day-detail-section h5 {
   margin: 0 0 4px;
   font-size: 14px;
+  color: #e5e7eb;
 }
 
 .day-detail-empty {
   font-size: 13px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .day-detail-task-list,
@@ -756,9 +800,9 @@
 .day-detail-task-item,
 .day-detail-schedule-item {
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #1f2937;
   padding: 8px 8px;
-  background: #f9fafb;
+  background: #020617;
 }
 
 .day-detail-task-main {
@@ -767,20 +811,18 @@
   gap: 8px;
   font-size: 13px;
   font-weight: 500;
-}
-
-.day-detail-task-project {
-  color: #111827;
+  color: #e5e7eb;
 }
 
 .day-detail-task-status {
   font-size: 12px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .day-detail-task-desc {
   margin-top: 2px;
   font-size: 13px;
+  color: #e5e7eb;
 }
 
 .day-detail-task-meta {
@@ -789,32 +831,33 @@
   flex-wrap: wrap;
   gap: 8px;
   font-size: 12px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .day-detail-task-notes {
   margin-top: 2px;
   font-size: 12px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .day-detail-schedule-type {
   font-size: 13px;
   font-weight: 500;
+  color: #e5e7eb;
 }
 
 .day-detail-schedule-dates {
   display: inline-block;
   margin-left: 6px;
   font-size: 12px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .day-detail-schedule-note {
   display: block;
   margin-top: 2px;
   font-size: 12px;
-  color: #4b5563;
+  color: #e5e7eb;
 }
 
 /* Animations */
