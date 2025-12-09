@@ -139,6 +139,8 @@ function App() {
 
             {/* REPORTS DASHBOARD */}
             <Route path="/reports" element={<ReportsDashboard />} />
+                  {/* Catch all unknown routes → go Home */}
+  <Route path="*" element={<HomeDashboard />} />
           </Routes>
         </main>
       </div>
