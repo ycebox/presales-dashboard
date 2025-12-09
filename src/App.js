@@ -1,7 +1,12 @@
-// App.js
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { supabase } from './supabaseClient';
+// src/App.js
+import React from 'react';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link,
+  useLocation,
+} from 'react-router-dom';
 import Projects from './Projects';
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
@@ -9,194 +14,133 @@ import PresalesOverview from './PresalesOverview';
 import ReportsDashboard from './ReportsDashboard';
 import './App.css';
 
-function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+function AppHeader() {
+  const location = useLocation();
 
-  useEffect(() => {
-    autoAuthenticate();
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-    return () => subscription?.unsubscribe();
-  }, []);
-
-  const autoAuthenticate = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user) {
-        setUser(user);
-        setLoading(false);
-        return;
-      }
-
-      const defaultEmail = 'admin@presales.com';
-      const defaultPassword = 'presales123';
-
-      let { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: defaultEmail,
-        password: defaultPassword,
-      });
-
-      if (signInError && signInError.message.includes('Invalid login credentials')) {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: defaultEmail,
-          password: defaultPassword,
-        });
-
-        if (!signUpError) setUser(signUpData.user);
-      } else if (!signInError) {
-        setUser(data.user);
-      }
-    } catch (error) {
-      console.error('Auto-authentication failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p className="loading-text">Loading dashboard...</p>
-      </div>
-    );
-  }
+  const isActive = (path) =>
+    location.pathname === path ||
+    (path !== '/' && location.pathname.startsWith(path));
 
   return (
-    <Router basename="/presales-dashboard">
-      <div className="app-wrapper">
-        <div className="main-container">
+    <header className="app-header">
+      <div className="app-header-main">
+        <div>
+          <h1>Jonathan&apos;s Command Center</h1>
+          <p>Personal view of customers, deals, and presales workload.</p>
+        </div>
+      </div>
+      <nav className="app-nav">
+        <Link
+          to="/"
+          className={isActive('/') ? 'nav-link active' : 'nav-link'}
+        >
+          Home
+        </Link>
+        <Link
+          to="/presales-overview"
+          className={
+            isActive('/presales-overview') ? 'nav-link active' : 'nav-link'
+          }
+        >
+          Presales overview
+        </Link>
+        <Link
+          to="/reports"
+          className={isActive('/reports') ? 'nav-link active' : 'nav-link'}
+        >
+          Reports
+        </Link>
+      </nav>
+    </header>
+  );
+}
 
-          {/* ---------- HEADER ---------- */}
-          <header className="dashboard-header">
-            <div className="header-content">
+// ---- HOME DASHBOARD (Option B layout) ----
+function HomeDashboard() {
+  const [notes, setNotes] = React.useState('');
 
-              {/* Left side title */}
-              <div className="header-info">
-                <h1 className="section-title">Jonathan&apos;s Command Center</h1>
-                <p className="dashboard-subtitle">The Procrastinator&apos;s Paradise</p>
-              </div>
+  return (
+    <div className="home-dashboard">
+      {/* LEFT: main work area */}
+      <div className="home-main-column">
+        <Projects />
+      </div>
 
-              {/* Right side: status + nav links */}
-              <div className="header-status">
-                <div className="status-indicator"></div>
-                <span className="status-text">Online</span>
+      {/* RIGHT: slim sidebar */}
+      <div className="home-side-column">
+        <section className="home-card">
+          <h3 className="home-card-title">Top deals to watch</h3>
+          <p className="home-card-subtitle">
+            High-value or late-stage opportunities you want to keep an eye on.
+          </p>
+          <ul className="home-list-placeholder">
+            <li>Use Reports to define your criteria for “top deals”.</li>
+            <li>
+              Later, we can wire this to Supabase (e.g. deal_value &gt; X and
+              stage in Proposal / Contracting).
+            </li>
+          </ul>
+        </section>
 
-                {/* Home link */}
-                <Link
-                  to="/"
-                  className="presales-nav-link"
-                  style={{
-                    marginLeft: '16px',
-                    padding: '6px 12px',
-                    borderRadius: '8px',
-                    background: '#2563eb',
-                    color: 'white',
-                    fontSize: '0.75rem',
-                    fontWeight: 500,
-                    textDecoration: 'none',
-                    transition: '0.2s',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseOver={(e) => (e.target.style.opacity = '0.85')}
-                  onMouseOut={(e) => (e.target.style.opacity = '1')}
-                >
-                  Home
-                </Link>
+        <section className="home-card">
+          <h3 className="home-card-title">Recently updated projects</h3>
+          <p className="home-card-subtitle">
+            Quick reminder of what changed in the last few days.
+          </p>
+          <ul className="home-list-placeholder">
+            <li>
+              Next step: pull from <code>projects</code> ordered by{' '}
+              <code>updated_at</code>.
+            </li>
+            <li>For now, use this as a visual placeholder / reminder.</li>
+          </ul>
+        </section>
 
-                {/* Presales Overview */}
-                <Link
-                  to="/presales-overview"
-                  className="presales-nav-link"
-                  style={{
-                    marginLeft: '8px',
-                    padding: '6px 12px',
-                    borderRadius: '8px',
-                    background: 'transparent',
-                    color: '#e5e7eb',
-                    fontSize: '0.75rem',
-                    fontWeight: 500,
-                    textDecoration: 'none',
-                    border: '1px solid rgba(148, 163, 184, 0.5)',
-                    transition: '0.2s',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseOver={(e) => {
-                    e.target.style.background = 'rgba(15, 23, 42, 0.9)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.target.style.background = 'transparent';
-                  }}
-                >
-                  Presales Overview
-                </Link>
+        <section className="home-card">
+          <h3 className="home-card-title">My notes</h3>
+          <p className="home-card-subtitle">
+            Temporary scratchpad for things to remember this week.
+          </p>
+          <textarea
+            className="home-notes-textarea"
+            placeholder="Jot down talking points for CEO review, follow-ups for sales, or reminders for next presales huddle..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+          <p className="home-notes-hint">
+            Notes are local only for now (no save to DB yet).
+          </p>
+        </section>
+      </div>
+    </div>
+  );
+}
 
-                {/* Reports */}
-                <Link
-                  to="/reports"
-                  className="presales-nav-link"
-                  style={{
-                    marginLeft: '8px',
-                    padding: '6px 12px',
-                    borderRadius: '8px',
-                    background: 'transparent',
-                    color: '#e5e7eb',
-                    fontSize: '0.75rem',
-                    fontWeight: 500,
-                    textDecoration: 'none',
-                    border: '1px solid rgba(148, 163, 184, 0.5)',
-                    transition: '0.2s',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseOver={(e) => {
-                    e.target.style.background = 'rgba(15, 23, 42, 0.9)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.target.style.background = 'transparent';
-                  }}
-                >
-                  Reports
-                </Link>
-              </div>
-            </div>
-          </header>
-          {/* ---------- END HEADER ---------- */}
+function App() {
+  return (
+    <Router>
+      <div className="app-container">
+        <AppHeader />
 
+        <main className="app-main">
           <Routes>
-            {/* Main page — Projects only */}
+            {/* HOME / MAIN DASHBOARD */}
+            <Route path="/" element={<HomeDashboard />} />
+
+            {/* PROJECT + CUSTOMER DETAIL PAGES */}
+            <Route path="/project/:projectId" element={<ProjectDetails />} />
+            <Route path="/customer/:customerId" element={<CustomerDetails />} />
+
+            {/* PRESALES OVERVIEW */}
             <Route
-              path="/"
-              element={
-                <main className="dashboard-main">
-                  <div className="dashboard-bottom">
-                    <div className="widget-card projects-widget">
-                      <Projects />
-                    </div>
-                  </div>
-                </main>
-              }
+              path="/presales-overview"
+              element={<PresalesOverview />}
             />
 
-            {/* Presales Overview */}
-            <Route path="/presales-overview" element={<PresalesOverview />} />
-
-            {/* Reports Dashboard */}
+            {/* REPORTS DASHBOARD */}
             <Route path="/reports" element={<ReportsDashboard />} />
-
-            {/* Details */}
-            <Route path="/project/:id" element={<ProjectDetails />} />
-            <Route path="/customer/:customerId" element={<CustomerDetails />} />
           </Routes>
-
-        </div>
+        </main>
       </div>
     </Router>
   );
