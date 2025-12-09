@@ -1112,16 +1112,23 @@
     font-size: 1.4rem;
   }
 }
+/* Scroll container (from earlier) */
 .customers-table-scroll {
-  max-height: 520px;      /* adjust height as you like */
-  overflow-y: auto;
+  max-height: 520px;
+  overflow-y: scroll !important;
   overflow-x: hidden;
   border-radius: 16px;
 }
 
-/* Optional: keep header visible while scrolling */
 .customers-table thead th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 5; /* make sure it stays above rows */
+  background: #020617; /* solid dark – adjust if your card uses a different color */
+  /* If your table rows have borders, this helps separate header */
+  border-bottom: 1px solid rgba(148, 163, 184, 0.4);
+}
+/* Optional: tiny shadow so the header feels "above" the list */
+.customers-table thead {
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.7);
 }
