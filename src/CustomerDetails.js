@@ -787,30 +787,7 @@ const CustomerDetails = () => {
           </div>
         </div>
 
-        <div className="customer-header-actions">
-          <button
-            className="btn-secondary"
-            onClick={() => setShowTaskModal(true)}
-            disabled={projects.length === 0}
-          >
-            <FaTasks />
-            Add Task
-          </button>
-          <button
-            className="btn-secondary"
-            onClick={() => {
-              setEditingStakeholder(null);
-              setShowStakeholderModal(true);
-            }}
-          >
-            <FaUsers />
-            Add Stakeholder
-          </button>
-          <button className="btn-primary" onClick={() => navigate('/')}>
-            <FaChartLine />
-            Back to Home
-          </button>
-        </div>
+       
       </header>
 
       <main className="customer-main-layout">
