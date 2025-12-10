@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './CustomerDetails.css';
 
+
 import {
   FaUserTie,
   FaBuilding,
