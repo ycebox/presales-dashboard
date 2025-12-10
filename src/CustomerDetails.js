@@ -1,4 +1,4 @@
-// CustomerDetails.js - focused customer info + full layout retained
+// src/CustomerDetails.js
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -25,7 +25,6 @@ import {
   FaInfoCircle,
   FaEnvelope,
   FaPhoneAlt,
-  FaMapMarkerAlt,
   FaRegStickyNote,
 } from 'react-icons/fa';
 
@@ -66,11 +65,7 @@ const asiaPacificCountries = [
   'China',
 ];
 
-const customerTypes = [
-  'Existing',
-  'New',
-  'Internal Initiative',
-];
+const customerTypes = ['Existing', 'New', 'Internal Initiative'];
 
 // ----- Stakeholder Modal -----
 const StakeholderModal = ({
@@ -254,13 +249,8 @@ const StakeholderModal = ({
   );
 };
 
-// ----- Task Modal (for quick add from customer page) -----
-const TaskModal = ({
-  isOpen,
-  onClose,
-  onSave,
-  projects,
-}) => {
+// ----- Task Modal -----
+const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
   const [form, setForm] = useState({
     project_id: '',
     description: '',
@@ -573,7 +563,6 @@ const CustomerDetails = () => {
       fetchProjects();
       fetchStakeholders();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customer?.customer_name]);
 
   useEffect(() => {
@@ -680,17 +669,15 @@ const CustomerDetails = () => {
 
   const handleCreateTask = async (formValues) => {
     try {
-      const { error } = await supabase
-        .from('project_tasks')
-        .insert([
-          {
-            project_id: formValues.project_id,
-            description: formValues.description,
-            status: formValues.status,
-            priority: formValues.priority,
-            due_date: formValues.due_date || null,
-          },
-        ]);
+      const { error } = await supabase.from('project_tasks').insert([
+        {
+          project_id: formValues.project_id,
+          description: formValues.description,
+          status: formValues.status,
+          priority: formValues.priority,
+          due_date: formValues.due_date || null,
+        },
+      ]);
 
       if (error) throw error;
       alert('Task added successfully');
@@ -756,7 +743,7 @@ const CustomerDetails = () => {
             onClick={() => navigate('/')}
           >
             <FaChartLine />
-            Back to Dashboard
+            Back to Home
           </button>
         </div>
       </div>
@@ -819,10 +806,7 @@ const CustomerDetails = () => {
             <FaUsers />
             Add Stakeholder
           </button>
-          <button
-            className="btn-primary"
-            onClick={() => navigate('/')}
-          >
+          <button className="btn-primary" onClick={() => navigate('/')}>
             <FaChartLine />
             Back to Home
           </button>
@@ -988,7 +972,11 @@ const CustomerDetails = () => {
                   <div className="info-value status-pill">
                     {currentStatus ? (
                       <span
-                        className={`status-${currentStatus.code.toLowerCase()}`}
+                        className={`status-${String(
+                          currentStatus.code || ''
+                        )
+                          .toLowerCase()
+                          .replace(/\s/g, '-')}`}
                       >
                         {currentStatus.label}
                       </span>
@@ -1038,7 +1026,11 @@ const CustomerDetails = () => {
                       <div>
                         <div className="stakeholder-name-row">
                           <h3>{s.name}</h3>
-                          {s.role && <span className="stakeholder-role">{s.role}</span>}
+                          {s.role && (
+                            <span className="stakeholder-role">
+                              {s.role}
+                            </span>
+                          )}
                         </div>
                         <div className="stakeholder-contact">
                           {s.email && (
@@ -1126,9 +1118,7 @@ const CustomerDetails = () => {
                         </div>
                         <div className="project-meta-item">
                           <FaCalendarAlt />
-                          <span>
-                            Created: {formatDate(p.created_at)}
-                          </span>
+                          <span>Created: {formatDate(p.created_at)}</span>
                         </div>
                       </div>
                       <div className="project-value">
@@ -1225,7 +1215,12 @@ const CustomerDetails = () => {
                       </div>
                       <ul className="project-task-list">
                         {projectTasks.map((t) => (
-                          <li key={t.id} className={`task-item status-${(t.status || '').toLowerCase().replace(/\s/g, '-')}`}>
+                          <li
+                            key={t.id}
+                            className={`task-item status-${(t.status || '')
+                              .toLowerCase()
+                              .replace(/\s/g, '-')}`}
+                          >
                             <div className="task-main">
                               <span className="task-desc">
                                 {t.description}
@@ -1238,10 +1233,17 @@ const CustomerDetails = () => {
                               )}
                             </div>
                             <div className="task-meta">
-                              <span className={`task-status-badge status-${(t.status || '').toLowerCase().replace(/\s/g, '-')}`}>
+                              <span
+                                className={`task-status-badge status-${(t.status || '')
+                                  .toLowerCase()
+                                  .replace(/\s/g, '-')}`}
+                              >
                                 {t.status || 'Not Started'}
                               </span>
-                              <span className={`task-priority-badge priority-${(t.priority || '').toLowerCase()}`}>
+                              <span
+                                className={`task-priority-badge priority-${(t.priority || '')
+                                  .toLowerCase()}`}
+                              >
                                 {t.priority || 'Normal'}
                               </span>
                             </div>
