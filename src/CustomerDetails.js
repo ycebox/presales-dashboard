@@ -421,6 +421,185 @@ const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
   );
 };
 
+// ----- Project Modal -----
+const ProjectModal = ({ isOpen, onClose, onSave, customer }) => {
+  const [form, setForm] = useState({
+    project_name: '',
+    sales_stage: 'Lead',
+    product: '',
+    deal_value: '',
+    scope: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setForm({
+        project_name: '',
+        sales_stage: 'Lead',
+        product: '',
+        deal_value: '',
+        scope: '',
+      });
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.project_name.trim()) {
+      alert('Project name is required');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(form);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title-wrapper">
+            <FaProjectDiagram className="modal-icon" />
+            <h3 className="modal-title">Add Project / Opportunity</h3>
+          </div>
+          <button
+            className="modal-close-button"
+            onClick={onClose}
+            aria-label="Close modal"
+          >
+            <FaTimes />
+          </button>
+        </div>
+
+        <form className="modal-form" onSubmit={handleSubmit}>
+          <div className="form-grid">
+            <div className="form-group full-width">
+              <label className="form-label">
+                <FaBuilding className="form-icon" />
+                Customer
+              </label>
+              <input
+                type="text"
+                value={customer?.customer_name || ''}
+                disabled
+                className="form-input"
+              />
+            </div>
+
+            <div className="form-group full-width">
+              <label className="form-label">
+                <FaProjectDiagram className="form-icon" />
+                Project / Opportunity Name *
+              </label>
+              <input
+                type="text"
+                name="project_name"
+                value={form.project_name}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="e.g. GPBank Card System Modernisation"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                <FaFlag className="form-icon" />
+                Sales Stage
+              </label>
+              <select
+                name="sales_stage"
+                value={form.sales_stage}
+                onChange={handleChange}
+                className="form-input"
+              >
+                <option value="Lead">Lead</option>
+                <option value="Opportunity">Opportunity</option>
+                <option value="Proposal">Proposal</option>
+                <option value="Contracting">Contracting</option>
+                <option value="Done">Done</option>
+                <option value="Lost">Lost</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                <FaChartLine className="form-icon" />
+                Product / Solution
+              </label>
+              <input
+                type="text"
+                name="product"
+                value={form.product}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="e.g. SmartVista CMS, SVIP"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                <FaMoneyBillWave className="form-icon" />
+                Deal Value (USD)
+              </label>
+              <input
+                type="number"
+                name="deal_value"
+                value={form.deal_value}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="e.g. 500000"
+              />
+            </div>
+
+            <div className="form-group full-width">
+              <label className="form-label">
+                <FaRegStickyNote className="form-icon" />
+                Scope / Notes
+              </label>
+              <textarea
+                name="scope"
+                value={form.scope}
+                onChange={handleChange}
+                className="form-textarea"
+                rows={3}
+                placeholder="Short description of the scope, solution footprint, or notes."
+              />
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="button-cancel"
+              onClick={onClose}
+              disabled={saving}
+            >
+              <FaTimes />
+              Cancel
+            </button>
+            <button type="submit" className="button-submit" disabled={saving}>
+              <FaSave />
+              {saving ? 'Saving...' : 'Add Project'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // ----- Main Component -----
 const CustomerDetails = () => {
   const { customerId } = useParams();
@@ -444,6 +623,7 @@ const CustomerDetails = () => {
   const [editingStakeholder, setEditingStakeholder] = useState(null);
 
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
 
   // Fetch data
   const fetchCustomer = async () => {
@@ -498,10 +678,7 @@ const CustomerDetails = () => {
       const { data, error } = await supabase
         .from('project_tasks')
         .select('*')
-        .in(
-          'project_id',
-          projects.length > 0 ? projects.map((p) => p.id) : [-1]
-        )
+        .in('project_id', projects.length > 0 ? projects.map((p) => p.id) : [-1])
         .order('due_date', { ascending: true });
 
       if (error) throw error;
@@ -689,6 +866,37 @@ const CustomerDetails = () => {
     }
   };
 
+  const handleCreateProject = async (formValues) => {
+    try {
+      const dealValue =
+        formValues.deal_value && !Number.isNaN(Number(formValues.deal_value))
+          ? Number(formValues.deal_value)
+          : null;
+
+      const { error } = await supabase.from('projects').insert([
+        {
+          customer_name: customer.customer_name,
+          project_name: formValues.project_name,
+          sales_stage: formValues.sales_stage || 'Lead',
+          product: formValues.product || null,
+          scope: formValues.scope || null,
+          deal_value: dealValue,
+          country: customer.country || null,
+          account_manager: customer.account_manager || null,
+        },
+      ]);
+
+      if (error) throw error;
+
+      alert('Project added successfully');
+      setShowProjectModal(false);
+      fetchProjects();
+    } catch (err) {
+      console.error('Error adding project:', err);
+      alert('Error adding project: ' + err.message);
+    }
+  };
+
   const summary = useMemo(() => {
     const totalProjects = projects.length;
     const activeProjects = projects.filter(
@@ -786,8 +994,6 @@ const CustomerDetails = () => {
             </div>
           </div>
         </div>
-
-       
       </header>
 
       <main className="customer-main-layout">
@@ -1058,18 +1264,18 @@ const CustomerDetails = () => {
               </div>
               <button
                 className="btn-primary"
-                onClick={() => navigate('/')}
+                onClick={() => setShowProjectModal(true)}
               >
                 <FaPlus />
-                Add Project (from main)
+                Add Project
               </button>
             </div>
 
             {projects.length === 0 ? (
               <div className="empty-state small">
                 <p>
-                  No projects linked yet. Add a project from the main dashboard
-                  and link it to this customer name.
+                  No projects linked yet. Use &quot;Add Project&quot; above to
+                  create one for this customer.
                 </p>
               </div>
             ) : (
@@ -1165,6 +1371,14 @@ const CustomerDetails = () => {
                 <FaTasks />
                 <h2>Tasks by Project</h2>
               </div>
+              <button
+                className="btn-secondary"
+                onClick={() => setShowTaskModal(true)}
+                disabled={projects.length === 0}
+              >
+                <FaPlus />
+                Add Task
+              </button>
             </div>
 
             {tasks.length === 0 ? (
@@ -1266,6 +1480,13 @@ const CustomerDetails = () => {
         onClose={() => setShowTaskModal(false)}
         onSave={handleCreateTask}
         projects={projects}
+      />
+
+      <ProjectModal
+        isOpen={showProjectModal}
+        onClose={() => setShowProjectModal(false)}
+        onSave={handleCreateProject}
+        customer={customer}
       />
     </div>
   );
