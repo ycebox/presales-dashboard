@@ -5,7 +5,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './CustomerDetails.css';
 
-
 import {
   FaUserTie,
   FaBuilding,
@@ -29,7 +28,7 @@ import {
   FaRegStickyNote,
 } from 'react-icons/fa';
 
-// Simple helpers
+// ---------- Helpers ----------
 const formatDate = (dateStr) => {
   if (!dateStr) return 'N/A';
   const d = new Date(dateStr);
@@ -48,7 +47,6 @@ const formatCurrency = (value) => {
   });
 };
 
-// Static helpers
 const asiaPacificCountries = [
   'Singapore',
   'Philippines',
@@ -68,189 +66,7 @@ const asiaPacificCountries = [
 
 const customerTypes = ['Existing', 'New', 'Internal Initiative'];
 
-// ----- Stakeholder Modal -----
-const StakeholderModal = ({
-  isOpen,
-  onClose,
-  onSave,
-  editingStakeholder,
-}) => {
-  const [form, setForm] = useState({
-    name: '',
-    role: '',
-    email: '',
-    phone: '',
-    notes: '',
-  });
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (editingStakeholder) {
-      setForm({
-        name: editingStakeholder.name || '',
-        role: editingStakeholder.role || '',
-        email: editingStakeholder.email || '',
-        phone: editingStakeholder.phone || '',
-        notes: editingStakeholder.notes || '',
-      });
-    } else {
-      setForm({
-        name: '',
-        role: '',
-        email: '',
-        phone: '',
-        notes: '',
-      });
-    }
-  }, [editingStakeholder, isOpen]);
-
-  if (!isOpen) return null;
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.name.trim()) {
-      alert('Name is required');
-      return;
-    }
-    setSaving(true);
-    try {
-      await onSave(form);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-wrapper">
-            <FaUsers className="modal-icon" />
-            <h3 className="modal-title">
-              {editingStakeholder ? 'Edit Stakeholder' : 'Add Stakeholder'}
-            </h3>
-          </div>
-          <button
-            className="modal-close-button"
-            onClick={onClose}
-            aria-label="Close modal"
-          >
-            <FaTimes />
-          </button>
-        </div>
-
-        <form className="modal-form" onSubmit={handleSubmit}>
-          <div className="form-grid">
-            <div className="form-group">
-              <label className="form-label">
-                <FaUserTie className="form-icon" />
-                Name *
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="e.g., Head of Cards"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <FaBuilding className="form-icon" />
-                Role / Position
-              </label>
-              <input
-                type="text"
-                name="role"
-                value={form.role}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="e.g., CIO, Product Owner"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <FaEnvelope className="form-icon" />
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="name@customer.com"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <FaPhoneAlt className="form-icon" />
-                Phone
-              </label>
-              <input
-                type="text"
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="+65 ..."
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label className="form-label">
-                <FaRegStickyNote className="form-icon" />
-                Notes
-              </label>
-              <textarea
-                name="notes"
-                value={form.notes}
-                onChange={handleChange}
-                className="form-textarea"
-                placeholder="Relationship notes, influence, decision role..."
-                rows={3}
-              />
-            </div>
-          </div>
-
-          <div className="modal-actions">
-            <button
-              type="button"
-              className="button-cancel"
-              onClick={onClose}
-              disabled={saving}
-            >
-              <FaTimes />
-              Cancel
-            </button>
-            <button type="submit" className="button-submit" disabled={saving}>
-              <FaSave />
-              {saving
-                ? editingStakeholder
-                  ? 'Updating...'
-                  : 'Saving...'
-                : editingStakeholder
-                ? 'Update Stakeholder'
-                : 'Add Stakeholder'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-// ----- Task Modal -----
+// ---------- Task Modal ----------
 const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
   const [form, setForm] = useState({
     project_id: '',
@@ -422,7 +238,7 @@ const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
   );
 };
 
-// ----- Project Modal -----
+// ---------- Project Modal ----------
 const ProjectModal = ({ isOpen, onClose, onSave, customer }) => {
   const [form, setForm] = useState({
     project_name: '',
@@ -601,14 +417,13 @@ const ProjectModal = ({ isOpen, onClose, onSave, customer }) => {
   );
 };
 
-// ----- Main Component -----
+// ---------- Main Component ----------
 const CustomerDetails = () => {
   const { customerId } = useParams();
   const navigate = useNavigate();
 
   const [customer, setCustomer] = useState(null);
   const [projects, setProjects] = useState([]);
-  const [stakeholders, setStakeholders] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [statusOptions, setStatusOptions] = useState([]);
   const [accountManagers, setAccountManagers] = useState([]);
@@ -620,13 +435,10 @@ const CustomerDetails = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editCustomer, setEditCustomer] = useState({});
 
-  const [showStakeholderModal, setShowStakeholderModal] = useState(false);
-  const [editingStakeholder, setEditingStakeholder] = useState(null);
-
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
 
-  // Fetch data
+  // ----- Data fetchers -----
   const fetchCustomer = async () => {
     try {
       const { data, error } = await supabase
@@ -645,11 +457,15 @@ const CustomerDetails = () => {
   };
 
   const fetchProjects = async () => {
+    if (!customer?.customer_name) {
+      setProjects([]);
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('customer_name', customer?.customer_name || '')
+        .eq('customer_name', customer.customer_name)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -659,27 +475,19 @@ const CustomerDetails = () => {
     }
   };
 
-  const fetchStakeholders = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('customer_stakeholders')
-        .select('*')
-        .eq('customer_id', customerId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setStakeholders(data || []);
-    } catch (err) {
-      console.error('Error fetching stakeholders:', err);
-    }
-  };
-
   const fetchTasks = async () => {
+    if (!projects || projects.length === 0) {
+      setTasks([]);
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('project_tasks')
         .select('*')
-        .in('project_id', projects.length > 0 ? projects.map((p) => p.id) : [-1])
+        .in(
+          'project_id',
+          projects.length > 0 ? projects.map((p) => p.id) : [-1]
+        )
         .order('due_date', { ascending: true });
 
       if (error) throw error;
@@ -693,7 +501,7 @@ const CustomerDetails = () => {
     try {
       setLoadingStatuses(true);
       const { data, error } = await supabase
-        .from('customer_status')
+        .from('customer_statuses')
         .select('*')
         .order('sort_order', { ascending: true });
 
@@ -720,6 +528,7 @@ const CustomerDetails = () => {
     }
   };
 
+  // ----- Effects -----
   useEffect(() => {
     const load = async () => {
       try {
@@ -737,20 +546,16 @@ const CustomerDetails = () => {
   }, [customerId]);
 
   useEffect(() => {
-    if (customer && customer.customer_name) {
+    if (customer?.customer_name) {
       fetchProjects();
-      fetchStakeholders();
     }
   }, [customer?.customer_name]);
 
   useEffect(() => {
-    if (projects.length > 0) {
-      fetchTasks();
-    } else {
-      setTasks([]);
-    }
+    fetchTasks();
   }, [projects]);
 
+  // ----- Edit handlers -----
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditCustomer((prev) => ({
@@ -794,57 +599,7 @@ const CustomerDetails = () => {
     }
   };
 
-  const handleAddOrUpdateStakeholder = async (formValues) => {
-    try {
-      if (editingStakeholder) {
-        const { error } = await supabase
-          .from('customer_stakeholders')
-          .update(formValues)
-          .eq('id', editingStakeholder.id);
-
-        if (error) throw error;
-        alert('Stakeholder updated');
-      } else {
-        const { error } = await supabase
-          .from('customer_stakeholders')
-          .insert([{ ...formValues, customer_id: customerId }]);
-
-        if (error) throw error;
-        alert('Stakeholder added');
-      }
-
-      setShowStakeholderModal(false);
-      setEditingStakeholder(null);
-      fetchStakeholders();
-    } catch (err) {
-      console.error('Error saving stakeholder:', err);
-      alert('Error saving stakeholder: ' + err.message);
-    }
-  };
-
-  const handleDeleteStakeholder = async (id) => {
-    if (
-      !window.confirm(
-        'Are you sure you want to delete this stakeholder? This cannot be undone.'
-      )
-    ) {
-      return;
-    }
-    try {
-      const { error } = await supabase
-        .from('customer_stakeholders')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      alert('Stakeholder deleted');
-      fetchStakeholders();
-    } catch (err) {
-      console.error('Error deleting stakeholder:', err);
-      alert('Error deleting stakeholder: ' + err.message);
-    }
-  };
-
+  // ----- Create task / project -----
   const handleCreateTask = async (formValues) => {
     try {
       const { error } = await supabase.from('project_tasks').insert([
@@ -898,6 +653,7 @@ const CustomerDetails = () => {
     }
   };
 
+  // ----- Summary snapshot -----
   const summary = useMemo(() => {
     const totalProjects = projects.length;
     const activeProjects = projects.filter(
@@ -962,6 +718,10 @@ const CustomerDetails = () => {
   const currentStatus =
     customer.status_id &&
     statusOptions.find((s) => s.id === customer.status_id);
+
+  const keyStakeholders = Array.isArray(customer.key_stakeholders)
+    ? customer.key_stakeholders
+    : [];
 
   return (
     <div className="customer-details-container">
@@ -1173,85 +933,45 @@ const CustomerDetails = () => {
             </div>
           </section>
 
-          {/* Stakeholders */}
+          {/* Key Stakeholders (from customers.key_stakeholders) */}
           <section className="section-card stakeholders-section">
             <div className="section-header">
               <div className="section-title">
                 <FaUsers />
                 <h2>Key Stakeholders</h2>
+                <span className="stakeholder-counter">
+                  {keyStakeholders.length}
+                </span>
               </div>
-              <button
-                className="btn-secondary"
-                onClick={() => {
-                  setEditingStakeholder(null);
-                  setShowStakeholderModal(true);
-                }}
-              >
-                <FaPlus />
-                Add Stakeholder
-              </button>
             </div>
 
-            {stakeholders.length === 0 ? (
+            {keyStakeholders.length === 0 ? (
               <div className="empty-state small">
                 <p>
-                  No stakeholders recorded yet. Add the key people you interact
-                  with at this customer.
+                  No stakeholders recorded yet. Maintain <code>key_stakeholders</code> in
+                  the customer record to see them here.
                 </p>
               </div>
             ) : (
               <div className="stakeholder-list">
-                {stakeholders.map((s) => (
-                  <div key={s.id} className="stakeholder-item">
-                    <div className="stakeholder-main">
-                      <div className="stakeholder-avatar">
-                        <span>{s.name?.charAt(0) || '?'}</span>
-                      </div>
-                      <div>
-                        <div className="stakeholder-name-row">
-                          <h3>{s.name}</h3>
-                          {s.role && (
-                            <span className="stakeholder-role">
-                              {s.role}
-                            </span>
-                          )}
+                {keyStakeholders.map((s, index) => {
+                  const text = typeof s === 'string' ? s : String(s);
+                  const initial = text.trim().charAt(0) || '?';
+                  return (
+                    <div key={index} className="stakeholder-item">
+                      <div className="stakeholder-main">
+                        <div className="stakeholder-avatar">
+                          <span>{initial}</span>
                         </div>
-                        <div className="stakeholder-contact">
-                          {s.email && (
-                            <span>
-                              <FaEnvelope /> {s.email}
-                            </span>
-                          )}
-                          {s.phone && (
-                            <span>
-                              <FaPhoneAlt /> {s.phone}
-                            </span>
-                          )}
+                        <div>
+                          <div className="stakeholder-name-row">
+                            <h3>{text}</h3>
+                          </div>
                         </div>
-                        {s.notes && (
-                          <p className="stakeholder-notes">{s.notes}</p>
-                        )}
                       </div>
                     </div>
-                    <div className="stakeholder-actions">
-                      <button
-                        className="icon-btn"
-                        onClick={() => {
-                          setEditingStakeholder(s);
-                          setShowStakeholderModal(true);
-                        }}
-                      >
-                        <FaEdit />
-                      </button>
-                      <button
-                        className="icon-btn icon-btn-danger"
-                        onClick={() => handleDeleteStakeholder(s.id)}
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
@@ -1466,16 +1186,6 @@ const CustomerDetails = () => {
       </main>
 
       {/* Modals */}
-      <StakeholderModal
-        isOpen={showStakeholderModal}
-        onClose={() => {
-          setShowStakeholderModal(false);
-          setEditingStakeholder(null);
-        }}
-        onSave={handleAddOrUpdateStakeholder}
-        editingStakeholder={editingStakeholder}
-      />
-
       <TaskModal
         isOpen={showTaskModal}
         onClose={() => setShowTaskModal(false)}
