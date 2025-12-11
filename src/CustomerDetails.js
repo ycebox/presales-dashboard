@@ -497,7 +497,22 @@ const CustomerDetails = () => {
     }
   };
 
-const fetchStatusOptions = async () => {
+  const fetchStatusOptions = async () => {
+    try {
+      setLoadingStatuses(true);
+      const { data, error } = await supabase
+        .from('customer_statuses')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (error) throw error;
+      setStatusOptions(data || []);
+    } catch (err) {
+      console.error('Error fetching customer statuses:', err);
+    } finally {
+      setLoadingStatuses(false);
+    }
+  };
 
   const fetchAccountManagers = async () => {
     try {
