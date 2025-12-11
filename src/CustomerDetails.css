@@ -62,7 +62,7 @@
 }
 
 .customer-title {
-  font-size: 1.4rem;
+  font-size: 1.8rem;
   margin: 0;
 }
 
@@ -70,10 +70,9 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: #9ca3af;
 }
-
 .customer-subtitle {
   display: inline-flex;
   align-items: center;
@@ -96,9 +95,9 @@
 .btn-primary,
 .btn-secondary {
   border-radius: 999px;
-  padding: 0.35rem 0.75rem;
+  padding: 0.45rem 0.9rem;
   border: 1px solid transparent;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -190,7 +189,7 @@
 
 .section-title h2 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1.1rem;
 }
 
 .section-title svg {
@@ -228,19 +227,19 @@
 }
 
 .info-item label {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #9ca3af;
 }
 
 .info-value {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: #e5e7eb;
 }
 
 .info-value.main-name {
-  font-size: 1rem;
+  font-size: 1.2rem;
   font-weight: 600;
 }
 
@@ -249,8 +248,8 @@
   border-radius: 0.6rem;
   border: 1px solid #111827;
   background: #020617;
-  padding: 0.4rem 0.5rem;
-  font-size: 0.82rem;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.92rem;
   color: #e5e7eb;
 }
 
@@ -426,7 +425,7 @@
 
 .project-scope {
   margin: 0.2rem 0 0;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: #9ca3af;
 }
 
@@ -441,7 +440,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: #9ca3af;
 }
 
@@ -482,12 +481,12 @@
 }
 
 .snapshot-label {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: #9ca3af;
 }
 
 .snapshot-value {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 600;
 }
 
@@ -704,12 +703,12 @@
 
 .modal-container {
   width: 100%;
-  max-width: 540px;
+  max-width: 720px; /* bigger modal */
   background: #020617;
   border-radius: 0.9rem;
   border: 1px solid #1f2937;
   box-shadow: 0 18px 55px rgba(0, 0, 0, 0.9);
-  padding: 0.9rem 1rem 1rem;
+  padding: 1.1rem 1.25rem 1.25rem;
 }
 
 .modal-header {
@@ -731,7 +730,7 @@
 
 .modal-title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
 }
 
 .modal-close-button {
@@ -770,9 +769,9 @@
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: #9ca3af;
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.2rem;
 }
 
 .form-icon {
@@ -785,8 +784,8 @@
   border-radius: 0.6rem;
   border: 1px solid #111827;
   background: #020617;
-  padding: 0.4rem 0.55rem;
-  font-size: 0.8rem;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.95rem;
   color: #e5e7eb;
 }
 
@@ -811,8 +810,8 @@
 .button-cancel,
 .button-submit {
   border-radius: 999px;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.8rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.9rem;
   cursor: pointer;
   border: 1px solid transparent;
   display: inline-flex;
