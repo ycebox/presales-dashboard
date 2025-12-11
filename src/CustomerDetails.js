@@ -417,6 +417,75 @@ const ProjectModal = ({ isOpen, onClose, onSave, customer }) => {
   );
 };
 
+// ---------- Stakeholders Modal ----------
+const StakeholdersModal = ({ isOpen, onClose, initialStakeholders, onSave }) => {
+  const [value, setValue] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setValue((initialStakeholders || []).join('\n'));
+    }
+  }, [isOpen, initialStakeholders]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(value);
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title-wrapper">
+            <FaUsers className="modal-icon" />
+            <h3 className="modal-title">Edit Key Stakeholders</h3>
+          </div>
+          <button
+            className="modal-close-button"
+            onClick={onClose}
+            aria-label="Close modal"
+          >
+            <FaTimes />
+          </button>
+        </div>
+
+        <form className="modal-form" onSubmit={handleSubmit}>
+          <div className="form-group full-width">
+            <label className="form-label">
+              <FaUsers className="form-icon" />
+              Stakeholders (one per line)
+            </label>
+            <textarea
+              className="form-textarea"
+              rows={6}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="e.g. John Doe – CIO&#10;Jane Smith – Head of Cards"
+            />
+          </div>
+
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="button-cancel"
+              onClick={onClose}
+            >
+              <FaTimes />
+              Cancel
+            </button>
+            <button type="submit" className="button-submit">
+              <FaSave />
+              Save Stakeholders
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // ---------- Main Component ----------
 const CustomerDetails = () => {
   const { customerId } = useParams();
@@ -437,6 +506,7 @@ const CustomerDetails = () => {
 
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showStakeholdersModal, setShowStakeholdersModal] = useState(false);
 
   // ----- Data fetchers -----
   const fetchCustomer = async () => {
@@ -596,6 +666,33 @@ const CustomerDetails = () => {
     } catch (err) {
       console.error('Error updating customer:', err);
       alert('Failed to update customer: ' + err.message);
+    }
+  };
+
+  const handleSaveStakeholders = async (textValue) => {
+    const lines = textValue
+      .split('\n')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    try {
+      const { error } = await supabase
+        .from('customers')
+        .update({ key_stakeholders: lines })
+        .eq('id', customerId);
+
+      if (error) throw error;
+
+      setCustomer((prev) => ({
+        ...prev,
+        key_stakeholders: lines,
+      }));
+
+      alert('Stakeholders updated successfully');
+      setShowStakeholdersModal(false);
+    } catch (err) {
+      console.error('Error updating stakeholders:', err);
+      alert('Failed to update stakeholders: ' + err.message);
     }
   };
 
@@ -943,6 +1040,13 @@ const CustomerDetails = () => {
                   {keyStakeholders.length}
                 </span>
               </div>
+              <button
+                className="btn-secondary"
+                onClick={() => setShowStakeholdersModal(true)}
+              >
+                <FaEdit />
+                Edit
+              </button>
             </div>
 
             {keyStakeholders.length === 0 ? (
@@ -1198,6 +1302,13 @@ const CustomerDetails = () => {
         onClose={() => setShowProjectModal(false)}
         onSave={handleCreateProject}
         customer={customer}
+      />
+
+      <StakeholdersModal
+        isOpen={showStakeholdersModal}
+        onClose={() => setShowStakeholdersModal(false)}
+        initialStakeholders={keyStakeholders}
+        onSave={handleSaveStakeholders}
       />
     </div>
   );
