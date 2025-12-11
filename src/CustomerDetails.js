@@ -18,13 +18,11 @@ import {
   FaChartLine,
   FaPlus,
   FaEdit,
-  FaTrash,
   FaSave,
   FaTimes,
   FaExclamationTriangle,
   FaInfoCircle,
   FaEnvelope,
-  FaPhoneAlt,
   FaRegStickyNote,
 } from 'react-icons/fa';
 
@@ -65,6 +63,19 @@ const asiaPacificCountries = [
 ];
 
 const customerTypes = ['Existing', 'New', 'Internal Initiative'];
+
+// Parse a single "Name | Role | Contact" string
+const parseStakeholderEntry = (entry) => {
+  if (!entry) {
+    return { name: '', role: '', contact: '' };
+  }
+  const parts = String(entry).split('|');
+  return {
+    name: (parts[0] || '').trim(),
+    role: (parts[1] || '').trim(),
+    contact: (parts[2] || '').trim(),
+  };
+};
 
 // ---------- Task Modal ----------
 const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
@@ -417,21 +428,57 @@ const ProjectModal = ({ isOpen, onClose, onSave, customer }) => {
   );
 };
 
-// ---------- Stakeholders Modal ----------
+// ---------- Stakeholders Modal (structured: name / role / contact) ----------
 const StakeholdersModal = ({ isOpen, onClose, initialStakeholders, onSave }) => {
-  const [value, setValue] = useState('');
+  const [rows, setRows] = useState([{ name: '', role: '', contact: '' }]);
 
   useEffect(() => {
     if (isOpen) {
-      setValue((initialStakeholders || []).join('\n'));
+      const parsed =
+        (initialStakeholders || []).map(parseStakeholderEntry) || [];
+      if (parsed.length === 0) {
+        setRows([{ name: '', role: '', contact: '' }]);
+      } else {
+        setRows(parsed);
+      }
     }
   }, [isOpen, initialStakeholders]);
 
   if (!isOpen) return null;
 
+  const handleRowChange = (index, field, value) => {
+    setRows((prev) =>
+      prev.map((row, i) =>
+        i === index ? { ...row, [field]: value } : row
+      )
+    );
+  };
+
+  const handleAddRow = () => {
+    setRows((prev) => [...prev, { name: '', role: '', contact: '' }]);
+  };
+
+  const handleRemoveRow = (index) => {
+    setRows((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(value);
+    const cleaned = rows
+      .map((r) => ({
+        name: (r.name || '').trim(),
+        role: (r.role || '').trim(),
+        contact: (r.contact || '').trim(),
+      }))
+      .filter(
+        (r) => r.name !== '' || r.role !== '' || r.contact !== ''
+      );
+
+    const encoded = cleaned.map(
+      (r) => `${r.name} | ${r.role} | ${r.contact}`
+    );
+
+    onSave(encoded);
   };
 
   return (
@@ -452,18 +499,57 @@ const StakeholdersModal = ({ isOpen, onClose, initialStakeholders, onSave }) => 
         </div>
 
         <form className="modal-form" onSubmit={handleSubmit}>
-          <div className="form-group full-width">
-            <label className="form-label">
-              <FaUsers className="form-icon" />
-              Stakeholders (one per line)
-            </label>
-            <textarea
-              className="form-textarea"
-              rows={6}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder="e.g. John Doe – CIO&#10;Jane Smith – Head of Cards"
-            />
+          <div className="stakeholder-rows">
+            <div className="stakeholder-rows-header">
+              <span>Name</span>
+              <span>Title / Role</span>
+              <span>Contact</span>
+              <span></span>
+            </div>
+            {rows.map((row, index) => (
+              <div key={index} className="stakeholder-row">
+                <input
+                  className="form-input"
+                  placeholder="e.g. John Doe"
+                  value={row.name}
+                  onChange={(e) =>
+                    handleRowChange(index, 'name', e.target.value)
+                  }
+                />
+                <input
+                  className="form-input"
+                  placeholder="e.g. CIO, Head of Cards"
+                  value={row.role}
+                  onChange={(e) =>
+                    handleRowChange(index, 'role', e.target.value)
+                  }
+                />
+                <input
+                  className="form-input"
+                  placeholder="e.g. john.doe@bank.com / +65 1234 5678"
+                  value={row.contact}
+                  onChange={(e) =>
+                    handleRowChange(index, 'contact', e.target.value)
+                  }
+                />
+                <button
+                  type="button"
+                  className="btn-icon"
+                  onClick={() => handleRemoveRow(index)}
+                  disabled={rows.length === 1}
+                >
+                  <FaTimes />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="btn-secondary inline"
+              onClick={handleAddRow}
+            >
+              <FaPlus />
+              Add stakeholder
+            </button>
           </div>
 
           <div className="modal-actions">
@@ -669,23 +755,18 @@ const CustomerDetails = () => {
     }
   };
 
-  const handleSaveStakeholders = async (textValue) => {
-    const lines = textValue
-      .split('\n')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-
+  const handleSaveStakeholders = async (encodedArray) => {
     try {
       const { error } = await supabase
         .from('customers')
-        .update({ key_stakeholders: lines })
+        .update({ key_stakeholders: encodedArray })
         .eq('id', customerId);
 
       if (error) throw error;
 
       setCustomer((prev) => ({
         ...prev,
-        key_stakeholders: lines,
+        key_stakeholders: encodedArray,
       }));
 
       alert('Stakeholders updated successfully');
@@ -816,9 +897,10 @@ const CustomerDetails = () => {
     customer.status_id &&
     statusOptions.find((s) => s.id === customer.status_id);
 
-  const keyStakeholders = Array.isArray(customer.key_stakeholders)
+  const keyStakeholdersRaw = Array.isArray(customer.key_stakeholders)
     ? customer.key_stakeholders
     : [];
+  const parsedStakeholders = keyStakeholdersRaw.map(parseStakeholderEntry);
 
   return (
     <div className="customer-details-container">
@@ -832,7 +914,7 @@ const CustomerDetails = () => {
             <h1 className="customer-title">
               {customer.customer_name || 'Customer'}
             </h1>
-            <div className="customer-subtitle-row">
+          <div className="customer-subtitle-row">
               <span className="customer-subtitle">
                 <FaBuilding />
                 {customer.customer_type || 'Customer'}
@@ -1030,14 +1112,14 @@ const CustomerDetails = () => {
             </div>
           </section>
 
-          {/* Key Stakeholders (from customers.key_stakeholders) */}
+          {/* Key Stakeholders */}
           <section className="section-card stakeholders-section">
             <div className="section-header">
               <div className="section-title">
                 <FaUsers />
                 <h2>Key Stakeholders</h2>
                 <span className="stakeholder-counter">
-                  {keyStakeholders.length}
+                  {parsedStakeholders.length}
                 </span>
               </div>
               <button
@@ -1049,18 +1131,17 @@ const CustomerDetails = () => {
               </button>
             </div>
 
-            {keyStakeholders.length === 0 ? (
+            {parsedStakeholders.length === 0 ? (
               <div className="empty-state small">
                 <p>
-                  No stakeholders recorded yet. Maintain <code>key_stakeholders</code> in
-                  the customer record to see them here.
+                  No stakeholders recorded yet. Use &quot;Edit&quot; to add
+                  names, roles and contacts.
                 </p>
               </div>
             ) : (
               <div className="stakeholder-list">
-                {keyStakeholders.map((s, index) => {
-                  const text = typeof s === 'string' ? s : String(s);
-                  const initial = text.trim().charAt(0) || '?';
+                {parsedStakeholders.map((s, index) => {
+                  const initial = s.name?.trim().charAt(0) || '?';
                   return (
                     <div key={index} className="stakeholder-item">
                       <div className="stakeholder-main">
@@ -1069,8 +1150,19 @@ const CustomerDetails = () => {
                         </div>
                         <div>
                           <div className="stakeholder-name-row">
-                            <h3>{text}</h3>
+                            <h3>{s.name || 'Unnamed stakeholder'}</h3>
                           </div>
+                          {s.role && (
+                            <div className="stakeholder-role">
+                              {s.role}
+                            </div>
+                          )}
+                          {s.contact && (
+                            <div className="stakeholder-contact">
+                              <FaEnvelope />
+                              <span>{s.contact}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1307,7 +1399,7 @@ const CustomerDetails = () => {
       <StakeholdersModal
         isOpen={showStakeholdersModal}
         onClose={() => setShowStakeholdersModal(false)}
-        initialStakeholders={keyStakeholders}
+        initialStakeholders={keyStakeholdersRaw}
         onSave={handleSaveStakeholders}
       />
     </div>
