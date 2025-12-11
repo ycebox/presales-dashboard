@@ -1,7 +1,7 @@
 // src/App.js
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  BrowserRouter as Router,
+  HashRouter as Router,   // 🔁 switched from BrowserRouter to HashRouter
   Routes,
   Route,
   Link,
