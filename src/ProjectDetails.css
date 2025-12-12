@@ -890,3 +890,28 @@ body {
   gap: 8px;
   align-items: center;
 }
+/* Scrollable card content (used by background + logs) */
+.scrollable-card-content {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 6px; /* space for scrollbar */
+}
+
+/* Custom scrollbar (visible, dark theme) */
+.scrollable-card-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollable-card-content::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 8px;
+}
+
+.scrollable-card-content::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.6);
+  border-radius: 8px;
+}
+
+.scrollable-card-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.85);
+}
