@@ -994,3 +994,82 @@ textarea:focus {
   font-size: 0.75rem;
   color: #6b7280;
 }
+/* ---------- Home: Notes (DB-backed) ---------- */
+
+.home-card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.home-notes-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.home-notes-btn {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #2563eb;
+  background: rgba(37, 99, 235, 0.18);
+  color: #bfdbfe;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
+}
+
+.home-notes-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.25);
+  background: rgba(37, 99, 235, 0.26);
+}
+
+.home-notes-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.home-notes-btn.secondary {
+  border-color: #334155;
+  background: rgba(15, 23, 42, 0.85);
+  color: #e5e7eb;
+}
+
+.home-notes-view {
+  margin-top: 0.3rem;
+  border-radius: 0.5rem;
+  border: 1px solid #1f2937;
+  background: rgba(2, 6, 23, 0.55);
+  padding: 0.55rem 0.65rem;
+}
+
+.home-notes-pre {
+  margin: 0;
+  white-space: pre-wrap;     /* keeps new lines */
+  word-break: break-word;    /* prevents overflow */
+  font-family: inherit;      /* looks like normal text, not code */
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: #e5e7eb;
+}
+
+/* ---------- Home: Top deals table - keep columns tidy ---------- */
+
+.home-topdeals-table th,
+.home-topdeals-table td {
+  vertical-align: top;
+}
+
+.home-topdeals-table td:nth-child(2),
+.home-topdeals-table th:nth-child(2) {
+  /* Project column */
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
