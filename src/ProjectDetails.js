@@ -556,30 +556,6 @@ const useProjectData = (projectId) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchProjectDetails = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
-
-      if (projectError) throw projectError;
-      if (!projectData) throw new Error('Project not found');
-
-      setProject(projectData);
-      await Promise.all([fetchTasks(), fetchLogs()]);
-    } catch (err) {
-      console.error('Error fetching project:', err);
-      setError('Failed to load project details: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchTasks = async () => {
     try {
       const { data, error } = await supabase
@@ -610,6 +586,30 @@ const useProjectData = (projectId) => {
     }
   };
 
+  const fetchProjectDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      if (projectError) throw projectError;
+      if (!projectData) throw new Error('Project not found');
+
+      setProject(projectData);
+      await Promise.all([fetchTasks(), fetchLogs()]);
+    } catch (err) {
+      console.error('Error fetching project:', err);
+      setError('Failed to load project details: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (projectId) {
       fetchProjectDetails();
@@ -631,7 +631,7 @@ const useProjectData = (projectId) => {
 
 // ---------- Main Component ----------
 function ProjectDetails() {
-  const { id } = useParams();
+  const { projectId } = useParams(); // <-- use the correct route param name
   const navigate = useNavigate();
   const {
     project,
@@ -642,7 +642,7 @@ function ProjectDetails() {
     error,
     fetchTasks,
     fetchLogs,
-  } = useProjectData(id);
+  } = useProjectData(projectId);
 
   // Local state
   const [isEditing, setIsEditing] = useState(false);
@@ -831,7 +831,7 @@ function ProjectDetails() {
       } else {
         const { error } = await supabase
           .from('project_tasks')
-          .insert([{ ...taskData, project_id: id }]);
+          .insert([{ ...taskData, project_id: projectId }]);
 
         if (error) throw error;
         alert('Task added successfully!');
@@ -879,7 +879,7 @@ function ProjectDetails() {
       } else {
         const { error } = await supabase
           .from('project_logs')
-          .insert([{ project_id: id, entry: logEntry }]);
+          .insert([{ project_id: projectId, entry: logEntry }]);
 
         if (error) throw error;
         alert('Log added successfully!');
@@ -932,6 +932,10 @@ function ProjectDetails() {
       navigate('/');
     }
   };
+
+  if (!projectId) {
+    return <ErrorScreen error="No project ID in URL" onBack={() => navigate('/')} />;
+  }
 
   if (loading) return <LoadingScreen />;
   if (error || !project) return <ErrorScreen error={error} onBack={() => navigate('/')} />;
@@ -1220,7 +1224,7 @@ function ProjectDetails() {
                                   : task.due_date
                                   ? `Due ${formatDate(task.due_date)}`
                                   : task.start_date
-                                  ? `Starts {formatDate(task.start_date)}`
+                                  ? `Starts ${formatDate(task.start_date)}`
                                   : ''}
                               </span>
                             </div>
