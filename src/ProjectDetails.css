@@ -814,3 +814,79 @@ body {
   border: 1px solid #60a5fa;
   color: #bfdbfe;
 }
+/* Due date badge (hero) */
+.due-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.9);
+  color: #e5e7eb;
+  white-space: nowrap;
+}
+
+/* Same classes your JS already uses */
+.due-badge.overdue {
+  border-color: rgba(239, 68, 68, 0.9);
+  background: rgba(239, 68, 68, 0.15);
+  color: #fecaca;
+}
+
+.due-badge.urgent {
+  border-color: rgba(245, 158, 11, 0.95);
+  background: rgba(245, 158, 11, 0.16);
+  color: #fed7aa;
+}
+
+.due-badge.warning {
+  border-color: rgba(250, 204, 21, 0.95);
+  background: rgba(250, 204, 21, 0.12);
+  color: #fef3c7;
+}
+
+.due-badge.normal {
+  border-color: rgba(56, 189, 248, 0.9);
+  background: rgba(56, 189, 248, 0.12);
+  color: #e0f2fe;
+}
+/* Project background */
+.project-background-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.project-background-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #e5e7eb;
+  white-space: pre-wrap; /* keeps line breaks */
+}
+
+/* Editor */
+.project-background-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.project-background-textarea {
+  min-height: 260px;
+  resize: vertical;
+  border-radius: 14px;
+  padding: 12px 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Keep edit/save buttons aligned nicely in the header */
+.content-card .card-header .header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
