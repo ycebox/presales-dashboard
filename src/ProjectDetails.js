@@ -817,21 +817,29 @@ function ProjectDetails() {
             </div>
             <div className="project-title-content">
               <h1 className="project-title">{project.project_name || 'Unnamed Project'}</h1>
-              <div className="project-meta">
-                <span className="customer-badge">
-                  <span>{project.customer_name || 'No customer'}</span>
-                </span>
-                <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
-                  {getSalesStageIcon(project.sales_stage)}
-                  <span>{project.sales_stage || 'No Stage'}</span>
-                </span>
-                {project.deal_value && (
-                  <span className="deal-badge">
-                    <FaDollarSign />
-                    <span>{formatCurrency(project.deal_value)}</span>
-                  </span>
-                )}
-              </div>
+            <div className="project-header-row">
+  <div className="project-identity">
+    <h1 className="project-title">{project.project_name || 'Unnamed Project'}</h1>
+    <div className="project-subtitle">
+      <FaUsers className="subtitle-icon" />
+      <span>{project.customer_name || 'No customer'}</span>
+    </div>
+  </div>
+
+  <div className="project-status">
+    <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
+      {getSalesStageIcon(project.sales_stage)}
+      <span>{project.sales_stage || 'No Stage'}</span>
+    </span>
+
+    {project.deal_value && (
+      <span className="deal-badge">
+        <FaDollarSign />
+        <span>{formatCurrency(project.deal_value)}</span>
+      </span>
+    )}
+  </div>
+</div>
             </div>
           </div>
         </div>
