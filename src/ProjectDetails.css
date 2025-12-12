@@ -1,5 +1,4 @@
 /* ProjectDetails.css – Dark Glassmorphism (ProjectDetails only) */
-/* Cleaned: removed unrelated schedule/weekly commitment styles, fixed right-column class mismatch */
 
 :root {
   --bg: #020617;
@@ -148,43 +147,85 @@ body {
 
 .project-title-content {
   flex: 1;
+  min-width: 0;
+}
+
+/* NEW HEADER LAYOUT (matches latest JSX) */
+.project-hero-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.project-hero-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.project-hero-right {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .project-title {
-  margin: 0 0 6px 0;
+  margin: 0;
   font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--text-strong);
+  line-height: 1.15;
 }
 
-.project-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+/* Customer row under the title */
+.project-customer-row {
+  display: inline-flex;
   align-items: center;
+  gap: 8px;
+  color: #e0f2fe;
+  opacity: 0.95;
+  min-width: 0;
 }
 
-.customer-badge,
+.project-customer-text {
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle-icon {
+  color: var(--accent);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* Sales stage below customer */
+.project-stage-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Badges */
 .stage-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
   border: 1px solid #64748b;
   white-space: nowrap;
-}
-
-.customer-badge {
-  background: rgba(8, 47, 73, 0.9);
-  color: #e0f2fe;
-  border-color: var(--accent);
-}
-
-.stage-badge {
   background: rgba(15, 23, 42, 0.95);
   color: var(--text);
 }
@@ -211,6 +252,21 @@ body {
   color: #fed7aa;
 }
 
+/* Deal badge */
+.deal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(30, 64, 175, 0.25);
+  border: 1px solid #60a5fa;
+  color: #bfdbfe;
+  white-space: nowrap;
+}
+
 /* MAIN GRID */
 .main-content-grid {
   display: grid;
@@ -219,7 +275,6 @@ body {
 }
 
 .main-column,
-.sidebar-column,
 .side-column {
   display: flex;
   flex-direction: column;
@@ -273,10 +328,34 @@ body {
 .header-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .card-content {
   padding: 14px 18px 18px;
+}
+
+/* Scrollable card content (used by background + logs) */
+.scrollable-card-content {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* Custom scrollbar (visible, dark theme) */
+.scrollable-card-content::-webkit-scrollbar {
+  width: 8px;
+}
+.scrollable-card-content::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 8px;
+}
+.scrollable-card-content::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.6);
+  border-radius: 8px;
+}
+.scrollable-card-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.85);
 }
 
 /* DETAILS GRID (PROJECT FIELDS) */
@@ -346,7 +425,7 @@ body {
   display: flex;
   gap: 10px;
   padding: 10px 12px;
-  padding-right: 44px; /* important: reserve space for top-right actions */
+  padding-right: 44px; /* reserve space for top-right actions */
   border-radius: 14px;
   background: radial-gradient(circle at top left, rgba(51, 65, 85, 0.9), rgba(15, 23, 42, 0.98));
   border: 1px solid #64748b;
@@ -438,7 +517,6 @@ body {
   gap: 6px;
   font-size: 11px;
   color: var(--muted);
-  padding-right: 0;
 }
 
 .task-actions {
@@ -471,11 +549,45 @@ body {
   transition: all 0.2s ease;
 }
 
-.task-action-button.edit { color: var(--accent); }
-.task-action-button.delete { color: #f97373; }
+.task-action-button.edit {
+  color: var(--accent);
+}
+.task-action-button.delete {
+  color: #f97373;
+}
 
 .task-action-button:hover {
   transform: translateY(-1px);
+}
+
+/* PROJECT BACKGROUND */
+.project-background-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.project-background-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #e5e7eb;
+  white-space: pre-wrap;
+}
+
+.project-background-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.project-background-textarea {
+  min-height: 260px;
+  resize: vertical;
+  border-radius: 14px;
+  padding: 12px 12px;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 /* LOG LIST */
@@ -487,16 +599,19 @@ body {
 
 .log-item {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(100, 116, 139, 0.85);
 }
 
-/* your JS uses .log-header/.log-date; keep it readable even if other styles vary */
 .log-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  margin-bottom: 6px;
 }
 
 .log-date {
@@ -508,6 +623,7 @@ body {
   font-size: 13px;
   color: var(--text);
   margin: 0;
+  white-space: pre-wrap;
 }
 
 .log-actions {
@@ -724,6 +840,15 @@ body {
   .main-content-grid {
     grid-template-columns: 1fr;
   }
+
+  .project-hero-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .project-hero-right {
+    justify-content: flex-start;
+  }
 }
 
 /* Make task actions usable on mobile (no hover) */
@@ -747,171 +872,4 @@ body {
   .task-item {
     padding-right: 52px;
   }
-}
-/* Improved project title layout */
-.project-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-top: 4px;
-}
-
-.project-identity {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.project-title {
-  margin: 0;
-  font-size: 28px; /* keep your existing size */
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  color: var(--text-strong);
-}
-
-.project-customer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px; /* ~half-ish of title visually */
-  font-weight: 600;
-  color: #e0f2fe;
-  opacity: 0.95;
-}
-
-.subtitle-icon {
-  color: var(--accent);
-  font-size: 14px;
-}
-
-.project-stage-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.project-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-
-/* Deal badge refinement */
-.deal-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  background: rgba(30, 64, 175, 0.25);
-  border: 1px solid #60a5fa;
-  color: #bfdbfe;
-}
-/* Due date badge (hero) */
-.due-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(148, 163, 184, 0.9);
-  color: #e5e7eb;
-  white-space: nowrap;
-}
-
-/* Same classes your JS already uses */
-.due-badge.overdue {
-  border-color: rgba(239, 68, 68, 0.9);
-  background: rgba(239, 68, 68, 0.15);
-  color: #fecaca;
-}
-
-.due-badge.urgent {
-  border-color: rgba(245, 158, 11, 0.95);
-  background: rgba(245, 158, 11, 0.16);
-  color: #fed7aa;
-}
-
-.due-badge.warning {
-  border-color: rgba(250, 204, 21, 0.95);
-  background: rgba(250, 204, 21, 0.12);
-  color: #fef3c7;
-}
-
-.due-badge.normal {
-  border-color: rgba(56, 189, 248, 0.9);
-  background: rgba(56, 189, 248, 0.12);
-  color: #e0f2fe;
-}
-/* Project background */
-.project-background-view {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.project-background-text {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.65;
-  color: #e5e7eb;
-  white-space: pre-wrap; /* keeps line breaks */
-}
-
-/* Editor */
-.project-background-edit {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.project-background-textarea {
-  min-height: 260px;
-  resize: vertical;
-  border-radius: 14px;
-  padding: 12px 12px;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-/* Keep edit/save buttons aligned nicely in the header */
-.content-card .card-header .header-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-/* Scrollable card content (used by background + logs) */
-.scrollable-card-content {
-  max-height: 320px;
-  overflow-y: auto;
-  padding-right: 6px; /* space for scrollbar */
-}
-
-/* Custom scrollbar (visible, dark theme) */
-.scrollable-card-content::-webkit-scrollbar {
-  width: 8px;
-}
-
-.scrollable-card-content::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
-  border-radius: 8px;
-}
-
-.scrollable-card-content::-webkit-scrollbar-thumb {
-  background: rgba(56, 189, 248, 0.6);
-  border-radius: 8px;
-}
-
-.scrollable-card-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.85);
 }
