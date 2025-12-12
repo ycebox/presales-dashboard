@@ -1,8 +1,8 @@
 // ProjectDetails.js
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
-import './ProjectDetails.css';
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "./supabaseClient";
+import "./ProjectDetails.css";
 import {
   FaTasks,
   FaBookOpen,
@@ -25,122 +25,132 @@ import {
   FaBullseye,
   FaRocket,
   FaFileAlt,
-} from 'react-icons/fa';
+} from "react-icons/fa";
 
 const SALES_STAGES = [
-  'Discovery', 'Demo', 'PoC', 'RFI', 'RFP', 'SoW',
-  'Contracting', 'Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold'
+  "Discovery",
+  "Demo",
+  "PoC",
+  "RFI",
+  "RFP",
+  "SoW",
+  "Contracting",
+  "Closed-Won",
+  "Closed-Lost",
+  "Closed-Cancelled/Hold",
 ];
 
-const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'];
+const TASK_STATUSES = ["Not Started", "In Progress", "Completed", "Cancelled/On-hold"];
 
 const formatDate = (dateString) => {
-  if (!dateString) return '-';
+  if (!dateString) return "-";
   try {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
-  } catch (e) {
-    return '-';
+  } catch {
+    return "-";
   }
 };
 
 const formatCurrency = (value) => {
-  if (value === null || value === undefined || value === '') return '-';
+  if (value === null || value === undefined || value === "") return "-";
   try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(Number(value));
-  } catch (e) {
-    return '-';
+  } catch {
+    return "-";
   }
 };
 
 const getTaskStatusClass = (status) => {
   switch (status?.toLowerCase()) {
-    case 'completed': return 'status-completed';
-    case 'in progress': return 'status-in-progress';
-    case 'not started': return 'status-not-started';
-    case 'cancelled/on-hold': return 'status-cancelled';
-    default: return 'status-not-started';
+    case "completed":
+      return "status-completed";
+    case "in progress":
+      return "status-in-progress";
+    case "not started":
+      return "status-not-started";
+    case "cancelled/on-hold":
+      return "status-cancelled";
+    default:
+      return "status-not-started";
   }
 };
 
 const getTaskStatusIcon = (status) => {
   switch (status?.toLowerCase()) {
-    case 'completed': return <FaCheckCircle />;
-    case 'in progress': return <FaClock />;
-    case 'cancelled/on-hold': return <FaExclamationTriangle />;
-    default: return <FaClock />;
+    case "completed":
+      return <FaCheckCircle />;
+    case "in progress":
+      return <FaClock />;
+    case "cancelled/on-hold":
+      return <FaExclamationTriangle />;
+    default:
+      return <FaClock />;
   }
 };
 
 const getSalesStageIcon = (stage) => {
   if (!stage) return <FaRocket className="stage-active" />;
   const s = stage.toLowerCase();
-  if (s.includes('closed-won')) return <FaCheckCircle className="stage-won" />;
-  if (s.includes('closed-lost')) return <FaExclamationTriangle className="stage-lost" />;
-  if (s.includes('closed-cancelled')) return <FaTimes className="stage-cancelled" />;
+  if (s.includes("closed-won")) return <FaCheckCircle className="stage-won" />;
+  if (s.includes("closed-lost")) return <FaExclamationTriangle className="stage-lost" />;
+  if (s.includes("closed-cancelled")) return <FaTimes className="stage-cancelled" />;
   return <FaRocket className="stage-active" />;
 };
 
 const getSalesStageClass = (stage) => {
-  if (!stage) return 'stage-active';
+  if (!stage) return "stage-active";
   const s = stage.toLowerCase();
-  if (s.includes('closed-won')) return 'stage-won';
-  if (s.includes('closed-lost')) return 'stage-lost';
-  if (s.includes('closed-cancelled')) return 'stage-cancelled';
-  return 'stage-active';
+  if (s.includes("closed-won")) return "stage-won";
+  if (s.includes("closed-lost")) return "stage-lost";
+  if (s.includes("closed-cancelled")) return "stage-cancelled";
+  return "stage-active";
 };
 
 // ---------- Task Modal ----------
-const TaskModal = ({
-  isOpen,
-  onClose,
-  onSave,
-  editingTask = null,
-  presalesResources = [],
-  taskTypes = [],
-}) => {
+const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResources = [], taskTypes = [] }) => {
   const [taskData, setTaskData] = useState({
-    description: '',
-    status: 'Not Started',
-    start_date: '',
-    end_date: '',
-    due_date: '',
-    notes: '',
-    assignee: '',
-    task_type: ''
+    description: "",
+    status: "Not Started",
+    start_date: "",
+    end_date: "",
+    due_date: "",
+    notes: "",
+    assignee: "",
+    task_type: "",
   });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (editingTask) {
       setTaskData({
-        description: editingTask.description || '',
-        status: editingTask.status || 'Not Started',
-        start_date: editingTask.start_date || '',
-        end_date: editingTask.end_date || '',
-        due_date: editingTask.due_date || '',
-        notes: editingTask.notes || '',
-        assignee: editingTask.assignee || '',
-        task_type: editingTask.task_type || ''
+        description: editingTask.description || "",
+        status: editingTask.status || "Not Started",
+        start_date: editingTask.start_date || "",
+        end_date: editingTask.end_date || "",
+        due_date: editingTask.due_date || "",
+        notes: editingTask.notes || "",
+        assignee: editingTask.assignee || "",
+        task_type: editingTask.task_type || "",
       });
     } else {
       setTaskData({
-        description: '',
-        status: 'Not Started',
-        start_date: '',
-        end_date: '',
-        due_date: '',
-        notes: '',
-        assignee: '',
-        task_type: ''
+        description: "",
+        status: "Not Started",
+        start_date: "",
+        end_date: "",
+        due_date: "",
+        notes: "",
+        assignee: "",
+        task_type: "",
       });
     }
   }, [editingTask, isOpen]);
@@ -152,10 +162,9 @@ const TaskModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!taskData.description.trim()) {
-      alert('Task description is required');
+      alert("Task description is required");
       return;
     }
-
     setLoading(true);
     try {
       await onSave(taskData);
@@ -174,7 +183,7 @@ const TaskModal = ({
         <div className="modal-header">
           <div className="modal-title-wrapper">
             <FaTasks className="modal-icon" />
-            <h3 className="modal-title">{editingTask ? 'Edit Task' : 'Create New Task'}</h3>
+            <h3 className="modal-title">{editingTask ? "Edit Task" : "Create New Task"}</h3>
           </div>
           <button className="modal-close-button" onClick={onClose} aria-label="Close modal">
             <FaTimes />
@@ -191,7 +200,7 @@ const TaskModal = ({
               <input
                 name="description"
                 value={taskData.description}
-                onChange={(e) => handleChange('description', e.target.value)}
+                onChange={(e) => handleChange("description", e.target.value)}
                 className="form-input"
                 placeholder="What needs to be accomplished?"
                 required
@@ -207,15 +216,16 @@ const TaskModal = ({
                 <select
                   name="assignee"
                   className="form-select"
-                  value={taskData.assignee || ''}
-                  onChange={(e) => handleChange('assignee', e.target.value)}
+                  value={taskData.assignee || ""}
+                  onChange={(e) => handleChange("assignee", e.target.value)}
                 >
                   <option value="">Unassigned</option>
                   {presalesResources
                     .filter((r) => r.is_active !== false)
                     .map((r) => (
                       <option key={r.id} value={r.name}>
-                        {r.name}{r.region ? ` (${r.region})` : ''}
+                        {r.name}
+                        {r.region ? ` (${r.region})` : ""}
                       </option>
                     ))}
                 </select>
@@ -223,7 +233,7 @@ const TaskModal = ({
                 <input
                   name="assignee"
                   value={taskData.assignee}
-                  onChange={(e) => handleChange('assignee', e.target.value)}
+                  onChange={(e) => handleChange("assignee", e.target.value)}
                   className="form-input"
                   placeholder="Who owns this task?"
                 />
@@ -238,11 +248,13 @@ const TaskModal = ({
               <select
                 name="status"
                 value={taskData.status}
-                onChange={(e) => handleChange('status', e.target.value)}
+                onChange={(e) => handleChange("status", e.target.value)}
                 className="form-select"
               >
                 {TASK_STATUSES.map((status) => (
-                  <option key={status} value={status}>{status}</option>
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
                 ))}
               </select>
             </div>
@@ -256,20 +268,22 @@ const TaskModal = ({
                 <select
                   name="task_type"
                   className="form-select"
-                  value={taskData.task_type || ''}
-                  onChange={(e) => handleChange('task_type', e.target.value)}
+                  value={taskData.task_type || ""}
+                  onChange={(e) => handleChange("task_type", e.target.value)}
                 >
                   <option value="">Select type</option>
                   {taskTypes.map((t) => (
-                    <option key={t.id} value={t.name}>{t.name}</option>
+                    <option key={t.id} value={t.name}>
+                      {t.name}
+                    </option>
                   ))}
                 </select>
               ) : (
                 <input
                   name="task_type"
                   className="form-input"
-                  value={taskData.task_type || ''}
-                  onChange={(e) => handleChange('task_type', e.target.value)}
+                  value={taskData.task_type || ""}
+                  onChange={(e) => handleChange("task_type", e.target.value)}
                   placeholder="e.g. RFP, Demo, PoC"
                 />
               )}
@@ -283,8 +297,8 @@ const TaskModal = ({
               <input
                 name="start_date"
                 type="date"
-                value={taskData.start_date || ''}
-                onChange={(e) => handleChange('start_date', e.target.value)}
+                value={taskData.start_date || ""}
+                onChange={(e) => handleChange("start_date", e.target.value)}
                 className="form-input"
               />
             </div>
@@ -297,8 +311,8 @@ const TaskModal = ({
               <input
                 name="end_date"
                 type="date"
-                value={taskData.end_date || ''}
-                onChange={(e) => handleChange('end_date', e.target.value)}
+                value={taskData.end_date || ""}
+                onChange={(e) => handleChange("end_date", e.target.value)}
                 className="form-input"
               />
             </div>
@@ -311,8 +325,8 @@ const TaskModal = ({
               <input
                 name="due_date"
                 type="date"
-                value={taskData.due_date || ''}
-                onChange={(e) => handleChange('due_date', e.target.value)}
+                value={taskData.due_date || ""}
+                onChange={(e) => handleChange("due_date", e.target.value)}
                 className="form-input"
               />
             </div>
@@ -325,7 +339,7 @@ const TaskModal = ({
               <textarea
                 name="notes"
                 value={taskData.notes}
-                onChange={(e) => handleChange('notes', e.target.value)}
+                onChange={(e) => handleChange("notes", e.target.value)}
                 rows="3"
                 className="form-textarea"
                 placeholder="Additional context or details..."
@@ -340,7 +354,7 @@ const TaskModal = ({
             </button>
             <button type="submit" className="button-submit" disabled={loading}>
               <FaSave />
-              {loading ? 'Saving...' : editingTask ? 'Update Task' : 'Create Task'}
+              {loading ? "Saving..." : editingTask ? "Update Task" : "Create Task"}
             </button>
           </div>
         </form>
@@ -351,23 +365,23 @@ const TaskModal = ({
 
 // ---------- Log Modal ----------
 const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
-  const [logEntry, setLogEntry] = useState('');
+  const [logEntry, setLogEntry] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setLogEntry(editingLog ? (editingLog.entry || '') : '');
+    setLogEntry(editingLog ? editingLog.entry || "" : "");
   }, [editingLog, isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!logEntry.trim()) {
-      alert('Log entry is required');
+      alert("Log entry is required");
       return;
     }
     setLoading(true);
     try {
       await onSave(logEntry);
-      setLogEntry('');
+      setLogEntry("");
     } finally {
       setLoading(false);
     }
@@ -381,7 +395,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
         <div className="modal-header">
           <div className="modal-title-wrapper">
             <FaBookOpen className="modal-icon" />
-            <h3 className="modal-title">{editingLog ? 'Edit Log Entry' : 'Add Project Log Entry'}</h3>
+            <h3 className="modal-title">{editingLog ? "Edit Log Entry" : "Add Project Log Entry"}</h3>
           </div>
           <button className="modal-close-button" onClick={onClose} aria-label="Close modal">
             <FaTimes />
@@ -413,7 +427,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
             </button>
             <button type="submit" className="button-submit" disabled={loading}>
               <FaSave />
-              {loading ? (editingLog ? 'Updating...' : 'Adding...') : (editingLog ? 'Update Entry' : 'Add Entry')}
+              {loading ? (editingLog ? "Updating..." : "Adding...") : editingLog ? "Update Entry" : "Add Entry"}
             </button>
           </div>
         </form>
@@ -438,7 +452,7 @@ const ErrorScreen = ({ error, onBack }) => (
         <FaExclamationTriangle className="error-icon" />
       </div>
       <h2 className="error-title">Something went wrong</h2>
-      <p className="error-message">{error || 'Project not found'}</p>
+      <p className="error-message">{error || "Project not found"}</p>
       <button onClick={onBack} className="action-button primary">
         <span>Back to Home</span>
       </button>
@@ -456,30 +470,30 @@ const useProjectData = (projectId) => {
   const fetchTasks = async () => {
     try {
       const { data, error } = await supabase
-        .from('project_tasks')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
+        .from("project_tasks")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setTasks(data || []);
     } catch (err) {
-      console.error('Error fetching tasks:', err);
+      console.error("Error fetching tasks:", err);
     }
   };
 
   const fetchLogs = async () => {
     try {
       const { data, error } = await supabase
-        .from('project_logs')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
+        .from("project_logs")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setLogs(data || []);
     } catch (err) {
-      console.error('Error fetching logs:', err);
+      console.error("Error fetching logs:", err);
     }
   };
 
@@ -489,19 +503,19 @@ const useProjectData = (projectId) => {
       setError(null);
 
       const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
+        .from("projects")
+        .select("*")
+        .eq("id", projectId)
         .single();
 
       if (projectError) throw projectError;
-      if (!projectData) throw new Error('Project not found');
+      if (!projectData) throw new Error("Project not found");
 
       setProject(projectData);
       await Promise.all([fetchTasks(), fetchLogs()]);
     } catch (err) {
-      console.error('Error fetching project:', err);
-      setError('Failed to load project details: ' + err.message);
+      console.error("Error fetching project:", err);
+      setError("Failed to load project details: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -518,8 +532,7 @@ function ProjectDetails() {
   const { projectId } = useParams();
   const navigate = useNavigate();
 
-  const { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs } =
-    useProjectData(projectId);
+  const { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs } = useProjectData(projectId);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editProject, setEditProject] = useState({});
@@ -534,15 +547,15 @@ function ProjectDetails() {
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
 
-  // --- Project Background (remarks) ---
+  // Project Background uses projects.remarks (per your schema)
   const [isEditingBackground, setIsEditingBackground] = useState(false);
-  const [backgroundDraft, setBackgroundDraft] = useState('');
+  const [backgroundDraft, setBackgroundDraft] = useState("");
   const [savingBackground, setSavingBackground] = useState(false);
 
   useEffect(() => {
     if (project) {
       setEditProject(project);
-      setBackgroundDraft(project.remarks || '');
+      setBackgroundDraft(project.remarks || "");
     }
   }, [project]);
 
@@ -550,23 +563,21 @@ function ProjectDetails() {
     const fetchPresalesResources = async () => {
       try {
         const { data, error } = await supabase
-          .from('presales_resources')
-          .select('id, name, email, region, is_active')
-          .order('name', { ascending: true });
+          .from("presales_resources")
+          .select("id, name, email, region, is_active")
+          .order("name", { ascending: true });
 
         if (error) {
-          console.warn('Error loading presales_resources:', error.message);
+          console.warn("Error loading presales_resources:", error.message);
           setPresalesResources([]);
           return;
         }
-
         setPresalesResources(data || []);
       } catch (err) {
-        console.warn('Unexpected error loading presales_resources:', err);
+        console.warn("Unexpected error loading presales_resources:", err);
         setPresalesResources([]);
       }
     };
-
     fetchPresalesResources();
   }, []);
 
@@ -574,59 +585,31 @@ function ProjectDetails() {
     const fetchTaskTypes = async () => {
       try {
         const { data, error } = await supabase
-          .from('task_types')
-          .select('id, name, is_active, sort_order')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
+          .from("task_types")
+          .select("id, name, is_active, sort_order")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true });
 
         if (error) {
-          console.warn('Error loading task_types:', error.message);
+          console.warn("Error loading task_types:", error.message);
           setTaskTypes([]);
           return;
         }
-
         setTaskTypes(data || []);
       } catch (err) {
-        console.warn('Unexpected error loading task_types:', err);
+        console.warn("Unexpected error loading task_types:", err);
         setTaskTypes([]);
       }
     };
-
     fetchTaskTypes();
   }, []);
 
-  const activeTasksCount = tasks.filter(
-    (t) => !['Completed', 'Cancelled/On-hold'].includes(t.status)
-  ).length;
-
-  const completedTasksCount = tasks.filter((t) => t.status === 'Completed').length;
-
-  const daysRemaining = (() => {
-    if (!project?.due_date) return null;
-    const today = new Date();
-    const due = new Date(project.due_date);
-    const diff = due - today;
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  })();
-
-  const getDaysRemainingText = () => {
-    if (daysRemaining === null) return 'No due date set';
-    if (daysRemaining > 0) return `${daysRemaining} days remaining`;
-    if (daysRemaining === 0) return 'Due today';
-    return `${Math.abs(daysRemaining)} days overdue`;
-  };
-
-  const getDaysRemainingClass = () => {
-    if (daysRemaining === null) return 'normal';
-    if (daysRemaining < 0) return 'overdue';
-    if (daysRemaining <= 3) return 'urgent';
-    if (daysRemaining <= 7) return 'warning';
-    return 'normal';
-  };
+  const activeTasksCount = tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status)).length;
+  const completedTasksCount = tasks.filter((t) => t.status === "Completed").length;
 
   const filteredTasks = showCompleted
     ? tasks
-    : tasks.filter((t) => !['Completed', 'Cancelled/On-hold'].includes(t.status));
+    : tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status));
 
   const handleEditToggle = () => {
     if (isEditing) {
@@ -639,7 +622,7 @@ function ProjectDetails() {
 
   const handleEditChange = (e) => {
     const { name, value, type } = e.target;
-    const newValue = type === 'number' ? (value === '' ? null : Number(value)) : value;
+    const newValue = type === "number" ? (value === "" ? null : Number(value)) : value;
     setEditProject((prev) => ({ ...prev, [name]: newValue }));
   };
 
@@ -647,7 +630,6 @@ function ProjectDetails() {
     try {
       setSaving(true);
 
-      // Only update columns that exist in your schema
       const payload = {
         project_name: editProject.project_name || null,
         customer_name: editProject.customer_name || null,
@@ -657,6 +639,7 @@ function ProjectDetails() {
         product: editProject.product || null,
         backup_presales: editProject.backup_presales || null,
         sales_stage: editProject.sales_stage || null,
+        remarks: editProject.remarks || null,
         due_date: editProject.due_date || null,
         project_type: editProject.project_type || null,
         current_status: editProject.current_status || null,
@@ -666,9 +649,9 @@ function ProjectDetails() {
       };
 
       const { data, error } = await supabase
-        .from('projects')
+        .from("projects")
         .update(payload)
-        .eq('id', project.id)
+        .eq("id", project.id)
         .select()
         .single();
 
@@ -676,10 +659,10 @@ function ProjectDetails() {
 
       setProject(data);
       setIsEditing(false);
-      alert('Project updated successfully!');
+      alert("Project updated successfully!");
     } catch (err) {
-      console.error('Error updating project:', err);
-      alert('Error updating project: ' + err.message);
+      console.error("Error updating project:", err);
+      alert("Error updating project: " + err.message);
     } finally {
       setSaving(false);
     }
@@ -687,128 +670,102 @@ function ProjectDetails() {
 
   const handleTaskStatusChange = async (taskId, currentStatus) => {
     try {
-      const newStatus = currentStatus === 'Completed' ? 'Not Started' : 'Completed';
-      const { error } = await supabase
-        .from('project_tasks')
-        .update({ status: newStatus })
-        .eq('id', taskId);
-
+      const newStatus = currentStatus === "Completed" ? "Not Started" : "Completed";
+      const { error } = await supabase.from("project_tasks").update({ status: newStatus }).eq("id", taskId);
       if (error) throw error;
       await fetchTasks();
     } catch (err) {
-      console.error('Error updating task status:', err);
-      alert('Error updating task status: ' + err.message);
+      console.error("Error updating task status:", err);
+      alert("Error updating task status: " + err.message);
     }
   };
 
   const handleTaskSaved = async (taskData) => {
     try {
       if (editingTask) {
-        const { error } = await supabase
-          .from('project_tasks')
-          .update(taskData)
-          .eq('id', editingTask.id);
-
+        const { error } = await supabase.from("project_tasks").update(taskData).eq("id", editingTask.id);
         if (error) throw error;
-        alert('Task updated successfully!');
+        alert("Task updated successfully!");
       } else {
-        const { error } = await supabase
-          .from('project_tasks')
-          .insert([{ ...taskData, project_id: projectId }]);
-
+        const { error } = await supabase.from("project_tasks").insert([{ ...taskData, project_id: projectId }]);
         if (error) throw error;
-        alert('Task added successfully!');
+        alert("Task added successfully!");
       }
 
       setShowTaskModal(false);
       setEditingTask(null);
       await fetchTasks();
     } catch (err) {
-      console.error('Error saving task:', err);
-      alert('Error saving task: ' + err.message);
+      console.error("Error saving task:", err);
+      alert("Error saving task: " + err.message);
     }
   };
 
   const handleDeleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task? This action cannot be undone.')) return;
-
+    if (!window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) return;
     try {
-      const { error } = await supabase.from('project_tasks').delete().eq('id', taskId);
+      const { error } = await supabase.from("project_tasks").delete().eq("id", taskId);
       if (error) throw error;
-      alert('Task deleted successfully!');
+      alert("Task deleted successfully!");
       fetchTasks();
     } catch (err) {
-      console.error('Error deleting task:', err);
-      alert('Error deleting task: ' + err.message);
+      console.error("Error deleting task:", err);
+      alert("Error deleting task: " + err.message);
     }
   };
 
   const handleLogSave = async (logEntry) => {
     try {
       if (editingLog) {
-        const { error } = await supabase
-          .from('project_logs')
-          .update({ entry: logEntry })
-          .eq('id', editingLog.id);
-
+        const { error } = await supabase.from("project_logs").update({ entry: logEntry }).eq("id", editingLog.id);
         if (error) throw error;
-        alert('Log updated successfully!');
+        alert("Log updated successfully!");
       } else {
-        const { error } = await supabase
-          .from('project_logs')
-          .insert([{ project_id: projectId, entry: logEntry }]);
-
+        const { error } = await supabase.from("project_logs").insert([{ project_id: projectId, entry: logEntry }]);
         if (error) throw error;
-        alert('Log added successfully!');
+        alert("Log added successfully!");
       }
 
       setShowLogModal(false);
       setEditingLog(null);
       fetchLogs();
     } catch (err) {
-      console.error('Error saving log:', err);
-      alert('Error saving log: ' + err.message);
+      console.error("Error saving log:", err);
+      alert("Error saving log: " + err.message);
     }
   };
 
   const handleDeleteLog = async (logId) => {
-    if (!window.confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) return;
-
+    if (!window.confirm("Are you sure you want to delete this log entry? This action cannot be undone.")) return;
     try {
-      const { error } = await supabase.from('project_logs').delete().eq('id', logId);
+      const { error } = await supabase.from("project_logs").delete().eq("id", logId);
       if (error) throw error;
-      alert('Log deleted successfully!');
+      alert("Log deleted successfully!");
       fetchLogs();
     } catch (err) {
-      console.error('Error deleting log:', err);
-      alert('Error deleting log: ' + err.message);
+      console.error("Error deleting log:", err);
+      alert("Error deleting log: " + err.message);
     }
   };
 
   const navigateToCustomer = async () => {
     try {
-      const { data } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('customer_name', project.customer_name)
-        .single();
-
+      const { data } = await supabase.from("customers").select("id").eq("customer_name", project.customer_name).single();
       if (data) navigate(`/customer/${data.id}`);
-      else navigate('/');
+      else navigate("/");
     } catch (err) {
-      console.error('Error finding customer:', err);
-      navigate('/');
+      console.error("Error finding customer:", err);
+      navigate("/");
     }
   };
 
-  // --- Background handlers (remarks) ---
   const handleEditBackground = () => {
-    setBackgroundDraft(project?.remarks || '');
+    setBackgroundDraft(project?.remarks || "");
     setIsEditingBackground(true);
   };
 
   const handleCancelBackground = () => {
-    setBackgroundDraft(project?.remarks || '');
+    setBackgroundDraft(project?.remarks || "");
     setIsEditingBackground(false);
   };
 
@@ -817,9 +774,9 @@ function ProjectDetails() {
       setSavingBackground(true);
 
       const { data, error } = await supabase
-        .from('projects')
+        .from("projects")
         .update({ remarks: backgroundDraft })
-        .eq('id', projectId)
+        .eq("id", projectId)
         .select()
         .single();
 
@@ -828,20 +785,19 @@ function ProjectDetails() {
       setProject(data);
       setIsEditingBackground(false);
     } catch (err) {
-      console.error('Error saving project background:', err);
-      alert('Failed to save project background: ' + err.message);
+      console.error("Error saving project background:", err);
+      alert("Failed to save project background: " + err.message);
     } finally {
       setSavingBackground(false);
     }
   };
 
-  if (!projectId) return <ErrorScreen error="No project ID in URL" onBack={() => navigate('/')} />;
+  if (!projectId) return <ErrorScreen error="No project ID in URL" onBack={() => navigate("/")} />;
   if (loading) return <LoadingScreen />;
-  if (error || !project) return <ErrorScreen error={error} onBack={() => navigate('/')} />;
+  if (error || !project) return <ErrorScreen error={error} onBack={() => navigate("/")} />;
 
   return (
     <div className="project-details-container">
-      {/* Page-level navigation (no Back to Dashboard button) */}
       <header className="navigation-header">
         <div className="nav-left">
           {project.customer_name && (
@@ -853,7 +809,7 @@ function ProjectDetails() {
         </div>
       </header>
 
-      {/* Project Header */}
+      {/* Project Header (customer name + stage stacked, due date removed) */}
       <section className="project-header">
         <div className="project-hero">
           <div className="project-title-section">
@@ -862,27 +818,31 @@ function ProjectDetails() {
             </div>
 
             <div className="project-title-content">
-              <h1 className="project-title">{project.project_name || 'Unnamed Project'}</h1>
+              <div className="project-hero-row">
+                <div className="project-hero-left">
+                  <h1 className="project-title">{project.project_name || "Unnamed Project"}</h1>
 
-              <div className="project-meta">
-                <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
-                  {getSalesStageIcon(project.sales_stage)}
-                  <span>{project.sales_stage || 'No Stage'}</span>
-                </span>
+                  <div className="project-customer-row">
+                    <FaUsers className="subtitle-icon" />
+                    <span className="project-customer-text">{project.customer_name || "No customer"}</span>
+                  </div>
 
-                {project.deal_value !== null && project.deal_value !== undefined && (
-                  <span className="deal-badge">
-                    <FaDollarSign />
-                    <span>{formatCurrency(project.deal_value)}</span>
-                  </span>
-                )}
+                  <div className="project-stage-row">
+                    <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
+                      {getSalesStageIcon(project.sales_stage)}
+                      <span>{project.sales_stage || "No Stage"}</span>
+                    </span>
+                  </div>
+                </div>
 
-                {project.due_date && (
-                  <span className={`due-badge ${getDaysRemainingClass()}`}>
-                    <FaCalendarAlt />
-                    <span>{formatDate(project.due_date)} · {getDaysRemainingText()}</span>
-                  </span>
-                )}
+                <div className="project-hero-right">
+                  {project.deal_value !== null && project.deal_value !== undefined && (
+                    <span className="deal-badge">
+                      <FaDollarSign />
+                      <span>{formatCurrency(project.deal_value)}</span>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -899,12 +859,9 @@ function ProjectDetails() {
                 <FaInfo className="header-icon" />
                 <h3>Project Details</h3>
               </div>
-              <button
-                className={`action-button secondary ${isEditing ? 'active' : ''}`}
-                onClick={handleEditToggle}
-              >
+              <button className={`action-button secondary ${isEditing ? "active" : ""}`} onClick={handleEditToggle}>
                 {isEditing ? <FaTimes /> : <FaEdit />}
-                <span>{isEditing ? 'Cancel' : 'Edit'}</span>
+                <span>{isEditing ? "Cancel" : "Edit"}</span>
               </button>
             </div>
 
@@ -919,7 +876,7 @@ function ProjectDetails() {
                     <input
                       type="text"
                       name="project_name"
-                      value={editProject.project_name || ''}
+                      value={editProject.project_name || ""}
                       onChange={handleEditChange}
                       className="form-input"
                     />
@@ -933,33 +890,29 @@ function ProjectDetails() {
                     <input
                       type="text"
                       name="customer_name"
-                      value={editProject.customer_name || ''}
+                      value={editProject.customer_name || ""}
                       onChange={handleEditChange}
                       className="form-input"
                     />
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">
-                      Account Manager
-                    </label>
+                    <label className="form-label">Account Manager</label>
                     <input
                       type="text"
                       name="account_manager"
-                      value={editProject.account_manager || ''}
+                      value={editProject.account_manager || ""}
                       onChange={handleEditChange}
                       className="form-input"
                     />
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">
-                      Country
-                    </label>
+                    <label className="form-label">Country</label>
                     <input
                       type="text"
                       name="country"
-                      value={editProject.country || ''}
+                      value={editProject.country || ""}
                       onChange={handleEditChange}
                       className="form-input"
                     />
@@ -972,13 +925,15 @@ function ProjectDetails() {
                     </label>
                     <select
                       name="sales_stage"
-                      value={editProject.sales_stage || ''}
+                      value={editProject.sales_stage || ""}
                       onChange={handleEditChange}
                       className="form-select"
                     >
                       <option value="">Select stage</option>
                       {SALES_STAGES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -991,71 +946,72 @@ function ProjectDetails() {
                     <input
                       type="number"
                       name="deal_value"
-                      value={editProject.deal_value ?? ''}
+                      value={editProject.deal_value ?? ""}
                       onChange={handleEditChange}
                       className="form-input"
                     />
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">
-                      Product
-                    </label>
+                    <label className="form-label">Product</label>
                     <input
                       type="text"
                       name="product"
-                      value={editProject.product || ''}
+                      value={editProject.product || ""}
                       onChange={handleEditChange}
                       className="form-input"
                     />
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">
-                      Primary Presales
-                    </label>
+                    <label className="form-label">Primary Presales</label>
                     <input
                       type="text"
                       name="primary_presales"
-                      value={editProject.primary_presales || ''}
+                      value={editProject.primary_presales || ""}
                       onChange={handleEditChange}
                       className="form-input"
                     />
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">
-                      Backup Presales
-                    </label>
+                    <label className="form-label">Backup Presales</label>
                     <input
                       type="text"
                       name="backup_presales"
-                      value={editProject.backup_presales || ''}
+                      value={editProject.backup_presales || ""}
                       onChange={handleEditChange}
                       className="form-input"
                     />
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">
-                      Due Date
-                    </label>
+                    <label className="form-label">Due Date</label>
                     <input
                       type="date"
                       name="due_date"
-                      value={editProject.due_date || ''}
+                      value={editProject.due_date || ""}
                       onChange={handleEditChange}
                       className="form-input"
                     />
                   </div>
 
                   <div className="form-group full-width">
-                    <label className="form-label">
-                      Scope
-                    </label>
+                    <label className="form-label">Scope</label>
                     <textarea
                       name="scope"
-                      value={editProject.scope || ''}
+                      value={editProject.scope || ""}
+                      onChange={handleEditChange}
+                      rows="3"
+                      className="form-textarea"
+                    />
+                  </div>
+
+                  <div className="form-group full-width">
+                    <label className="form-label">Remarks</label>
+                    <textarea
+                      name="remarks"
+                      value={editProject.remarks || ""}
                       onChange={handleEditChange}
                       rows="3"
                       className="form-textarea"
@@ -1063,23 +1019,13 @@ function ProjectDetails() {
                   </div>
 
                   <div className="project-edit-actions">
-                    <button
-                      className="action-button secondary"
-                      type="button"
-                      onClick={handleEditToggle}
-                      disabled={saving}
-                    >
+                    <button className="action-button secondary" type="button" onClick={handleEditToggle} disabled={saving}>
                       <FaTimes />
                       Cancel
                     </button>
-                    <button
-                      className="action-button primary"
-                      type="button"
-                      onClick={handleSaveProject}
-                      disabled={saving}
-                    >
+                    <button className="action-button primary" type="button" onClick={handleSaveProject} disabled={saving}>
                       <FaSave />
-                      {saving ? 'Saving...' : 'Save Changes'}
+                      {saving ? "Saving..." : "Save Changes"}
                     </button>
                   </div>
                 </div>
@@ -1087,21 +1033,21 @@ function ProjectDetails() {
                 <div className="project-info-grid">
                   <div className="info-item">
                     <span className="info-label">Customer</span>
-                    <span className="info-value">{project.customer_name || '-'}</span>
+                    <span className="info-value">{project.customer_name || "-"}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Account Manager</span>
-                    <span className="info-value">{project.account_manager || '-'}</span>
+                    <span className="info-value">{project.account_manager || "-"}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Country</span>
-                    <span className="info-value">{project.country || '-'}</span>
+                    <span className="info-value">{project.country || "-"}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Sales Stage</span>
                     <span className={`info-value badge ${getSalesStageClass(project.sales_stage)}`}>
                       {getSalesStageIcon(project.sales_stage)}
-                      {project.sales_stage || '-'}
+                      {project.sales_stage || "-"}
                     </span>
                   </div>
                   <div className="info-item">
@@ -1110,13 +1056,15 @@ function ProjectDetails() {
                   </div>
                   <div className="info-item">
                     <span className="info-label">Due Date</span>
-                    <span className={`info-value ${getDaysRemainingClass()}`}>
-                      {project.due_date ? formatDate(project.due_date) : '-'} · {getDaysRemainingText()}
-                    </span>
+                    <span className="info-value">{project.due_date ? formatDate(project.due_date) : "-"}</span>
                   </div>
                   <div className="info-item full-width">
                     <span className="info-label">Scope</span>
-                    <span className="info-value">{project.scope || '-'}</span>
+                    <span className="info-value">{project.scope || "-"}</span>
+                  </div>
+                  <div className="info-item full-width">
+                    <span className="info-label">Remarks</span>
+                    <span className="info-value">{project.remarks || "-"}</span>
                   </div>
                 </div>
               )}
@@ -1146,12 +1094,12 @@ function ProjectDetails() {
                   <span>New Task</span>
                 </button>
                 <button
-                  className={`action-button secondary filter-button ${showCompleted ? 'active' : ''}`}
+                  className={`action-button secondary filter-button ${showCompleted ? "active" : ""}`}
                   onClick={() => setShowCompleted(!showCompleted)}
-                  title={showCompleted ? 'Hide completed tasks' : 'Show all tasks'}
+                  title={showCompleted ? "Hide completed tasks" : "Show all tasks"}
                 >
                   {showCompleted ? <FaEyeSlash /> : <FaEye />}
-                  <span>{showCompleted ? 'Hide Done' : 'Show All'}</span>
+                  <span>{showCompleted ? "Hide Done" : "Show All"}</span>
                 </button>
               </div>
             </div>
@@ -1165,7 +1113,7 @@ function ProjectDetails() {
                         <input
                           type="checkbox"
                           className="task-checkbox"
-                          checked={task.status === 'Completed'}
+                          checked={task.status === "Completed"}
                           onChange={() => handleTaskStatusChange(task.id, task.status)}
                           aria-label="Toggle task completion"
                         />
@@ -1191,7 +1139,7 @@ function ProjectDetails() {
                                   ? `Due ${formatDate(task.due_date)}`
                                   : task.start_date
                                   ? `Starts ${formatDate(task.start_date)}`
-                                  : ''}
+                                  : ""}
                               </span>
                             </div>
                           )}
@@ -1221,11 +1169,7 @@ function ProjectDetails() {
                             >
                               <FaEdit />
                             </button>
-                            <button
-                              onClick={() => handleDeleteTask(task.id)}
-                              className="task-action-button delete"
-                              title="Delete task"
-                            >
+                            <button onClick={() => handleDeleteTask(task.id)} className="task-action-button delete" title="Delete task">
                               <FaTrash />
                             </button>
                           </div>
@@ -1243,11 +1187,11 @@ function ProjectDetails() {
                 </div>
               ) : (
                 <div className="empty-state">
-                  <div className="empty-icon-wrapper"><FaTasks /></div>
-                  <h4 className="empty-title">{`No ${showCompleted ? '' : 'active '}tasks found`}</h4>
-                  <p className="empty-description">
-                    {showCompleted ? 'All tasks are completed.' : 'Create a task to start tracking progress.'}
-                  </p>
+                  <div className="empty-icon-wrapper">
+                    <FaTasks />
+                  </div>
+                  <h4 className="empty-title">{`No ${showCompleted ? "" : "active "}tasks found`}</h4>
+                  <p className="empty-description">{showCompleted ? "All tasks are completed." : "Create a task to start tracking progress."}</p>
                   <button onClick={() => setShowTaskModal(true)} className="action-button primary">
                     <FaPlus />
                     <span>Create Task</span>
@@ -1260,7 +1204,7 @@ function ProjectDetails() {
 
         {/* Right Column */}
         <div className="side-column">
-          {/* Project Background (remarks) */}
+          {/* Project Background (Scrollable) */}
           <section className="content-card">
             <div className="card-header">
               <div className="header-title">
@@ -1275,27 +1219,19 @@ function ProjectDetails() {
                 </button>
               ) : (
                 <div className="header-actions">
-                  <button
-                    className="action-button secondary"
-                    onClick={handleCancelBackground}
-                    disabled={savingBackground}
-                  >
+                  <button className="action-button secondary" onClick={handleCancelBackground} disabled={savingBackground}>
                     <FaTimes />
                     <span>Cancel</span>
                   </button>
-                  <button
-                    className="action-button primary"
-                    onClick={handleSaveBackground}
-                    disabled={savingBackground}
-                  >
+                  <button className="action-button primary" onClick={handleSaveBackground} disabled={savingBackground}>
                     <FaSave />
-                    <span>{savingBackground ? 'Saving...' : 'Save'}</span>
+                    <span>{savingBackground ? "Saving..." : "Save"}</span>
                   </button>
                 </div>
               )}
             </div>
 
-            <div className="card-content">
+            <div className="card-content scrollable-card-content">
               {!isEditingBackground ? (
                 <div className="project-background-view">
                   {project.remarks?.trim() ? (
@@ -1306,9 +1242,7 @@ function ProjectDetails() {
                         <FaFileAlt />
                       </div>
                       <h4 className="empty-title">No background yet</h4>
-                      <p className="empty-description">
-                        Add a short description of the project, context, scope notes, risks, and key decisions.
-                      </p>
+                      <p className="empty-description">Add a short description of the project, context, and key notes.</p>
                       <button className="action-button primary" onClick={handleEditBackground}>
                         <FaPlus />
                         <span>Add Background</span>
@@ -1330,13 +1264,14 @@ function ProjectDetails() {
             </div>
           </section>
 
-          {/* Project Logs */}
+          {/* Project Logs (Scrollable) */}
           <section className="content-card">
             <div className="card-header">
               <div className="header-title">
                 <FaBookOpen className="header-icon" />
                 <h3>Project Logs</h3>
               </div>
+
               <button
                 onClick={() => {
                   setEditingLog(null);
@@ -1349,7 +1284,7 @@ function ProjectDetails() {
               </button>
             </div>
 
-            <div className="card-content">
+            <div className="card-content scrollable-card-content">
               {logs && logs.length > 0 ? (
                 <div className="log-list">
                   {logs.map((log) => (
@@ -1367,11 +1302,7 @@ function ProjectDetails() {
                           >
                             <FaEdit />
                           </button>
-                          <button
-                            className="task-action-button delete"
-                            onClick={() => handleDeleteLog(log.id)}
-                            title="Delete log"
-                          >
+                          <button className="task-action-button delete" onClick={() => handleDeleteLog(log.id)} title="Delete log">
                             <FaTrash />
                           </button>
                         </div>
@@ -1382,7 +1313,9 @@ function ProjectDetails() {
                 </div>
               ) : (
                 <div className="empty-state">
-                  <div className="empty-icon-wrapper"><FaBookOpen /></div>
+                  <div className="empty-icon-wrapper">
+                    <FaBookOpen />
+                  </div>
                   <h4 className="empty-title">No project logs yet</h4>
                   <p className="empty-description">Use logs to record key decisions, meeting notes, and updates.</p>
                   <button
