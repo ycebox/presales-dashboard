@@ -5,35 +5,18 @@ import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
 import {
   FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
-  FaPlus, FaInfo, FaTrash, FaChevronDown, FaChevronUp, 
+  FaPlus, FaInfo, FaTrash,
   FaUsers, FaCalendarAlt, FaDollarSign, FaChartLine,
-  FaCheckCircle, FaClock, FaExclamationTriangle, FaArrowLeft,
-  FaFilter, FaEye, FaEyeSlash, FaProjectDiagram, FaAward,
-  FaBullseye, FaRocket, FaLightbulb, FaFileAlt
+  FaCheckCircle, FaClock, FaExclamationTriangle,
+  FaEye, FaEyeSlash, FaProjectDiagram,
+  FaAward, FaBullseye, FaRocket, FaLightbulb, FaFileAlt
 } from 'react-icons/fa';
 
 // Constants
-const SMARTVISTA_MODULES = [
-  'SVFE - Switch',
-  'SVFE - ATM',
-  'SVBO - CMS',
-  'SVBO - Merchant',
-  'SVFM',
-  'SVCG',
-  'SVIP',
-  'SVCSP',
-  'EPG',
-  'ACS',
-  'Digital Banking',
-  'Merchant Portal'
-];
-
 const SALES_STAGES = [
-  'Discovery', 'Demo', 'PoC', 'RFI', 'RFP', 'SoW', 
+  'Discovery', 'Demo', 'PoC', 'RFI', 'RFP', 'SoW',
   'Contracting', 'Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold'
 ];
-
-const PRODUCTS = ['Marketplace', 'O-City', 'Processing', 'SmartVista'];
 
 const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'];
 
@@ -51,32 +34,6 @@ const normalizeModulesArray = (modules) => {
     }
   }
   return [];
-};
-
-const getStatusClass = (status) => {
-  if (!status) return 'status-not-specified';
-  const s = status.toLowerCase();
-  if (s.includes('complet')) return 'status-completed';
-  if (s.includes('progress') || s.includes('active') || s.includes('working')) return 'status-in-progress';
-  if (s.includes('plan')) return 'status-planning';
-  if (s.includes('hold') || s.includes('pause')) return 'status-on-hold';
-  if (s.includes('cancel')) return 'status-cancelled';
-  if (s.includes('delay')) return 'status-delayed';
-  if (s.includes('review')) return 'status-under-review';
-  return 'status-in-progress';
-};
-
-const getStatusIcon = (status) => {
-  if (!status) return <FaClock />;
-  const s = status.toLowerCase();
-  if (s.includes('complet')) return <FaCheckCircle />;
-  if (s.includes('progress') || s.includes('active') || s.includes('working')) return <FaClock />;
-  if (s.includes('plan')) return <FaLightbulb />;
-  if (s.includes('hold') || s.includes('pause')) return <FaExclamationTriangle />;
-  if (s.includes('cancel')) return <FaTimes />;
-  if (s.includes('delay')) return <FaExclamationTriangle />;
-  if (s.includes('review')) return <FaEye />;
-  return <FaClock />;
 };
 
 const formatDate = (dateString) => {
@@ -150,7 +107,6 @@ const TaskModal = ({
   onSave,
   editingTask = null,
   presalesResources = [],
-  tasks = [],
   taskTypes = [],
 }) => {
   const [taskData, setTaskData] = useState({
@@ -201,13 +157,10 @@ const TaskModal = ({
       alert('Task description is required');
       return;
     }
-
-    // Optional checking: if only one of start/end is set
     if ((taskData.start_date && !taskData.end_date) || (!taskData.start_date && taskData.end_date)) {
       const ok = window.confirm('You only set one of start/end date. Continue?');
       if (!ok) return;
     }
-
     setLoading(true);
     try {
       await onSave(taskData);
@@ -226,31 +179,23 @@ const TaskModal = ({
         <div className="modal-header">
           <div className="modal-title-wrapper">
             <FaTasks className="modal-icon" />
-            <h3 className="modal-title">
-              {editingTask ? 'Edit Task' : 'Create New Task'}
-            </h3>
+            <h3 className="modal-title">{editingTask ? 'Edit Task' : 'Create New Task'}</h3>
           </div>
-          <button 
-            className="modal-close-button" 
-            onClick={onClose}
-            aria-label="Close modal"
-          >
+          <button className="modal-close-button" onClick={onClose} aria-label="Close modal">
             <FaTimes />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-grid">
-            {/* Description */}
             <div className="form-group full-width">
-              <label htmlFor="task-description" className="form-label">
+              <label className="form-label">
                 <FaTasks className="form-icon" />
                 Task Description *
               </label>
-              <input 
-                id="task-description"
-                name="description" 
-                value={taskData.description} 
+              <input
+                name="description"
+                value={taskData.description}
                 onChange={(e) => handleChange('description', e.target.value)}
                 className="form-input"
                 placeholder="What needs to be accomplished?"
@@ -258,15 +203,13 @@ const TaskModal = ({
               />
             </div>
 
-            {/* Assignee */}
             <div className="form-group">
-              <label htmlFor="task-assignee" className="form-label">
+              <label className="form-label">
                 <FaUsers className="form-icon" />
                 Assignee
               </label>
               {hasPresalesList ? (
                 <select
-                  id="task-assignee"
                   name="assignee"
                   className="form-select"
                   value={taskData.assignee || ''}
@@ -283,7 +226,6 @@ const TaskModal = ({
                 </select>
               ) : (
                 <input
-                  id="task-assignee"
                   name="assignee"
                   value={taskData.assignee}
                   onChange={(e) => handleChange('assignee', e.target.value)}
@@ -293,16 +235,14 @@ const TaskModal = ({
               )}
             </div>
 
-            {/* Status */}
             <div className="form-group">
-              <label htmlFor="task-status" className="form-label">
+              <label className="form-label">
                 <FaChartLine className="form-icon" />
                 Status
               </label>
-              <select 
-                id="task-status"
-                name="status" 
-                value={taskData.status} 
+              <select
+                name="status"
+                value={taskData.status}
                 onChange={(e) => handleChange('status', e.target.value)}
                 className="form-select"
               >
@@ -312,15 +252,13 @@ const TaskModal = ({
               </select>
             </div>
 
-            {/* Task Type */}
             <div className="form-group">
-              <label htmlFor="task-type" className="form-label">
+              <label className="form-label">
                 <FaInfo className="form-icon" />
                 Task Type
               </label>
               {taskTypes && taskTypes.length > 0 ? (
                 <select
-                  id="task-type"
                   name="task_type"
                   className="form-select"
                   value={taskData.task_type || ''}
@@ -328,14 +266,11 @@ const TaskModal = ({
                 >
                   <option value="">Select type</option>
                   {taskTypes.map((t) => (
-                    <option key={t.id} value={t.name}>
-                      {t.name}
-                    </option>
+                    <option key={t.id} value={t.name}>{t.name}</option>
                   ))}
                 </select>
               ) : (
                 <input
-                  id="task-type"
                   name="task_type"
                   className="form-input"
                   value={taskData.task_type || ''}
@@ -345,15 +280,13 @@ const TaskModal = ({
               )}
             </div>
 
-            {/* Start Date */}
             <div className="form-group">
-              <label htmlFor="task-start-date" className="form-label">
+              <label className="form-label">
                 <FaCalendarAlt className="form-icon" />
                 Start Date
               </label>
-              <input 
-                id="task-start-date"
-                name="start_date" 
+              <input
+                name="start_date"
                 type="date"
                 value={taskData.start_date || ''}
                 onChange={(e) => handleChange('start_date', e.target.value)}
@@ -361,15 +294,13 @@ const TaskModal = ({
               />
             </div>
 
-            {/* End Date */}
             <div className="form-group">
-              <label htmlFor="task-end-date" className="form-label">
+              <label className="form-label">
                 <FaCalendarAlt className="form-icon" />
                 End Date
               </label>
-              <input 
-                id="task-end-date"
-                name="end_date" 
+              <input
+                name="end_date"
                 type="date"
                 value={taskData.end_date || ''}
                 onChange={(e) => handleChange('end_date', e.target.value)}
@@ -377,15 +308,13 @@ const TaskModal = ({
               />
             </div>
 
-            {/* Due Date */}
             <div className="form-group">
-              <label htmlFor="task-due-date" className="form-label">
+              <label className="form-label">
                 <FaCalendarAlt className="form-icon" />
                 Due Date
               </label>
-              <input 
-                id="task-due-date"
-                name="due_date" 
+              <input
+                name="due_date"
                 type="date"
                 value={taskData.due_date || ''}
                 onChange={(e) => handleChange('due_date', e.target.value)}
@@ -393,16 +322,14 @@ const TaskModal = ({
               />
             </div>
 
-            {/* Notes */}
             <div className="form-group full-width">
-              <label htmlFor="task-notes" className="form-label">
+              <label className="form-label">
                 <FaFileAlt className="form-icon" />
                 Notes
               </label>
-              <textarea 
-                id="task-notes"
-                name="notes" 
-                value={taskData.notes} 
+              <textarea
+                name="notes"
+                value={taskData.notes}
                 onChange={(e) => handleChange('notes', e.target.value)}
                 rows="3"
                 className="form-textarea"
@@ -410,7 +337,7 @@ const TaskModal = ({
               />
             </div>
           </div>
-          
+
           <div className="modal-actions">
             <button type="button" onClick={onClose} className="button-cancel" disabled={loading}>
               <FaTimes />
@@ -433,11 +360,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (editingLog) {
-      setLogEntry(editingLog.entry || '');
-    } else {
-      setLogEntry('');
-    }
+    setLogEntry(editingLog ? (editingLog.entry || '') : '');
   }, [editingLog, isOpen]);
 
   const handleSubmit = async (e) => {
@@ -463,29 +386,22 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
         <div className="modal-header">
           <div className="modal-title-wrapper">
             <FaBookOpen className="modal-icon" />
-            <h3 className="modal-title">
-              {editingLog ? 'Edit Log Entry' : 'Add Project Log Entry'}
-            </h3>
+            <h3 className="modal-title">{editingLog ? 'Edit Log Entry' : 'Add Project Log Entry'}</h3>
           </div>
-          <button 
-            className="modal-close-button" 
-            onClick={onClose}
-            aria-label="Close modal"
-          >
+          <button className="modal-close-button" onClick={onClose} aria-label="Close modal">
             <FaTimes />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-grid">
             <div className="form-group full-width">
-              <label htmlFor="log-entry" className="form-label">
+              <label className="form-label">
                 <FaEdit className="form-icon" />
                 Log Entry *
               </label>
-              <textarea 
-                id="log-entry"
-                value={logEntry} 
+              <textarea
+                value={logEntry}
                 onChange={(e) => setLogEntry(e.target.value)}
                 rows="5"
                 className="form-textarea"
@@ -494,7 +410,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
               />
             </div>
           </div>
-          
+
           <div className="modal-actions">
             <button type="button" onClick={onClose} className="button-cancel" disabled={loading}>
               <FaTimes />
@@ -510,18 +426,6 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
     </div>
   );
 };
-
-// ---------- Simple helpers ----------
-const EmptyState = ({ title, description, action, icon }) => (
-  <div className="empty-state">
-    <div className="empty-icon-wrapper">
-      {icon}
-    </div>
-    <h4 className="empty-title">{title}</h4>
-    <p className="empty-description">{description}</p>
-    {action}
-  </div>
-);
 
 const LoadingScreen = () => (
   <div className="project-details-container">
@@ -542,13 +446,12 @@ const ErrorScreen = ({ error, onBack }) => (
       <p className="error-message">{error || 'Project not found'}</p>
       <button onClick={onBack} className="action-button primary">
         <FaHome />
-        Back to Dashboard
+        Back to Home
       </button>
     </div>
   </div>
 );
 
-// ---------- Hook for project data ----------
 const useProjectData = (projectId) => {
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -611,48 +514,28 @@ const useProjectData = (projectId) => {
   };
 
   useEffect(() => {
-    if (projectId) {
-      fetchProjectDetails();
-    }
+    if (projectId) fetchProjectDetails();
   }, [projectId]);
 
-  return {
-    project,
-    setProject,
-    tasks,
-    logs,
-    loading,
-    error,
-    fetchTasks,
-    fetchLogs,
-    refetch: fetchProjectDetails,
-  };
+  return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
 };
 
-// ---------- Main Component ----------
 function ProjectDetails() {
-  const { projectId } = useParams(); // <-- use the correct route param name
+  const { projectId } = useParams();
   const navigate = useNavigate();
-  const {
-    project,
-    setProject,
-    tasks,
-    logs,
-    loading,
-    error,
-    fetchTasks,
-    fetchLogs,
-  } = useProjectData(projectId);
 
-  // Local state
+  const { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs } =
+    useProjectData(projectId);
+
   const [isEditing, setIsEditing] = useState(false);
   const [editProject, setEditProject] = useState({});
   const [saving, setSaving] = useState(false);
+
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showLogModal, setShowLogModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [showCompleted, setShowCompleted] = useState(false);
   const [editingLog, setEditingLog] = useState(null);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
@@ -715,13 +598,12 @@ function ProjectDetails() {
     fetchTaskTypes();
   }, []);
 
-  // Derived values
   const activeTasksCount = tasks.filter(
-    (task) => !['Completed', 'Cancelled/On-hold'].includes(task.status)
+    (t) => !['Completed', 'Cancelled/On-hold'].includes(t.status)
   ).length;
-  const completedTasksCount = tasks.filter(
-    (task) => task.status === 'Completed'
-  ).length;
+
+  const completedTasksCount = tasks.filter((t) => t.status === 'Completed').length;
+
   const progressPercentage =
     tasks.length > 0 ? Math.round((completedTasksCount / tasks.length) * 100) : 0;
 
@@ -750,11 +632,8 @@ function ProjectDetails() {
 
   const filteredTasks = showCompleted
     ? tasks
-    : tasks.filter(
-        (task) => !['Completed', 'Cancelled/On-hold'].includes(task.status)
-      );
+    : tasks.filter((t) => !['Completed', 'Cancelled/On-hold'].includes(t.status));
 
-  // Handlers
   const handleEditToggle = () => {
     if (isEditing) {
       setEditProject(project);
@@ -771,11 +650,6 @@ function ProjectDetails() {
   };
 
   const handleSaveProject = async () => {
-    if (!project?.id) {
-      alert('Project ID is required');
-      return;
-    }
-
     try {
       setSaving(true);
       const { data, error } = await supabase
@@ -802,9 +676,7 @@ function ProjectDetails() {
 
   const handleTaskStatusChange = async (taskId, currentStatus) => {
     try {
-      const newStatus =
-        currentStatus === 'Completed' ? 'Not Started' : 'Completed';
-
+      const newStatus = currentStatus === 'Completed' ? 'Not Started' : 'Completed';
       const { error } = await supabase
         .from('project_tasks')
         .update({ status: newStatus })
@@ -847,16 +719,10 @@ function ProjectDetails() {
   };
 
   const handleDeleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
-      return;
-    }
+    if (!window.confirm('Are you sure you want to delete this task? This action cannot be undone.')) return;
 
     try {
-      const { error } = await supabase
-        .from('project_tasks')
-        .delete()
-        .eq('id', taskId);
-
+      const { error } = await supabase.from('project_tasks').delete().eq('id', taskId);
       if (error) throw error;
       alert('Task deleted successfully!');
       fetchTasks();
@@ -895,16 +761,10 @@ function ProjectDetails() {
   };
 
   const handleDeleteLog = async (logId) => {
-    if (!window.confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) {
-      return;
-    }
+    if (!window.confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) return;
 
     try {
-      const { error } = await supabase
-        .from('project_logs')
-        .delete()
-        .eq('id', logId);
-
+      const { error } = await supabase.from('project_logs').delete().eq('id', logId);
       if (error) throw error;
       alert('Log deleted successfully!');
       fetchLogs();
@@ -922,33 +782,23 @@ function ProjectDetails() {
         .eq('customer_name', project.customer_name)
         .single();
 
-      if (data) {
-        navigate(`/customer/${data.id}`);
-      } else {
-        navigate('/');
-      }
+      if (data) navigate(`/customer/${data.id}`);
+      else navigate('/');
     } catch (err) {
       console.error('Error finding customer:', err);
       navigate('/');
     }
   };
 
-  if (!projectId) {
-    return <ErrorScreen error="No project ID in URL" onBack={() => navigate('/')} />;
-  }
-
+  if (!projectId) return <ErrorScreen error="No project ID in URL" onBack={() => navigate('/')} />;
   if (loading) return <LoadingScreen />;
   if (error || !project) return <ErrorScreen error={error} onBack={() => navigate('/')} />;
 
   return (
     <div className="project-details-container">
-      {/* Navigation Header */}
+      {/* Navigation Header (Back to dashboard removed) */}
       <header className="navigation-header">
         <div className="nav-left">
-          <button onClick={() => navigate('/')} className="nav-button primary">
-            <FaArrowLeft />
-            <span>Back to Dashboard</span>
-          </button>
           {project.customer_name && (
             <button onClick={navigateToCustomer} className="nav-button secondary">
               <FaUsers />
@@ -966,9 +816,7 @@ function ProjectDetails() {
               <FaProjectDiagram className="project-icon" />
             </div>
             <div className="project-title-content">
-              <h1 className="project-title">
-                {project.project_name || 'Unnamed Project'}
-              </h1>
+              <h1 className="project-title">{project.project_name || 'Unnamed Project'}</h1>
               <div className="project-meta">
                 <span className="customer-badge">
                   <span>{project.customer_name || 'No customer'}</span>
@@ -1000,7 +848,7 @@ function ProjectDetails() {
                 <FaInfo className="header-icon" />
                 <h3>Project Details</h3>
               </div>
-              <button 
+              <button
                 className={`action-button secondary ${isEditing ? 'active' : ''}`}
                 onClick={handleEditToggle}
               >
@@ -1101,21 +949,11 @@ function ProjectDetails() {
                   </div>
 
                   <div className="project-edit-actions">
-                    <button
-                      className="action-button secondary"
-                      type="button"
-                      onClick={handleEditToggle}
-                      disabled={saving}
-                    >
+                    <button className="action-button secondary" type="button" onClick={handleEditToggle} disabled={saving}>
                       <FaTimes />
                       Cancel
                     </button>
-                    <button
-                      className="action-button primary"
-                      type="button"
-                      onClick={handleSaveProject}
-                      disabled={saving}
-                    >
+                    <button className="action-button primary" type="button" onClick={handleSaveProject} disabled={saving}>
                       <FaSave />
                       {saving ? 'Saving...' : 'Save Changes'}
                     </button>
@@ -1167,14 +1005,11 @@ function ProjectDetails() {
                 </div>
               </div>
               <div className="header-actions">
-                <button 
-                  onClick={() => setShowTaskModal(true)} 
-                  className="action-button primary"
-                >
+                <button onClick={() => setShowTaskModal(true)} className="action-button primary">
                   <FaPlus />
                   <span>New Task</span>
                 </button>
-                <button 
+                <button
                   className={`action-button secondary filter-button ${showCompleted ? 'active' : ''}`}
                   onClick={() => setShowCompleted(!showCompleted)}
                   title={showCompleted ? 'Hide completed tasks' : 'Show all tasks'}
@@ -1192,8 +1027,8 @@ function ProjectDetails() {
                     <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)}`}>
                       <div className="task-checkbox-wrapper">
                         <div className="custom-checkbox">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             className="task-checkbox"
                             checked={task.status === 'Completed'}
                             onChange={() => handleTaskStatusChange(task.id, task.status)}
@@ -1204,7 +1039,7 @@ function ProjectDetails() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="task-main-content">
                         <div className="task-header">
                           <h4 className="task-title">{task.description}</h4>
@@ -1213,7 +1048,7 @@ function ProjectDetails() {
                             <span className="status-text">{task.status}</span>
                           </div>
                         </div>
-                        
+
                         <div className="task-meta-row">
                           {(task.start_date || task.end_date || task.due_date) && (
                             <div className="task-meta-item">
@@ -1276,32 +1111,24 @@ function ProjectDetails() {
                   ))}
                 </div>
               ) : (
-                <EmptyState
-                  title={`No ${showCompleted ? '' : 'active '}tasks found`}
-                  description={
-                    showCompleted
-                      ? 'All tasks are completed! Great work.'
-                      : 'Create your first task to start tracking project progress.'
-                  }
-                  icon={<FaTasks />}
-                  action={
-                    <button 
-                      onClick={() => setShowTaskModal(true)} 
-                      className="action-button primary"
-                    >
-                      <FaPlus />
-                      <span>Create Task</span>
-                    </button>
-                  }
-                />
+                <div className="empty-state">
+                  <div className="empty-icon-wrapper"><FaTasks /></div>
+                  <h4 className="empty-title">{`No ${showCompleted ? '' : 'active '}tasks found`}</h4>
+                  <p className="empty-description">
+                    {showCompleted ? 'All tasks are completed! Great work.' : 'Create your first task to start tracking project progress.'}
+                  </p>
+                  <button onClick={() => setShowTaskModal(true)} className="action-button primary">
+                    <FaPlus />
+                    <span>Create Task</span>
+                  </button>
+                </div>
               )}
             </div>
           </section>
         </div>
 
-        {/* Right Column – Progress & Logs */}
+        {/* Right Column */}
         <div className="side-column">
-          {/* Progress Card */}
           <section className="content-card">
             <div className="card-header">
               <div className="header-title">
@@ -1313,10 +1140,7 @@ function ProjectDetails() {
               <div className="progress-summary">
                 <div className="progress-bar-container">
                   <div className="progress-bar-track">
-                    <div
-                      className="progress-bar-fill"
-                      style={{ width: `${progressPercentage}%` }}
-                    />
+                    <div className="progress-bar-fill" style={{ width: `${progressPercentage}%` }} />
                   </div>
                   <div className="progress-percentage">{progressPercentage}%</div>
                 </div>
@@ -1338,24 +1162,24 @@ function ProjectDetails() {
             </div>
           </section>
 
-          {/* Logs Card */}
           <section className="content-card">
             <div className="card-header">
               <div className="header-title">
                 <FaBookOpen className="header-icon" />
                 <h3>Project Logs</h3>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   setEditingLog(null);
                   setShowLogModal(true);
-                }} 
+                }}
                 className="action-button primary"
               >
                 <FaPlus />
                 <span>Add Log</span>
               </button>
             </div>
+
             <div className="card-content">
               {logs && logs.length > 0 ? (
                 <div className="log-list">
@@ -1386,30 +1210,27 @@ function ProjectDetails() {
                   ))}
                 </div>
               ) : (
-                <EmptyState
-                  title="No project logs yet"
-                  description="Use logs to record key decisions, customer feedback, and meeting notes."
-                  icon={<FaBookOpen />}
-                  action={
-                    <button 
-                      onClick={() => {
-                        setEditingLog(null);
-                        setShowLogModal(true);
-                      }} 
-                      className="action-button primary"
-                    >
-                      <FaPlus />
-                      <span>Add First Log</span>
-                    </button>
-                  }
-                />
+                <div className="empty-state">
+                  <div className="empty-icon-wrapper"><FaBookOpen /></div>
+                  <h4 className="empty-title">No project logs yet</h4>
+                  <p className="empty-description">Use logs to record key decisions, customer feedback, and meeting notes.</p>
+                  <button
+                    onClick={() => {
+                      setEditingLog(null);
+                      setShowLogModal(true);
+                    }}
+                    className="action-button primary"
+                  >
+                    <FaPlus />
+                    <span>Add First Log</span>
+                  </button>
+                </div>
               )}
             </div>
           </section>
         </div>
       </div>
 
-      {/* Modals */}
       <TaskModal
         isOpen={showTaskModal}
         onClose={() => {
@@ -1419,9 +1240,9 @@ function ProjectDetails() {
         onSave={handleTaskSaved}
         editingTask={editingTask}
         presalesResources={presalesResources}
-        tasks={tasks}
         taskTypes={taskTypes}
       />
+
       <LogModal
         isOpen={showLogModal}
         onClose={() => {
