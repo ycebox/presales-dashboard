@@ -7,23 +7,23 @@ import {
   FaCalendarAlt,
   FaChartLine,
   FaExclamationTriangle,
+  FaBuilding,
 } from 'react-icons/fa';
 import './TopDealsToWatch.css';
 
-const CLOSED_STAGES = [
-  'Closed-Won',
-  'Closed-Lost',
-  'Closed-Cancelled/Hold',
-];
+const CLOSED_STAGES = ['Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold', 'Done'];
 
 const STAGE_WEIGHTS = {
   Discovery: 1,
   Demo: 2,
   PoC: 3,
-  'RFI': 3,
-  'RFP': 4,
-  'SoW': 5,
-  'Contracting': 6,
+  RFI: 3,
+  RFP: 4,
+  SoW: 5,
+  Contracting: 6,
+  Lead: 1,
+  Opportunity: 2,
+  Proposal: 4,
 };
 
 const formatCurrency = (value) => {
@@ -57,7 +57,7 @@ const getUrgencyScore = (dueDateStr) => {
   const due = new Date(dueDateStr);
   const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
 
-  if (diffDays <= 0) return 5;      // overdue / today
+  if (diffDays <= 0) return 5; // overdue / today
   if (diffDays <= 7) return 4;
   if (diffDays <= 14) return 3;
   if (diffDays <= 30) return 2;
@@ -107,7 +107,7 @@ function TopDealsToWatch() {
 
         const { data, error } = await supabase
           .from('projects')
-          .select('id, project_name, customer_name, sales_stage, deal_value, due_date');
+          .select('id, project_name, customer_name, sales_stage, deal_value, due_date, is_corporate');
 
         if (error) throw error;
         setProjects(data || []);
@@ -125,11 +125,18 @@ function TopDealsToWatch() {
   const rankedDeals = useMemo(() => {
     if (!projects || projects.length === 0) return [];
 
-    const active = projects.filter(
-      (p) => !CLOSED_STAGES.includes(p.sales_stage || '')
-    );
+    // Active (not closed/done)
+    const active = projects.filter((p) => {
+      const stage = (p.sales_stage || '').trim();
+      return !CLOSED_STAGES.includes(stage);
+    });
 
-    const scored = active.map((p) => {
+    // Corporate-first rule:
+    // If there are any corporate active projects, only rank among corporate.
+    const corporateActive = active.filter((p) => p.is_corporate === true);
+    const pool = corporateActive.length > 0 ? corporateActive : active;
+
+    const scored = pool.map((p) => {
       const stageScore = getStageScore(p.sales_stage);
       const valueScore = getValueScore(p.deal_value);
       const urgencyScore = getUrgencyScore(p.due_date);
@@ -156,6 +163,11 @@ function TopDealsToWatch() {
     });
 
     return scored.slice(0, 5);
+  }, [projects]);
+
+  const showCorporateMode = useMemo(() => {
+    const active = (projects || []).filter((p) => !CLOSED_STAGES.includes((p.sales_stage || '').trim()));
+    return active.some((p) => p.is_corporate === true);
   }, [projects]);
 
   if (loading) {
@@ -216,10 +228,22 @@ function TopDealsToWatch() {
           <div>
             <h2>Top Deals to Watch</h2>
             <p className="topdeals-subtitle">
-              Auto-ranked by stage, value, and urgency
+              {showCorporateMode
+                ? 'Corporate deals prioritized (then ranked by stage, value, urgency)'
+                : 'Auto-ranked by stage, value, and urgency'}
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Column header */}
+      <div className="topdeals-table-head" role="row">
+        <div>#</div>
+        <div>Customer</div>
+        <div>Project</div>
+        <div>Stage</div>
+        <div>Due</div>
+        <div className="td-right">Value</div>
       </div>
 
       <div className="topdeals-list">
@@ -227,43 +251,40 @@ function TopDealsToWatch() {
           const urgencyClass = getUrgencyLabelClass(deal.due_date);
 
           return (
-            <div key={deal.id} className="topdeals-item">
-              <div className="topdeals-rank">
-                <span>#{index + 1}</span>
+            <div key={deal.id} className="topdeals-row" role="row">
+              <div className="topdeals-rank">#{index + 1}</div>
+
+              <div className="topdeals-customer-cell" title={deal.customer_name || ''}>
+                {deal.customer_name || 'Unknown customer'}
+                {deal.is_corporate ? (
+                  <span className="topdeals-corp-badge" title="Corporate project">
+                    <FaBuilding />
+                    Corporate
+                  </span>
+                ) : null}
               </div>
 
-              <div className="topdeals-main">
-                <div className="topdeals-line1">
-                  <span className="topdeals-customer">
-                    {deal.customer_name || 'Unknown customer'}
-                  </span>
-                  <span className="topdeals-value">
-                    <FaDollarSign />
-                    {formatCurrency(deal.deal_value)}
-                  </span>
-                </div>
+              <div className="topdeals-project-cell" title={deal.project_name || ''}>
+                {deal.project_name || 'Unnamed project'}
+              </div>
 
-                <div className="topdeals-line2">
-                  <span className="topdeals-project">
-                    {deal.project_name || 'Unnamed project'}
-                  </span>
-                </div>
+              <div className="topdeals-stage-cell">
+                <span className="topdeals-stage-badge">
+                  <FaChartLine />
+                  {deal.sales_stage || 'No stage'}
+                </span>
+              </div>
 
-                <div className="topdeals-line3">
-                  <span className="topdeals-stage-badge">
-                    <FaChartLine />
-                    {deal.sales_stage || 'No stage'}
-                  </span>
+              <div className="topdeals-due-cell">
+                <span className={`topdeals-urgency-badge ${urgencyClass}`}>
+                  <FaCalendarAlt />
+                  {deal.due_date ? formatDate(deal.due_date) : 'No due'}
+                </span>
+              </div>
 
-                  <span className={`topdeals-urgency-badge ${urgencyClass}`}>
-                    <FaCalendarAlt />
-                    {deal.due_date ? formatDate(deal.due_date) : 'No due date'}
-                  </span>
-
-                  <span className="topdeals-score-badge">
-                    Score {deal.score}
-                  </span>
-                </div>
+              <div className="topdeals-value-cell td-right">
+                <FaDollarSign />
+                {formatCurrency(deal.deal_value)}
               </div>
             </div>
           );
