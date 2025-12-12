@@ -66,7 +66,7 @@ function HomeDashboard() {
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesSaving, setNotesSaving] = useState(false);
   const [notesEdit, setNotesEdit] = useState(false);
-  const [notesStatus, setNotesStatus] = useState(''); // "Saved", "Saving...", etc.
+  const [notesStatus, setNotesStatus] = useState('');
 
   const navigate = useNavigate();
 
@@ -121,7 +121,6 @@ function HomeDashboard() {
         setNotesDraft(v);
       } catch (err) {
         console.error('Error loading app notes:', err);
-        // Don't block the page; just show a subtle status
         setNotesStatus('Notes not available (DB table missing?)');
       } finally {
         setNotesLoading(false);
@@ -163,7 +162,6 @@ function HomeDashboard() {
   const openDeals = useMemo(() => {
     return (projects || []).filter((p) => {
       const stage = (p.sales_stage || '').toLowerCase();
-      // Treat Done and anything "closed*" as not-open
       return stage !== 'done' && !stage.startsWith('closed');
     });
   }, [projects]);
@@ -189,7 +187,7 @@ function HomeDashboard() {
     const sorted = openDeals
       .slice()
       .sort((a, b) => (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0));
-    return sorted.slice(0, 6);
+    return sorted.slice(0, 5);
   }, [openDeals]);
 
   // ---------- Upcoming presales commitments ----------
@@ -200,7 +198,6 @@ function HomeDashboard() {
 
     const projectNameMap = new Map();
     (projects || []).forEach((p) => {
-      // customer_name used as label in the commitments list
       projectNameMap.set(p.id, p.customer_name || 'Unknown project');
     });
 
@@ -308,9 +305,57 @@ function HomeDashboard() {
 
   return (
     <div className="home-dashboard">
-      {/* LEFT: main work area (Projects list) */}
+      {/* FULL-WIDTH TOP: Top deals to watch */}
+      <div className="home-top-row">
+        <section className="home-card home-card-wide">
+          <h3 className="home-card-title">Top deals to watch</h3>
+          <p className="home-card-subtitle">Highest-value active opportunities.</p>
+
+          {topDeals.length === 0 ? (
+            <p className="small-muted">
+              No active deals found yet. Create projects to start tracking.
+            </p>
+          ) : (
+            <div className="home-topdeals-wrap">
+              <table className="home-topdeals-table home-topdeals-table-wide">
+                <colgroup>
+                  <col style={{ width: '32%' }} />
+                  <col style={{ width: '36%' }} />
+                  <col style={{ width: '18%' }} />
+                  <col style={{ width: '14%' }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Project</th>
+                    <th>Stage</th>
+                    <th className="th-right">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topDeals.map((p) => (
+                    <tr key={p.id}>
+                      <td className="td-ellipsis" title={p.customer_name || ''}>
+                        {p.customer_name || 'Unknown'}
+                      </td>
+                      <td className="td-ellipsis" title={p.project_name || ''}>
+                        {p.project_name || '-'}
+                      </td>
+                      <td className="td-nowrap">{p.sales_stage || 'N/A'}</td>
+                      <td className="td-right td-nowrap">
+                        {formatCurrency(Number(p.deal_value) || 0)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* LEFT: main work area (Customer portfolio / Projects) */}
       <div className="home-main-column">
-        {/* Retained-only KPI cards */}
         <section className="home-kpi-strip">
           <div className="home-kpi-card">
             <div className="home-kpi-label">Early-stage deals</div>
@@ -337,46 +382,11 @@ function HomeDashboard() {
           </div>
         </section>
 
-        {/* Projects list below the summary */}
         <Projects />
       </div>
 
-      {/* RIGHT: sidebar with top deals + commitments + notes */}
+      {/* RIGHT: sidebar */}
       <div className="home-side-column">
-        {/* Top deals to watch */}
-        <section className="home-card">
-          <h3 className="home-card-title">Top deals to watch</h3>
-          <p className="home-card-subtitle">Highest-value active opportunities.</p>
-
-          {topDeals.length === 0 ? (
-            <p className="small-muted">
-              No active deals found yet. Create projects to start tracking.
-            </p>
-          ) : (
-            <table className="home-topdeals-table">
-              <thead>
-                <tr>
-                  <th>Customer</th>
-                  <th>Project</th>
-                  <th>Stage</th>
-                  <th className="th-right">Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topDeals.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.customer_name || 'Unknown'}</td>
-                    <td>{p.project_name || '-'}</td>
-                    <td>{p.sales_stage || 'N/A'}</td>
-                    <td className="td-right">{formatCurrency(Number(p.deal_value) || 0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-
-        {/* Upcoming presales commitments */}
         <section className="home-card">
           <h3 className="home-card-title">Upcoming presales commitments</h3>
           <p className="home-card-subtitle">Demos, workshops, proposals in the next 14 days.</p>
@@ -406,7 +416,6 @@ function HomeDashboard() {
           )}
         </section>
 
-        {/* Notes (DB-backed free text with edit/save) */}
         <section className="home-card">
           <div className="home-card-header-row">
             <div>
@@ -480,23 +489,12 @@ function App() {
         <AppHeader />
         <main className="app-main">
           <Routes>
-            {/* HOME / MAIN DASHBOARD */}
             <Route path="/" element={<HomeDashboard />} />
-
-            {/* SEPARATE PROJECTS VIEW */}
             <Route path="/projects" element={<Projects />} />
-
-            {/* PROJECT + CUSTOMER DETAIL PAGES */}
             <Route path="/project/:projectId" element={<ProjectDetails />} />
             <Route path="/customer/:customerId" element={<CustomerDetails />} />
-
-            {/* PRESALES OVERVIEW */}
             <Route path="/presales-overview" element={<PresalesOverview />} />
-
-            {/* REPORTS DASHBOARD */}
             <Route path="/reports" element={<ReportsDashboard />} />
-
-            {/* CATCH-ALL → HOME */}
             <Route path="*" element={<HomeDashboard />} />
           </Routes>
         </main>
