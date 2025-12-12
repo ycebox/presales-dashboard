@@ -4,37 +4,35 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './ProjectDetails.css';
 import {
-  FaHome, FaTasks, FaBookOpen, FaEdit, FaSave, FaTimes,
-  FaPlus, FaInfo, FaTrash,
-  FaUsers, FaCalendarAlt, FaDollarSign, FaChartLine,
-  FaCheckCircle, FaClock, FaExclamationTriangle,
-  FaEye, FaEyeSlash, FaProjectDiagram,
-  FaAward, FaBullseye, FaRocket, FaLightbulb, FaFileAlt
+  FaTasks,
+  FaBookOpen,
+  FaEdit,
+  FaSave,
+  FaTimes,
+  FaPlus,
+  FaInfo,
+  FaTrash,
+  FaUsers,
+  FaCalendarAlt,
+  FaDollarSign,
+  FaChartLine,
+  FaCheckCircle,
+  FaClock,
+  FaExclamationTriangle,
+  FaEye,
+  FaEyeSlash,
+  FaProjectDiagram,
+  FaBullseye,
+  FaRocket,
+  FaFileAlt,
 } from 'react-icons/fa';
 
-// Constants
 const SALES_STAGES = [
   'Discovery', 'Demo', 'PoC', 'RFI', 'RFP', 'SoW',
   'Contracting', 'Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold'
 ];
 
 const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Cancelled/On-hold'];
-
-// Utility Functions
-const normalizeModulesArray = (modules) => {
-  if (!modules) return [];
-  if (Array.isArray(modules)) return modules;
-
-  if (typeof modules === 'string') {
-    try {
-      const parsed = JSON.parse(modules);
-      if (Array.isArray(parsed)) return parsed;
-    } catch (e) {
-      return [modules];
-    }
-  }
-  return [];
-};
 
 const formatDate = (dateString) => {
   if (!dateString) return '-';
@@ -50,7 +48,7 @@ const formatDate = (dateString) => {
 };
 
 const formatCurrency = (value) => {
-  if (!value && value !== 0) return '-';
+  if (value === null || value === undefined || value === '') return '-';
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -157,10 +155,7 @@ const TaskModal = ({
       alert('Task description is required');
       return;
     }
-    if ((taskData.start_date && !taskData.end_date) || (!taskData.start_date && taskData.end_date)) {
-      const ok = window.confirm('You only set one of start/end date. Continue?');
-      if (!ok) return;
-    }
+
     setLoading(true);
     try {
       await onSave(taskData);
@@ -405,7 +400,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
                 onChange={(e) => setLogEntry(e.target.value)}
                 rows="5"
                 className="form-textarea"
-                placeholder="Document progress, decisions, meeting notes, or any important updates..."
+                placeholder="Decisions, progress notes, meeting minutes, important updates..."
                 required
               />
             </div>
@@ -445,8 +440,7 @@ const ErrorScreen = ({ error, onBack }) => (
       <h2 className="error-title">Something went wrong</h2>
       <p className="error-message">{error || 'Project not found'}</p>
       <button onClick={onBack} className="action-button primary">
-        <FaHome />
-        Back to Home
+        <span>Back to Home</span>
       </button>
     </div>
   </div>
@@ -540,12 +534,15 @@ function ProjectDetails() {
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
 
+  // --- Project Background (remarks) ---
+  const [isEditingBackground, setIsEditingBackground] = useState(false);
+  const [backgroundDraft, setBackgroundDraft] = useState('');
+  const [savingBackground, setSavingBackground] = useState(false);
+
   useEffect(() => {
     if (project) {
-      setEditProject({
-        ...project,
-        smartvista_modules: normalizeModulesArray(project.smartvista_modules),
-      });
+      setEditProject(project);
+      setBackgroundDraft(project.remarks || '');
     }
   }, [project]);
 
@@ -604,9 +601,6 @@ function ProjectDetails() {
 
   const completedTasksCount = tasks.filter((t) => t.status === 'Completed').length;
 
-  const progressPercentage =
-    tasks.length > 0 ? Math.round((completedTasksCount / tasks.length) * 100) : 0;
-
   const daysRemaining = (() => {
     if (!project?.due_date) return null;
     const today = new Date();
@@ -645,27 +639,44 @@ function ProjectDetails() {
 
   const handleEditChange = (e) => {
     const { name, value, type } = e.target;
-    const newValue = type === 'number' ? parseFloat(value) || 0 : value;
+    const newValue = type === 'number' ? (value === '' ? null : Number(value)) : value;
     setEditProject((prev) => ({ ...prev, [name]: newValue }));
   };
 
   const handleSaveProject = async () => {
     try {
       setSaving(true);
+
+      // Only update columns that exist in your schema
+      const payload = {
+        project_name: editProject.project_name || null,
+        customer_name: editProject.customer_name || null,
+        account_manager: editProject.account_manager || null,
+        scope: editProject.scope || null,
+        deal_value: editProject.deal_value ?? null,
+        product: editProject.product || null,
+        backup_presales: editProject.backup_presales || null,
+        sales_stage: editProject.sales_stage || null,
+        due_date: editProject.due_date || null,
+        project_type: editProject.project_type || null,
+        current_status: editProject.current_status || null,
+        smartvista_modules: editProject.smartvista_modules || null,
+        country: editProject.country || null,
+        primary_presales: editProject.primary_presales || null,
+      };
+
       const { data, error } = await supabase
         .from('projects')
-        .update(editProject)
+        .update(payload)
         .eq('id', project.id)
-        .select();
+        .select()
+        .single();
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        setProject(data[0]);
-        setEditProject(data[0]);
-        setIsEditing(false);
-        alert('Project updated successfully!');
-      }
+      setProject(data);
+      setIsEditing(false);
+      alert('Project updated successfully!');
     } catch (err) {
       console.error('Error updating project:', err);
       alert('Error updating project: ' + err.message);
@@ -732,7 +743,7 @@ function ProjectDetails() {
     }
   };
 
-  const handleLogEdit = async (logEntry) => {
+  const handleLogSave = async (logEntry) => {
     try {
       if (editingLog) {
         const { error } = await supabase
@@ -790,13 +801,47 @@ function ProjectDetails() {
     }
   };
 
+  // --- Background handlers (remarks) ---
+  const handleEditBackground = () => {
+    setBackgroundDraft(project?.remarks || '');
+    setIsEditingBackground(true);
+  };
+
+  const handleCancelBackground = () => {
+    setBackgroundDraft(project?.remarks || '');
+    setIsEditingBackground(false);
+  };
+
+  const handleSaveBackground = async () => {
+    try {
+      setSavingBackground(true);
+
+      const { data, error } = await supabase
+        .from('projects')
+        .update({ remarks: backgroundDraft })
+        .eq('id', projectId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setProject(data);
+      setIsEditingBackground(false);
+    } catch (err) {
+      console.error('Error saving project background:', err);
+      alert('Failed to save project background: ' + err.message);
+    } finally {
+      setSavingBackground(false);
+    }
+  };
+
   if (!projectId) return <ErrorScreen error="No project ID in URL" onBack={() => navigate('/')} />;
   if (loading) return <LoadingScreen />;
   if (error || !project) return <ErrorScreen error={error} onBack={() => navigate('/')} />;
 
   return (
     <div className="project-details-container">
-      {/* Navigation Header (Back to dashboard removed) */}
+      {/* Page-level navigation (no Back to Dashboard button) */}
       <header className="navigation-header">
         <div className="nav-left">
           {project.customer_name && (
@@ -815,40 +860,35 @@ function ProjectDetails() {
             <div className="project-icon-wrapper">
               <FaProjectDiagram className="project-icon" />
             </div>
+
             <div className="project-title-content">
-        
-<div className="project-header-row">
-  <div className="project-identity">
-    <h1 className="project-title">{project.project_name || 'Unnamed Project'}</h1>
+              <h1 className="project-title">{project.project_name || 'Unnamed Project'}</h1>
 
-    <div className="project-customer">
-      <FaUsers className="subtitle-icon" />
-      <span>{project.customer_name || 'No customer'}</span>
-    </div>
+              <div className="project-meta">
+                <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
+                  {getSalesStageIcon(project.sales_stage)}
+                  <span>{project.sales_stage || 'No Stage'}</span>
+                </span>
 
-    <div className="project-stage-row">
-      <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
-        {getSalesStageIcon(project.sales_stage)}
-        <span>{project.sales_stage || 'No Stage'}</span>
-      </span>
-    </div>
-  </div>
+                {project.deal_value !== null && project.deal_value !== undefined && (
+                  <span className="deal-badge">
+                    <FaDollarSign />
+                    <span>{formatCurrency(project.deal_value)}</span>
+                  </span>
+                )}
 
-  <div className="project-status">
-    {project.deal_value && (
-      <span className="deal-badge">
-        <FaDollarSign />
-        <span>{formatCurrency(project.deal_value)}</span>
-      </span>
-    )}
-  </div>
-</div>
+                {project.due_date && (
+                  <span className={`due-badge ${getDaysRemainingClass()}`}>
+                    <FaCalendarAlt />
+                    <span>{formatDate(project.due_date)} · {getDaysRemainingText()}</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Main Content */}
       <div className="main-content-grid">
         {/* Left Column */}
         <div className="main-column">
@@ -901,6 +941,32 @@ function ProjectDetails() {
 
                   <div className="form-group">
                     <label className="form-label">
+                      Account Manager
+                    </label>
+                    <input
+                      type="text"
+                      name="account_manager"
+                      value={editProject.account_manager || ''}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      name="country"
+                      value={editProject.country || ''}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
                       <FaChartLine className="form-icon" />
                       Sales Stage
                     </label>
@@ -925,7 +991,7 @@ function ProjectDetails() {
                     <input
                       type="number"
                       name="deal_value"
-                      value={editProject.deal_value || ''}
+                      value={editProject.deal_value ?? ''}
                       onChange={handleEditChange}
                       className="form-input"
                     />
@@ -933,7 +999,45 @@ function ProjectDetails() {
 
                   <div className="form-group">
                     <label className="form-label">
-                      <FaCalendarAlt className="form-icon" />
+                      Product
+                    </label>
+                    <input
+                      type="text"
+                      name="product"
+                      value={editProject.product || ''}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      Primary Presales
+                    </label>
+                    <input
+                      type="text"
+                      name="primary_presales"
+                      value={editProject.primary_presales || ''}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      Backup Presales
+                    </label>
+                    <input
+                      type="text"
+                      name="backup_presales"
+                      value={editProject.backup_presales || ''}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
                       Due Date
                     </label>
                     <input
@@ -947,12 +1051,11 @@ function ProjectDetails() {
 
                   <div className="form-group full-width">
                     <label className="form-label">
-                      <FaLightbulb className="form-icon" />
-                      Scope / Notes
+                      Scope
                     </label>
                     <textarea
-                      name="project_notes"
-                      value={editProject.project_notes || ''}
+                      name="scope"
+                      value={editProject.scope || ''}
                       onChange={handleEditChange}
                       rows="3"
                       className="form-textarea"
@@ -960,11 +1063,21 @@ function ProjectDetails() {
                   </div>
 
                   <div className="project-edit-actions">
-                    <button className="action-button secondary" type="button" onClick={handleEditToggle} disabled={saving}>
+                    <button
+                      className="action-button secondary"
+                      type="button"
+                      onClick={handleEditToggle}
+                      disabled={saving}
+                    >
                       <FaTimes />
                       Cancel
                     </button>
-                    <button className="action-button primary" type="button" onClick={handleSaveProject} disabled={saving}>
+                    <button
+                      className="action-button primary"
+                      type="button"
+                      onClick={handleSaveProject}
+                      disabled={saving}
+                    >
                       <FaSave />
                       {saving ? 'Saving...' : 'Save Changes'}
                     </button>
@@ -975,6 +1088,14 @@ function ProjectDetails() {
                   <div className="info-item">
                     <span className="info-label">Customer</span>
                     <span className="info-value">{project.customer_name || '-'}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Account Manager</span>
+                    <span className="info-value">{project.account_manager || '-'}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Country</span>
+                    <span className="info-value">{project.country || '-'}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Sales Stage</span>
@@ -993,12 +1114,16 @@ function ProjectDetails() {
                       {project.due_date ? formatDate(project.due_date) : '-'} · {getDaysRemainingText()}
                     </span>
                   </div>
+                  <div className="info-item full-width">
+                    <span className="info-label">Scope</span>
+                    <span className="info-value">{project.scope || '-'}</span>
+                  </div>
                 </div>
               )}
             </div>
           </section>
 
-          {/* Tasks Section */}
+          {/* Tasks */}
           <section className="content-card">
             <div className="card-header">
               <div className="header-title">
@@ -1037,18 +1162,13 @@ function ProjectDetails() {
                   {filteredTasks.map((task) => (
                     <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)}`}>
                       <div className="task-checkbox-wrapper">
-                        <div className="custom-checkbox">
-                          <input
-                            type="checkbox"
-                            className="task-checkbox"
-                            checked={task.status === 'Completed'}
-                            onChange={() => handleTaskStatusChange(task.id, task.status)}
-                            aria-label={`Mark task "${task.description}" as ${task.status === 'Completed' ? 'incomplete' : 'complete'}`}
-                          />
-                          <div className="checkbox-visual">
-                            <FaCheckCircle className="check-icon" />
-                          </div>
-                        </div>
+                        <input
+                          type="checkbox"
+                          className="task-checkbox"
+                          checked={task.status === 'Completed'}
+                          onChange={() => handleTaskStatusChange(task.id, task.status)}
+                          aria-label="Toggle task completion"
+                        />
                       </div>
 
                       <div className="task-main-content">
@@ -1079,7 +1199,7 @@ function ProjectDetails() {
                           {task.assignee && (
                             <div className="task-meta-item">
                               <FaUsers className="meta-icon" />
-                              <span>Assigned to {task.assignee}</span>
+                              <span>{task.assignee}</span>
                             </div>
                           )}
 
@@ -1126,7 +1246,7 @@ function ProjectDetails() {
                   <div className="empty-icon-wrapper"><FaTasks /></div>
                   <h4 className="empty-title">{`No ${showCompleted ? '' : 'active '}tasks found`}</h4>
                   <p className="empty-description">
-                    {showCompleted ? 'All tasks are completed! Great work.' : 'Create your first task to start tracking project progress.'}
+                    {showCompleted ? 'All tasks are completed.' : 'Create a task to start tracking progress.'}
                   </p>
                   <button onClick={() => setShowTaskModal(true)} className="action-button primary">
                     <FaPlus />
@@ -1140,39 +1260,77 @@ function ProjectDetails() {
 
         {/* Right Column */}
         <div className="side-column">
+          {/* Project Background (remarks) */}
           <section className="content-card">
             <div className="card-header">
               <div className="header-title">
-                <FaAward className="header-icon" />
-                <h3>Progress Overview</h3>
+                <FaFileAlt className="header-icon" />
+                <h3>Project Background</h3>
               </div>
+
+              {!isEditingBackground ? (
+                <button className="action-button secondary" onClick={handleEditBackground}>
+                  <FaEdit />
+                  <span>Edit</span>
+                </button>
+              ) : (
+                <div className="header-actions">
+                  <button
+                    className="action-button secondary"
+                    onClick={handleCancelBackground}
+                    disabled={savingBackground}
+                  >
+                    <FaTimes />
+                    <span>Cancel</span>
+                  </button>
+                  <button
+                    className="action-button primary"
+                    onClick={handleSaveBackground}
+                    disabled={savingBackground}
+                  >
+                    <FaSave />
+                    <span>{savingBackground ? 'Saving...' : 'Save'}</span>
+                  </button>
+                </div>
+              )}
             </div>
+
             <div className="card-content">
-              <div className="progress-summary">
-                <div className="progress-bar-container">
-                  <div className="progress-bar-track">
-                    <div className="progress-bar-fill" style={{ width: `${progressPercentage}%` }} />
-                  </div>
-                  <div className="progress-percentage">{progressPercentage}%</div>
+              {!isEditingBackground ? (
+                <div className="project-background-view">
+                  {project.remarks?.trim() ? (
+                    <p className="project-background-text">{project.remarks}</p>
+                  ) : (
+                    <div className="empty-state">
+                      <div className="empty-icon-wrapper">
+                        <FaFileAlt />
+                      </div>
+                      <h4 className="empty-title">No background yet</h4>
+                      <p className="empty-description">
+                        Add a short description of the project, context, scope notes, risks, and key decisions.
+                      </p>
+                      <button className="action-button primary" onClick={handleEditBackground}>
+                        <FaPlus />
+                        <span>Add Background</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <div className="progress-stats">
-                  <div className="progress-stat-item">
-                    <span className="label">Total Tasks</span>
-                    <span className="value">{tasks.length}</span>
-                  </div>
-                  <div className="progress-stat-item">
-                    <span className="label">Completed</span>
-                    <span className="value">{completedTasksCount}</span>
-                  </div>
-                  <div className="progress-stat-item">
-                    <span className="label">Active</span>
-                    <span className="value">{activeTasksCount}</span>
-                  </div>
+              ) : (
+                <div className="project-background-edit">
+                  <textarea
+                    className="form-textarea project-background-textarea"
+                    value={backgroundDraft}
+                    onChange={(e) => setBackgroundDraft(e.target.value)}
+                    rows={10}
+                    placeholder="Write the project background here..."
+                  />
                 </div>
-              </div>
+              )}
             </div>
           </section>
 
+          {/* Project Logs */}
           <section className="content-card">
             <div className="card-header">
               <div className="header-title">
@@ -1205,12 +1363,14 @@ function ProjectDetails() {
                               setEditingLog(log);
                               setShowLogModal(true);
                             }}
+                            title="Edit log"
                           >
                             <FaEdit />
                           </button>
                           <button
                             className="task-action-button delete"
                             onClick={() => handleDeleteLog(log.id)}
+                            title="Delete log"
                           >
                             <FaTrash />
                           </button>
@@ -1224,7 +1384,7 @@ function ProjectDetails() {
                 <div className="empty-state">
                   <div className="empty-icon-wrapper"><FaBookOpen /></div>
                   <h4 className="empty-title">No project logs yet</h4>
-                  <p className="empty-description">Use logs to record key decisions, customer feedback, and meeting notes.</p>
+                  <p className="empty-description">Use logs to record key decisions, meeting notes, and updates.</p>
                   <button
                     onClick={() => {
                       setEditingLog(null);
@@ -1260,7 +1420,7 @@ function ProjectDetails() {
           setShowLogModal(false);
           setEditingLog(null);
         }}
-        onSave={handleLogEdit}
+        onSave={handleLogSave}
         editingLog={editingLog}
       />
     </div>
