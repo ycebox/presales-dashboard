@@ -760,21 +760,37 @@ body {
 .project-identity {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  min-width: 0;
 }
 
-.project-subtitle {
+.project-title {
+  margin: 0;
+  font-size: 28px; /* keep your existing size */
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-strong);
+}
+
+.project-customer {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #cbd5f5;
+  gap: 8px;
+  font-size: 14px; /* ~half-ish of title visually */
+  font-weight: 600;
+  color: #e0f2fe;
+  opacity: 0.95;
 }
 
 .subtitle-icon {
   color: var(--accent);
-  font-size: 12px;
+  font-size: 14px;
+}
+
+.project-stage-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .project-status {
@@ -783,6 +799,7 @@ body {
   gap: 8px;
   flex-wrap: wrap;
 }
+
 
 /* Deal badge refinement */
 .deal-badge {
