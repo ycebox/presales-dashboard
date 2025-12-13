@@ -1266,3 +1266,96 @@
 .activity-modal{
   max-width: 760px;
 }
+/* =========================================================
+   ALIASES for "Ongoing & upcoming presales activities"
+   (JS uses commitments-* and generic helpers)
+   Keeps your existing blue/dark styling.
+   ========================================================= */
+
+.commitments-table-wrapper {
+  /* same as .activities-table-wrapper */
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+}
+
+.commitments-table {
+  /* same as .activities-table */
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.commitments-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(2, 6, 23, 0.95);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.commitments-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.10);
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.95);
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: rgba(30, 41, 59, 0.45);
+}
+
+/* text overflow helper used in JS */
+.td-ellipsis {
+  max-width: 1px; /* allows ellipsis in table cell */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status pill used in JS */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.55);
+  font-size: 12px;
+  white-space: nowrap;
+  color: rgba(226, 232, 240, 0.95);
+}
+
+/* Optional: make the modal a bit wider for editing tasks (matches your .activity-modal intent) */
+.schedule-modal.activity-modal {
+  max-width: 760px;
+}
+
+
+/* =========================================================
+   FIX: Task mix styles at bottom currently force light theme.
+   Keep it consistent with your dark/blue theme.
+   ========================================================= */
+
+.taskmix-table th,
+.taskmix-table td {
+  border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+}
+
+.taskmix-table th {
+  color: #9ca3af;
+}
+
+.taskmix-footer {
+  color: #9ca3af;
+}
