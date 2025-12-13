@@ -1073,3 +1073,44 @@ textarea:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* ---------- Home: full-width Top Deals row ---------- */
+.home-top-row {
+  grid-column: 1 / -1;
+}
+
+.home-card-wide {
+  width: 100%;
+}
+
+.home-topdeals-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* ---------- Home: Top Deals table alignment improvements ---------- */
+.home-topdeals-table-wide {
+  width: 100%;
+  table-layout: fixed; /* makes colgroup widths actually work */
+  border-collapse: collapse;
+}
+
+.home-topdeals-table-wide th,
+.home-topdeals-table-wide td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid #111827;
+}
+
+.home-topdeals-table-wide th {
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.td-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.td-nowrap {
+  white-space: nowrap;
+}
