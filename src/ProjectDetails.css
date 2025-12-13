@@ -873,3 +873,24 @@ body {
     padding-right: 52px;
   }
 }
+/* Make Unassigned + At-risk panels slightly smaller (font -1 step) */
+.unassigned-at-risk-grid .unassigned-tasks-panel,
+.unassigned-at-risk-grid .atrisk-tasks-panel {
+  font-size: 12px; /* was effectively ~13px */
+}
+
+.unassigned-at-risk-grid .unassigned-tasks-panel h3,
+.unassigned-at-risk-grid .atrisk-tasks-panel h3 {
+  font-size: 13px; /* slightly smaller header */
+}
+
+/* make their tables inherit the smaller size */
+.unassigned-at-risk-grid .unassigned-tasks-panel table,
+.unassigned-at-risk-grid .atrisk-tasks-panel table {
+  font-size: 12px;
+}
+
+.unassigned-at-risk-grid .unassigned-tasks-panel th,
+.unassigned-at-risk-grid .atrisk-tasks-panel th {
+  font-size: 10px; /* table header labels */
+}
