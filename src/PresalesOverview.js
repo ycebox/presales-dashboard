@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from './supabaseClient';
 import {
-  Activity,
   Users,
   User,
   AlertTriangle,
@@ -150,6 +149,17 @@ const priorityScore = (priority) => {
 const isCompletedStatus = (status) => {
   const s = (status || '').toLowerCase();
   return s === 'completed' || s === 'done' || s === 'closed';
+};
+
+// ✅ NEW: group statuses for the activities panel
+const normalizeStatusGroup = (status) => {
+  const s = (status || '').toLowerCase().trim();
+
+  if (s.includes('progress')) return 'In Progress';
+  if (s.includes('not started') || s === 'open' || s === 'new') return 'Not Started';
+  if (s.includes('hold') || s.includes('blocked') || s.includes('waiting')) return 'On Hold / Blocked';
+
+  return 'Other';
 };
 
 function PresalesOverview() {
@@ -354,6 +364,33 @@ function PresalesOverview() {
 
     return rows.slice(0, 30);
   }, [tasks, projectInfoMap, today, fourteenDaysAhead]);
+
+  // ✅ NEW: group the activities list by status
+  const ongoingUpcomingGrouped = useMemo(() => {
+    const groups = {
+      'In Progress': [],
+      'Not Started': [],
+      'On Hold / Blocked': [],
+      Other: [],
+    };
+
+    (ongoingUpcomingActivities || []).forEach((t) => {
+      const g = normalizeStatusGroup(t.status);
+      groups[g].push(t);
+    });
+
+    // keep sorting inside each group (soonest due first)
+    Object.keys(groups).forEach((k) => {
+      groups[k].sort((a, b) => {
+        const ad = parseDate(a.due_date) || parseDate(a.end_date) || parseDate(a.start_date) || today;
+        const bd = parseDate(b.due_date) || parseDate(b.end_date) || parseDate(b.start_date) || today;
+        if (ad.getTime() !== bd.getTime()) return ad - bd;
+        return priorityScore(a.priority) - priorityScore(b.priority);
+      });
+    });
+
+    return groups;
+  }, [ongoingUpcomingActivities, today]);
 
   const openTaskModal = (task) => {
     setTaskSaveError(null);
@@ -603,8 +640,12 @@ function PresalesOverview() {
 
         let freeDays = 0;
         days.forEach((d) => {
-          const hasTask = (tasks || []).some((t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d));
-          const hasSchedule = (scheduleEvents || []).some((s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date));
+          const hasTask = (tasks || []).some(
+            (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
+          );
+          const hasSchedule = (scheduleEvents || []).some(
+            (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
+          );
           if (!hasTask && !hasSchedule) freeDays += 1;
         });
 
@@ -640,7 +681,8 @@ function PresalesOverview() {
           ? res.daily_capacity_hours
           : HOURS_PER_DAY;
 
-      const maxTasksPerDay = Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0 ? res.max_tasks_per_day : 3;
+      const maxTasksPerDay =
+        Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0 ? res.max_tasks_per_day : 3;
 
       return { dailyCapacity, maxTasksPerDay };
     };
@@ -650,8 +692,12 @@ function PresalesOverview() {
       const { dailyCapacity, maxTasksPerDay } = getCapacityFor(name);
 
       const cells = days.map((d) => {
-        const dayTasks = (tasks || []).filter((t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d));
-        const daySchedules = (scheduleEvents || []).filter((s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date));
+        const dayTasks = (tasks || []).filter(
+          (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
+        );
+        const daySchedules = (scheduleEvents || []).filter(
+          (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
+        );
 
         let status = 'free';
         let label = 'Free';
@@ -660,7 +706,9 @@ function PresalesOverview() {
 
         const totalHours = dayTasks.reduce((sum, t) => {
           const h =
-            typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours) ? t.estimated_hours : DEFAULT_TASK_HOURS;
+            typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours)
+              ? t.estimated_hours
+              : DEFAULT_TASK_HOURS;
           return sum + h;
         }, 0);
 
@@ -823,7 +871,9 @@ function PresalesOverview() {
         projectName: projectMap.get(t.project_id) || 'Unknown project',
       }));
 
-    const daySchedules = (scheduleEvents || []).filter((e) => e.assignee === assignee && isWithinRange(day, e.start_date, e.end_date));
+    const daySchedules = (scheduleEvents || []).filter(
+      (e) => e.assignee === assignee && isWithinRange(day, e.start_date, e.end_date)
+    );
 
     setDayDetail({ assignee, date: day, tasks: dayTasks, schedules: daySchedules });
     setDayDetailOpen(true);
@@ -866,7 +916,7 @@ function PresalesOverview() {
         </div>
       </header>
 
-      {/* 0. ONGOING & UPCOMING PRESALES ACTIVITIES */}
+      {/* 0. ONGOING & UPCOMING PRESALES ACTIVITIES (GROUPED BY STATUS) */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
@@ -884,44 +934,60 @@ function PresalesOverview() {
               <p>No ongoing or upcoming presales activities found in the next 14 days.</p>
             </div>
           ) : (
-            <div className="commitments-table-wrapper">
-              <table className="commitments-table">
-                <thead>
-                  <tr>
-                    <th>Task</th>
-                    <th>Customer</th>
-                    <th>Project</th>
-                    <th className="th-center">Due</th>
-                    <th className="th-center">Status</th>
-                    <th>Assignee</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ongoingUpcomingActivities.map((t) => (
-                    <tr
-                      key={t.id}
-                      className="clickable-row"
-                      onClick={() => openTaskModal(t)}
-                      title="Click to edit"
-                    >
-                      <td className="td-ellipsis">{t.description || 'Untitled task'}</td>
-                      <td className="td-ellipsis">{t.customerName || 'Unknown customer'}</td>
-                      <td className="td-ellipsis">{t.projectName || 'Unknown project'}</td>
-                      <td className="td-center">{formatShortDate(t.due_date) || '-'}</td>
-                      <td className="td-center">
-                        <span className="status-pill">{t.status || 'Open'}</span>
-                      </td>
-                      <td className="td-ellipsis">{t.assignee || 'Unassigned'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {['In Progress', 'Not Started', 'On Hold / Blocked', 'Other'].map((groupName) => {
+                const groupRows = ongoingUpcomingGrouped[groupName] || [];
+                if (groupRows.length === 0) return null;
+
+                return (
+                  <div key={groupName}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>{groupName}</span>
+                      <span style={{ fontSize: 11, color: '#9ca3af' }}>({groupRows.length})</span>
+                    </div>
+
+                    <div className="commitments-table-wrapper">
+                      <table className="commitments-table">
+                        <thead>
+                          <tr>
+                            <th>Task</th>
+                            <th>Customer</th>
+                            <th>Project</th>
+                            <th className="th-center">Due</th>
+                            <th className="th-center">Status</th>
+                            <th>Assignee</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {groupRows.map((t) => (
+                            <tr
+                              key={t.id}
+                              className="clickable-row"
+                              onClick={() => openTaskModal(t)}
+                              title="Click to edit"
+                            >
+                              <td className="td-ellipsis">{t.description || 'Untitled task'}</td>
+                              <td className="td-ellipsis">{t.customerName || 'Unknown customer'}</td>
+                              <td className="td-ellipsis">{t.projectName || 'Unknown project'}</td>
+                              <td className="td-center">{formatShortDate(t.due_date) || '-'}</td>
+                              <td className="td-center">
+                                <span className="status-pill">{t.status || 'Open'}</span>
+                              </td>
+                              <td className="td-ellipsis">{t.assignee || 'Unassigned'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       </section>
 
-      {/* 1. UNASSIGNED & AT-RISK TASKS (moved ABOVE workload) */}
+      {/* 1. UNASSIGNED & AT-RISK TASKS */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
@@ -1108,8 +1174,6 @@ function PresalesOverview() {
                   30 days
                 </button>
               </div>
-
-              {/* removed Add leave/travel button from here */}
             </div>
           </div>
 
@@ -1121,10 +1185,22 @@ function PresalesOverview() {
           ) : (
             <div className="heatmap-wrapper">
               <div className="heatmap-legend">
-                <span className="legend-item"><span className="legend-dot status-free" />Free</span>
-                <span className="legend-item"><span className="legend-dot status-busy" />Busy</span>
-                <span className="legend-item"><span className="legend-dot status-leave" />Leave</span>
-                <span className="legend-item"><span className="legend-dot status-travel" />Travel</span>
+                <span className="legend-item">
+                  <span className="legend-dot status-free" />
+                  Free
+                </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-busy" />
+                  Busy
+                </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-leave" />
+                  Leave
+                </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-travel" />
+                  Travel
+                </span>
               </div>
 
               <div className="heatmap-table">
@@ -1159,7 +1235,7 @@ function PresalesOverview() {
           )}
         </div>
 
-        {/* LEAVE/TRAVEL SCHEDULE (button moved here) */}
+        {/* LEAVE/TRAVEL SCHEDULE */}
         <div className="presales-panel">
           <div className="presales-panel-header presales-panel-header-row">
             <div>
@@ -1211,7 +1287,9 @@ function PresalesOverview() {
                             </div>
                           </div>
                         </td>
-                        <td><span className="schedule-type-chip">{e.type}</span></td>
+                        <td>
+                          <span className="schedule-type-chip">{e.type}</span>
+                        </td>
                         <td>
                           {formatShortDate(e.start_date)}
                           {e.end_date && e.end_date !== e.start_date ? ` – ${formatShortDate(e.end_date)}` : ''}
@@ -1221,7 +1299,11 @@ function PresalesOverview() {
                           <button type="button" className="icon-btn" onClick={() => openScheduleModalForEdit(e)}>
                             <Edit3 size={16} />
                           </button>
-                          <button type="button" className="icon-btn icon-btn-danger" onClick={() => handleDeleteSchedule(e.id)}>
+                          <button
+                            type="button"
+                            className="icon-btn icon-btn-danger"
+                            onClick={() => handleDeleteSchedule(e.id)}
+                          >
                             <Trash2 size={16} />
                           </button>
                         </td>
@@ -1380,7 +1462,12 @@ function PresalesOverview() {
                   {scheduleMessage && <span className="schedule-message-success">{scheduleMessage}</span>}
                 </div>
                 <div className="schedule-form-buttons">
-                  <button type="button" className="ghost-btn ghost-btn-sm" onClick={closeScheduleModal} disabled={scheduleSaving}>
+                  <button
+                    type="button"
+                    className="ghost-btn ghost-btn-sm"
+                    onClick={closeScheduleModal}
+                    disabled={scheduleSaving}
+                  >
                     Cancel
                   </button>
                   <button type="submit" className="primary-btn" disabled={scheduleSaving}>
@@ -1396,7 +1483,7 @@ function PresalesOverview() {
       {/* TASK EDIT MODAL */}
       {taskModalOpen && (
         <div className="schedule-modal-backdrop">
-          <div className="schedule-modal">
+          <div className="schedule-modal activity-modal">
             <div className="schedule-modal-header">
               <div className="schedule-modal-title">
                 <Edit3 />
@@ -1433,6 +1520,7 @@ function PresalesOverview() {
                     <option value="Not Started">Not Started</option>
                     <option value="In Progress">In Progress</option>
                     <option value="On Hold">On Hold</option>
+                    <option value="Blocked">Blocked</option>
                     <option value="Completed">Completed</option>
                     <option value="Done">Done</option>
                   </select>
@@ -1440,7 +1528,10 @@ function PresalesOverview() {
 
                 <div className="schedule-field">
                   <label>Assignee</label>
-                  <select value={taskForm.assignee} onChange={(e) => setTaskForm((p) => ({ ...p, assignee: e.target.value }))}>
+                  <select
+                    value={taskForm.assignee}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, assignee: e.target.value }))}
+                  >
                     <option value="">Unassigned</option>
                     {(presalesResources || []).map((r) => {
                       const name = r.name || r.email;
@@ -1510,7 +1601,10 @@ function PresalesOverview() {
 
                 <div className="schedule-field">
                   <label>Priority</label>
-                  <select value={taskForm.priority} onChange={(e) => setTaskForm((p) => ({ ...p, priority: e.target.value }))}>
+                  <select
+                    value={taskForm.priority}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, priority: e.target.value }))}
+                  >
                     <option value="High">High</option>
                     <option value="Normal">Normal</option>
                     <option value="Low">Low</option>
@@ -1531,7 +1625,9 @@ function PresalesOverview() {
               </div>
 
               <div className="schedule-form-actions">
-                <div className="schedule-message">{taskSaveError && <span className="schedule-message-error">{taskSaveError}</span>}</div>
+                <div className="schedule-message">
+                  {taskSaveError && <span className="schedule-message-error">{taskSaveError}</span>}
+                </div>
                 <div className="schedule-form-buttons">
                   <button type="button" className="ghost-btn ghost-btn-sm" onClick={closeTaskModal} disabled={taskSaving}>
                     Cancel
@@ -1553,7 +1649,7 @@ function PresalesOverview() {
         </div>
       )}
 
-      {/* DAY DETAIL MODAL (kept as-is if you already had it; omitted here for brevity) */}
+      {/* DAY DETAIL MODAL */}
       {dayDetailOpen && (
         <div className="schedule-modal-backdrop">
           <div className="schedule-modal">
