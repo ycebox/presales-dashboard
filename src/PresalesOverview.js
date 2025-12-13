@@ -78,7 +78,7 @@ const getWeekRanges = () => {
   const nextWeekStart = new Date(thisWeekStart);
   nextWeekStart.setDate(thisWeekStart.getDate() + 7);
   const nextWeekEnd = new Date(nextWeekStart);
-  nextWeekEnd.setDate(nextWeekEnd.getDate() + 4);
+  nextWeekEnd.setDate(nextWeekStart.getDate() + 4);
 
   const last30Start = new Date(today);
   last30Start.setDate(today.getDate() - 30);
@@ -154,6 +154,23 @@ function PresalesOverview() {
 
   // Day detail modal state
   const [dayDetailOpen, setDayDetailOpen] = useState(false);
+
+const [activityModalOpen, setActivityModalOpen] = useState(false);
+const [activityModalTask, setActivityModalTask] = useState(null);
+const [activityForm, setActivityForm] = useState({
+  description: '',
+  status: 'Not Started',
+  assignee: '',
+  due_date: '',
+  start_date: '',
+  end_date: '',
+  estimated_hours: '',
+  task_type: '',
+  priority: 'Normal',
+  notes: '',
+});
+const [activitySaving, setActivitySaving] = useState(false);
+const [activitySaveError, setActivitySaveError] = useState(null);
   const [dayDetail, setDayDetail] = useState({
     assignee: '',
     date: null,
@@ -171,7 +188,7 @@ function PresalesOverview() {
         const [projRes, taskRes, scheduleRes, presalesRes] = await Promise.all([
           supabase
             .from('projects')
-            .select('id, customer_name, sales_stage, deal_value')
+            .select('id, customer_name, project_name, sales_stage, deal_value')
             .order('customer_name', { ascending: true }),
           supabase
             .from('project_tasks')
@@ -212,13 +229,23 @@ function PresalesOverview() {
   }, []);
 
   // ---------- Base helpers ----------
-  const projectMap = useMemo(() => {
+  const projectInfoMap = useMemo(() => {
     const map = new Map();
     (projects || []).forEach((p) => {
-      map.set(p.id, p.customer_name || 'Unknown project');
+      map.set(p.id, {
+        customer_name: p.customer_name || 'Unknown customer',
+        project_name: p.project_name || p.customer_name || 'Unnamed project',
+      });
     });
     return map;
   }, [projects]);
+
+  const getProjectInfo = (projectId) => {
+    return projectInfoMap.get(projectId) || {
+      customer_name: 'Unknown customer',
+      project_name: 'Unnamed project',
+    };
+  };
 
   const { thisWeek, nextWeek, last30 } = useMemo(() => getWeekRanges(), []);
   const today = useMemo(() => toMidnight(new Date()), []);
@@ -232,59 +259,61 @@ function PresalesOverview() {
     return d;
   }, [today]);
 
-  const isCompletedStatus = (status) => {
-    const s = (status || '').toLowerCase();
-    return s === 'completed' || s === 'done' || s === 'closed';
-  };
 
-  // ---------- Upcoming presales commitments (next 14 days) ----------
-  const upcomingCommitments = useMemo(() => {
-    if (!tasks || tasks.length === 0) return [];
+// ---------- Ongoing & upcoming presales activities (next 14 days + in progress) ----------
+const ongoingUpcomingActivities = useMemo(() => {
+  if (!tasks || tasks.length === 0) return [];
 
-    const importantTypes = [
-      'Demo',
-      'Workshop',
-      'RFP',
-      'Proposal',
-      'Presentation',
-      'POC',
-    ];
+  const end = new Date(today);
+  end.setDate(end.getDate() + 14);
 
-    const end = new Date(today);
-    end.setDate(end.getDate() + 14);
+  const rows = (tasks || [])
+    .filter((t) => {
+      if (isCompletedStatus(t.status)) return false;
 
-    const rows = (tasks || [])
-      .filter((t) => {
-        if (isCompletedStatus(t.status)) return false;
-        const due = parseDate(t.due_date);
-        if (!due) return false;
-        if (due.getTime() < today.getTime()) return false;
-        if (due.getTime() > end.getTime()) return false;
+      const due = parseDate(t.due_date);
+      const start = parseDate(t.start_date);
+      const endDate = parseDate(t.end_date);
 
-        const type = (t.task_type || '').trim();
-        if (!type) return false;
+      const status = (t.status || '').toLowerCase();
 
-        const typeOk = importantTypes.some((x) =>
-          type.toLowerCase().includes(x.toLowerCase())
-        );
+      const dueSoon =
+        due && due.getTime() >= today.getTime() && due.getTime() <= end.getTime();
 
-        return typeOk;
-      })
-      .map((t) => ({
+      const ongoingByDate =
+        start &&
+        start.getTime() <= today.getTime() &&
+        ((endDate && endDate.getTime() >= today.getTime()) ||
+          (due && due.getTime() >= today.getTime()));
+
+      const inProgress = status.includes('progress');
+
+      return dueSoon || ongoingByDate || inProgress;
+    })
+    .map((t) => {
+      const info = getProjectInfo(t.project_id);
+      return {
         ...t,
-        customerName: projectMap.get(t.project_id) || 'Unknown project',
-      }))
-      .sort((a, b) => {
-        const ad = parseDate(a.due_date) || today;
-        const bd = parseDate(b.due_date) || today;
-        if (ad.getTime() !== bd.getTime()) return ad - bd;
-        return priorityScore(a.priority) - priorityScore(b.priority);
-      })
-      .slice(0, 12);
+        _customer: info.customer_name,
+        _project: info.project_name,
+      };
+    })
+    .sort((a, b) => {
+      const ad = parseDate(a.due_date);
+      const bd = parseDate(b.due_date);
+      const aTime = ad ? ad.getTime() : Infinity;
+      const bTime = bd ? bd.getTime() : Infinity;
+      if (aTime !== bTime) return aTime - bTime;
 
-    return rows;
-  }, [tasks, projectMap, today]);
+      const ap = priorityScore(a.priority);
+      const bp = priorityScore(b.priority);
+      if (ap !== bp) return ap - bp;
 
+      return (a.description || '').localeCompare(b.description || '');
+    });
+
+  return rows.slice(0, 15);
+}, [tasks, today, projectInfoMap]);
   // ---------- Workload by assignee ----------
   const workloadByAssignee = useMemo(() => {
     const map = new Map();
@@ -394,14 +423,21 @@ function PresalesOverview() {
       entry.total += 1;
       entry.projectIds.add(t.project_id);
 
+      const status = (t.status || '').toLowerCase();
       const due = parseDate(t.due_date);
 
-      const isCompleted = isCompletedStatus(t.status);
-      const isOverdue = due && !isCompleted && due.getTime() < today.getTime();
+      const isCompleted =
+        status === 'completed' || status === 'done' || status === 'closed';
+      const isOverdue =
+        due && !isCompleted && due.getTime() < today.getTime();
       const isOpen = !isCompleted;
 
-      if (isOpen) entry.open += 1;
-      if (isOverdue) entry.overdue += 1;
+      if (isOpen) {
+        entry.open += 1;
+      }
+      if (isOverdue) {
+        entry.overdue += 1;
+      }
 
       // last 30 days overdue trend
       if (
@@ -409,7 +445,9 @@ function PresalesOverview() {
         isWithinRange(due, last30DaysRange.start, last30DaysRange.end)
       ) {
         entry.overdueTotalLast30 += 1;
-        if (isOverdue) entry.overdueLast30 += 1;
+        if (isOverdue) {
+          entry.overdueLast30 += 1;
+        }
       }
 
       if (isOpen) {
@@ -452,14 +490,7 @@ function PresalesOverview() {
 
     arr.sort((a, b) => b.open - a.open);
     return arr;
-  }, [
-    tasks,
-    presalesResources,
-    thisWeekRange,
-    nextWeekRange,
-    last30DaysRange,
-    today,
-  ]);
+  }, [tasks, presalesResources, thisWeekRange, nextWeekRange, last30DaysRange, today]);
 
   // ---------- TASK MIX ----------
   const taskMix = useMemo(() => {
@@ -472,11 +503,11 @@ function PresalesOverview() {
     let total = 0;
 
     tasks.forEach((t) => {
-      const endDate = t.end_date ? new Date(t.end_date) : null;
-      const startDate = t.start_date ? new Date(t.start_date) : null;
-      const dueDate = t.due_date ? new Date(t.due_date) : null;
+      const end = t.end_date ? new Date(t.end_date) : null;
+      const start = t.start_date ? new Date(t.start_date) : null;
+      const due = t.due_date ? new Date(t.due_date) : null;
 
-      const date = endDate || startDate || dueDate;
+      const date = end || start || due;
       if (!date || date < cutoff) return;
 
       const type = (t.task_type || 'Others').trim() || 'Others';
@@ -522,14 +553,19 @@ function PresalesOverview() {
         let freeDays = 0;
         days.forEach((d) => {
           const hasTask = (tasks || []).some(
-            (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
+            (t) =>
+              t.assignee === name &&
+              t.status !== 'Completed' &&
+              isTaskOnDay(t, d)
           );
           const hasSchedule = (scheduleEvents || []).some(
             (s) =>
               s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
           );
 
-          if (!hasTask && !hasSchedule) freeDays += 1;
+          if (!hasTask && !hasSchedule) {
+            freeDays += 1;
+          }
         });
 
         const work = workloadByAssignee.find((w) => w.assignee === name);
@@ -598,7 +634,8 @@ function PresalesOverview() {
         const dayTasks = (tasks || []).filter(
           (t) =>
             t.assignee === name &&
-            !isCompletedStatus(t.status) &&
+            t.status !== 'Completed' &&
+            t.status !== 'Done' &&
             isTaskOnDay(t, d)
         );
 
@@ -607,7 +644,7 @@ function PresalesOverview() {
             s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
         );
 
-        let status = 'free';
+        let status = 'free'; // free | busy | leave | travel
         let label = 'Free';
 
         const taskCount = dayTasks.length;
@@ -646,7 +683,9 @@ function PresalesOverview() {
         }
 
         if (taskCount > 0) {
-          if (status === 'free') status = 'busy';
+          if (status === 'free') {
+            status = 'busy';
+          }
 
           const baseLabel = `${taskCount} task${taskCount > 1 ? 's' : ''}`;
           const capText =
@@ -691,7 +730,7 @@ function PresalesOverview() {
     });
 
     return { days, rows };
-  }, [presalesResources, tasks, scheduleEvents, calendarView, today]);
+  }, [presalesResources, tasks, scheduleEvents, calendarView]);
 
   // ---------- Unassigned & At-Risk Tasks ----------
   const unassignedAndAtRisk = useMemo(() => {
@@ -708,13 +747,21 @@ function PresalesOverview() {
     const atRisk = [];
 
     (tasks || []).forEach((t) => {
-      if (isCompletedStatus(t.status)) return;
+      const status = (t.status || '').toLowerCase();
+      const isCompleted =
+        status === 'completed' || status === 'done' || status === 'closed';
+      if (isCompleted) return;
 
       const due = parseDate(t.due_date);
       const priority = (t.priority || 'Normal').toLowerCase();
       const assignee = t.assignee;
 
-      if (!assignee) unassigned.push(t);
+      // Unassigned
+      if (!assignee) {
+        unassigned.push(t);
+      }
+
+      // At-risk conditions
       if (!due) return;
 
       const dueInNext7 =
@@ -742,8 +789,10 @@ function PresalesOverview() {
     workloadByAssignee.forEach((w) => {
       const name = w.assignee;
       const personTasks = (tasks || []).filter((t) => {
-        if (t.assignee !== name) return false;
-        return !isCompletedStatus(t.status);
+        const status = (t.status || '').toLowerCase();
+        const isCompleted =
+          status === 'completed' || status === 'done' || status === 'closed';
+        return t.assignee === name && !isCompleted;
       });
 
       if (personTasks.length === 0) return;
@@ -782,7 +831,136 @@ function PresalesOverview() {
     return result;
   }, [tasks, workloadByAssignee, today, thisWeekRange]);
 
- 
+  // ---------- High-Value Deals Coverage ----------
+  const highValueDealsCoverage = useMemo(() => {
+    if (!projects || projects.length === 0 || !tasks) return [];
+
+    const HIGH_VALUE_THRESHOLD = 300000;
+    const criticalStages = ['Opportunity', 'Proposal', 'RFP', 'SoW', 'Contracting'];
+
+    const result = [];
+
+    projects.forEach((p) => {
+      const stage = p.sales_stage || '';
+      const valueNum = Number(p.deal_value) || 0;
+      const isClosed =
+        stage.toLowerCase().startsWith('closed') || stage === 'Done';
+
+      if (isClosed) return;
+
+      const isHighValue = valueNum >= HIGH_VALUE_THRESHOLD;
+      const isCriticalStage = criticalStages.includes(stage);
+
+      if (!isHighValue && !isCriticalStage) return;
+
+      const projectTasks = (tasks || []).filter((t) => t.project_id === p.id);
+      const openTasks = projectTasks.filter((t) => {
+        const status = (t.status || '').toLowerCase();
+        return !(
+          status === 'completed' ||
+          status === 'done' ||
+          status === 'closed'
+        );
+      });
+
+      const assigneeSet = new Set(
+        openTasks
+          .map((t) => t.assignee)
+          .filter((a) => a && a.trim().length > 0)
+      );
+
+      result.push({
+        projectId: p.id,
+        customerName: p.customer_name || 'Unknown customer',
+        stage,
+        dealValue: valueNum,
+        openTasksCount: openTasks.length,
+        assigneeCount: assigneeSet.size,
+      });
+    });
+
+    result.sort((a, b) => b.dealValue - a.dealValue);
+    return result;
+  }, [projects, tasks]);
+
+
+// ---------- Activity modal handlers ----------
+const openActivityModal = (task) => {
+  if (!task) return;
+  setActivitySaveError(null);
+  setActivityModalTask(task);
+
+  setActivityForm({
+    description: task.description || '',
+    status: task.status || 'Not Started',
+    assignee: task.assignee || '',
+    due_date: task.due_date || '',
+    start_date: task.start_date || '',
+    end_date: task.end_date || '',
+    estimated_hours:
+      task.estimated_hours !== null && task.estimated_hours !== undefined
+        ? String(task.estimated_hours)
+        : '',
+    task_type: task.task_type || '',
+    priority: task.priority || 'Normal',
+    notes: task.notes || '',
+  });
+
+  setActivityModalOpen(true);
+};
+
+const closeActivityModal = () => {
+  setActivityModalOpen(false);
+  setActivityModalTask(null);
+};
+
+const saveActivityTask = async () => {
+  if (!activityModalTask) return;
+  setActivitySaving(true);
+  setActivitySaveError(null);
+
+  const payload = {
+    description: activityForm.description || null,
+    status: activityForm.status || null,
+    assignee: activityForm.assignee || null,
+    due_date: activityForm.due_date || null,
+    start_date: activityForm.start_date || null,
+    end_date: activityForm.end_date || null,
+    task_type: activityForm.task_type || null,
+    priority: activityForm.priority || null,
+    notes: activityForm.notes || null,
+  };
+
+  const hours = activityForm.estimated_hours;
+  if (hours === '' || hours === null || hours === undefined) {
+    payload.estimated_hours = null;
+  } else {
+    const num = Number(hours);
+    payload.estimated_hours = Number.isFinite(num) ? num : null;
+  }
+
+  try {
+    const { data, error: updateError } = await supabase
+      .from('project_tasks')
+      .update(payload)
+      .eq('id', activityModalTask.id)
+      .select();
+
+    if (updateError) throw updateError;
+
+    if (data && data.length > 0) {
+      const updated = data[0];
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      closeActivityModal();
+    }
+  } catch (err) {
+    console.error('Error updating task:', err);
+    setActivitySaveError('Failed to save changes. Please try again.');
+  } finally {
+    setActivitySaving(false);
+  }
+};
+
   // ---------- Schedule modal handlers ----------
   const openScheduleModalForCreate = () => {
     setScheduleMode('create');
@@ -905,12 +1083,12 @@ function PresalesOverview() {
       .filter(
         (t) =>
           t.assignee === assignee &&
-          !isCompletedStatus(t.status) &&
+          t.status !== 'Completed' &&
           isTaskOnDay(t, day)
       )
       .map((t) => ({
         ...t,
-        projectName: projectMap.get(t.project_id) || 'Unknown project',
+        projectName: getProjectInfo(t.project_id).project_name,
       }));
 
     const daySchedules = (scheduleEvents || []).filter(
@@ -981,50 +1159,6 @@ function PresalesOverview() {
         </div>
       </header>
 
-      {/* 0. UPCOMING COMMITMENTS (TOP) */}
-      <section className="presales-main-grid">
-        <div className="presales-panel presales-panel-large">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <ListChecks size={20} className="panel-icon" />
-                Upcoming presales commitments
-              </h3>
-              <p>Next 14 days. Based on due date + task type (Demo / RFP / Workshop / etc.).</p>
-            </div>
-          </div>
-
-          {upcomingCommitments.length === 0 ? (
-            <div className="presales-empty small">
-              <p>No major commitments found in the next 14 days.</p>
-            </div>
-          ) : (
-            <div className="commitments-list-wrapper">
-              <ul className="commitments-list">
-                {upcomingCommitments.map((t) => (
-                  <li key={t.id} className="commitment-item">
-                    <div className="commitment-main">
-                      <span className="commitment-date">
-                        {formatShortDate(t.due_date)}
-                      </span>
-                      <span className="commitment-title">
-                        {t.description || 'Untitled task'}
-                      </span>
-                    </div>
-                    <div className="commitment-meta">
-                      <span className="commitment-customer">{t.customerName}</span>
-                      {t.assignee ? <span> · {t.assignee}</span> : <span> · Unassigned</span>}
-                      {t.task_type ? <span className="commitment-tag">{t.task_type}</span> : null}
-                      {t.priority ? <span className="commitment-priority">{t.priority}</span> : null}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </section>
-
       {/* 1. WORKLOAD */}
       <section className="presales-main-grid">
         <div className="presales-panel presales-panel-large">
@@ -1069,7 +1203,8 @@ function PresalesOverview() {
                           <div className="wl-name-text">
                             <span className="wl-name-main">{w.assignee}</span>
                             <span className="wl-name-sub">
-                              {w.projectCount} project{w.projectCount !== 1 ? 's' : ''}
+                              {w.projectCount} project
+                              {w.projectCount !== 1 ? 's' : ''}
                             </span>
                           </div>
                         </div>
@@ -1081,16 +1216,22 @@ function PresalesOverview() {
                       <td className="td-center">
                         <div>
                           <div>{Math.round(w.utilThisWeek)}%</div>
-                          <div className="wl-util-label">{getUtilLabel(Math.round(w.utilThisWeek))}</div>
+                          <div className="wl-util-label">
+                            {getUtilLabel(Math.round(w.utilThisWeek))}
+                          </div>
                         </div>
                       </td>
                       <td className="td-center">
                         <div>
                           <div>{Math.round(w.utilNextWeek)}%</div>
-                          <div className="wl-util-label">{getUtilLabel(Math.round(w.utilNextWeek))}</div>
+                          <div className="wl-util-label">
+                            {getUtilLabel(Math.round(w.utilNextWeek))}
+                          </div>
                         </div>
                       </td>
-                      <td className="td-center">{Math.round(w.overdueRateLast30)}%</td>
+                      <td className="td-center">
+                        {Math.round(w.overdueRateLast30)}%
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1107,15 +1248,23 @@ function PresalesOverview() {
             <div>
               <h3>
                 <CalendarDays size={20} className="panel-icon" />
-                Presales availability ({calendarView === '14' ? 'next 14 days' : 'next 30 days'})
+                Presales availability (
+                {calendarView === '14' ? 'next 14 days' : 'next 30 days'})
               </h3>
-              <p>See who is free, busy, on leave, or travelling so you can assign tasks safely.</p>
+              <p>
+                See who is free, busy, on leave, or travelling so you can assign
+                tasks safely.
+              </p>
             </div>
             <div className="calendar-header-actions">
               <div className="calendar-toggle">
                 <button
                   type="button"
-                  className={calendarView === '14' ? 'calendar-toggle-btn active' : 'calendar-toggle-btn'}
+                  className={
+                    calendarView === '14'
+                      ? 'calendar-toggle-btn active'
+                      : 'calendar-toggle-btn'
+                  }
                   onClick={() => setCalendarView('14')}
                 >
                   14 days
@@ -1124,13 +1273,21 @@ function PresalesOverview() {
               <div className="calendar-toggle">
                 <button
                   type="button"
-                  className={calendarView === '30' ? 'calendar-toggle-btn active' : 'calendar-toggle-btn'}
+                  className={
+                    calendarView === '30'
+                      ? 'calendar-toggle-btn active'
+                      : 'calendar-toggle-btn'
+                  }
                   onClick={() => setCalendarView('30')}
                 >
                   30 days
                 </button>
               </div>
-              <button type="button" className="ghost-btn ghost-btn-sm" onClick={openScheduleModalForCreate}>
+              <button
+                type="button"
+                className="ghost-btn ghost-btn-sm"
+                onClick={openScheduleModalForCreate}
+              >
                 <Plane size={16} />
                 <span>Add leave / travel</span>
               </button>
@@ -1145,18 +1302,38 @@ function PresalesOverview() {
           ) : (
             <div className="heatmap-wrapper">
               <div className="heatmap-legend">
-                <span className="legend-item"><span className="legend-dot status-free" />Free</span>
-                <span className="legend-item"><span className="legend-dot status-busy" />Busy</span>
-                <span className="legend-item"><span className="legend-dot status-leave" />Leave</span>
-                <span className="legend-item"><span className="legend-dot status-travel" />Travel</span>
+                <span className="legend-item">
+                  <span className="legend-dot status-free" />
+                  Free
+                </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-busy" />
+                  Busy
+                </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-leave" />
+                  Leave
+                </span>
+                <span className="legend-item">
+                  <span className="legend-dot status-travel" />
+                  Travel
+                </span>
               </div>
 
               <div className="heatmap-table">
                 <div className="heatmap-header-row">
-                  <div className="heatmap-header-cell heatmap-name-col">Presales</div>
+                  <div className="heatmap-header-cell heatmap-name-col">
+                    Presales
+                  </div>
                   {availabilityGrid.days.map((d) => (
-                    <div key={d.toISOString()} className="heatmap-header-cell heatmap-day-col">
-                      {d.toLocaleDateString('en-SG', { day: '2-digit', month: 'short' })}
+                    <div
+                      key={d.toISOString()}
+                      className="heatmap-header-cell heatmap-day-col"
+                    >
+                      {d.toLocaleDateString('en-SG', {
+                        day: '2-digit',
+                        month: 'short',
+                      })}
                     </div>
                   ))}
                 </div>
@@ -1164,8 +1341,12 @@ function PresalesOverview() {
                 {availabilityGrid.rows.map((row) => (
                   <div key={row.assignee} className="heatmap-row">
                     <div className="heatmap-presales-cell">
-                      <div className="wl-avatar">{(row.assignee || 'U').charAt(0).toUpperCase()}</div>
-                      <div className="heatmap-presales-name">{row.assignee}</div>
+                      <div className="wl-avatar">
+                        {(row.assignee || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="heatmap-presales-name">
+                        {row.assignee}
+                      </div>
                     </div>
                     {row.cells.map((cell) => (
                       <button
@@ -1228,23 +1409,37 @@ function PresalesOverview() {
                       <tr key={e.id}>
                         <td>
                           <div className="wl-name-cell">
-                            <div className="wl-avatar">{(e.assignee || 'U').charAt(0).toUpperCase()}</div>
+                            <div className="wl-avatar">
+                              {(e.assignee || 'U').charAt(0).toUpperCase()}
+                            </div>
                             <div className="wl-name-text">
                               <span className="wl-name-main">{e.assignee}</span>
                             </div>
                           </div>
                         </td>
-                        <td><span className="schedule-type-chip">{e.type}</span></td>
+                        <td>
+                          <span className="schedule-type-chip">{e.type}</span>
+                        </td>
                         <td>
                           {formatShortDate(e.start_date)}
-                          {e.end_date && e.end_date !== e.start_date ? ` – ${formatShortDate(e.end_date)}` : ''}
+                          {e.end_date && e.end_date !== e.start_date
+                            ? ` – ${formatShortDate(e.end_date)}`
+                            : ''}
                         </td>
                         <td className="schedule-note-cell">{e.note}</td>
                         <td className="td-center">
-                          <button type="button" className="icon-btn" onClick={() => openScheduleModalForEdit(e)}>
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            onClick={() => openScheduleModalForEdit(e)}
+                          >
                             <Edit3 size={16} />
                           </button>
-                          <button type="button" className="icon-btn icon-btn-danger" onClick={() => handleDeleteSchedule(e.id)}>
+                          <button
+                            type="button"
+                            className="icon-btn icon-btn-danger"
+                            onClick={() => handleDeleteSchedule(e.id)}
+                          >
                             <Trash2 size={16} />
                           </button>
                         </td>
@@ -1277,63 +1472,65 @@ function PresalesOverview() {
             </div>
           ) : (
             <div className="unassigned-at-risk-grid">
-              <div className="unassigned-column unassigned-tasks-panel">
-                <h3>Unassigned tasks</h3>
+              <div className="unassigned-column">
+                <h4>Unassigned tasks</h4>
                 {unassignedAndAtRisk.unassigned.length === 0 ? (
                   <p className="small-muted">No unassigned tasks.</p>
                 ) : (
-                  <div className="assignment-table-wrapper unassigned-tasks-table-wrapper">
-                    <table className="assignment-table unassigned-tasks-table">
-                      <thead>
-                        <tr>
-                          <th>Task</th>
-                          <th>Project</th>
-                          <th>Due</th>
-                          <th>Priority</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {unassignedAndAtRisk.unassigned.slice(0, 10).map((t) => (
+                  <table className="assignment-table">
+                    <thead>
+                      <tr>
+                        <th>Task</th>
+                        <th>Project</th>
+                        <th>Due</th>
+                        <th>Priority</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unassignedAndAtRisk.unassigned
+                        .slice(0, 10)
+                        .map((t) => (
                           <tr key={t.id}>
                             <td>{t.description || 'Untitled task'}</td>
-                            <td>{projectMap.get(t.project_id) || 'Unknown project'}</td>
+                            <td>
+                              {getProjectInfo(t.project_id).project_name}
+                            </td>
                             <td>{formatShortDate(t.due_date)}</td>
                             <td>{t.priority || 'Normal'}</td>
                           </tr>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                    </tbody>
+                  </table>
                 )}
               </div>
 
-              <div className="unassigned-column atrisk-tasks-panel">
-                <h3>At-risk tasks (next 7 days)</h3>
+              <div className="unassigned-column">
+                <h4>At-risk tasks (next 7 days)</h4>
                 {unassignedAndAtRisk.atRisk.length === 0 ? (
-                  <p className="small-muted">No high-priority or overloaded tasks in the next 7 days.</p>
+                  <p className="small-muted">
+                    No high-priority or overloaded tasks in the next 7 days.
+                  </p>
                 ) : (
-                  <div className="assignment-table-wrapper atrisk-tasks-table-wrapper">
-                    <table className="assignment-table atrisk-tasks-table">
-                      <thead>
-                        <tr>
-                          <th>Task</th>
-                          <th>Assignee</th>
-                          <th>Due</th>
-                          <th>Priority</th>
+                  <table className="assignment-table">
+                    <thead>
+                      <tr>
+                        <th>Task</th>
+                        <th>Assignee</th>
+                        <th>Due</th>
+                        <th>Priority</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unassignedAndAtRisk.atRisk.slice(0, 10).map((t) => (
+                        <tr key={t.id}>
+                          <td>{t.description || 'Untitled task'}</td>
+                          <td>{t.assignee || 'Unassigned'}</td>
+                          <td>{formatShortDate(t.due_date)}</td>
+                          <td>{t.priority || 'Normal'}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {unassignedAndAtRisk.atRisk.slice(0, 10).map((t) => (
-                          <tr key={t.id}>
-                            <td>{t.description || 'Untitled task'}</td>
-                            <td>{t.assignee || 'Unassigned'}</td>
-                            <td>{formatShortDate(t.due_date)}</td>
-                            <td>{t.priority || 'Normal'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
               </div>
             </div>
@@ -1363,7 +1560,9 @@ function PresalesOverview() {
               {focusByPresales.map((f) => (
                 <div key={f.assignee} className="focus-item">
                   <div className="focus-header">
-                    <div className="wl-avatar">{(f.assignee || 'U').charAt(0).toUpperCase()}</div>
+                    <div className="wl-avatar">
+                      {(f.assignee || 'U').charAt(0).toUpperCase()}
+                    </div>
                     <div className="wl-name-text">
                       <span className="wl-name-main">{f.assignee}</span>
                     </div>
@@ -1378,11 +1577,19 @@ function PresalesOverview() {
                           {f.todayTasks.map((t) => (
                             <li key={t.id}>
                               <div className="focus-task-main">
-                                <span className="focus-task-title">{t.description || 'Untitled task'}</span>
+                                <span className="focus-task-title">
+                                  {t.description || 'Untitled task'}
+                                </span>
                               </div>
                               <div className="focus-task-meta">
-                                <span>{projectMap.get(t.project_id) || 'Unknown project'}</span>
-                                {t.priority && <span className="focus-priority">{t.priority}</span>}
+                                <span>
+                                  {getProjectInfo(t.project_id).project_name}
+                                </span>
+                                {t.priority && (
+                                  <span className="focus-priority">
+                                    {t.priority}
+                                  </span>
+                                )}
                               </div>
                             </li>
                           ))}
@@ -1392,18 +1599,30 @@ function PresalesOverview() {
                     <div className="focus-column">
                       <h4>This week</h4>
                       {f.weekTasks.length === 0 ? (
-                        <p className="small-muted">No priority tasks tagged for this week.</p>
+                        <p className="small-muted">
+                          No priority tasks tagged for this week.
+                        </p>
                       ) : (
                         <ul className="focus-task-list">
                           {f.weekTasks.map((t) => (
                             <li key={t.id}>
                               <div className="focus-task-main">
-                                <span className="focus-task-title">{t.description || 'Untitled task'}</span>
+                                <span className="focus-task-title">
+                                  {t.description || 'Untitled task'}
+                                </span>
                               </div>
                               <div className="focus-task-meta">
-                                <span>{projectMap.get(t.project_id) || 'Unknown project'}</span>
-                                <span>Due: {formatShortDate(t.due_date) || 'n/a'}</span>
-                                {t.priority && <span className="focus-priority">{t.priority}</span>}
+                                <span>
+                                  {getProjectInfo(t.project_id).project_name}
+                                </span>
+                                <span>
+                                  Due: {formatShortDate(t.due_date) || 'n/a'}
+                                </span>
+                                {t.priority && (
+                                  <span className="focus-priority">
+                                    {t.priority}
+                                  </span>
+                                )}
                               </div>
                             </li>
                           ))}
@@ -1418,7 +1637,67 @@ function PresalesOverview() {
         </div>
       </section>
 
-      
+      {/* 5. HIGH-VALUE / CRITICAL DEALS COVERAGE */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Activity size={18} className="panel-icon" />
+                High-value / critical deals coverage
+              </h3>
+              <p>Check if big or critical deals have enough presales focus.</p>
+            </div>
+          </div>
+
+          {highValueDealsCoverage.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No high-value or critical-stage deals found.</p>
+            </div>
+          ) : (
+            <div className="taskmix-table-wrapper">
+              <table className="taskmix-table">
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Stage</th>
+                    <th className="th-center">Open tasks</th>
+                    <th className="th-center">Presales on it</th>
+                    <th className="th-center">Deal value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {highValueDealsCoverage.slice(0, 12).map((d) => (
+                    <tr key={d.projectId}>
+                      <td>{d.customerName}</td>
+                      <td>{d.stage || 'N/A'}</td>
+                      <td className="td-center">{d.openTasksCount}</td>
+                      <td className="td-center">{d.assigneeCount}</td>
+                      <td className="td-center">
+                        {Number.isFinite(d.dealValue)
+                          ? d.dealValue.toLocaleString('en-US', {
+                              maximumFractionDigits: 0,
+                            })
+                          : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="taskmix-footer">
+                <span>
+                  Showing top{' '}
+                  <strong>
+                    {Math.min(12, highValueDealsCoverage.length)}
+                  </strong>{' '}
+                  high-value / critical deals.
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* 6. ASSIGNMENT HELPER */}
       <section className="presales-assignment-section">
         <div className="presales-panel presales-panel-large">
@@ -1437,15 +1716,26 @@ function PresalesOverview() {
               <div className="assignment-field">
                 <label>Task window</label>
                 <div className="assignment-dates">
-                  <input type="date" value={assignStart} onChange={(e) => setAssignStart(e.target.value)} />
+                  <input
+                    type="date"
+                    value={assignStart}
+                    onChange={(e) => setAssignStart(e.target.value)}
+                  />
                   <span className="assignment-dash">to</span>
-                  <input type="date" value={assignEnd} onChange={(e) => setAssignEnd(e.target.value)} />
+                  <input
+                    type="date"
+                    value={assignEnd}
+                    onChange={(e) => setAssignEnd(e.target.value)}
+                  />
                 </div>
               </div>
 
               <div className="assignment-field">
                 <label>Priority</label>
-                <select value={assignPriority} onChange={(e) => setAssignPriority(e.target.value)}>
+                <select
+                  value={assignPriority}
+                  onChange={(e) => setAssignPriority(e.target.value)}
+                >
                   <option value="High">High</option>
                   <option value="Normal">Normal</option>
                   <option value="Low">Low</option>
@@ -1476,14 +1766,20 @@ function PresalesOverview() {
                       <tr key={sug.assignee}>
                         <td>
                           <div className="wl-name-cell">
-                            <div className="wl-avatar">{(sug.assignee || 'U').charAt(0).toUpperCase()}</div>
+                            <div className="wl-avatar">
+                              {(sug.assignee || 'U').charAt(0).toUpperCase()}
+                            </div>
                             <div className="wl-name-text">
-                              <span className="wl-name-main">{sug.assignee}</span>
+                              <span className="wl-name-main">
+                                {sug.assignee}
+                              </span>
                             </div>
                           </div>
                         </td>
                         <td className="td-center">{sug.freeDays}</td>
-                        <td className="td-center">{Math.round(sug.nextWeekLoad)}%</td>
+                        <td className="td-center">
+                          {Math.round(sug.nextWeekLoad)}%
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1533,7 +1829,8 @@ function PresalesOverview() {
               </table>
               <div className="taskmix-footer">
                 <span>
-                  Total tasks counted: <strong>{taskMix.total}</strong> (last 30 days)
+                  Total tasks counted: <strong>{taskMix.total}</strong> (last 30
+                  days)
                 </span>
               </div>
             </div>
@@ -1542,18 +1839,198 @@ function PresalesOverview() {
       </section>
 
       {/* SCHEDULE MODAL */}
-      {showScheduleModal && (
+      
+{/* ACTIVITY MODAL */}
+{activityModalOpen && activityModalTask && (
+  <div className="schedule-modal-backdrop">
+    <div className="schedule-modal activity-modal">
+      <div className="schedule-modal-header">
+        <div className="schedule-modal-title">
+          <ListChecks />
+          <div>
+            <h4>Edit presales activity</h4>
+            <p>
+              {getProjectInfo(activityModalTask.project_id).customer_name} ·{' '}
+              {getProjectInfo(activityModalTask.project_id).project_name}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="schedule-modal-close"
+          onClick={closeActivityModal}
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="schedule-form activity-form">
+        <div className="schedule-form-row">
+          <div className="schedule-field schedule-field-full">
+            <label>Description</label>
+            <textarea
+              value={activityForm.description}
+              onChange={(e) =>
+                setActivityForm((p) => ({ ...p, description: e.target.value }))
+              }
+              rows={3}
+              placeholder="What is the task about?"
+            />
+          </div>
+        </div>
+
+        <div className="schedule-form-row">
+          <div className="schedule-field">
+            <label>Status</label>
+            <select
+              value={activityForm.status}
+              onChange={(e) =>
+                setActivityForm((p) => ({ ...p, status: e.target.value }))
+              }
+            >
+              <option value="Not Started">Not Started</option>
+              <option value="In Progress">In Progress</option>
+              <option value="On Hold">On Hold</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+
+          <div className="schedule-field">
+            <label>Assignee</label>
+            <select
+              value={activityForm.assignee}
+              onChange={(e) =>
+                setActivityForm((p) => ({ ...p, assignee: e.target.value }))
+              }
+            >
+              <option value="">Unassigned</option>
+              {(presalesResources || []).map((p) => (
+                <option key={p.id} value={p.name || p.email}>
+                  {p.name || p.email}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="schedule-form-row">
+          <div className="schedule-field">
+            <label>Due date</label>
+            <input
+              type="date"
+              value={activityForm.due_date || ''}
+              onChange={(e) =>
+                setActivityForm((p) => ({ ...p, due_date: e.target.value }))
+              }
+            />
+          </div>
+          <div className="schedule-field">
+            <label>Estimated hours</label>
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={activityForm.estimated_hours}
+              onChange={(e) =>
+                setActivityForm((p) => ({ ...p, estimated_hours: e.target.value }))
+              }
+              placeholder="e.g. 4"
+            />
+          </div>
+        </div>
+
+        <div className="schedule-form-row">
+          <div className="schedule-field">
+            <label>Task type</label>
+            <input
+              type="text"
+              value={activityForm.task_type}
+              onChange={(e) =>
+                setActivityForm((p) => ({ ...p, task_type: e.target.value }))
+              }
+              placeholder="e.g. Demo, RFP, Workshop"
+            />
+          </div>
+          <div className="schedule-field">
+            <label>Priority</label>
+            <select
+              value={activityForm.priority}
+              onChange={(e) =>
+                setActivityForm((p) => ({ ...p, priority: e.target.value }))
+              }
+            >
+              <option value="High">High</option>
+              <option value="Normal">Normal</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="schedule-form-row">
+          <div className="schedule-field schedule-field-full">
+            <label>Notes</label>
+            <textarea
+              value={activityForm.notes}
+              onChange={(e) =>
+                setActivityForm((p) => ({ ...p, notes: e.target.value }))
+              }
+              rows={3}
+              placeholder="Optional notes"
+            />
+          </div>
+        </div>
+
+        {activitySaveError && (
+          <div className="schedule-message-error" style={{ marginTop: 6 }}>
+            {activitySaveError}
+          </div>
+        )}
+
+        <div className="schedule-form-actions">
+          <div className="schedule-form-buttons">
+            <button
+              type="button"
+              className="ghost-btn ghost-btn-sm"
+              onClick={closeActivityModal}
+              disabled={activitySaving}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={saveActivityTask}
+              disabled={activitySaving}
+            >
+              {activitySaving ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+{showScheduleModal && (
         <div className="schedule-modal-backdrop">
           <div className="schedule-modal">
             <div className="schedule-modal-header">
               <div className="schedule-modal-title">
                 <Plane />
                 <div>
-                  <h4>{scheduleMode === 'create' ? 'Add leave / travel' : 'Edit schedule'}</h4>
+                  <h4>
+                    {scheduleMode === 'create'
+                      ? 'Add leave / travel'
+                      : 'Edit schedule'}
+                  </h4>
                   <p>Block days where this presales is not fully available.</p>
                 </div>
               </div>
-              <button type="button" className="schedule-modal-close" onClick={closeScheduleModal}>
+              <button
+                type="button"
+                className="schedule-modal-close"
+                onClick={closeScheduleModal}
+              >
                 <X size={18} />
               </button>
             </div>
@@ -1562,7 +2039,10 @@ function PresalesOverview() {
               <div className="schedule-form-row">
                 <div className="schedule-field">
                   <label>Presales</label>
-                  <select value={scheduleAssignee} onChange={(e) => setScheduleAssignee(e.target.value)}>
+                  <select
+                    value={scheduleAssignee}
+                    onChange={(e) => setScheduleAssignee(e.target.value)}
+                  >
                     <option value="">Select presales</option>
                     {presalesResources.map((p) => (
                       <option key={p.id} value={p.name || p.email}>
@@ -1574,7 +2054,10 @@ function PresalesOverview() {
 
                 <div className="schedule-field">
                   <label>Type</label>
-                  <select value={scheduleType} onChange={(e) => setScheduleType(e.target.value)}>
+                  <select
+                    value={scheduleType}
+                    onChange={(e) => setScheduleType(e.target.value)}
+                  >
                     <option value="Leave">Leave</option>
                     <option value="Travel">Travel</option>
                     <option value="Training">Training</option>
@@ -1586,11 +2069,19 @@ function PresalesOverview() {
               <div className="schedule-form-row">
                 <div className="schedule-field">
                   <label>Start date</label>
-                  <input type="date" value={scheduleStart} onChange={(e) => setScheduleStart(e.target.value)} />
+                  <input
+                    type="date"
+                    value={scheduleStart}
+                    onChange={(e) => setScheduleStart(e.target.value)}
+                  />
                 </div>
                 <div className="schedule-field">
                   <label>End date</label>
-                  <input type="date" value={scheduleEnd} onChange={(e) => setScheduleEnd(e.target.value)} />
+                  <input
+                    type="date"
+                    value={scheduleEnd}
+                    onChange={(e) => setScheduleEnd(e.target.value)}
+                  />
                 </div>
               </div>
 
@@ -1608,15 +2099,36 @@ function PresalesOverview() {
 
               <div className="schedule-form-actions">
                 <div className="schedule-message">
-                  {scheduleError && <span className="schedule-message-error">{scheduleError}</span>}
-                  {scheduleMessage && <span className="schedule-message-success">{scheduleMessage}</span>}
+                  {scheduleError && (
+                    <span className="schedule-message-error">
+                      {scheduleError}
+                    </span>
+                  )}
+                  {scheduleMessage && (
+                    <span className="schedule-message-success">
+                      {scheduleMessage}
+                    </span>
+                  )}
                 </div>
                 <div className="schedule-form-buttons">
-                  <button type="button" className="ghost-btn ghost-btn-sm" onClick={closeScheduleModal} disabled={scheduleSaving}>
+                  <button
+                    type="button"
+                    className="ghost-btn ghost-btn-sm"
+                    onClick={closeScheduleModal}
+                    disabled={scheduleSaving}
+                  >
                     Cancel
                   </button>
-                  <button type="submit" className="primary-btn" disabled={scheduleSaving}>
-                    {scheduleSaving ? 'Saving…' : scheduleMode === 'create' ? 'Add schedule' : 'Update schedule'}
+                  <button
+                    type="submit"
+                    className="primary-btn"
+                    disabled={scheduleSaving}
+                  >
+                    {scheduleSaving
+                      ? 'Saving…'
+                      : scheduleMode === 'create'
+                      ? 'Add schedule'
+                      : 'Update schedule'}
                   </button>
                 </div>
               </div>
@@ -1639,7 +2151,11 @@ function PresalesOverview() {
                   </p>
                 </div>
               </div>
-              <button type="button" className="schedule-modal-close" onClick={closeDayDetail}>
+              <button
+                type="button"
+                className="schedule-modal-close"
+                onClick={closeDayDetail}
+              >
                 <X size={18} />
               </button>
             </div>
@@ -1654,29 +2170,50 @@ function PresalesOverview() {
                     {dayDetail.tasks.map((t) => (
                       <li key={t.id} className="day-detail-task-item">
                         <div className="day-detail-task-main">
-                          <span className="day-detail-task-project">{t.projectName}</span>
-                          <span className="day-detail-task-status">{t.status || 'Open'}</span>
+                          <span className="day-detail-task-project">
+                            {t.projectName}
+                          </span>
+                          <span className="day-detail-task-status">
+                            {t.status || 'Open'}
+                          </span>
                         </div>
-                        {t.description && <div className="day-detail-task-desc">{t.description}</div>}
+                        {t.description && (
+                          <div className="day-detail-task-desc">
+                            {t.description}
+                          </div>
+                        )}
                         <div className="day-detail-task-meta">
                           <span>
-                            Type: <strong>{t.task_type || 'General task'}</strong>
+                            Type:{' '}
+                            <strong>{t.task_type || 'General task'}</strong>
                           </span>
                           {t.priority && (
                             <span>
                               Priority: <strong>{t.priority}</strong>
                             </span>
                           )}
-                          {t.start_date && <span>Start: {formatShortDate(t.start_date)}</span>}
-                          {t.end_date && <span>End: {formatShortDate(t.end_date)}</span>}
-                          {t.due_date && <span>Due: {formatShortDate(t.due_date)}</span>}
+                          {t.start_date && (
+                            <span>
+                              Start: {formatShortDate(t.start_date)}
+                            </span>
+                          )}
+                          {t.end_date && (
+                            <span>End: {formatShortDate(t.end_date)}</span>
+                          )}
+                          {t.due_date && (
+                            <span>Due: {formatShortDate(t.due_date)}</span>
+                          )}
                           {t.estimated_hours && (
                             <span>
                               Est.: <strong>{t.estimated_hours}h</strong>
                             </span>
                           )}
                         </div>
-                        {t.notes && <div className="day-detail-task-notes">Notes: {t.notes}</div>}
+                        {t.notes && (
+                          <div className="day-detail-task-notes">
+                            Notes: {t.notes}
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -1691,12 +2228,20 @@ function PresalesOverview() {
                   <ul className="day-detail-schedule-list">
                     {dayDetail.schedules.map((s) => (
                       <li key={s.id} className="day-detail-schedule-item">
-                        <span className="day-detail-schedule-type">{s.type}</span>
+                        <span className="day-detail-schedule-type">
+                          {s.type}
+                        </span>
                         <span className="day-detail-schedule-dates">
                           {formatShortDate(s.start_date)}
-                          {s.end_date && s.end_date !== s.start_date ? ` – ${formatShortDate(s.end_date)}` : ''}
+                          {s.end_date && s.end_date !== s.start_date
+                            ? ` – ${formatShortDate(s.end_date)}`
+                            : ''}
                         </span>
-                        {s.note && <span className="day-detail-schedule-note">{s.note}</span>}
+                        {s.note && (
+                          <span className="day-detail-schedule-note">
+                            {s.note}
+                          </span>
+                        )}
                       </li>
                     ))}
                   </ul>
