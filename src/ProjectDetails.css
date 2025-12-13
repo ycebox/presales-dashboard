@@ -150,7 +150,7 @@ body {
   min-width: 0;
 }
 
-/* NEW HEADER LAYOUT (matches latest JSX) */
+/* HEADER LAYOUT */
 .project-hero-row {
   display: flex;
   justify-content: space-between;
@@ -356,62 +356,6 @@ body {
 }
 .scrollable-card-content::-webkit-scrollbar-thumb:hover {
   background: rgba(56, 189, 248, 0.85);
-}
-
-/* DETAILS GRID (PROJECT FIELDS) */
-.details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
-}
-
-.detail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.detail-item.full-width {
-  grid-column: 1 / -1;
-}
-
-.detail-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
-.detail-value {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.detail-input,
-.detail-select,
-.detail-textarea {
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid #64748b;
-  background: rgba(15, 23, 42, 0.98);
-  color: var(--text);
-  font-size: 14px;
-}
-
-.detail-textarea {
-  min-height: 80px;
-  resize: vertical;
-}
-
-.detail-input:focus,
-.detail-select:focus,
-.detail-textarea:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.5);
 }
 
 /* TASK LIST */
@@ -823,12 +767,6 @@ body {
   font-size: 13px;
 }
 
-/* STATUS TEXT UTILITIES (used in JS helpers) */
-.status-completed { color: #4ade80; }
-.status-in-progress { color: #60a5fa; }
-.status-not-started { color: #e5e7eb; }
-.status-cancelled { color: #fca5a5; }
-
 /* ANIMATIONS */
 @keyframes spin {
   0% { transform: rotate(0deg); }
@@ -872,25 +810,4 @@ body {
   .task-item {
     padding-right: 52px;
   }
-}
-/* Make Unassigned + At-risk panels slightly smaller (font -1 step) */
-.unassigned-at-risk-grid .unassigned-tasks-panel,
-.unassigned-at-risk-grid .atrisk-tasks-panel {
-  font-size: 12px; /* was effectively ~13px */
-}
-
-.unassigned-at-risk-grid .unassigned-tasks-panel h3,
-.unassigned-at-risk-grid .atrisk-tasks-panel h3 {
-  font-size: 13px; /* slightly smaller header */
-}
-
-/* make their tables inherit the smaller size */
-.unassigned-at-risk-grid .unassigned-tasks-panel table,
-.unassigned-at-risk-grid .atrisk-tasks-panel table {
-  font-size: 12px;
-}
-
-.unassigned-at-risk-grid .unassigned-tasks-panel th,
-.unassigned-at-risk-grid .atrisk-tasks-panel th {
-  font-size: 10px; /* table header labels */
 }
