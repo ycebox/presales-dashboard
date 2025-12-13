@@ -12,6 +12,7 @@ import {
   Edit3,
   Trash2,
   ListChecks,
+  Save,
 } from 'lucide-react';
 import './PresalesOverview.css';
 
@@ -64,6 +65,29 @@ const isTaskOnDay = (task, day) => {
   return d.getTime() >= s.getTime() && d.getTime() <= e.getTime();
 };
 
+const taskOverlapsRange = (task, rangeStart, rangeEnd) => {
+  const rs = parseDate(rangeStart);
+  const re = parseDate(rangeEnd);
+  if (!rs || !re) return false;
+
+  const start =
+    parseDate(task.start_date) ||
+    parseDate(task.due_date) ||
+    parseDate(task.end_date);
+
+  const end =
+    parseDate(task.end_date) ||
+    parseDate(task.due_date) ||
+    parseDate(task.start_date);
+
+  if (!start && !end) return false;
+
+  const ts = start || end;
+  const te = end || start;
+
+  return te.getTime() >= rs.getTime() && ts.getTime() <= re.getTime();
+};
+
 const getWeekRanges = () => {
   const today = toMidnight(new Date());
 
@@ -78,7 +102,7 @@ const getWeekRanges = () => {
   const nextWeekStart = new Date(thisWeekStart);
   nextWeekStart.setDate(thisWeekStart.getDate() + 7);
   const nextWeekEnd = new Date(nextWeekStart);
-  nextWeekEnd.setDate(nextWeekStart.getDate() + 4);
+  nextWeekEnd.setDate(nextWeekEnd.getDate() + 4);
 
   const last30Start = new Date(today);
   last30Start.setDate(today.getDate() - 30);
@@ -123,6 +147,11 @@ const priorityScore = (priority) => {
   return 4;
 };
 
+const isCompletedStatus = (status) => {
+  const s = (status || '').toLowerCase();
+  return s === 'completed' || s === 'done' || s === 'closed';
+};
+
 function PresalesOverview() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -154,28 +183,32 @@ function PresalesOverview() {
 
   // Day detail modal state
   const [dayDetailOpen, setDayDetailOpen] = useState(false);
-
-const [activityModalOpen, setActivityModalOpen] = useState(false);
-const [activityModalTask, setActivityModalTask] = useState(null);
-const [activityForm, setActivityForm] = useState({
-  description: '',
-  status: 'Not Started',
-  assignee: '',
-  due_date: '',
-  start_date: '',
-  end_date: '',
-  estimated_hours: '',
-  task_type: '',
-  priority: 'Normal',
-  notes: '',
-});
-const [activitySaving, setActivitySaving] = useState(false);
-const [activitySaveError, setActivitySaveError] = useState(null);
   const [dayDetail, setDayDetail] = useState({
     assignee: '',
     date: null,
     tasks: [],
     schedules: [],
+  });
+
+  // ---- Task edit modal (for Ongoing & Upcoming Presales Activities) ----
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [taskSaving, setTaskSaving] = useState(false);
+  const [taskSaveError, setTaskSaveError] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
+
+  const [taskForm, setTaskForm] = useState({
+    id: null,
+    description: '',
+    status: 'Not Started',
+    assignee: '',
+    start_date: '',
+    end_date: '',
+    due_date: '',
+    estimated_hours: '',
+    task_type: '',
+    priority: 'Normal',
+    notes: '',
+    project_id: null,
   });
 
   // ---------- Load data ----------
@@ -233,19 +266,20 @@ const [activitySaveError, setActivitySaveError] = useState(null);
     const map = new Map();
     (projects || []).forEach((p) => {
       map.set(p.id, {
-        customer_name: p.customer_name || 'Unknown customer',
-        project_name: p.project_name || p.customer_name || 'Unnamed project',
+        customerName: p.customer_name || 'Unknown customer',
+        projectName: p.project_name || p.customer_name || 'Unknown project',
       });
     });
     return map;
   }, [projects]);
 
-  const getProjectInfo = (projectId) => {
-    return projectInfoMap.get(projectId) || {
-      customer_name: 'Unknown customer',
-      project_name: 'Unnamed project',
-    };
-  };
+  const projectMap = useMemo(() => {
+    const map = new Map();
+    (projects || []).forEach((p) => {
+      map.set(p.id, p.customer_name || 'Unknown project');
+    });
+    return map;
+  }, [projects]);
 
   const { thisWeek, nextWeek, last30 } = useMemo(() => getWeekRanges(), []);
   const today = useMemo(() => toMidnight(new Date()), []);
@@ -259,61 +293,162 @@ const [activitySaveError, setActivitySaveError] = useState(null);
     return d;
   }, [today]);
 
+  const fourteenDaysAhead = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 14);
+    return d;
+  }, [today]);
 
-// ---------- Ongoing & upcoming presales activities (next 14 days + in progress) ----------
-const ongoingUpcomingActivities = useMemo(() => {
-  if (!tasks || tasks.length === 0) return [];
+  const formatShortDate = (d) =>
+    d
+      ? new Date(d).toLocaleDateString('en-SG', {
+          day: '2-digit',
+          month: 'short',
+        })
+      : '';
 
-  const end = new Date(today);
-  end.setDate(end.getDate() + 14);
+  const formatDayDetailDate = (d) =>
+    d
+      ? d.toLocaleDateString('en-SG', {
+          weekday: 'short',
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        })
+      : '';
 
-  const rows = (tasks || [])
-    .filter((t) => {
-      if (isCompletedStatus(t.status)) return false;
+  // ---------- Ongoing & upcoming presales activities (next 14 days) ----------
+  const ongoingUpcomingActivities = useMemo(() => {
+    if (!tasks || tasks.length === 0) return [];
 
-      const due = parseDate(t.due_date);
-      const start = parseDate(t.start_date);
-      const endDate = parseDate(t.end_date);
+    // Keep the same intention: highlight “presales-ish” work, but include ongoing + upcoming.
+    const importantTypes = [
+      'Demo',
+      'Workshop',
+      'RFP',
+      'Proposal',
+      'Presentation',
+      'POC',
+      'PoC',
+      'Kickoff',
+      'Discovery',
+      'Scoping',
+    ];
 
-      const status = (t.status || '').toLowerCase();
+    const rows = (tasks || [])
+      .filter((t) => {
+        if (isCompletedStatus(t.status)) return false;
 
-      const dueSoon =
-        due && due.getTime() >= today.getTime() && due.getTime() <= end.getTime();
+        // show if overlaps the next 14 days window (ongoing OR upcoming)
+        const inWindow = taskOverlapsRange(t, today, fourteenDaysAhead);
+        if (!inWindow) return false;
 
-      const ongoingByDate =
-        start &&
-        start.getTime() <= today.getTime() &&
-        ((endDate && endDate.getTime() >= today.getTime()) ||
-          (due && due.getTime() >= today.getTime()));
+        const type = (t.task_type || '').trim();
+        if (!type) return true; // allow blank type to still appear (user wants full visibility)
+        return importantTypes.some((x) =>
+          type.toLowerCase().includes(x.toLowerCase())
+        );
+      })
+      .map((t) => {
+        const info = projectInfoMap.get(t.project_id) || {
+          customerName: 'Unknown customer',
+          projectName: 'Unknown project',
+        };
+        return {
+          ...t,
+          customerName: info.customerName,
+          projectName: info.projectName,
+        };
+      })
+      .sort((a, b) => {
+        const ad = parseDate(a.due_date) || parseDate(a.end_date) || parseDate(a.start_date) || today;
+        const bd = parseDate(b.due_date) || parseDate(b.end_date) || parseDate(b.start_date) || today;
+        if (ad.getTime() !== bd.getTime()) return ad - bd;
+        return priorityScore(a.priority) - priorityScore(b.priority);
+      });
 
-      const inProgress = status.includes('progress');
+    return rows.slice(0, 30);
+  }, [tasks, projectInfoMap, today, fourteenDaysAhead]);
 
-      return dueSoon || ongoingByDate || inProgress;
-    })
-    .map((t) => {
-      const info = getProjectInfo(t.project_id);
-      return {
-        ...t,
-        _customer: info.customer_name,
-        _project: info.project_name,
-      };
-    })
-    .sort((a, b) => {
-      const ad = parseDate(a.due_date);
-      const bd = parseDate(b.due_date);
-      const aTime = ad ? ad.getTime() : Infinity;
-      const bTime = bd ? bd.getTime() : Infinity;
-      if (aTime !== bTime) return aTime - bTime;
+  const openTaskModal = (task) => {
+    setTaskSaveError(null);
+    setEditingTask(task);
 
-      const ap = priorityScore(a.priority);
-      const bp = priorityScore(b.priority);
-      if (ap !== bp) return ap - bp;
-
-      return (a.description || '').localeCompare(b.description || '');
+    setTaskForm({
+      id: task.id,
+      project_id: task.project_id || null,
+      description: task.description || '',
+      status: task.status || 'Not Started',
+      assignee: task.assignee || '',
+      start_date: task.start_date || '',
+      end_date: task.end_date || '',
+      due_date: task.due_date || '',
+      estimated_hours:
+        typeof task.estimated_hours === 'number' && !Number.isNaN(task.estimated_hours)
+          ? String(task.estimated_hours)
+          : (task.estimated_hours ? String(task.estimated_hours) : ''),
+      task_type: task.task_type || '',
+      priority: task.priority || 'Normal',
+      notes: task.notes || '',
     });
 
-  return rows.slice(0, 15);
-}, [tasks, today, projectInfoMap]);
+    setTaskModalOpen(true);
+  };
+
+  const closeTaskModal = () => {
+    setTaskModalOpen(false);
+    setEditingTask(null);
+    setTaskSaveError(null);
+  };
+
+  const saveTaskEdits = async () => {
+    if (!taskForm?.id) return;
+    setTaskSaving(true);
+    setTaskSaveError(null);
+
+    const payload = {
+      description: taskForm.description || null,
+      status: taskForm.status || null,
+      assignee: taskForm.assignee || null,
+      start_date: taskForm.start_date || null,
+      end_date: taskForm.end_date || null,
+      due_date: taskForm.due_date || null,
+      estimated_hours:
+        taskForm.estimated_hours === '' || taskForm.estimated_hours === null
+          ? null
+          : Number(taskForm.estimated_hours),
+      task_type: taskForm.task_type || null,
+      priority: taskForm.priority || null,
+      notes: taskForm.notes || null,
+    };
+
+    try {
+      const { data, error: updErr } = await supabase
+        .from('project_tasks')
+        .update(payload)
+        .eq('id', taskForm.id)
+        .select();
+
+      if (updErr) {
+        console.error('Error updating task:', updErr);
+        setTaskSaveError('Failed to save task changes.');
+        return;
+      }
+
+      const updated = data && data[0] ? data[0] : null;
+      if (updated) {
+        setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      }
+
+      closeTaskModal();
+    } catch (err) {
+      console.error('Unexpected error updating task:', err);
+      setTaskSaveError('Unexpected error while saving.');
+    } finally {
+      setTaskSaving(false);
+    }
+  };
+
   // ---------- Workload by assignee ----------
   const workloadByAssignee = useMemo(() => {
     const map = new Map();
@@ -346,12 +481,10 @@ const ongoingUpcomingActivities = useMemo(() => {
       return { dailyCapacity, targetHours, maxTasksPerDay };
     };
 
-    // init from presales resources
     (presalesResources || []).forEach((p) => {
       const name = p.name || p.email || 'Unknown';
       if (!map.has(name)) {
-        const { dailyCapacity, targetHours, maxTasksPerDay } =
-          getCapacityFor(name);
+        const { dailyCapacity, targetHours, maxTasksPerDay } = getCapacityFor(name);
         map.set(name, {
           assignee: name,
           projectIds: new Set(),
@@ -401,8 +534,7 @@ const ongoingUpcomingActivities = useMemo(() => {
     (tasks || []).forEach((t) => {
       const assignee = t.assignee || 'Unassigned';
       if (!map.has(assignee)) {
-        const { dailyCapacity, targetHours, maxTasksPerDay } =
-          getCapacityFor(assignee);
+        const { dailyCapacity, targetHours, maxTasksPerDay } = getCapacityFor(assignee);
         map.set(assignee, {
           assignee,
           projectIds: new Set(),
@@ -423,31 +555,21 @@ const ongoingUpcomingActivities = useMemo(() => {
       entry.total += 1;
       entry.projectIds.add(t.project_id);
 
-      const status = (t.status || '').toLowerCase();
       const due = parseDate(t.due_date);
 
-      const isCompleted =
-        status === 'completed' || status === 'done' || status === 'closed';
-      const isOverdue =
-        due && !isCompleted && due.getTime() < today.getTime();
+      const isCompleted = isCompletedStatus(t.status);
+      const isOverdue = due && !isCompleted && due.getTime() < today.getTime();
       const isOpen = !isCompleted;
 
-      if (isOpen) {
-        entry.open += 1;
-      }
-      if (isOverdue) {
-        entry.overdue += 1;
-      }
+      if (isOpen) entry.open += 1;
+      if (isOverdue) entry.overdue += 1;
 
-      // last 30 days overdue trend
       if (
         due &&
         isWithinRange(due, last30DaysRange.start, last30DaysRange.end)
       ) {
         entry.overdueTotalLast30 += 1;
-        if (isOverdue) {
-          entry.overdueLast30 += 1;
-        }
+        if (isOverdue) entry.overdueLast30 += 1;
       }
 
       if (isOpen) {
@@ -490,7 +612,14 @@ const ongoingUpcomingActivities = useMemo(() => {
 
     arr.sort((a, b) => b.open - a.open);
     return arr;
-  }, [tasks, presalesResources, thisWeekRange, nextWeekRange, last30DaysRange, today]);
+  }, [
+    tasks,
+    presalesResources,
+    thisWeekRange,
+    nextWeekRange,
+    last30DaysRange,
+    today,
+  ]);
 
   // ---------- TASK MIX ----------
   const taskMix = useMemo(() => {
@@ -503,11 +632,11 @@ const ongoingUpcomingActivities = useMemo(() => {
     let total = 0;
 
     tasks.forEach((t) => {
-      const end = t.end_date ? new Date(t.end_date) : null;
-      const start = t.start_date ? new Date(t.start_date) : null;
-      const due = t.due_date ? new Date(t.due_date) : null;
+      const endDate = t.end_date ? new Date(t.end_date) : null;
+      const startDate = t.start_date ? new Date(t.start_date) : null;
+      const dueDate = t.due_date ? new Date(t.due_date) : null;
 
-      const date = end || start || due;
+      const date = endDate || startDate || dueDate;
       if (!date || date < cutoff) return;
 
       const type = (t.task_type || 'Others').trim() || 'Others';
@@ -553,19 +682,14 @@ const ongoingUpcomingActivities = useMemo(() => {
         let freeDays = 0;
         days.forEach((d) => {
           const hasTask = (tasks || []).some(
-            (t) =>
-              t.assignee === name &&
-              t.status !== 'Completed' &&
-              isTaskOnDay(t, d)
+            (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
           );
           const hasSchedule = (scheduleEvents || []).some(
             (s) =>
               s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
           );
 
-          if (!hasTask && !hasSchedule) {
-            freeDays += 1;
-          }
+          if (!hasTask && !hasSchedule) freeDays += 1;
         });
 
         const work = workloadByAssignee.find((w) => w.assignee === name);
@@ -634,8 +758,7 @@ const ongoingUpcomingActivities = useMemo(() => {
         const dayTasks = (tasks || []).filter(
           (t) =>
             t.assignee === name &&
-            t.status !== 'Completed' &&
-            t.status !== 'Done' &&
+            !isCompletedStatus(t.status) &&
             isTaskOnDay(t, d)
         );
 
@@ -644,7 +767,7 @@ const ongoingUpcomingActivities = useMemo(() => {
             s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
         );
 
-        let status = 'free'; // free | busy | leave | travel
+        let status = 'free';
         let label = 'Free';
 
         const taskCount = dayTasks.length;
@@ -683,9 +806,7 @@ const ongoingUpcomingActivities = useMemo(() => {
         }
 
         if (taskCount > 0) {
-          if (status === 'free') {
-            status = 'busy';
-          }
+          if (status === 'free') status = 'busy';
 
           const baseLabel = `${taskCount} task${taskCount > 1 ? 's' : ''}`;
           const capText =
@@ -747,21 +868,13 @@ const ongoingUpcomingActivities = useMemo(() => {
     const atRisk = [];
 
     (tasks || []).forEach((t) => {
-      const status = (t.status || '').toLowerCase();
-      const isCompleted =
-        status === 'completed' || status === 'done' || status === 'closed';
-      if (isCompleted) return;
+      if (isCompletedStatus(t.status)) return;
 
       const due = parseDate(t.due_date);
       const priority = (t.priority || 'Normal').toLowerCase();
       const assignee = t.assignee;
 
-      // Unassigned
-      if (!assignee) {
-        unassigned.push(t);
-      }
-
-      // At-risk conditions
+      if (!assignee) unassigned.push(t);
       if (!due) return;
 
       const dueInNext7 =
@@ -789,10 +902,8 @@ const ongoingUpcomingActivities = useMemo(() => {
     workloadByAssignee.forEach((w) => {
       const name = w.assignee;
       const personTasks = (tasks || []).filter((t) => {
-        const status = (t.status || '').toLowerCase();
-        const isCompleted =
-          status === 'completed' || status === 'done' || status === 'closed';
-        return t.assignee === name && !isCompleted;
+        if (t.assignee !== name) return false;
+        return !isCompletedStatus(t.status);
       });
 
       if (personTasks.length === 0) return;
@@ -830,136 +941,6 @@ const ongoingUpcomingActivities = useMemo(() => {
 
     return result;
   }, [tasks, workloadByAssignee, today, thisWeekRange]);
-
-  // ---------- High-Value Deals Coverage ----------
-  const highValueDealsCoverage = useMemo(() => {
-    if (!projects || projects.length === 0 || !tasks) return [];
-
-    const HIGH_VALUE_THRESHOLD = 300000;
-    const criticalStages = ['Opportunity', 'Proposal', 'RFP', 'SoW', 'Contracting'];
-
-    const result = [];
-
-    projects.forEach((p) => {
-      const stage = p.sales_stage || '';
-      const valueNum = Number(p.deal_value) || 0;
-      const isClosed =
-        stage.toLowerCase().startsWith('closed') || stage === 'Done';
-
-      if (isClosed) return;
-
-      const isHighValue = valueNum >= HIGH_VALUE_THRESHOLD;
-      const isCriticalStage = criticalStages.includes(stage);
-
-      if (!isHighValue && !isCriticalStage) return;
-
-      const projectTasks = (tasks || []).filter((t) => t.project_id === p.id);
-      const openTasks = projectTasks.filter((t) => {
-        const status = (t.status || '').toLowerCase();
-        return !(
-          status === 'completed' ||
-          status === 'done' ||
-          status === 'closed'
-        );
-      });
-
-      const assigneeSet = new Set(
-        openTasks
-          .map((t) => t.assignee)
-          .filter((a) => a && a.trim().length > 0)
-      );
-
-      result.push({
-        projectId: p.id,
-        customerName: p.customer_name || 'Unknown customer',
-        stage,
-        dealValue: valueNum,
-        openTasksCount: openTasks.length,
-        assigneeCount: assigneeSet.size,
-      });
-    });
-
-    result.sort((a, b) => b.dealValue - a.dealValue);
-    return result;
-  }, [projects, tasks]);
-
-
-// ---------- Activity modal handlers ----------
-const openActivityModal = (task) => {
-  if (!task) return;
-  setActivitySaveError(null);
-  setActivityModalTask(task);
-
-  setActivityForm({
-    description: task.description || '',
-    status: task.status || 'Not Started',
-    assignee: task.assignee || '',
-    due_date: task.due_date || '',
-    start_date: task.start_date || '',
-    end_date: task.end_date || '',
-    estimated_hours:
-      task.estimated_hours !== null && task.estimated_hours !== undefined
-        ? String(task.estimated_hours)
-        : '',
-    task_type: task.task_type || '',
-    priority: task.priority || 'Normal',
-    notes: task.notes || '',
-  });
-
-  setActivityModalOpen(true);
-};
-
-const closeActivityModal = () => {
-  setActivityModalOpen(false);
-  setActivityModalTask(null);
-};
-
-const saveActivityTask = async () => {
-  if (!activityModalTask) return;
-  setActivitySaving(true);
-  setActivitySaveError(null);
-
-  const payload = {
-    description: activityForm.description || null,
-    status: activityForm.status || null,
-    assignee: activityForm.assignee || null,
-    due_date: activityForm.due_date || null,
-    start_date: activityForm.start_date || null,
-    end_date: activityForm.end_date || null,
-    task_type: activityForm.task_type || null,
-    priority: activityForm.priority || null,
-    notes: activityForm.notes || null,
-  };
-
-  const hours = activityForm.estimated_hours;
-  if (hours === '' || hours === null || hours === undefined) {
-    payload.estimated_hours = null;
-  } else {
-    const num = Number(hours);
-    payload.estimated_hours = Number.isFinite(num) ? num : null;
-  }
-
-  try {
-    const { data, error: updateError } = await supabase
-      .from('project_tasks')
-      .update(payload)
-      .eq('id', activityModalTask.id)
-      .select();
-
-    if (updateError) throw updateError;
-
-    if (data && data.length > 0) {
-      const updated = data[0];
-      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-      closeActivityModal();
-    }
-  } catch (err) {
-    console.error('Error updating task:', err);
-    setActivitySaveError('Failed to save changes. Please try again.');
-  } finally {
-    setActivitySaving(false);
-  }
-};
 
   // ---------- Schedule modal handlers ----------
   const openScheduleModalForCreate = () => {
@@ -1083,12 +1064,12 @@ const saveActivityTask = async () => {
       .filter(
         (t) =>
           t.assignee === assignee &&
-          t.status !== 'Completed' &&
+          !isCompletedStatus(t.status) &&
           isTaskOnDay(t, day)
       )
       .map((t) => ({
         ...t,
-        projectName: getProjectInfo(t.project_id).project_name,
+        projectName: projectMap.get(t.project_id) || 'Unknown project',
       }));
 
     const daySchedules = (scheduleEvents || []).filter(
@@ -1128,24 +1109,6 @@ const saveActivityTask = async () => {
     );
   }
 
-  const formatDayDetailDate = (d) =>
-    d
-      ? d.toLocaleDateString('en-SG', {
-          weekday: 'short',
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        })
-      : '';
-
-  const formatShortDate = (d) =>
-    d
-      ? new Date(d).toLocaleDateString('en-SG', {
-          day: '2-digit',
-          month: 'short',
-        })
-      : '';
-
   // ---------- RENDER ----------
   return (
     <div className="presales-page-container">
@@ -1158,6 +1121,61 @@ const saveActivityTask = async () => {
           </div>
         </div>
       </header>
+
+      {/* 0. ONGOING & UPCOMING PRESALES ACTIVITIES */}
+      <section className="presales-main-grid">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <ListChecks size={20} className="panel-icon" />
+                Ongoing & upcoming presales activities
+              </h3>
+              <p>Next 14 days. Click a row to edit the task.</p>
+            </div>
+          </div>
+
+          {ongoingUpcomingActivities.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No ongoing or upcoming presales activities found in the next 14 days.</p>
+            </div>
+          ) : (
+            <div className="commitments-table-wrapper">
+              <table className="commitments-table">
+                <thead>
+                  <tr>
+                    <th>Task</th>
+                    <th>Customer</th>
+                    <th>Project</th>
+                    <th className="th-center">Due</th>
+                    <th className="th-center">Status</th>
+                    <th>Assignee</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ongoingUpcomingActivities.map((t) => (
+                    <tr
+                      key={t.id}
+                      className="clickable-row"
+                      onClick={() => openTaskModal(t)}
+                      title="Click to edit"
+                    >
+                      <td className="td-ellipsis">{t.description || 'Untitled task'}</td>
+                      <td className="td-ellipsis">{t.customerName || 'Unknown customer'}</td>
+                      <td className="td-ellipsis">{t.projectName || 'Unknown project'}</td>
+                      <td className="td-center">{formatShortDate(t.due_date) || '-'}</td>
+                      <td className="td-center">
+                        <span className="status-pill">{t.status || 'Open'}</span>
+                      </td>
+                      <td className="td-ellipsis">{t.assignee || 'Unassigned'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* 1. WORKLOAD */}
       <section className="presales-main-grid">
@@ -1203,8 +1221,7 @@ const saveActivityTask = async () => {
                           <div className="wl-name-text">
                             <span className="wl-name-main">{w.assignee}</span>
                             <span className="wl-name-sub">
-                              {w.projectCount} project
-                              {w.projectCount !== 1 ? 's' : ''}
+                              {w.projectCount} project{w.projectCount !== 1 ? 's' : ''}
                             </span>
                           </div>
                         </div>
@@ -1216,22 +1233,16 @@ const saveActivityTask = async () => {
                       <td className="td-center">
                         <div>
                           <div>{Math.round(w.utilThisWeek)}%</div>
-                          <div className="wl-util-label">
-                            {getUtilLabel(Math.round(w.utilThisWeek))}
-                          </div>
+                          <div className="wl-util-label">{getUtilLabel(Math.round(w.utilThisWeek))}</div>
                         </div>
                       </td>
                       <td className="td-center">
                         <div>
                           <div>{Math.round(w.utilNextWeek)}%</div>
-                          <div className="wl-util-label">
-                            {getUtilLabel(Math.round(w.utilNextWeek))}
-                          </div>
+                          <div className="wl-util-label">{getUtilLabel(Math.round(w.utilNextWeek))}</div>
                         </div>
                       </td>
-                      <td className="td-center">
-                        {Math.round(w.overdueRateLast30)}%
-                      </td>
+                      <td className="td-center">{Math.round(w.overdueRateLast30)}%</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1248,23 +1259,15 @@ const saveActivityTask = async () => {
             <div>
               <h3>
                 <CalendarDays size={20} className="panel-icon" />
-                Presales availability (
-                {calendarView === '14' ? 'next 14 days' : 'next 30 days'})
+                Presales availability ({calendarView === '14' ? 'next 14 days' : 'next 30 days'})
               </h3>
-              <p>
-                See who is free, busy, on leave, or travelling so you can assign
-                tasks safely.
-              </p>
+              <p>See who is free, busy, on leave, or travelling so you can assign tasks safely.</p>
             </div>
             <div className="calendar-header-actions">
               <div className="calendar-toggle">
                 <button
                   type="button"
-                  className={
-                    calendarView === '14'
-                      ? 'calendar-toggle-btn active'
-                      : 'calendar-toggle-btn'
-                  }
+                  className={calendarView === '14' ? 'calendar-toggle-btn active' : 'calendar-toggle-btn'}
                   onClick={() => setCalendarView('14')}
                 >
                   14 days
@@ -1273,21 +1276,13 @@ const saveActivityTask = async () => {
               <div className="calendar-toggle">
                 <button
                   type="button"
-                  className={
-                    calendarView === '30'
-                      ? 'calendar-toggle-btn active'
-                      : 'calendar-toggle-btn'
-                  }
+                  className={calendarView === '30' ? 'calendar-toggle-btn active' : 'calendar-toggle-btn'}
                   onClick={() => setCalendarView('30')}
                 >
                   30 days
                 </button>
               </div>
-              <button
-                type="button"
-                className="ghost-btn ghost-btn-sm"
-                onClick={openScheduleModalForCreate}
-              >
+              <button type="button" className="ghost-btn ghost-btn-sm" onClick={openScheduleModalForCreate}>
                 <Plane size={16} />
                 <span>Add leave / travel</span>
               </button>
@@ -1302,38 +1297,18 @@ const saveActivityTask = async () => {
           ) : (
             <div className="heatmap-wrapper">
               <div className="heatmap-legend">
-                <span className="legend-item">
-                  <span className="legend-dot status-free" />
-                  Free
-                </span>
-                <span className="legend-item">
-                  <span className="legend-dot status-busy" />
-                  Busy
-                </span>
-                <span className="legend-item">
-                  <span className="legend-dot status-leave" />
-                  Leave
-                </span>
-                <span className="legend-item">
-                  <span className="legend-dot status-travel" />
-                  Travel
-                </span>
+                <span className="legend-item"><span className="legend-dot status-free" />Free</span>
+                <span className="legend-item"><span className="legend-dot status-busy" />Busy</span>
+                <span className="legend-item"><span className="legend-dot status-leave" />Leave</span>
+                <span className="legend-item"><span className="legend-dot status-travel" />Travel</span>
               </div>
 
               <div className="heatmap-table">
                 <div className="heatmap-header-row">
-                  <div className="heatmap-header-cell heatmap-name-col">
-                    Presales
-                  </div>
+                  <div className="heatmap-header-cell heatmap-name-col">Presales</div>
                   {availabilityGrid.days.map((d) => (
-                    <div
-                      key={d.toISOString()}
-                      className="heatmap-header-cell heatmap-day-col"
-                    >
-                      {d.toLocaleDateString('en-SG', {
-                        day: '2-digit',
-                        month: 'short',
-                      })}
+                    <div key={d.toISOString()} className="heatmap-header-cell heatmap-day-col">
+                      {d.toLocaleDateString('en-SG', { day: '2-digit', month: 'short' })}
                     </div>
                   ))}
                 </div>
@@ -1341,12 +1316,8 @@ const saveActivityTask = async () => {
                 {availabilityGrid.rows.map((row) => (
                   <div key={row.assignee} className="heatmap-row">
                     <div className="heatmap-presales-cell">
-                      <div className="wl-avatar">
-                        {(row.assignee || 'U').charAt(0).toUpperCase()}
-                      </div>
-                      <div className="heatmap-presales-name">
-                        {row.assignee}
-                      </div>
+                      <div className="wl-avatar">{(row.assignee || 'U').charAt(0).toUpperCase()}</div>
+                      <div className="heatmap-presales-name">{row.assignee}</div>
                     </div>
                     {row.cells.map((cell) => (
                       <button
@@ -1409,37 +1380,23 @@ const saveActivityTask = async () => {
                       <tr key={e.id}>
                         <td>
                           <div className="wl-name-cell">
-                            <div className="wl-avatar">
-                              {(e.assignee || 'U').charAt(0).toUpperCase()}
-                            </div>
+                            <div className="wl-avatar">{(e.assignee || 'U').charAt(0).toUpperCase()}</div>
                             <div className="wl-name-text">
                               <span className="wl-name-main">{e.assignee}</span>
                             </div>
                           </div>
                         </td>
-                        <td>
-                          <span className="schedule-type-chip">{e.type}</span>
-                        </td>
+                        <td><span className="schedule-type-chip">{e.type}</span></td>
                         <td>
                           {formatShortDate(e.start_date)}
-                          {e.end_date && e.end_date !== e.start_date
-                            ? ` – ${formatShortDate(e.end_date)}`
-                            : ''}
+                          {e.end_date && e.end_date !== e.start_date ? ` – ${formatShortDate(e.end_date)}` : ''}
                         </td>
                         <td className="schedule-note-cell">{e.note}</td>
                         <td className="td-center">
-                          <button
-                            type="button"
-                            className="icon-btn"
-                            onClick={() => openScheduleModalForEdit(e)}
-                          >
+                          <button type="button" className="icon-btn" onClick={() => openScheduleModalForEdit(e)}>
                             <Edit3 size={16} />
                           </button>
-                          <button
-                            type="button"
-                            className="icon-btn icon-btn-danger"
-                            onClick={() => handleDeleteSchedule(e.id)}
-                          >
+                          <button type="button" className="icon-btn icon-btn-danger" onClick={() => handleDeleteSchedule(e.id)}>
                             <Trash2 size={16} />
                           </button>
                         </td>
@@ -1472,65 +1429,63 @@ const saveActivityTask = async () => {
             </div>
           ) : (
             <div className="unassigned-at-risk-grid">
-              <div className="unassigned-column">
-                <h4>Unassigned tasks</h4>
+              <div className="unassigned-column unassigned-tasks-panel">
+                <h3>Unassigned tasks</h3>
                 {unassignedAndAtRisk.unassigned.length === 0 ? (
                   <p className="small-muted">No unassigned tasks.</p>
                 ) : (
-                  <table className="assignment-table">
-                    <thead>
-                      <tr>
-                        <th>Task</th>
-                        <th>Project</th>
-                        <th>Due</th>
-                        <th>Priority</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unassignedAndAtRisk.unassigned
-                        .slice(0, 10)
-                        .map((t) => (
+                  <div className="assignment-table-wrapper unassigned-tasks-table-wrapper">
+                    <table className="assignment-table unassigned-tasks-table">
+                      <thead>
+                        <tr>
+                          <th>Task</th>
+                          <th>Project</th>
+                          <th>Due</th>
+                          <th>Priority</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {unassignedAndAtRisk.unassigned.slice(0, 10).map((t) => (
                           <tr key={t.id}>
                             <td>{t.description || 'Untitled task'}</td>
-                            <td>
-                              {getProjectInfo(t.project_id).project_name}
-                            </td>
+                            <td>{(projectInfoMap.get(t.project_id)?.projectName) || 'Unknown project'}</td>
                             <td>{formatShortDate(t.due_date)}</td>
                             <td>{t.priority || 'Normal'}</td>
                           </tr>
                         ))}
-                    </tbody>
-                  </table>
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
 
-              <div className="unassigned-column">
-                <h4>At-risk tasks (next 7 days)</h4>
+              <div className="unassigned-column atrisk-tasks-panel">
+                <h3>At-risk tasks (next 7 days)</h3>
                 {unassignedAndAtRisk.atRisk.length === 0 ? (
-                  <p className="small-muted">
-                    No high-priority or overloaded tasks in the next 7 days.
-                  </p>
+                  <p className="small-muted">No high-priority or overloaded tasks in the next 7 days.</p>
                 ) : (
-                  <table className="assignment-table">
-                    <thead>
-                      <tr>
-                        <th>Task</th>
-                        <th>Assignee</th>
-                        <th>Due</th>
-                        <th>Priority</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unassignedAndAtRisk.atRisk.slice(0, 10).map((t) => (
-                        <tr key={t.id}>
-                          <td>{t.description || 'Untitled task'}</td>
-                          <td>{t.assignee || 'Unassigned'}</td>
-                          <td>{formatShortDate(t.due_date)}</td>
-                          <td>{t.priority || 'Normal'}</td>
+                  <div className="assignment-table-wrapper atrisk-tasks-table-wrapper">
+                    <table className="assignment-table atrisk-tasks-table">
+                      <thead>
+                        <tr>
+                          <th>Task</th>
+                          <th>Assignee</th>
+                          <th>Due</th>
+                          <th>Priority</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {unassignedAndAtRisk.atRisk.slice(0, 10).map((t) => (
+                          <tr key={t.id}>
+                            <td>{t.description || 'Untitled task'}</td>
+                            <td>{t.assignee || 'Unassigned'}</td>
+                            <td>{formatShortDate(t.due_date)}</td>
+                            <td>{t.priority || 'Normal'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             </div>
@@ -1560,9 +1515,7 @@ const saveActivityTask = async () => {
               {focusByPresales.map((f) => (
                 <div key={f.assignee} className="focus-item">
                   <div className="focus-header">
-                    <div className="wl-avatar">
-                      {(f.assignee || 'U').charAt(0).toUpperCase()}
-                    </div>
+                    <div className="wl-avatar">{(f.assignee || 'U').charAt(0).toUpperCase()}</div>
                     <div className="wl-name-text">
                       <span className="wl-name-main">{f.assignee}</span>
                     </div>
@@ -1577,19 +1530,11 @@ const saveActivityTask = async () => {
                           {f.todayTasks.map((t) => (
                             <li key={t.id}>
                               <div className="focus-task-main">
-                                <span className="focus-task-title">
-                                  {t.description || 'Untitled task'}
-                                </span>
+                                <span className="focus-task-title">{t.description || 'Untitled task'}</span>
                               </div>
                               <div className="focus-task-meta">
-                                <span>
-                                  {getProjectInfo(t.project_id).project_name}
-                                </span>
-                                {t.priority && (
-                                  <span className="focus-priority">
-                                    {t.priority}
-                                  </span>
-                                )}
+                                <span>{projectMap.get(t.project_id) || 'Unknown project'}</span>
+                                {t.priority && <span className="focus-priority">{t.priority}</span>}
                               </div>
                             </li>
                           ))}
@@ -1599,30 +1544,18 @@ const saveActivityTask = async () => {
                     <div className="focus-column">
                       <h4>This week</h4>
                       {f.weekTasks.length === 0 ? (
-                        <p className="small-muted">
-                          No priority tasks tagged for this week.
-                        </p>
+                        <p className="small-muted">No priority tasks tagged for this week.</p>
                       ) : (
                         <ul className="focus-task-list">
                           {f.weekTasks.map((t) => (
                             <li key={t.id}>
                               <div className="focus-task-main">
-                                <span className="focus-task-title">
-                                  {t.description || 'Untitled task'}
-                                </span>
+                                <span className="focus-task-title">{t.description || 'Untitled task'}</span>
                               </div>
                               <div className="focus-task-meta">
-                                <span>
-                                  {getProjectInfo(t.project_id).project_name}
-                                </span>
-                                <span>
-                                  Due: {formatShortDate(t.due_date) || 'n/a'}
-                                </span>
-                                {t.priority && (
-                                  <span className="focus-priority">
-                                    {t.priority}
-                                  </span>
-                                )}
+                                <span>{projectMap.get(t.project_id) || 'Unknown project'}</span>
+                                <span>Due: {formatShortDate(t.due_date) || 'n/a'}</span>
+                                {t.priority && <span className="focus-priority">{t.priority}</span>}
                               </div>
                             </li>
                           ))}
@@ -1632,67 +1565,6 @@ const saveActivityTask = async () => {
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* 5. HIGH-VALUE / CRITICAL DEALS COVERAGE */}
-      <section className="presales-crunch-section">
-        <div className="presales-panel presales-panel-large">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <Activity size={18} className="panel-icon" />
-                High-value / critical deals coverage
-              </h3>
-              <p>Check if big or critical deals have enough presales focus.</p>
-            </div>
-          </div>
-
-          {highValueDealsCoverage.length === 0 ? (
-            <div className="presales-empty small">
-              <p>No high-value or critical-stage deals found.</p>
-            </div>
-          ) : (
-            <div className="taskmix-table-wrapper">
-              <table className="taskmix-table">
-                <thead>
-                  <tr>
-                    <th>Customer</th>
-                    <th>Stage</th>
-                    <th className="th-center">Open tasks</th>
-                    <th className="th-center">Presales on it</th>
-                    <th className="th-center">Deal value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {highValueDealsCoverage.slice(0, 12).map((d) => (
-                    <tr key={d.projectId}>
-                      <td>{d.customerName}</td>
-                      <td>{d.stage || 'N/A'}</td>
-                      <td className="td-center">{d.openTasksCount}</td>
-                      <td className="td-center">{d.assigneeCount}</td>
-                      <td className="td-center">
-                        {Number.isFinite(d.dealValue)
-                          ? d.dealValue.toLocaleString('en-US', {
-                              maximumFractionDigits: 0,
-                            })
-                          : '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="taskmix-footer">
-                <span>
-                  Showing top{' '}
-                  <strong>
-                    {Math.min(12, highValueDealsCoverage.length)}
-                  </strong>{' '}
-                  high-value / critical deals.
-                </span>
-              </div>
             </div>
           )}
         </div>
@@ -1716,26 +1588,15 @@ const saveActivityTask = async () => {
               <div className="assignment-field">
                 <label>Task window</label>
                 <div className="assignment-dates">
-                  <input
-                    type="date"
-                    value={assignStart}
-                    onChange={(e) => setAssignStart(e.target.value)}
-                  />
+                  <input type="date" value={assignStart} onChange={(e) => setAssignStart(e.target.value)} />
                   <span className="assignment-dash">to</span>
-                  <input
-                    type="date"
-                    value={assignEnd}
-                    onChange={(e) => setAssignEnd(e.target.value)}
-                  />
+                  <input type="date" value={assignEnd} onChange={(e) => setAssignEnd(e.target.value)} />
                 </div>
               </div>
 
               <div className="assignment-field">
                 <label>Priority</label>
-                <select
-                  value={assignPriority}
-                  onChange={(e) => setAssignPriority(e.target.value)}
-                >
+                <select value={assignPriority} onChange={(e) => setAssignPriority(e.target.value)}>
                   <option value="High">High</option>
                   <option value="Normal">Normal</option>
                   <option value="Low">Low</option>
@@ -1766,20 +1627,14 @@ const saveActivityTask = async () => {
                       <tr key={sug.assignee}>
                         <td>
                           <div className="wl-name-cell">
-                            <div className="wl-avatar">
-                              {(sug.assignee || 'U').charAt(0).toUpperCase()}
-                            </div>
+                            <div className="wl-avatar">{(sug.assignee || 'U').charAt(0).toUpperCase()}</div>
                             <div className="wl-name-text">
-                              <span className="wl-name-main">
-                                {sug.assignee}
-                              </span>
+                              <span className="wl-name-main">{sug.assignee}</span>
                             </div>
                           </div>
                         </td>
                         <td className="td-center">{sug.freeDays}</td>
-                        <td className="td-center">
-                          {Math.round(sug.nextWeekLoad)}%
-                        </td>
+                        <td className="td-center">{Math.round(sug.nextWeekLoad)}%</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1829,8 +1684,7 @@ const saveActivityTask = async () => {
               </table>
               <div className="taskmix-footer">
                 <span>
-                  Total tasks counted: <strong>{taskMix.total}</strong> (last 30
-                  days)
+                  Total tasks counted: <strong>{taskMix.total}</strong> (last 30 days)
                 </span>
               </div>
             </div>
@@ -1839,198 +1693,18 @@ const saveActivityTask = async () => {
       </section>
 
       {/* SCHEDULE MODAL */}
-      
-{/* ACTIVITY MODAL */}
-{activityModalOpen && activityModalTask && (
-  <div className="schedule-modal-backdrop">
-    <div className="schedule-modal activity-modal">
-      <div className="schedule-modal-header">
-        <div className="schedule-modal-title">
-          <ListChecks />
-          <div>
-            <h4>Edit presales activity</h4>
-            <p>
-              {getProjectInfo(activityModalTask.project_id).customer_name} ·{' '}
-              {getProjectInfo(activityModalTask.project_id).project_name}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="schedule-modal-close"
-          onClick={closeActivityModal}
-        >
-          <X size={18} />
-        </button>
-      </div>
-
-      <div className="schedule-form activity-form">
-        <div className="schedule-form-row">
-          <div className="schedule-field schedule-field-full">
-            <label>Description</label>
-            <textarea
-              value={activityForm.description}
-              onChange={(e) =>
-                setActivityForm((p) => ({ ...p, description: e.target.value }))
-              }
-              rows={3}
-              placeholder="What is the task about?"
-            />
-          </div>
-        </div>
-
-        <div className="schedule-form-row">
-          <div className="schedule-field">
-            <label>Status</label>
-            <select
-              value={activityForm.status}
-              onChange={(e) =>
-                setActivityForm((p) => ({ ...p, status: e.target.value }))
-              }
-            >
-              <option value="Not Started">Not Started</option>
-              <option value="In Progress">In Progress</option>
-              <option value="On Hold">On Hold</option>
-              <option value="Completed">Completed</option>
-            </select>
-          </div>
-
-          <div className="schedule-field">
-            <label>Assignee</label>
-            <select
-              value={activityForm.assignee}
-              onChange={(e) =>
-                setActivityForm((p) => ({ ...p, assignee: e.target.value }))
-              }
-            >
-              <option value="">Unassigned</option>
-              {(presalesResources || []).map((p) => (
-                <option key={p.id} value={p.name || p.email}>
-                  {p.name || p.email}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="schedule-form-row">
-          <div className="schedule-field">
-            <label>Due date</label>
-            <input
-              type="date"
-              value={activityForm.due_date || ''}
-              onChange={(e) =>
-                setActivityForm((p) => ({ ...p, due_date: e.target.value }))
-              }
-            />
-          </div>
-          <div className="schedule-field">
-            <label>Estimated hours</label>
-            <input
-              type="number"
-              min="0"
-              step="0.5"
-              value={activityForm.estimated_hours}
-              onChange={(e) =>
-                setActivityForm((p) => ({ ...p, estimated_hours: e.target.value }))
-              }
-              placeholder="e.g. 4"
-            />
-          </div>
-        </div>
-
-        <div className="schedule-form-row">
-          <div className="schedule-field">
-            <label>Task type</label>
-            <input
-              type="text"
-              value={activityForm.task_type}
-              onChange={(e) =>
-                setActivityForm((p) => ({ ...p, task_type: e.target.value }))
-              }
-              placeholder="e.g. Demo, RFP, Workshop"
-            />
-          </div>
-          <div className="schedule-field">
-            <label>Priority</label>
-            <select
-              value={activityForm.priority}
-              onChange={(e) =>
-                setActivityForm((p) => ({ ...p, priority: e.target.value }))
-              }
-            >
-              <option value="High">High</option>
-              <option value="Normal">Normal</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="schedule-form-row">
-          <div className="schedule-field schedule-field-full">
-            <label>Notes</label>
-            <textarea
-              value={activityForm.notes}
-              onChange={(e) =>
-                setActivityForm((p) => ({ ...p, notes: e.target.value }))
-              }
-              rows={3}
-              placeholder="Optional notes"
-            />
-          </div>
-        </div>
-
-        {activitySaveError && (
-          <div className="schedule-message-error" style={{ marginTop: 6 }}>
-            {activitySaveError}
-          </div>
-        )}
-
-        <div className="schedule-form-actions">
-          <div className="schedule-form-buttons">
-            <button
-              type="button"
-              className="ghost-btn ghost-btn-sm"
-              onClick={closeActivityModal}
-              disabled={activitySaving}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="primary-btn"
-              onClick={saveActivityTask}
-              disabled={activitySaving}
-            >
-              {activitySaving ? 'Saving…' : 'Save changes'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
-{showScheduleModal && (
+      {showScheduleModal && (
         <div className="schedule-modal-backdrop">
           <div className="schedule-modal">
             <div className="schedule-modal-header">
               <div className="schedule-modal-title">
                 <Plane />
                 <div>
-                  <h4>
-                    {scheduleMode === 'create'
-                      ? 'Add leave / travel'
-                      : 'Edit schedule'}
-                  </h4>
+                  <h4>{scheduleMode === 'create' ? 'Add leave / travel' : 'Edit schedule'}</h4>
                   <p>Block days where this presales is not fully available.</p>
                 </div>
               </div>
-              <button
-                type="button"
-                className="schedule-modal-close"
-                onClick={closeScheduleModal}
-              >
+              <button type="button" className="schedule-modal-close" onClick={closeScheduleModal}>
                 <X size={18} />
               </button>
             </div>
@@ -2039,10 +1713,7 @@ const saveActivityTask = async () => {
               <div className="schedule-form-row">
                 <div className="schedule-field">
                   <label>Presales</label>
-                  <select
-                    value={scheduleAssignee}
-                    onChange={(e) => setScheduleAssignee(e.target.value)}
-                  >
+                  <select value={scheduleAssignee} onChange={(e) => setScheduleAssignee(e.target.value)}>
                     <option value="">Select presales</option>
                     {presalesResources.map((p) => (
                       <option key={p.id} value={p.name || p.email}>
@@ -2054,10 +1725,7 @@ const saveActivityTask = async () => {
 
                 <div className="schedule-field">
                   <label>Type</label>
-                  <select
-                    value={scheduleType}
-                    onChange={(e) => setScheduleType(e.target.value)}
-                  >
+                  <select value={scheduleType} onChange={(e) => setScheduleType(e.target.value)}>
                     <option value="Leave">Leave</option>
                     <option value="Travel">Travel</option>
                     <option value="Training">Training</option>
@@ -2069,19 +1737,11 @@ const saveActivityTask = async () => {
               <div className="schedule-form-row">
                 <div className="schedule-field">
                   <label>Start date</label>
-                  <input
-                    type="date"
-                    value={scheduleStart}
-                    onChange={(e) => setScheduleStart(e.target.value)}
-                  />
+                  <input type="date" value={scheduleStart} onChange={(e) => setScheduleStart(e.target.value)} />
                 </div>
                 <div className="schedule-field">
                   <label>End date</label>
-                  <input
-                    type="date"
-                    value={scheduleEnd}
-                    onChange={(e) => setScheduleEnd(e.target.value)}
-                  />
+                  <input type="date" value={scheduleEnd} onChange={(e) => setScheduleEnd(e.target.value)} />
                 </div>
               </div>
 
@@ -2099,36 +1759,15 @@ const saveActivityTask = async () => {
 
               <div className="schedule-form-actions">
                 <div className="schedule-message">
-                  {scheduleError && (
-                    <span className="schedule-message-error">
-                      {scheduleError}
-                    </span>
-                  )}
-                  {scheduleMessage && (
-                    <span className="schedule-message-success">
-                      {scheduleMessage}
-                    </span>
-                  )}
+                  {scheduleError && <span className="schedule-message-error">{scheduleError}</span>}
+                  {scheduleMessage && <span className="schedule-message-success">{scheduleMessage}</span>}
                 </div>
                 <div className="schedule-form-buttons">
-                  <button
-                    type="button"
-                    className="ghost-btn ghost-btn-sm"
-                    onClick={closeScheduleModal}
-                    disabled={scheduleSaving}
-                  >
+                  <button type="button" className="ghost-btn ghost-btn-sm" onClick={closeScheduleModal} disabled={scheduleSaving}>
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    className="primary-btn"
-                    disabled={scheduleSaving}
-                  >
-                    {scheduleSaving
-                      ? 'Saving…'
-                      : scheduleMode === 'create'
-                      ? 'Add schedule'
-                      : 'Update schedule'}
+                  <button type="submit" className="primary-btn" disabled={scheduleSaving}>
+                    {scheduleSaving ? 'Saving…' : scheduleMode === 'create' ? 'Add schedule' : 'Update schedule'}
                   </button>
                 </div>
               </div>
@@ -2151,11 +1790,7 @@ const saveActivityTask = async () => {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                className="schedule-modal-close"
-                onClick={closeDayDetail}
-              >
+              <button type="button" className="schedule-modal-close" onClick={closeDayDetail}>
                 <X size={18} />
               </button>
             </div>
@@ -2170,50 +1805,29 @@ const saveActivityTask = async () => {
                     {dayDetail.tasks.map((t) => (
                       <li key={t.id} className="day-detail-task-item">
                         <div className="day-detail-task-main">
-                          <span className="day-detail-task-project">
-                            {t.projectName}
-                          </span>
-                          <span className="day-detail-task-status">
-                            {t.status || 'Open'}
-                          </span>
+                          <span className="day-detail-task-project">{t.projectName}</span>
+                          <span className="day-detail-task-status">{t.status || 'Open'}</span>
                         </div>
-                        {t.description && (
-                          <div className="day-detail-task-desc">
-                            {t.description}
-                          </div>
-                        )}
+                        {t.description && <div className="day-detail-task-desc">{t.description}</div>}
                         <div className="day-detail-task-meta">
                           <span>
-                            Type:{' '}
-                            <strong>{t.task_type || 'General task'}</strong>
+                            Type: <strong>{t.task_type || 'General task'}</strong>
                           </span>
                           {t.priority && (
                             <span>
                               Priority: <strong>{t.priority}</strong>
                             </span>
                           )}
-                          {t.start_date && (
-                            <span>
-                              Start: {formatShortDate(t.start_date)}
-                            </span>
-                          )}
-                          {t.end_date && (
-                            <span>End: {formatShortDate(t.end_date)}</span>
-                          )}
-                          {t.due_date && (
-                            <span>Due: {formatShortDate(t.due_date)}</span>
-                          )}
+                          {t.start_date && <span>Start: {formatShortDate(t.start_date)}</span>}
+                          {t.end_date && <span>End: {formatShortDate(t.end_date)}</span>}
+                          {t.due_date && <span>Due: {formatShortDate(t.due_date)}</span>}
                           {t.estimated_hours && (
                             <span>
                               Est.: <strong>{t.estimated_hours}h</strong>
                             </span>
                           )}
                         </div>
-                        {t.notes && (
-                          <div className="day-detail-task-notes">
-                            Notes: {t.notes}
-                          </div>
-                        )}
+                        {t.notes && <div className="day-detail-task-notes">Notes: {t.notes}</div>}
                       </li>
                     ))}
                   </ul>
@@ -2228,24 +1842,186 @@ const saveActivityTask = async () => {
                   <ul className="day-detail-schedule-list">
                     {dayDetail.schedules.map((s) => (
                       <li key={s.id} className="day-detail-schedule-item">
-                        <span className="day-detail-schedule-type">
-                          {s.type}
-                        </span>
+                        <span className="day-detail-schedule-type">{s.type}</span>
                         <span className="day-detail-schedule-dates">
                           {formatShortDate(s.start_date)}
-                          {s.end_date && s.end_date !== s.start_date
-                            ? ` – ${formatShortDate(s.end_date)}`
-                            : ''}
+                          {s.end_date && s.end_date !== s.start_date ? ` – ${formatShortDate(s.end_date)}` : ''}
                         </span>
-                        {s.note && (
-                          <span className="day-detail-schedule-note">
-                            {s.note}
-                          </span>
-                        )}
+                        {s.note && <span className="day-detail-schedule-note">{s.note}</span>}
                       </li>
                     ))}
                   </ul>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TASK EDIT MODAL */}
+      {taskModalOpen && (
+        <div className="schedule-modal-backdrop">
+          <div className="schedule-modal">
+            <div className="schedule-modal-header">
+              <div className="schedule-modal-title">
+                <Edit3 />
+                <div>
+                  <h4>Edit task</h4>
+                  <p>
+                    {(projectInfoMap.get(taskForm.project_id)?.customerName) || 'Unknown customer'}
+                    {' · '}
+                    {(projectInfoMap.get(taskForm.project_id)?.projectName) || 'Unknown project'}
+                  </p>
+                </div>
+              </div>
+              <button type="button" className="schedule-modal-close" onClick={closeTaskModal}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="schedule-form">
+              <div className="schedule-form-row">
+                <div className="schedule-field schedule-field-full">
+                  <label>Task description</label>
+                  <input
+                    type="text"
+                    value={taskForm.description}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, description: e.target.value }))}
+                    placeholder="What needs to be done?"
+                  />
+                </div>
+              </div>
+
+              <div className="schedule-form-row">
+                <div className="schedule-field">
+                  <label>Status</label>
+                  <select
+                    value={taskForm.status}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, status: e.target.value }))}
+                  >
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="On Hold">On Hold</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Done">Done</option>
+                  </select>
+                </div>
+
+                <div className="schedule-field">
+                  <label>Assignee</label>
+                  <select
+                    value={taskForm.assignee}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, assignee: e.target.value }))}
+                  >
+                    <option value="">Unassigned</option>
+                    {(presalesResources || []).map((r) => {
+                      const name = r.name || r.email;
+                      return (
+                        <option key={r.id} value={name}>
+                          {name}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+
+              <div className="schedule-form-row">
+                <div className="schedule-field">
+                  <label>Start date</label>
+                  <input
+                    type="date"
+                    value={taskForm.start_date || ''}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, start_date: e.target.value }))}
+                  />
+                </div>
+
+                <div className="schedule-field">
+                  <label>End date</label>
+                  <input
+                    type="date"
+                    value={taskForm.end_date || ''}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, end_date: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="schedule-form-row">
+                <div className="schedule-field">
+                  <label>Due date</label>
+                  <input
+                    type="date"
+                    value={taskForm.due_date || ''}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, due_date: e.target.value }))}
+                  />
+                </div>
+
+                <div className="schedule-field">
+                  <label>Estimated hours</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={taskForm.estimated_hours}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, estimated_hours: e.target.value }))}
+                    placeholder="e.g. 2"
+                  />
+                </div>
+              </div>
+
+              <div className="schedule-form-row">
+                <div className="schedule-field">
+                  <label>Task type</label>
+                  <input
+                    type="text"
+                    value={taskForm.task_type}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, task_type: e.target.value }))}
+                    placeholder="e.g. Demo, Workshop, RFP"
+                  />
+                </div>
+
+                <div className="schedule-field">
+                  <label>Priority</label>
+                  <select
+                    value={taskForm.priority}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, priority: e.target.value }))}
+                  >
+                    <option value="High">High</option>
+                    <option value="Normal">Normal</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="schedule-form-row">
+                <div className="schedule-field schedule-field-full">
+                  <label>Notes</label>
+                  <input
+                    type="text"
+                    value={taskForm.notes}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, notes: e.target.value }))}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+
+              <div className="schedule-form-actions">
+                <div className="schedule-message">
+                  {taskSaveError && <span className="schedule-message-error">{taskSaveError}</span>}
+                </div>
+                <div className="schedule-form-buttons">
+                  <button type="button" className="ghost-btn ghost-btn-sm" onClick={closeTaskModal} disabled={taskSaving}>
+                    Cancel
+                  </button>
+                  <button type="button" className="primary-btn" onClick={saveTaskEdits} disabled={taskSaving}>
+                    {taskSaving ? 'Saving…' : (
+                      <>
+                        <Save size={16} />
+                        <span>Save</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
