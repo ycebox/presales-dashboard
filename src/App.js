@@ -6,7 +6,6 @@ import {
   Route,
   Link,
   useLocation,
-  useNavigate,
 } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import Projects from './Projects';
@@ -56,7 +55,6 @@ function AppHeader() {
 // ----------------- HOME DASHBOARD (main page) -----------------
 function HomeDashboard() {
   const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [homeError, setHomeError] = useState(null);
 
@@ -68,29 +66,20 @@ function HomeDashboard() {
   const [notesEdit, setNotesEdit] = useState(false);
   const [notesStatus, setNotesStatus] = useState('');
 
-  const navigate = useNavigate();
-
   useEffect(() => {
     const loadHomeData = async () => {
       setLoading(true);
       setHomeError(null);
 
       try {
-        const [projRes, taskRes] = await Promise.all([
-          supabase
-            .from('projects')
-            .select('id, customer_name, project_name, sales_stage, deal_value')
-            .order('customer_name', { ascending: true }),
-          supabase
-            .from('project_tasks')
-            .select('id, project_id, assignee, status, due_date, task_type, description'),
-        ]);
+        const projRes = await supabase
+          .from('projects')
+          .select('id, customer_name, project_name, sales_stage, deal_value')
+          .order('customer_name', { ascending: true });
 
         if (projRes.error) throw projRes.error;
-        if (taskRes.error) throw taskRes.error;
 
         setProjects(projRes.data || []);
-        setTasks(taskRes.data || []);
       } catch (err) {
         console.error('Error loading home dashboard data:', err);
         setHomeError('Failed to load dashboard summary.');
@@ -130,34 +119,6 @@ function HomeDashboard() {
     loadNotes();
   }, []);
 
-  // Helpers
-  const isCompleted = (status) => {
-    const s = (status || '').toLowerCase();
-    return s === 'completed' || s === 'done' || s === 'closed';
-  };
-
-  const parseDate = (value) => {
-    if (!value) return null;
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return null;
-    d.setHours(0, 0, 0, 0);
-    return d;
-  };
-
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
-
-  const inNextNDays = (dateStr, n) => {
-    const d = parseDate(dateStr);
-    if (!d) return false;
-    const limit = new Date(today);
-    limit.setDate(limit.getDate() + n);
-    return d.getTime() >= today.getTime() && d.getTime() <= limit.getTime();
-  };
-
   // ---------- Deal buckets (Home KPI strip) ----------
   const openDeals = useMemo(() => {
     return (projects || []).filter((p) => {
@@ -190,56 +151,10 @@ function HomeDashboard() {
     return sorted.slice(0, 5);
   }, [openDeals]);
 
-  // ---------- Upcoming presales commitments ----------
-  const upcomingCommitments = useMemo(() => {
-    if (!tasks || tasks.length === 0) return [];
-
-    const importantTypes = ['Demo', 'Workshop', 'RFP', 'Proposal', 'Presentation', 'POC'];
-
-    const projectNameMap = new Map();
-    (projects || []).forEach((p) => {
-      projectNameMap.set(p.id, p.customer_name || 'Unknown project');
-    });
-
-    const filtered = (tasks || [])
-      .filter((t) => {
-        if (isCompleted(t.status)) return false;
-        if (!t.due_date) return false;
-        if (!inNextNDays(t.due_date, 14)) return false;
-
-        const type = (t.task_type || '').trim();
-        if (!type) return false;
-
-        return importantTypes.some(
-          (imp) => type.toLowerCase().indexOf(imp.toLowerCase()) !== -1
-        );
-      })
-      .map((t) => ({
-        ...t,
-        customer_name: projectNameMap.get(t.project_id) || 'Unknown project',
-      }));
-
-    filtered.sort((a, b) => {
-      const da = parseDate(a.due_date);
-      const db = parseDate(b.due_date);
-      if (!da && !db) return 0;
-      if (!da) return 1;
-      if (!db) return -1;
-      return da - db;
-    });
-
-    return filtered.slice(0, 8);
-  }, [tasks, projects, today]);
-
   const formatCurrency = (value) => {
     if (!Number.isFinite(value)) return '-';
     return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
   };
-
-  const formatShortDate = (d) =>
-    d
-      ? new Date(d).toLocaleDateString('en-SG', { day: '2-digit', month: 'short' })
-      : '';
 
   // Notes actions
   const startEditNotes = () => {
@@ -385,37 +300,8 @@ function HomeDashboard() {
         <Projects />
       </div>
 
-      {/* RIGHT: sidebar */}
+      {/* RIGHT: sidebar (Notes only, commitments removed) */}
       <div className="home-side-column">
-        <section className="home-card">
-          <h3 className="home-card-title">Upcoming presales commitments</h3>
-          <p className="home-card-subtitle">Demos, workshops, proposals in the next 14 days.</p>
-
-          {upcomingCommitments.length === 0 ? (
-            <p className="small-muted">No upcoming major commitments in the next 2 weeks.</p>
-          ) : (
-            <ul className="home-commitments-list">
-              {upcomingCommitments.map((t) => (
-                <li key={t.id} className="home-commitment-item">
-                  <div className="home-commitment-main">
-                    <span className="home-commitment-date">
-                      {formatShortDate(t.due_date)}
-                    </span>
-                    <span className="home-commitment-title">
-                      {t.description || 'Untitled task'}
-                    </span>
-                  </div>
-                  <div className="home-commitment-meta">
-                    <span>{t.customer_name}</span>
-                    {t.assignee && <span> · {t.assignee}</span>}
-                    {t.task_type && <span className="home-commitment-tag">{t.task_type}</span>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
         <section className="home-card">
           <div className="home-card-header-row">
             <div>
