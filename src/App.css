@@ -922,48 +922,6 @@ textarea:focus {
   text-align: right;
 }
 
-/* Commitments list */
-.home-commitments-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  font-size: 0.8rem;
-}
-
-.home-commitment-item + .home-commitment-item {
-  margin-top: 0.35rem;
-}
-
-.home-commitment-main {
-  display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
-}
-
-.home-commitment-date {
-  font-size: 0.75rem;
-  color: #93c5fd;
-}
-
-.home-commitment-title {
-  font-weight: 500;
-}
-
-.home-commitment-meta {
-  font-size: 0.72rem;
-  color: #9ca3af;
-  margin-top: 0.05rem;
-}
-
-.home-commitment-tag {
-  margin-left: 0.25rem;
-  padding: 0.05rem 0.3rem;
-  border-radius: 999px;
-  border: 1px solid #1d4ed8;
-  font-size: 0.7rem;
-  color: #bfdbfe;
-}
-
 /* Notes */
 .home-notes-textarea {
   width: 100%;
