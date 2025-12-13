@@ -1418,61 +1418,7 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* 5. HIGH-VALUE / CRITICAL DEALS COVERAGE */}
-      <section className="presales-crunch-section">
-        <div className="presales-panel presales-panel-large">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <Activity size={18} className="panel-icon" />
-                High-value / critical deals coverage
-              </h3>
-              <p>Check if big or critical deals have enough presales focus.</p>
-            </div>
-          </div>
-
-          {highValueDealsCoverage.length === 0 ? (
-            <div className="presales-empty small">
-              <p>No high-value or critical-stage deals found.</p>
-            </div>
-          ) : (
-            <div className="taskmix-table-wrapper">
-              <table className="taskmix-table">
-                <thead>
-                  <tr>
-                    <th>Customer</th>
-                    <th>Stage</th>
-                    <th className="th-center">Open tasks</th>
-                    <th className="th-center">Presales on it</th>
-                    <th className="th-center">Deal value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {highValueDealsCoverage.slice(0, 12).map((d) => (
-                    <tr key={d.projectId}>
-                      <td>{d.customerName}</td>
-                      <td>{d.stage || 'N/A'}</td>
-                      <td className="td-center">{d.openTasksCount}</td>
-                      <td className="td-center">{d.assigneeCount}</td>
-                      <td className="td-center">
-                        {Number.isFinite(d.dealValue)
-                          ? d.dealValue.toLocaleString('en-US', { maximumFractionDigits: 0 })
-                          : '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="taskmix-footer">
-                <span>
-                  Showing top <strong>{Math.min(12, highValueDealsCoverage.length)}</strong> high-value / critical deals.
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
+      
       {/* 6. ASSIGNMENT HELPER */}
       <section className="presales-assignment-section">
         <div className="presales-panel presales-panel-large">
