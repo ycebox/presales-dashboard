@@ -1,15 +1,8 @@
-// TopDealsToWatch.js
 import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from './supabaseClient';
-import {
-  FaFlag,
-  FaDollarSign,
-  FaCalendarAlt,
-  FaChartLine,
-  FaExclamationTriangle,
-  FaBuilding,
-} from 'react-icons/fa';
+import { FaFlag, FaExclamationTriangle, FaBuilding } from 'react-icons/fa';
 import './TopDealsToWatch.css';
+import './PresalesOverview.css'; // reuse taskmix table styles (safe if file exists)
 
 const CLOSED_STAGES = ['Closed-Won', 'Closed-Lost', 'Closed-Cancelled/Hold', 'Done'];
 
@@ -27,9 +20,7 @@ const STAGE_WEIGHTS = {
 };
 
 const formatCurrency = (value) => {
-  if (!value && value !== 0) return '$0';
-  const num = Number(value);
-  if (Number.isNaN(num)) return '$0';
+  const num = Number(value) || 0;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -105,11 +96,11 @@ function TopDealsToWatch() {
         setLoading(true);
         setError(null);
 
-        const { data, error } = await supabase
+        const { data, error: fetchErr } = await supabase
           .from('projects')
           .select('id, project_name, customer_name, sales_stage, deal_value, due_date, is_corporate');
 
-        if (error) throw error;
+        if (fetchErr) throw fetchErr;
         setProjects(data || []);
       } catch (err) {
         console.error('Error loading top deals:', err);
@@ -121,6 +112,13 @@ function TopDealsToWatch() {
 
     fetchProjects();
   }, []);
+
+  const showCorporateMode = useMemo(() => {
+    const active = (projects || []).filter(
+      (p) => !CLOSED_STAGES.includes((p.sales_stage || '').trim())
+    );
+    return active.some((p) => p.is_corporate === true);
+  }, [projects]);
 
   const rankedDeals = useMemo(() => {
     if (!projects || projects.length === 0) return [];
@@ -154,20 +152,17 @@ function TopDealsToWatch() {
 
     scored.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
+
       const aVal = Number(a.deal_value) || 0;
       const bVal = Number(b.deal_value) || 0;
       if (bVal !== aVal) return bVal - aVal;
+
       const aDue = a.due_date ? new Date(a.due_date).getTime() : Infinity;
       const bDue = b.due_date ? new Date(b.due_date).getTime() : Infinity;
       return aDue - bDue;
     });
 
     return scored.slice(0, 5);
-  }, [projects]);
-
-  const showCorporateMode = useMemo(() => {
-    const active = (projects || []).filter((p) => !CLOSED_STAGES.includes((p.sales_stage || '').trim()));
-    return active.some((p) => p.is_corporate === true);
   }, [projects]);
 
   if (loading) {
@@ -236,59 +231,61 @@ function TopDealsToWatch() {
         </div>
       </div>
 
-      {/* Column header */}
-      <div className="topdeals-table-head" role="row">
-        <div>#</div>
-        <div>Customer</div>
-        <div>Project</div>
-        <div>Stage</div>
-        <div>Due</div>
-        <div className="td-right">Value</div>
-      </div>
+      {/* Reuse PresalesOverview table styling */}
+      <div className="taskmix-table-wrapper topdeals-table-wrapper">
+        <table className="taskmix-table topdeals-table">
+          <thead>
+            <tr>
+              <th className="th-center" style={{ width: 56 }}>#</th>
+              <th>Customer</th>
+              <th>Project</th>
+              <th style={{ width: 160 }}>Stage</th>
+              <th style={{ width: 160 }}>Due</th>
+              <th className="th-center" style={{ width: 150 }}>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rankedDeals.map((deal, index) => {
+              const urgencyClass = getUrgencyLabelClass(deal.due_date);
 
-      <div className="topdeals-list">
-        {rankedDeals.map((deal, index) => {
-          const urgencyClass = getUrgencyLabelClass(deal.due_date);
+              return (
+                <tr key={deal.id}>
+                  <td className="td-center">#{index + 1}</td>
 
-          return (
-            <div key={deal.id} className="topdeals-row" role="row">
-              <div className="topdeals-rank">#{index + 1}</div>
+                  <td className="topdeals-cell-ellipsis" title={deal.customer_name || ''}>
+                    <span className="topdeals-customer-inline">
+                      {deal.customer_name || 'Unknown customer'}
+                      {deal.is_corporate ? (
+                        <span className="topdeals-corp-badge" title="Corporate project">
+                          <FaBuilding />
+                          Corporate
+                        </span>
+                      ) : null}
+                    </span>
+                  </td>
 
-              <div className="topdeals-customer-cell" title={deal.customer_name || ''}>
-                {deal.customer_name || 'Unknown customer'}
-                {deal.is_corporate ? (
-                  <span className="topdeals-corp-badge" title="Corporate project">
-                    <FaBuilding />
-                    Corporate
-                  </span>
-                ) : null}
-              </div>
+                  <td className="topdeals-cell-ellipsis" title={deal.project_name || ''}>
+                    {deal.project_name || 'Unnamed project'}
+                  </td>
 
-              <div className="topdeals-project-cell" title={deal.project_name || ''}>
-                {deal.project_name || 'Unnamed project'}
-              </div>
+                  <td>
+                    <span className="topdeals-stage-pill">
+                      {deal.sales_stage || 'No stage'}
+                    </span>
+                  </td>
 
-              <div className="topdeals-stage-cell">
-                <span className="topdeals-stage-badge">
-                  <FaChartLine />
-                  {deal.sales_stage || 'No stage'}
-                </span>
-              </div>
+                  <td>
+                    <span className={`topdeals-urgency-pill ${urgencyClass}`}>
+                      {deal.due_date ? formatDate(deal.due_date) : 'No due'}
+                    </span>
+                  </td>
 
-              <div className="topdeals-due-cell">
-                <span className={`topdeals-urgency-badge ${urgencyClass}`}>
-                  <FaCalendarAlt />
-                  {deal.due_date ? formatDate(deal.due_date) : 'No due'}
-                </span>
-              </div>
-
-              <div className="topdeals-value-cell td-right">
-                <FaDollarSign />
-                {formatCurrency(deal.deal_value)}
-              </div>
-            </div>
-          );
-        })}
+                  <td className="td-center">{formatCurrency(deal.deal_value)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
