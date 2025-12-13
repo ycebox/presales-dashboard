@@ -224,6 +224,11 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.presales-panel-header-row .ghost-btn {
+  flex-shrink: 0;
 }
 
 .presales-panel-header h3 {
@@ -514,8 +519,10 @@
 /* Heatmap */
 .heatmap-wrapper {
   margin-top: 6px;
+  overflow-x: auto; /* ✅ allow scroll instead of overlap */
 }
 
+/* Legend */
 .heatmap-legend {
   display: flex;
   gap: 10px;
@@ -566,12 +573,13 @@
   );
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  min-width: 900px; /* ✅ prevents squeezing that causes overlap */
 }
 
 .heatmap-header-row,
 .heatmap-row {
   display: grid;
-  grid-template-columns: 160px repeat(auto-fit, minmax(28px, 1fr));
+  grid-template-columns: 220px repeat(auto-fit, minmax(28px, 1fr)); /* ✅ wider name column */
   min-width: 0;
 }
 
@@ -610,11 +618,16 @@
   gap: 8px;
   padding: 4px 6px;
   border-right: 1px solid rgba(30, 41, 59, 1);
+  min-width: 220px; /* ✅ match grid col */
 }
 
 .heatmap-presales-name {
   font-size: 12px;
   color: #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px; /* ✅ prevents name collision */
 }
 
 .heatmap-cell {
@@ -796,16 +809,6 @@
   box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.6);
 }
 
-/* Assignment list */
-
-.assignment-list {
-  margin-top: 2px;
-}
-
-.assignment-table {
-  width: 100%;
-}
-
 /* ===== ICON BUTTONS ===== */
 
 .icon-btn {
@@ -874,8 +877,6 @@
   overflow: hidden;
 }
 
-/* Schedule modal used by both forms and day detail */
-
 .schedule-modal-header {
   padding: 12px 16px;
   border-bottom: 1px solid rgba(55, 65, 81, 0.95);
@@ -927,8 +928,6 @@
   background: rgba(30, 64, 175, 0.85);
   color: #e5e7eb;
 }
-
-/* Schedule form content */
 
 .schedule-form {
   padding: 12px 16px 14px;
@@ -1012,7 +1011,6 @@
 }
 
 /* Task list */
-
 .day-detail-task-list {
   list-style: none;
   padding: 0;
@@ -1059,26 +1057,7 @@
   color: #cbd5f5;
 }
 
-.day-detail-task-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-size: 10.5px;
-  color: #9ca3af;
-}
-
-.day-detail-task-meta span strong {
-  color: #e5e7eb;
-}
-
-.day-detail-task-notes {
-  margin-top: 2px;
-  font-size: 11px;
-  color: #e5e7eb;
-}
-
 /* Schedule list in day detail */
-
 .day-detail-schedule-list {
   list-style: none;
   padding: 0;
@@ -1157,6 +1136,11 @@
     width: 100%;
   }
 }
+
+/* =========================================================
+   TASK MIX (fix light-theme forcing)
+   ========================================================= */
+
 .presales-taskmix-section {
   margin-top: 24px;
 }
@@ -1175,12 +1159,12 @@
 .taskmix-table th,
 .taskmix-table td {
   padding: 8px 10px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(31, 41, 55, 0.9); /* ✅ dark */
 }
 
 .taskmix-table th {
   font-weight: 600;
-  color: #555;
+  color: #9ca3af; /* ✅ dark theme label */
   text-align: left;
 }
 
@@ -1192,30 +1176,31 @@
 .taskmix-footer {
   margin-top: 6px;
   font-size: 12px;
-  color: #666;
+  color: #9ca3af; /* ✅ dark theme */
 }
 
+/* =========================================================
+   Ongoing & upcoming presales activities (your existing styles)
+   ========================================================= */
 
-/* ===== Ongoing & upcoming presales activities ===== */
-
-.presales-panel-wide{
+.presales-panel-wide {
   grid-column: 1 / -1;
 }
 
-.activities-table-wrapper{
+.activities-table-wrapper {
   max-height: 320px;
   overflow: auto;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 14px;
 }
 
-.activities-table{
+.activities-table {
   width: 100%;
   border-collapse: collapse;
   min-width: 900px;
 }
 
-.activities-table thead th{
+.activities-table thead th {
   position: sticky;
   top: 0;
   z-index: 2;
@@ -1227,22 +1212,22 @@
   letter-spacing: 0.02em;
 }
 
-.activities-table tbody td{
+.activities-table tbody td {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.10);
   font-size: 13px;
   color: rgba(226, 232, 240, 0.95);
 }
 
-.activities-row{
+.activities-row {
   cursor: pointer;
 }
 
-.activities-row:hover{
+.activities-row:hover {
   background: rgba(30, 41, 59, 0.45);
 }
 
-.activities-pill{
+.activities-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1252,28 +1237,28 @@
   background: rgba(15, 23, 42, 0.55);
   font-size: 12px;
   white-space: nowrap;
+  color: rgba(226, 232, 240, 0.95);
 }
 
-.activities-link{
+.activities-link {
   color: rgba(147, 197, 253, 0.95);
   text-decoration: none;
 }
 
-.activities-link:hover{
+.activities-link:hover {
   text-decoration: underline;
 }
 
-.activity-modal{
+.activity-modal {
   max-width: 760px;
 }
+
 /* =========================================================
-   ALIASES for "Ongoing & upcoming presales activities"
-   (JS uses commitments-* and generic helpers)
-   Keeps your existing blue/dark styling.
+   ALIASES for your JS table classes (commitments-*)
+   so both class sets work without breaking your theme
    ========================================================= */
 
 .commitments-table-wrapper {
-  /* same as .activities-table-wrapper */
   max-height: 320px;
   overflow: auto;
   border: 1px solid rgba(148, 163, 184, 0.18);
@@ -1281,7 +1266,6 @@
 }
 
 .commitments-table {
-  /* same as .activities-table */
   width: 100%;
   border-collapse: collapse;
   min-width: 900px;
@@ -1297,6 +1281,7 @@
   padding: 10px 12px;
   font-size: 13px;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .commitments-table tbody td {
@@ -1314,15 +1299,6 @@
   background: rgba(30, 41, 59, 0.45);
 }
 
-/* text overflow helper used in JS */
-.td-ellipsis {
-  max-width: 1px; /* allows ellipsis in table cell */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Status pill used in JS */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -1336,26 +1312,10 @@
   color: rgba(226, 232, 240, 0.95);
 }
 
-/* Optional: make the modal a bit wider for editing tasks (matches your .activity-modal intent) */
-.schedule-modal.activity-modal {
-  max-width: 760px;
-}
-
-
-/* =========================================================
-   FIX: Task mix styles at bottom currently force light theme.
-   Keep it consistent with your dark/blue theme.
-   ========================================================= */
-
-.taskmix-table th,
-.taskmix-table td {
-  border-bottom: 1px solid rgba(31, 41, 55, 0.9);
-}
-
-.taskmix-table th {
-  color: #9ca3af;
-}
-
-.taskmix-footer {
-  color: #9ca3af;
+/* text ellipsis helper used by JS */
+.td-ellipsis {
+  max-width: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
