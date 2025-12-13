@@ -782,51 +782,7 @@ function PresalesOverview() {
     return result;
   }, [tasks, workloadByAssignee, today, thisWeekRange]);
 
-  // ---------- High-Value Deals Coverage ----------
-  const highValueDealsCoverage = useMemo(() => {
-    if (!projects || projects.length === 0 || !tasks) return [];
-
-    const HIGH_VALUE_THRESHOLD = 300000;
-    const criticalStages = ['Opportunity', 'Proposal', 'RFP', 'SoW', 'Contracting'];
-
-    const result = [];
-
-    projects.forEach((p) => {
-      const stage = p.sales_stage || '';
-      const valueNum = Number(p.deal_value) || 0;
-      const isClosed =
-        stage.toLowerCase().startsWith('closed') || stage === 'Done';
-
-      if (isClosed) return;
-
-      const isHighValue = valueNum >= HIGH_VALUE_THRESHOLD;
-      const isCriticalStage = criticalStages.includes(stage);
-
-      if (!isHighValue && !isCriticalStage) return;
-
-      const projectTasks = (tasks || []).filter((t) => t.project_id === p.id);
-      const openTasks = projectTasks.filter((t) => !isCompletedStatus(t.status));
-
-      const assigneeSet = new Set(
-        openTasks
-          .map((t) => t.assignee)
-          .filter((a) => a && a.trim().length > 0)
-      );
-
-      result.push({
-        projectId: p.id,
-        customerName: p.customer_name || 'Unknown customer',
-        stage,
-        dealValue: valueNum,
-        openTasksCount: openTasks.length,
-        assigneeCount: assigneeSet.size,
-      });
-    });
-
-    result.sort((a, b) => b.dealValue - a.dealValue);
-    return result;
-  }, [projects, tasks]);
-
+ 
   // ---------- Schedule modal handlers ----------
   const openScheduleModalForCreate = () => {
     setScheduleMode('create');
