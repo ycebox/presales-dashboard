@@ -1319,3 +1319,25 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* =========================================================
+   UNASSIGNED TASKS UI TWEAKS (NEW)
+   - hide the extra big "Unassigned tasks" heading inside the panel body
+   - slightly reduce the table sizing to match the overall style
+   ========================================================= */
+
+.unassigned-tasks-panel > h3 {
+  display: none;
+}
+
+.unassigned-tasks-table {
+  font-size: 11.5px;
+}
+
+.unassigned-tasks-table th {
+  font-size: 10.5px;
+}
+
+.unassigned-tasks-table td {
+  padding: 6px 6px;
+}
