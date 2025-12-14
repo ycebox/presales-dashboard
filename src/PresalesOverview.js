@@ -73,6 +73,69 @@ const formatCurrency = (value) => {
   }
 };
 
+// ---------- Date helpers (date-only compare in local timezone) ----------
+const toDateOnly = (d) => {
+  if (!d) return null;
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return null;
+  return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+};
+
+const todayDateOnly = () => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+};
+
+const isOverdueTask = (task) => {
+  if (!task) return false;
+  if (["Completed", "Cancelled/On-hold"].includes(task.status)) return false;
+  const t = todayDateOnly();
+
+  // Prefer due_date for overdue detection
+  const due = toDateOnly(task.due_date);
+  if (due) return due < t;
+
+  // Fallback to end_date if no due_date
+  const end = toDateOnly(task.end_date);
+  if (end) return end < t;
+
+  return false;
+};
+
+const getTaskTimelineBucket = (task) => {
+  // Buckets: Overdue, Ongoing, Upcoming
+  if (isOverdueTask(task)) return "Overdue";
+
+  const t = todayDateOnly();
+  const start = toDateOnly(task?.start_date);
+  const end = toDateOnly(task?.end_date);
+  const due = toDateOnly(task?.due_date);
+
+  // If task has a start/end window
+  if (start && end) {
+    if (t >= start && t <= end) return "Ongoing";
+    if (t < start) return "Upcoming";
+    // if we reached here, end < today, but it wasn't treated as overdue (likely completed/on-hold)
+    return "Ongoing";
+  }
+
+  // If task has due date
+  if (due) {
+    if (due.getTime() === t.getTime()) return "Ongoing";
+    if (due > t) return "Upcoming";
+    return "Overdue";
+  }
+
+  // If only start date is set
+  if (start) {
+    if (start > t) return "Upcoming";
+    return "Ongoing";
+  }
+
+  // No dates: treat as ongoing
+  return "Ongoing";
+};
+
 const getTaskStatusClass = (status) => {
   switch (status?.toLowerCase()) {
     case "completed":
@@ -703,6 +766,31 @@ function ProjectDetails() {
     ? tasks
     : tasks.filter((task) => !["Completed", "Cancelled/On-hold"].includes(task.status));
 
+  // Group tasks into Overdue / Ongoing / Upcoming for a clearer "presales activities" view
+  const groupedTasks = filteredTasks.reduce(
+    (acc, task) => {
+      const bucket = getTaskTimelineBucket(task);
+      acc[bucket].push(task);
+      return acc;
+    },
+    { Overdue: [], Ongoing: [], Upcoming: [] }
+  );
+
+  const sortByMostRelevantDate = (a, b) => {
+    const aDt =
+      toDateOnly(a?.due_date) || toDateOnly(a?.end_date) || toDateOnly(a?.start_date) || toDateOnly(a?.created_at);
+    const bDt =
+      toDateOnly(b?.due_date) || toDateOnly(b?.end_date) || toDateOnly(b?.start_date) || toDateOnly(b?.created_at);
+    if (!aDt && !bDt) return 0;
+    if (!aDt) return 1;
+    if (!bDt) return -1;
+    return aDt - bDt;
+  };
+
+  groupedTasks.Overdue.sort(sortByMostRelevantDate);
+  groupedTasks.Ongoing.sort(sortByMostRelevantDate);
+  groupedTasks.Upcoming.sort(sortByMostRelevantDate);
+
   // Handlers
   const handleEditToggle = () => {
     if (isEditing) {
@@ -850,6 +938,92 @@ function ProjectDetails() {
       navigate("/");
     }
   };
+
+  const renderTaskItem = (task) => (
+    <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)} ${isOverdueTask(task) ? "is-overdue" : ""}`}>
+      <div className="task-checkbox-wrapper">
+        <div className="custom-checkbox">
+          <input
+            type="checkbox"
+            className="task-checkbox"
+            checked={task.status === "Completed"}
+            onChange={() => handleTaskStatusChange(task.id, task.status)}
+            aria-label={`Mark task "${task.description}" as ${task.status === "Completed" ? "incomplete" : "complete"}`}
+          />
+          <div className="checkbox-visual">
+            <FaCheckCircle className="check-icon" />
+          </div>
+        </div>
+      </div>
+
+      <div className="task-main-content">
+        <div className="task-header">
+          <h4 className="task-title">
+            {task.description}
+            {isOverdueTask(task) ? <span style={{ marginLeft: 8, fontSize: 12 }}>(Overdue)</span> : null}
+          </h4>
+          <div className={`task-status-badge ${getTaskStatusClass(task.status)}`}>
+            {getTaskStatusIcon(task.status)}
+            <span className="status-text">{task.status}</span>
+          </div>
+        </div>
+
+        <div className="task-meta-row">
+          {(task.start_date || task.end_date || task.due_date) && (
+            <div className="task-meta-item">
+              <FaCalendarAlt className="meta-icon" />
+              <span>
+                {task.start_date && task.end_date
+                  ? `${formatDate(task.start_date)} → ${formatDate(task.end_date)}`
+                  : task.due_date
+                  ? `Due ${formatDate(task.due_date)}`
+                  : task.start_date
+                  ? `Starts ${formatDate(task.start_date)}`
+                  : ""}
+              </span>
+            </div>
+          )}
+
+          {task.assignee && (
+            <div className="task-meta-item">
+              <FaUsers className="meta-icon" />
+              <span>Assigned to {task.assignee}</span>
+            </div>
+          )}
+
+          {task.task_type && (
+            <div className="task-meta-item">
+              <FaInfo className="meta-icon" />
+              <span>{task.task_type}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="task-actions">
+          <button
+            onClick={() => {
+              setEditingTask(task);
+              setShowTaskModal(true);
+            }}
+            className="task-action-button edit"
+            title="Edit task"
+          >
+            <FaEdit />
+          </button>
+          <button onClick={() => handleDeleteTask(task.id)} className="task-action-button delete" title="Delete task">
+            <FaTrash />
+          </button>
+        </div>
+
+        {task.notes && (
+          <div className="task-meta-item">
+            <FaFileAlt className="meta-icon" />
+            <span className="task-notes-preview">{task.notes}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   if (loading) return <LoadingScreen />;
   if (error || !project) return <ErrorScreen error={error} onBack={() => navigate("/")} />;
@@ -1105,94 +1279,20 @@ function ProjectDetails() {
             <div className="card-content">
               {filteredTasks.length > 0 ? (
                 <div className="task-list">
-                  {filteredTasks.map((task) => (
-                    <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)}`}>
-                      <div className="task-checkbox-wrapper">
-                        <div className="custom-checkbox">
-                          <input
-                            type="checkbox"
-                            className="task-checkbox"
-                            checked={task.status === "Completed"}
-                            onChange={() => handleTaskStatusChange(task.id, task.status)}
-                            aria-label={`Mark task "${task.description}" as ${
-                              task.status === "Completed" ? "incomplete" : "complete"
-                            }`}
-                          />
-                          <div className="checkbox-visual">
-                            <FaCheckCircle className="check-icon" />
-                          </div>
+                  {(["Overdue", "Ongoing", "Upcoming"]).map((bucket) => {
+                    const items = groupedTasks[bucket] || [];
+                    if (items.length === 0) return null;
+
+                    return (
+                      <div key={bucket} style={{ marginBottom: 16 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 0" }}>
+                          <h4 style={{ margin: 0 }}>{bucket} Presales Activities</h4>
+                          <span style={{ fontSize: 12, opacity: 0.8 }}>({items.length})</span>
                         </div>
+                        {items.map(renderTaskItem)}
                       </div>
-
-                      <div className="task-main-content">
-                        <div className="task-header">
-                          <h4 className="task-title">{task.description}</h4>
-                          <div className={`task-status-badge ${getTaskStatusClass(task.status)}`}>
-                            {getTaskStatusIcon(task.status)}
-                            <span className="status-text">{task.status}</span>
-                          </div>
-                        </div>
-
-                        <div className="task-meta-row">
-                          {(task.start_date || task.end_date || task.due_date) && (
-                            <div className="task-meta-item">
-                              <FaCalendarAlt className="meta-icon" />
-                              <span>
-                                {task.start_date && task.end_date
-                                  ? `${formatDate(task.start_date)} → ${formatDate(task.end_date)}`
-                                  : task.due_date
-                                  ? `Due ${formatDate(task.due_date)}`
-                                  : task.start_date
-                                  ? `Starts ${formatDate(task.start_date)}`
-                                  : ""}
-                              </span>
-                            </div>
-                          )}
-
-                          {task.assignee && (
-                            <div className="task-meta-item">
-                              <FaUsers className="meta-icon" />
-                              <span>Assigned to {task.assignee}</span>
-                            </div>
-                          )}
-
-                          {task.task_type && (
-                            <div className="task-meta-item">
-                              <FaInfo className="meta-icon" />
-                              <span>{task.task_type}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="task-actions">
-                          <button
-                            onClick={() => {
-                              setEditingTask(task);
-                              setShowTaskModal(true);
-                            }}
-                            className="task-action-button edit"
-                            title="Edit task"
-                          >
-                            <FaEdit />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="task-action-button delete"
-                            title="Delete task"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-
-                        {task.notes && (
-                          <div className="task-meta-item">
-                            <FaFileAlt className="meta-icon" />
-                            <span className="task-notes-preview">{task.notes}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <EmptyState
