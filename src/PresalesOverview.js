@@ -124,15 +124,20 @@ const isCompletedStatus = (status) => {
 
 const normalizeStatusGroup = (status) => {
   const s = (status || '').toLowerCase().trim();
-
   if (s.includes('progress')) return 'In Progress';
   if (s.includes('not started') || s === 'open' || s === 'new') return 'Not Started';
-
   return 'Other';
 };
 
 // ---------- Kanban component ----------
-function ActivitiesKanban({ groups, parseDateFn, today, formatShortDate, onClickTask }) {
+function ActivitiesKanban({
+  groups,
+  parseDateFn,
+  today,
+  formatShortDate,
+  onClickTask,
+  onDeleteTask,
+}) {
   const [limits, setLimits] = useState({
     Overdue: 6,
     'In Progress': 6,
@@ -156,7 +161,10 @@ function ActivitiesKanban({ groups, parseDateFn, today, formatShortDate, onClick
         const hasMore = list.length > visible.length;
 
         return (
-          <div key={col.key} className={`activities-col ${col.key === 'Overdue' ? 'is-overdue' : ''}`}>
+          <div
+            key={col.key}
+            className={`activities-col ${col.key === 'Overdue' ? 'is-overdue' : ''}`}
+          >
             <div className="activities-col-header">
               <div className="activities-col-title">{col.title}</div>
               <div className="activities-col-count">{countLabel(col.key)}</div>
@@ -178,7 +186,25 @@ function ActivitiesKanban({ groups, parseDateFn, today, formatShortDate, onClick
                       onClick={() => onClickTask(t)}
                       title="Click to edit"
                     >
-                      <div className="activity-card-title">{t.description || 'Untitled task'}</div>
+                      <div className="activity-card-top">
+                        <div className="activity-card-title">
+                          {t.description || 'Untitled task'}
+                        </div>
+
+                        <div className="activity-card-actions">
+                          <button
+                            type="button"
+                            className="activity-card-iconbtn danger"
+                            title="Delete task"
+                            onClick={(e) => {
+                              e.stopPropagation(); // don't open edit modal
+                              onDeleteTask?.(t.id);
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
 
                       <div className="activity-card-sub">
                         <span className="truncate">{t.customerName || 'Unknown customer'}</span>
@@ -262,7 +288,7 @@ function PresalesOverview() {
     project_id: null,
   });
 
-  // ---------- Load data (THIS is what was missing before) ----------
+  // ---------- Load data ----------
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -333,9 +359,7 @@ function PresalesOverview() {
   const last30DaysRange = last30;
 
   const formatShortDate = (d) =>
-    d
-      ? new Date(d).toLocaleDateString('en-SG', { day: '2-digit', month: 'short' })
-      : '';
+    d ? new Date(d).toLocaleDateString('en-SG', { day: '2-digit', month: 'short' }) : '';
 
   const formatDayDetailDate = (d) =>
     d ? d.toLocaleDateString('en-SG', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) : '';
@@ -477,6 +501,31 @@ function PresalesOverview() {
       setTaskSaveError('Unexpected error while saving.');
     } finally {
       setTaskSaving(false);
+    }
+  };
+
+  // ---------- Delete task (from Kanban) ----------
+  const deleteTask = async (taskId) => {
+    const ok = window.confirm('Delete this task? This cannot be undone.');
+    if (!ok) return;
+
+    try {
+      const { error: delErr } = await supabase.from('project_tasks').delete().eq('id', taskId);
+
+      if (delErr) {
+        console.error('Error deleting task:', delErr);
+        alert('Failed to delete task.');
+        return;
+      }
+
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+
+      if (taskModalOpen && taskForm?.id === taskId) {
+        setTaskModalOpen(false);
+      }
+    } catch (err) {
+      console.error('Unexpected error deleting task:', err);
+      alert('Unexpected error while deleting task.');
     }
   };
 
@@ -906,8 +955,11 @@ function PresalesOverview() {
               groups={ongoingUpcomingGrouped}
               parseDateFn={parseDate}
               today={today}
-              formatShortDate={formatShortDate}
+              formatShortDate={(d) =>
+                d ? new Date(d).toLocaleDateString('en-SG', { day: '2-digit', month: 'short' }) : ''
+              }
               onClickTask={openTaskModal}
+              onDeleteTask={deleteTask}
             />
           )}
         </div>
@@ -946,7 +998,7 @@ function PresalesOverview() {
                     <tr key={t.id}>
                       <td>{t.description || 'Untitled task'}</td>
                       <td>{projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}</td>
-                      <td>{formatShortDate(t.due_date) || '-'}</td>
+                      <td>{(t.due_date && new Date(t.due_date).toLocaleDateString('en-SG')) || '-'}</td>
                       <td>{t.priority || 'Normal'}</td>
                     </tr>
                   ))}
@@ -1343,9 +1395,16 @@ function PresalesOverview() {
               </div>
 
               <div className="schedule-form-actions">
-                <div className="schedule-message">{scheduleError && <span className="schedule-message-error">{scheduleError}</span>}</div>
+                <div className="schedule-message">
+                  {scheduleError && <span className="schedule-message-error">{scheduleError}</span>}
+                </div>
                 <div className="schedule-form-buttons">
-                  <button type="button" className="ghost-btn ghost-btn-sm" onClick={closeScheduleModal} disabled={scheduleSaving}>
+                  <button
+                    type="button"
+                    className="ghost-btn ghost-btn-sm"
+                    onClick={closeScheduleModal}
+                    disabled={scheduleSaving}
+                  >
                     Cancel
                   </button>
                   <button type="submit" className="primary-btn" disabled={scheduleSaving}>
@@ -1394,7 +1453,10 @@ function PresalesOverview() {
               <div className="schedule-form-row">
                 <div className="schedule-field">
                   <label>Status</label>
-                  <select value={taskForm.status} onChange={(e) => setTaskForm((p) => ({ ...p, status: e.target.value }))}>
+                  <select
+                    value={taskForm.status}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, status: e.target.value }))}
+                  >
                     <option value="Not Started">Not Started</option>
                     <option value="In Progress">In Progress</option>
                     <option value="On Hold">On Hold</option>
@@ -1406,7 +1468,10 @@ function PresalesOverview() {
 
                 <div className="schedule-field">
                   <label>Assignee</label>
-                  <select value={taskForm.assignee} onChange={(e) => setTaskForm((p) => ({ ...p, assignee: e.target.value }))}>
+                  <select
+                    value={taskForm.assignee}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, assignee: e.target.value }))}
+                  >
                     <option value="">Unassigned</option>
                     {(presalesResources || []).map((r) => {
                       const name = r.name || r.email;
@@ -1476,7 +1541,10 @@ function PresalesOverview() {
 
                 <div className="schedule-field">
                   <label>Priority</label>
-                  <select value={taskForm.priority} onChange={(e) => setTaskForm((p) => ({ ...p, priority: e.target.value }))}>
+                  <select
+                    value={taskForm.priority}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, priority: e.target.value }))}
+                  >
                     <option value="High">High</option>
                     <option value="Normal">Normal</option>
                     <option value="Low">Low</option>
@@ -1497,7 +1565,9 @@ function PresalesOverview() {
               </div>
 
               <div className="schedule-form-actions">
-                <div className="schedule-message">{taskSaveError && <span className="schedule-message-error">{taskSaveError}</span>}</div>
+                <div className="schedule-message">
+                  {taskSaveError && <span className="schedule-message-error">{taskSaveError}</span>}
+                </div>
                 <div className="schedule-form-buttons">
                   <button type="button" className="ghost-btn ghost-btn-sm" onClick={closeTaskModal} disabled={taskSaving}>
                     Cancel
