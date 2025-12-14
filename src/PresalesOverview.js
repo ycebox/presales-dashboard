@@ -133,6 +133,88 @@ const normalizeStatusGroup = (status) => {
   return 'Other';
 };
 
+// ---------- Kanban component for Activities ----------
+function ActivitiesKanban({ groups, parseDateFn, today, formatShortDate, onClickTask }) {
+  const [limits, setLimits] = useState({
+    Overdue: 6,
+    'In Progress': 6,
+    'Not Started': 6,
+  });
+
+  const columns = [
+    { key: 'Overdue', title: 'Overdue' },
+    { key: 'In Progress', title: 'In Progress' },
+    { key: 'Not Started', title: 'Not Started' },
+  ];
+
+  const incLimit = (key) => {
+    setLimits((p) => ({ ...p, [key]: (p[key] || 6) + 6 }));
+  };
+
+  const countLabel = (key) => (groups?.[key]?.length || 0);
+
+  return (
+    <div className="activities-kanban">
+      {columns.map((col) => {
+        const list = groups?.[col.key] || [];
+        const visible = list.slice(0, limits[col.key] || 6);
+        const hasMore = list.length > visible.length;
+
+        return (
+          <div key={col.key} className={`activities-col ${col.key === 'Overdue' ? 'is-overdue' : ''}`}>
+            <div className="activities-col-header">
+              <div className="activities-col-title">{col.title}</div>
+              <div className="activities-col-count">{countLabel(col.key)}</div>
+            </div>
+
+            {visible.length === 0 ? (
+              <div className="activities-empty">No tasks</div>
+            ) : (
+              <div className="activities-cards">
+                {visible.map((t) => {
+                  const due = parseDateFn(t.due_date);
+                  const isOverdue = due && due.getTime() < today.getTime();
+
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={`activity-card ${isOverdue ? 'is-overdue' : ''}`}
+                      onClick={() => onClickTask(t)}
+                      title="Click to edit"
+                    >
+                      <div className="activity-card-title">{t.description || 'Untitled task'}</div>
+
+                      <div className="activity-card-sub">
+                        <span className="truncate">{t.customerName || 'Unknown customer'}</span>
+                        <span className="dot">•</span>
+                        <span className="truncate">{t.projectName || 'Unknown project'}</span>
+                      </div>
+
+                      <div className="activity-card-meta">
+                        <div className={`meta-chip ${isOverdue ? 'chip-overdue' : ''}`}>
+                          Due: {formatShortDate(t.due_date) || '-'}
+                        </div>
+                        <div className="meta-chip">{t.assignee || 'Unassigned'}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {hasMore && (
+              <button type="button" className="activities-more" onClick={() => incLimit(col.key)}>
+                Show more
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function PresalesOverview() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -171,7 +253,7 @@ function PresalesOverview() {
     schedules: [],
   });
 
-  // Task edit modal (for activities table)
+  // Task edit modal (for activities)
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [taskSaving, setTaskSaving] = useState(false);
   const [taskSaveError, setTaskSaveError] = useState(null);
@@ -279,7 +361,7 @@ function PresalesOverview() {
         })
       : '';
 
-  // ---------- Activities: Overdue + In Progress + Not Started (no “next 14 days” logic) ----------
+  // ---------- Activities: Overdue + In Progress + Not Started ----------
   const ongoingUpcomingActivities = useMemo(() => {
     if (!tasks || tasks.length === 0) return [];
 
@@ -321,7 +403,7 @@ function PresalesOverview() {
         return priorityScore(a.priority) - priorityScore(b.priority);
       });
 
-    return rows.slice(0, 30);
+    return rows.slice(0, 60);
   }, [tasks, projectInfoMap, today]);
 
   // Group: Overdue, In Progress, Not Started
@@ -407,7 +489,11 @@ function PresalesOverview() {
     };
 
     try {
-      const { data, error: updErr } = await supabase.from('project_tasks').update(payload).eq('id', taskForm.id).select();
+      const { data, error: updErr } = await supabase
+        .from('project_tasks')
+        .update(payload)
+        .eq('id', taskForm.id)
+        .select();
 
       if (updErr) {
         console.error('Error updating task:', updErr);
@@ -438,7 +524,8 @@ function PresalesOverview() {
           ? res.daily_capacity_hours
           : HOURS_PER_DAY;
 
-      const targetHours = res && typeof res.target_hours === 'number' && !Number.isNaN(res.target_hours) ? res.target_hours : 6;
+      const targetHours =
+        res && typeof res.target_hours === 'number' && !Number.isNaN(res.target_hours) ? res.target_hours : 6;
 
       const maxTasksPerDay = res && Number.isInteger(res.max_tasks_per_day) ? res.max_tasks_per_day : 3;
 
@@ -518,7 +605,9 @@ function PresalesOverview() {
 
       if (isOpen) {
         const taskEffort =
-          typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours) ? t.estimated_hours : DEFAULT_TASK_HOURS;
+          typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours)
+            ? t.estimated_hours
+            : DEFAULT_TASK_HOURS;
 
         entry.thisWeekHours += addHoursToRange(thisWeekRange, t, taskEffort);
         entry.nextWeekHours += addHoursToRange(nextWeekRange, t, taskEffort);
@@ -531,7 +620,8 @@ function PresalesOverview() {
       const utilThisWeek = capacityWeekHours ? Math.min((e.thisWeekHours / capacityWeekHours) * 100, 999) : 0;
       const utilNextWeek = capacityWeekHours ? Math.min((e.nextWeekHours / capacityWeekHours) * 100, 999) : 0;
 
-      const overdueRateLast30 = e.overdueTotalLast30 > 0 ? (e.overdueLast30 / e.overdueTotalLast30) * 100 : 0;
+      const overdueRateLast30 =
+        e.overdueTotalLast30 > 0 ? (e.overdueLast30 / e.overdueTotalLast30) * 100 : 0;
 
       return {
         ...e,
@@ -580,8 +670,12 @@ function PresalesOverview() {
 
         let freeDays = 0;
         days.forEach((d) => {
-          const hasTask = (tasks || []).some((t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d));
-          const hasSchedule = (scheduleEvents || []).some((s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date));
+          const hasTask = (tasks || []).some(
+            (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
+          );
+          const hasSchedule = (scheduleEvents || []).some(
+            (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
+          );
           if (!hasTask && !hasSchedule) freeDays += 1;
         });
 
@@ -613,9 +707,12 @@ function PresalesOverview() {
     const getCapacityFor = (name) => {
       const res = (presalesResources || []).find((p) => (p.name || p.email || 'Unknown') === name) || {};
       const dailyCapacity =
-        typeof res.daily_capacity_hours === 'number' && !Number.isNaN(res.daily_capacity_hours) ? res.daily_capacity_hours : HOURS_PER_DAY;
+        typeof res.daily_capacity_hours === 'number' && !Number.isNaN(res.daily_capacity_hours)
+          ? res.daily_capacity_hours
+          : HOURS_PER_DAY;
 
-      const maxTasksPerDay = Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0 ? res.max_tasks_per_day : 3;
+      const maxTasksPerDay =
+        Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0 ? res.max_tasks_per_day : 3;
 
       return { dailyCapacity, maxTasksPerDay };
     };
@@ -625,8 +722,12 @@ function PresalesOverview() {
       const { dailyCapacity, maxTasksPerDay } = getCapacityFor(name);
 
       const cells = days.map((d) => {
-        const dayTasks = (tasks || []).filter((t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d));
-        const daySchedules = (scheduleEvents || []).filter((s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date));
+        const dayTasks = (tasks || []).filter(
+          (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
+        );
+        const daySchedules = (scheduleEvents || []).filter(
+          (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
+        );
 
         let status = 'free';
         let label = 'Free';
@@ -634,7 +735,10 @@ function PresalesOverview() {
         const taskCount = dayTasks.length;
 
         const totalHours = dayTasks.reduce((sum, t) => {
-          const h = typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours) ? t.estimated_hours : DEFAULT_TASK_HOURS;
+          const h =
+            typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours)
+              ? t.estimated_hours
+              : DEFAULT_TASK_HOURS;
           return sum + h;
         }, 0);
 
@@ -746,7 +850,11 @@ function PresalesOverview() {
           closeScheduleModal();
         }
       } else if (scheduleMode === 'edit' && editingScheduleId) {
-        const { data, error: updateError } = await supabase.from('presales_schedule').update(payload).eq('id', editingScheduleId).select();
+        const { data, error: updateError } = await supabase
+          .from('presales_schedule')
+          .update(payload)
+          .eq('id', editingScheduleId)
+          .select();
 
         if (updateError) {
           console.error('Error updating schedule:', updateError);
@@ -793,7 +901,9 @@ function PresalesOverview() {
         projectName: projectMap.get(t.project_id) || 'Unknown project',
       }));
 
-    const daySchedules = (scheduleEvents || []).filter((e) => e.assignee === assignee && isWithinRange(day, e.start_date, e.end_date));
+    const daySchedules = (scheduleEvents || []).filter(
+      (e) => e.assignee === assignee && isWithinRange(day, e.start_date, e.end_date)
+    );
 
     setDayDetail({ assignee, date: day, tasks: dayTasks, schedules: daySchedules });
     setDayDetailOpen(true);
@@ -836,7 +946,7 @@ function PresalesOverview() {
         </div>
       </header>
 
-      {/* 0. ACTIVITIES (OVERDUE / IN PROGRESS / NOT STARTED) */}
+      {/* 0. ACTIVITIES (KANBAN) */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
@@ -845,71 +955,22 @@ function PresalesOverview() {
                 <ListChecks size={20} className="panel-icon" />
                 Presales activities
               </h3>
-              <p>Overdue, In Progress, and Not Started tasks. Click a row to edit.</p>
+              <p>Overdue, In Progress, and Not Started tasks. Click a card to edit.</p>
             </div>
           </div>
 
-          {ongoingUpcomingActivities.length === 0 ? (
+          {!ongoingUpcomingActivities || ongoingUpcomingActivities.length === 0 ? (
             <div className="presales-empty small">
               <p>No overdue, in-progress, or not-started tasks found.</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {['Overdue', 'In Progress', 'Not Started'].map((groupName) => {
-                const groupRows = ongoingUpcomingGrouped[groupName] || [];
-                if (groupRows.length === 0) return null;
-
-                return (
-                  <div key={groupName}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>{groupName}</span>
-                      <span style={{ fontSize: 11, color: '#9ca3af' }}>({groupRows.length})</span>
-                    </div>
-
-                    <div className="commitments-table-wrapper">
-                      <table className="commitments-table">
-                        <thead>
-                          <tr>
-                            <th>Task</th>
-                            <th>Customer</th>
-                            <th>Project</th>
-                            <th className="th-center">Due</th>
-                            <th className="th-center">Status</th>
-                            <th>Assignee</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {groupRows.map((t) => {
-                            const due = parseDate(t.due_date);
-                            const isOverdue = due && due.getTime() < today.getTime();
-
-                            return (
-                              <tr
-                                key={t.id}
-                                className="clickable-row"
-                                onClick={() => openTaskModal(t)}
-                                title="Click to edit"
-                              >
-                                <td className="td-ellipsis">{t.description || 'Untitled task'}</td>
-                                <td className="td-ellipsis">{t.customerName || 'Unknown customer'}</td>
-                                <td className="td-ellipsis">{t.projectName || 'Unknown project'}</td>
-                                <td className={`td-center ${isOverdue ? 'overdue' : ''}`}>
-                                  {formatShortDate(t.due_date) || '-'}
-                                </td>
-                                <td className="td-center">
-                                  <span className="status-pill">{t.status || 'Open'}</span>
-                                </td>
-                                <td className="td-ellipsis">{t.assignee || 'Unassigned'}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <ActivitiesKanban
+              groups={ongoingUpcomingGrouped}
+              parseDateFn={parseDate}
+              today={today}
+              formatShortDate={formatShortDate}
+              onClickTask={openTaskModal}
+            />
           )}
         </div>
       </section>
@@ -1355,7 +1416,12 @@ function PresalesOverview() {
                   {scheduleMessage && <span className="schedule-message-success">{scheduleMessage}</span>}
                 </div>
                 <div className="schedule-form-buttons">
-                  <button type="button" className="ghost-btn ghost-btn-sm" onClick={closeScheduleModal} disabled={scheduleSaving}>
+                  <button
+                    type="button"
+                    className="ghost-btn ghost-btn-sm"
+                    onClick={closeScheduleModal}
+                    disabled={scheduleSaving}
+                  >
                     Cancel
                   </button>
                   <button type="submit" className="primary-btn" disabled={scheduleSaving}>
@@ -1404,7 +1470,10 @@ function PresalesOverview() {
               <div className="schedule-form-row">
                 <div className="schedule-field">
                   <label>Status</label>
-                  <select value={taskForm.status} onChange={(e) => setTaskForm((p) => ({ ...p, status: e.target.value }))}>
+                  <select
+                    value={taskForm.status}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, status: e.target.value }))}
+                  >
                     <option value="Not Started">Not Started</option>
                     <option value="In Progress">In Progress</option>
                     <option value="On Hold">On Hold</option>
@@ -1416,7 +1485,10 @@ function PresalesOverview() {
 
                 <div className="schedule-field">
                   <label>Assignee</label>
-                  <select value={taskForm.assignee} onChange={(e) => setTaskForm((p) => ({ ...p, assignee: e.target.value }))}>
+                  <select
+                    value={taskForm.assignee}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, assignee: e.target.value }))}
+                  >
                     <option value="">Unassigned</option>
                     {(presalesResources || []).map((r) => {
                       const name = r.name || r.email;
@@ -1486,7 +1558,10 @@ function PresalesOverview() {
 
                 <div className="schedule-field">
                   <label>Priority</label>
-                  <select value={taskForm.priority} onChange={(e) => setTaskForm((p) => ({ ...p, priority: e.target.value }))}>
+                  <select
+                    value={taskForm.priority}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, priority: e.target.value }))}
+                  >
                     <option value="High">High</option>
                     <option value="Normal">Normal</option>
                     <option value="Low">Low</option>
@@ -1507,9 +1582,16 @@ function PresalesOverview() {
               </div>
 
               <div className="schedule-form-actions">
-                <div className="schedule-message">{taskSaveError && <span className="schedule-message-error">{taskSaveError}</span>}</div>
+                <div className="schedule-message">
+                  {taskSaveError && <span className="schedule-message-error">{taskSaveError}</span>}
+                </div>
                 <div className="schedule-form-buttons">
-                  <button type="button" className="ghost-btn ghost-btn-sm" onClick={closeTaskModal} disabled={taskSaving}>
+                  <button
+                    type="button"
+                    className="ghost-btn ghost-btn-sm"
+                    onClick={closeTaskModal}
+                    disabled={taskSaving}
+                  >
                     Cancel
                   </button>
                   <button type="button" className="primary-btn" onClick={saveTaskEdits} disabled={taskSaving}>
