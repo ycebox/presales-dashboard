@@ -290,12 +290,6 @@ function PresalesOverview() {
   const nextWeekRange = nextWeek;
   const last30DaysRange = last30;
 
-  const sevenDaysAhead = useMemo(() => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + 7);
-    return d;
-  }, [today]);
-
   const fourteenDaysAhead = useMemo(() => {
     const d = new Date(today);
     d.setDate(d.getDate() + 14);
@@ -587,37 +581,19 @@ function PresalesOverview() {
     return arr;
   }, [tasks, presalesResources, thisWeekRange, nextWeekRange, last30DaysRange, today]);
 
-  // ---------- Unassigned & At-Risk Tasks ----------
+  // ---------- Unassigned tasks ONLY (removed at-risk) ----------
   const unassignedAndAtRisk = useMemo(() => {
-    if (!tasks || tasks.length === 0) return { unassigned: [], atRisk: [] };
-
-    const utilMap = new Map();
-    workloadByAssignee.forEach((w) => utilMap.set(w.assignee, w.utilNextWeek || 0));
+    if (!tasks || tasks.length === 0) return { unassigned: [] };
 
     const unassigned = [];
-    const atRisk = [];
 
     (tasks || []).forEach((t) => {
       if (isCompletedStatus(t.status)) return;
-
-      const due = parseDate(t.due_date);
-      const priority = (t.priority || 'Normal').toLowerCase();
-      const assignee = t.assignee;
-
-      if (!assignee) unassigned.push(t);
-      if (!due) return;
-
-      const dueInNext7 = due.getTime() >= today.getTime() && due.getTime() <= sevenDaysAhead.getTime();
-
-      const assigneeLoad = assignee ? utilMap.get(assignee) || 0 : 0;
-      const isHighPriority = priority === 'high';
-      const isAssigneeOverloaded = assigneeLoad >= 90;
-
-      if (assignee && dueInNext7 && (isHighPriority || isAssigneeOverloaded)) atRisk.push(t);
+      if (!t.assignee) unassigned.push(t);
     });
 
-    return { unassigned, atRisk };
-  }, [tasks, workloadByAssignee, today, sevenDaysAhead]);
+    return { unassigned };
+  }, [tasks]);
 
   // ---------- Assignment helper ----------
   const assignmentSuggestions = useMemo(() => {
@@ -987,83 +963,49 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* 1. UNASSIGNED & AT-RISK TASKS */}
+      {/* 1. UNASSIGNED TASKS */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
             <div>
               <h3>
                 <AlertTriangle size={18} className="panel-icon" />
-                Unassigned & at-risk tasks
+                Unassigned tasks
               </h3>
-              <p>Tasks that need attention before they become a problem.</p>
+              <p>Tasks that still need an owner.</p>
             </div>
           </div>
 
-          {unassignedAndAtRisk.unassigned.length === 0 && unassignedAndAtRisk.atRisk.length === 0 ? (
+          {unassignedAndAtRisk.unassigned.length === 0 ? (
             <div className="presales-empty small">
-              <p>No unassigned or at-risk tasks detected right now.</p>
+              <p>No unassigned tasks detected right now.</p>
             </div>
           ) : (
             <div className="unassigned-at-risk-grid">
               <div className="unassigned-column unassigned-tasks-panel">
                 <h3>Unassigned tasks</h3>
-                {unassignedAndAtRisk.unassigned.length === 0 ? (
-                  <p className="small-muted">No unassigned tasks.</p>
-                ) : (
-                  <div className="assignment-table-wrapper unassigned-tasks-table-wrapper">
-                    <table className="assignment-table unassigned-tasks-table">
-                      <thead>
-                        <tr>
-                          <th>Task</th>
-                          <th>Project</th>
-                          <th>Due</th>
-                          <th>Priority</th>
+                <div className="assignment-table-wrapper unassigned-tasks-table-wrapper">
+                  <table className="assignment-table unassigned-tasks-table">
+                    <thead>
+                      <tr>
+                        <th>Task</th>
+                        <th>Project</th>
+                        <th>Due</th>
+                        <th>Priority</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unassignedAndAtRisk.unassigned.slice(0, 10).map((t) => (
+                        <tr key={t.id}>
+                          <td>{t.description || 'Untitled task'}</td>
+                          <td>{projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}</td>
+                          <td>{formatShortDate(t.due_date) || '-'}</td>
+                          <td>{t.priority || 'Normal'}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {unassignedAndAtRisk.unassigned.slice(0, 10).map((t) => (
-                          <tr key={t.id}>
-                            <td>{t.description || 'Untitled task'}</td>
-                            <td>{projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}</td>
-                            <td>{formatShortDate(t.due_date) || '-'}</td>
-                            <td>{t.priority || 'Normal'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              <div className="unassigned-column atrisk-tasks-panel">
-                <h3>At-risk tasks (next 7 days)</h3>
-                {unassignedAndAtRisk.atRisk.length === 0 ? (
-                  <p className="small-muted">No high-priority or overloaded tasks in the next 7 days.</p>
-                ) : (
-                  <div className="assignment-table-wrapper atrisk-tasks-table-wrapper">
-                    <table className="assignment-table atrisk-tasks-table">
-                      <thead>
-                        <tr>
-                          <th>Task</th>
-                          <th>Assignee</th>
-                          <th>Due</th>
-                          <th>Priority</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {unassignedAndAtRisk.atRisk.slice(0, 10).map((t) => (
-                          <tr key={t.id}>
-                            <td>{t.description || 'Untitled task'}</td>
-                            <td>{t.assignee || 'Unassigned'}</td>
-                            <td>{formatShortDate(t.due_date) || '-'}</td>
-                            <td>{t.priority || 'Normal'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -1490,8 +1432,8 @@ function PresalesOverview() {
                 <div>
                   <h4>Edit task</h4>
                   <p>
-                    {(projectInfoMap.get(taskForm.project_id)?.customerName) || 'Unknown customer'} ·{' '}
-                    {(projectInfoMap.get(taskForm.project_id)?.projectName) || 'Unknown project'}
+                    {projectInfoMap.get(taskForm.project_id)?.customerName || 'Unknown customer'} ·{' '}
+                    {projectInfoMap.get(taskForm.project_id)?.projectName || 'Unknown project'}
                   </p>
                 </div>
               </div>
@@ -1516,7 +1458,10 @@ function PresalesOverview() {
               <div className="schedule-form-row">
                 <div className="schedule-field">
                   <label>Status</label>
-                  <select value={taskForm.status} onChange={(e) => setTaskForm((p) => ({ ...p, status: e.target.value }))}>
+                  <select
+                    value={taskForm.status}
+                    onChange={(e) => setTaskForm((p) => ({ ...p, status: e.target.value }))}
+                  >
                     <option value="Not Started">Not Started</option>
                     <option value="In Progress">In Progress</option>
                     <option value="On Hold">On Hold</option>
