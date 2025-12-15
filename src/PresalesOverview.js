@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+<div className="presales-page-container theme-light">import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
 import {
   Users,
@@ -1026,7 +1026,7 @@ function PresalesOverview() {
   // ---------- Loading / error ----------
   if (loading) {
     return (
-      <div className="presales-page-container">
+      <div className="presales-page-container theme-light">
         <div className="presales-loading">
           <div className="presales-spinner" />
           <p>Loading presales overview…</p>
@@ -1037,7 +1037,7 @@ function PresalesOverview() {
 
   if (error) {
     return (
-      <div className="presales-page-container">
+     <div className="presales-page-container theme-light">
         <div className="presales-error">
           <AlertTriangle size={24} />
           <p>{error}</p>
@@ -1048,7 +1048,7 @@ function PresalesOverview() {
 
   // ---------- Render ----------
   return (
-    <div className="presales-page-container">
+    <div className="presales-page-container theme-light">
       <header className="presales-header">
         <div className="presales-header-main">
           <div>
