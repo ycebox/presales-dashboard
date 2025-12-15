@@ -2587,3 +2587,38 @@ button.day-detail-task-item:hover {
     grid-template-columns: 1fr;
   }
 }
+/* =========================================================
+   Availability heatmap: Green = available, Red = blocked
+   (keeps your palette vibe: soft, muted, enterprise)
+   ========================================================= */
+
+/* Available / Free: soft green */
+.presales-page-container.theme-light .heatmap-cell.status-free {
+  background: rgba(22, 163, 74, 0.18);       /* soft green fill */
+  border-color: rgba(22, 163, 74, 0.28);
+}
+
+/* Busy (tasks present): neutral gray */
+.presales-page-container.theme-light .heatmap-cell.status-busy {
+  background: rgba(170, 175, 175, 0.55);     /* your mid gray */
+  border-color: rgba(66, 67, 65, 0.18);      /* charcoal border */
+}
+
+/* Blocked (leave/travel/training/etc): soft red */
+.presales-page-container.theme-light .heatmap-cell.status-leave,
+.presales-page-container.theme-light .heatmap-cell.status-travel {
+  background: rgba(220, 38, 38, 0.16);       /* soft red fill */
+  border-color: rgba(220, 38, 38, 0.26);
+}
+
+/* If you ever add more blocked statuses later, you can reuse this class */
+.presales-page-container.theme-light .heatmap-cell.status-blocked {
+  background: rgba(220, 38, 38, 0.16);
+  border-color: rgba(220, 38, 38, 0.26);
+}
+
+/* Hover stays clean + readable */
+.presales-page-container.theme-light .heatmap-cell:hover {
+  filter: brightness(0.98);
+  border-color: rgba(66, 67, 65, 0.35);
+}
