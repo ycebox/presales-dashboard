@@ -2117,3 +2117,60 @@ button.day-detail-task-item:hover {
   border-color: rgba(43, 108, 176, 0.35);
   background: rgba(43, 108, 176, 0.04);
 }
+/* =========================================================
+   Availability Heatmap – new color coding (light palette)
+   Black / charcoal / gray / pale blue / beige / taupe / soft green
+   ========================================================= */
+
+.presales-page-container.theme-light .heatmap-table {
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+/* Make the cells feel “clickable” but still minimalist */
+.presales-page-container.theme-light .heatmap-cell {
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  border-radius: 10px;
+  transition: transform 0.08s ease, filter 0.12s ease, border-color 0.12s ease;
+}
+
+.presales-page-container.theme-light .heatmap-cell:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.98);
+  border-color: rgba(15, 23, 42, 0.22);
+}
+
+/* Base status colors (light shades) */
+.presales-page-container.theme-light .heatmap-cell.status-free {
+  background: rgba(34, 197, 94, 0.14); /* soft green */
+}
+
+.presales-page-container.theme-light .heatmap-cell.status-busy {
+  background: rgba(148, 163, 184, 0.22); /* light gray */
+}
+
+/* Leave vs travel: warm neutrals (beige / taupe) */
+.presales-page-container.theme-light .heatmap-cell.status-leave {
+  background: rgba(245, 158, 11, 0.14); /* beige */
+}
+
+.presales-page-container.theme-light .heatmap-cell.status-travel {
+  background: rgba(168, 139, 112, 0.16); /* taupe */
+}
+
+/* Optional: if your code ever sets these statuses, style them too */
+.presales-page-container.theme-light .heatmap-cell.status-near {
+  background: rgba(56, 189, 248, 0.16); /* pale blue */
+}
+
+.presales-page-container.theme-light .heatmap-cell.status-over {
+  background: rgba(17, 24, 39, 0.18); /* charcoal tint (still light) */
+  border-color: rgba(17, 24, 39, 0.25);
+}
+
+/* Header row slightly darker so the grid reads better */
+.presales-page-container.theme-light .heatmap-header-cell {
+  background: rgba(15, 23, 42, 0.04);
+  color: rgba(15, 23, 42, 0.90);
+  border-color: rgba(15, 23, 42, 0.10);
+}
