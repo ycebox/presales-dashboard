@@ -1,18 +1,15 @@
 // src/App.js
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  HashRouter as Router,
-  Routes,
-  Route,
-  Link,
-  useLocation,
-} from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+
 import { supabase } from './supabaseClient';
+
 import Projects from './Projects';
 import ProjectDetails from './ProjectDetails';
 import CustomerDetails from './CustomerDetails';
 import PresalesOverview from './PresalesOverview';
 import ReportsDashboard from './ReportsDashboard';
+
 import './App.css';
 
 // ---------- Header ----------
@@ -20,8 +17,7 @@ function AppHeader() {
   const location = useLocation();
 
   const isActive = (path) =>
-    location.pathname === path ||
-    (path !== '/' && location.pathname.startsWith(path));
+    location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
 
   return (
     <header className="app-header">
@@ -31,6 +27,7 @@ function AppHeader() {
           <p>Personal view of customers, deals, and presales workload.</p>
         </div>
       </div>
+
       <nav className="app-nav">
         <Link to="/" className={isActive('/') ? 'nav-link active' : 'nav-link'}>
           Home
@@ -41,10 +38,7 @@ function AppHeader() {
         >
           Presales overview
         </Link>
-        <Link
-          to="/reports"
-          className={isActive('/reports') ? 'nav-link active' : 'nav-link'}
-        >
+        <Link to="/reports" className={isActive('/reports') ? 'nav-link active' : 'nav-link'}>
           Reports
         </Link>
       </nav>
@@ -83,8 +77,6 @@ function HomeDashboard() {
     loadHomeData();
   }, []);
 
-  
-
   // ---------- Deal buckets (Home KPI strip) ----------
   const openDeals = useMemo(() => {
     return (projects || []).filter((p) => {
@@ -122,8 +114,6 @@ function HomeDashboard() {
     return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
   };
 
-
-
   if (loading) {
     return (
       <div className="home-dashboard">
@@ -158,9 +148,7 @@ function HomeDashboard() {
           <p className="home-card-subtitle">Highest-value active opportunities.</p>
 
           {topDeals.length === 0 ? (
-            <p className="small-muted">
-              No active deals found yet. Create projects to start tracking.
-            </p>
+            <p className="small-muted">No active deals found yet. Create projects to start tracking.</p>
           ) : (
             <div className="home-topdeals-wrap">
               <table className="home-topdeals-table home-topdeals-table-wide">
@@ -188,9 +176,7 @@ function HomeDashboard() {
                         {p.project_name || '-'}
                       </td>
                       <td className="td-nowrap">{p.sales_stage || 'N/A'}</td>
-                      <td className="td-right td-nowrap">
-                        {formatCurrency(Number(p.deal_value) || 0)}
-                      </td>
+                      <td className="td-right td-nowrap">{formatCurrency(Number(p.deal_value) || 0)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -200,7 +186,7 @@ function HomeDashboard() {
         </section>
       </div>
 
-      {/* LEFT: main work area (Customer portfolio / Projects) */}
+      {/* MAIN: KPI strip + Customer portfolio */}
       <div className="home-main-column">
         <section className="home-kpi-strip">
           <div className="home-kpi-card">
@@ -230,7 +216,9 @@ function HomeDashboard() {
 
         <Projects />
       </div>
-
+    </div>
+  );
+}
 
 // ----------------- MAIN APP -----------------
 function App() {
