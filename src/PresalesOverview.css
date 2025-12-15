@@ -2527,3 +2527,32 @@ button.day-detail-task-item:hover {
   border: 1px solid rgba(66, 67, 65, 0.18);
   color: var(--p-ink);
 }
+/* =========================================================
+   Kanban delete button – icon only (no dark circle)
+   ========================================================= */
+
+/* Remove background + border for delete icon in kanban */
+.presales-page-container.theme-light .activity-card-iconbtn {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 4px;
+}
+
+/* Keep it subtle but visible */
+.presales-page-container.theme-light .activity-card-iconbtn svg {
+  color: #424341; /* charcoal */
+  opacity: 0.65;
+}
+
+/* Hover state: clearer intent */
+.presales-page-container.theme-light .activity-card-iconbtn:hover svg {
+  opacity: 1;
+  color: #7f1d1d; /* muted red, not aggressive */
+}
+
+/* Danger variant should not add background */
+.presales-page-container.theme-light .activity-card-iconbtn.danger {
+  background: transparent !important;
+  border: none !important;
+}
