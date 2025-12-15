@@ -1008,7 +1008,80 @@ function PresalesOverview() {
           )}
         </div>
       </section>
+{/* 4. ASSIGNMENT HELPER */}
+      <section className="presales-assignment-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Filter size={18} className="panel-icon" />
+                Assignment helper
+              </h3>
+              <p>Pick dates and see who is safest to assign.</p>
+            </div>
+          </div>
 
+          <div className="assignment-content">
+            <div className="assignment-filters">
+              <div className="assignment-field">
+                <label>Task window</label>
+                <div className="assignment-dates">
+                  <input type="date" value={assignStart} onChange={(e) => setAssignStart(e.target.value)} />
+                  <span className="assignment-dash">to</span>
+                  <input type="date" value={assignEnd} onChange={(e) => setAssignEnd(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="assignment-field">
+                <label>Priority</label>
+                <select value={assignPriority} onChange={(e) => setAssignPriority(e.target.value)}>
+                  <option value="High">High</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="assignment-list">
+              {!assignStart || !assignEnd ? (
+                <div className="presales-empty small">
+                  <p>Select start and end date to see suggestions.</p>
+                </div>
+              ) : assignmentSuggestions.length === 0 ? (
+                <div className="presales-empty small">
+                  <p>No suggestions found for the selected range.</p>
+                </div>
+              ) : (
+                <table className="assignment-table">
+                  <thead>
+                    <tr>
+                      <th>Presales</th>
+                      <th className="th-center">Free days</th>
+                      <th className="th-center">Next week load</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assignmentSuggestions.slice(0, 6).map((sug) => (
+                      <tr key={sug.assignee}>
+                        <td>
+                          <div className="wl-name-cell">
+                            <div className="wl-avatar">{(sug.assignee || 'U').charAt(0).toUpperCase()}</div>
+                            <div className="wl-name-text">
+                              <span className="wl-name-main">{sug.assignee}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="td-center">{sug.freeDays}</td>
+                        <td className="td-center">{Math.round(sug.nextWeekLoad)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
       {/* 2. WORKLOAD */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
@@ -1254,80 +1327,7 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* 4. ASSIGNMENT HELPER */}
-      <section className="presales-assignment-section">
-        <div className="presales-panel presales-panel-large">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <Filter size={18} className="panel-icon" />
-                Assignment helper
-              </h3>
-              <p>Pick dates and see who is safest to assign.</p>
-            </div>
-          </div>
-
-          <div className="assignment-content">
-            <div className="assignment-filters">
-              <div className="assignment-field">
-                <label>Task window</label>
-                <div className="assignment-dates">
-                  <input type="date" value={assignStart} onChange={(e) => setAssignStart(e.target.value)} />
-                  <span className="assignment-dash">to</span>
-                  <input type="date" value={assignEnd} onChange={(e) => setAssignEnd(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="assignment-field">
-                <label>Priority</label>
-                <select value={assignPriority} onChange={(e) => setAssignPriority(e.target.value)}>
-                  <option value="High">High</option>
-                  <option value="Normal">Normal</option>
-                  <option value="Low">Low</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="assignment-list">
-              {!assignStart || !assignEnd ? (
-                <div className="presales-empty small">
-                  <p>Select start and end date to see suggestions.</p>
-                </div>
-              ) : assignmentSuggestions.length === 0 ? (
-                <div className="presales-empty small">
-                  <p>No suggestions found for the selected range.</p>
-                </div>
-              ) : (
-                <table className="assignment-table">
-                  <thead>
-                    <tr>
-                      <th>Presales</th>
-                      <th className="th-center">Free days</th>
-                      <th className="th-center">Next week load</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {assignmentSuggestions.slice(0, 6).map((sug) => (
-                      <tr key={sug.assignee}>
-                        <td>
-                          <div className="wl-name-cell">
-                            <div className="wl-avatar">{(sug.assignee || 'U').charAt(0).toUpperCase()}</div>
-                            <div className="wl-name-text">
-                              <span className="wl-name-main">{sug.assignee}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="td-center">{sug.freeDays}</td>
-                        <td className="td-center">{Math.round(sug.nextWeekLoad)}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+      
 
       {/* SCHEDULE MODAL */}
       {showScheduleModal && (
