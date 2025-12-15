@@ -1143,11 +1143,11 @@ function PresalesOverview() {
             <div className="assignment-filters">
               <div className="assignment-field">
                 <label>Priority</label>
-                <select value={assignPriority} onChange={(e) => setAssignPriority(e.target.value)}>
-                  <option value="High">High</option>
-                  <option value="Normal">Normal</option>
-                  <option value="Low">Low</option>
-                </select>
+            <select value={assignPriority} onChange={(e) => setAssignPriority(e.target.value)}>
+  <option value="High">High — needs ≥ 4 free hours/day</option>
+  <option value="Normal">Normal — needs ≥ 3 free hours/day</option>
+  <option value="Low">Low — needs ≥ 2 free hours/day</option>
+</select>
               </div>
 
               <div className="assignment-field">
