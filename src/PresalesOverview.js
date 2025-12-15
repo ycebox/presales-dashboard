@@ -144,11 +144,11 @@ function ActivitiesKanban({
     'Not Started': 6,
   });
 
-  const columns = [
-    { key: 'Overdue', title: 'Overdue' },
-    { key: 'In Progress', title: 'In Progress' },
-    { key: 'Not Started', title: 'Not Started' },
-  ];
+ const columns = [
+  { key: 'Not Started', title: 'Not Started' },
+  { key: 'In Progress', title: 'In Progress' },
+  { key: 'Overdue', title: 'Overdue' },
+];
 
   const incLimit = (key) => setLimits((p) => ({ ...p, [key]: (p[key] || 6) + 6 }));
   const countLabel = (key) => groups?.[key]?.length || 0;
