@@ -129,6 +129,41 @@ const normalizeStatusGroup = (status) => {
   return 'Other';
 };
 
+// ---------- Enhancement 1: Task Type weighting ----------
+const normalizeTaskTypeKey = (taskType) => {
+  const s = (taskType || '').toLowerCase().trim();
+  if (!s) return 'unknown';
+  if (s.includes('rfp') || s.includes('rfi') || s.includes('proposal') || s.includes('tender')) return 'rfp';
+  if (s.includes('poc') || s.includes('integration') || s.includes('workshop') || s.includes('discovery')) return 'poc';
+  if (s.includes('demo')) return 'demo';
+  if (s.includes('meeting') || s.includes('call') || s.includes('sync')) return 'meeting';
+  if (s.includes('admin') || s.includes('internal')) return 'admin';
+  return 'other';
+};
+
+const TASK_TYPE_MULTIPLIER = {
+  rfp: 1.6,
+  poc: 1.4,
+  demo: 1.2,
+  meeting: 0.8,
+  admin: 0.7,
+  other: 1.0,
+  unknown: 1.0,
+};
+
+const getEffectiveTaskHours = (task) => {
+  const base =
+    typeof task?.estimated_hours === 'number' && !Number.isNaN(task.estimated_hours)
+      ? task.estimated_hours
+      : DEFAULT_TASK_HOURS;
+
+  const key = normalizeTaskTypeKey(task?.task_type);
+  const mult = TASK_TYPE_MULTIPLIER[key] ?? 1.0;
+
+  const effective = Math.max(0, base * mult);
+  return Math.min(effective, 80);
+};
+
 // ---------- Kanban component ----------
 function ActivitiesKanban({
   groups,
@@ -144,11 +179,11 @@ function ActivitiesKanban({
     'Not Started': 6,
   });
 
- const columns = [
-  { key: 'Not Started', title: 'Not Started' },
-  { key: 'In Progress', title: 'In Progress' },
-  { key: 'Overdue', title: 'Overdue' },
-];
+  const columns = [
+    { key: 'Not Started', title: 'Not Started' },
+    { key: 'In Progress', title: 'In Progress' },
+    { key: 'Overdue', title: 'Overdue' },
+  ];
 
   const incLimit = (key) => setLimits((p) => ({ ...p, [key]: (p[key] || 6) + 6 }));
   const countLabel = (key) => groups?.[key]?.length || 0;
@@ -197,7 +232,7 @@ function ActivitiesKanban({
                             className="activity-card-iconbtn danger"
                             title="Delete task"
                             onClick={(e) => {
-                              e.stopPropagation(); // don't open edit modal
+                              e.stopPropagation();
                               onDeleteTask?.(t.id);
                             }}
                           >
@@ -544,9 +579,13 @@ function PresalesOverview() {
       const targetHours =
         res && typeof res.target_hours === 'number' && !Number.isNaN(res.target_hours) ? res.target_hours : 6;
 
-      const maxTasksPerDay = res && Number.isInteger(res.max_tasks_per_day) ? res.max_tasks_per_day : 3;
+      const maxTasksPerDay = res && Number.isInteger(res.max_tasks_per_day) ? res.max_tasksPerDay : 3;
 
-      return { dailyCapacity, targetHours, maxTasksPerDay };
+      // NOTE: keep existing behavior if max_tasks_per_day is stored on resource
+      const safeMaxTasksPerDay =
+        res && Number.isInteger(res.max_tasks_per_day) ? res.max_tasks_per_day : 3;
+
+      return { dailyCapacity, targetHours, maxTasksPerDay: safeMaxTasksPerDay };
     };
 
     const addHoursToRange = (range, task, hours) => {
@@ -621,10 +660,8 @@ function PresalesOverview() {
       }
 
       if (isOpen) {
-        const taskEffort =
-          typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours)
-            ? t.estimated_hours
-            : DEFAULT_TASK_HOURS;
+        // Enhancement 1: weighted effort
+        const taskEffort = getEffectiveTaskHours(t);
 
         entry.thisWeekHours += addHoursToRange(thisWeekRange, t, taskEffort);
         entry.nextWeekHours += addHoursToRange(nextWeekRange, t, taskEffort);
@@ -741,13 +778,9 @@ function PresalesOverview() {
         let label = 'Free';
 
         const taskCount = dayTasks.length;
-        const totalHours = dayTasks.reduce((sum, t) => {
-          const h =
-            typeof t.estimated_hours === 'number' && !Number.isNaN(t.estimated_hours)
-              ? t.estimated_hours
-              : DEFAULT_TASK_HOURS;
-          return sum + h;
-        }, 0);
+
+        // Enhancement 1: weighted total hours
+        const totalHours = dayTasks.reduce((sum, t) => sum + getEffectiveTaskHours(t), 0);
 
         const utilization = dailyCapacity ? Math.round((totalHours / dailyCapacity) * 100) : 0;
 
@@ -946,13 +979,58 @@ function PresalesOverview() {
             </div>
           </div>
 
-          {!ongoingUpcomingActivities || ongoingUpcomingActivities.length === 0 ? (
+          {!tasks || tasks.length === 0 ? (
             <div className="presales-empty small">
               <p>No overdue, in-progress, or not-started tasks found.</p>
             </div>
           ) : (
             <ActivitiesKanban
-              groups={ongoingUpcomingGrouped}
+              groups={(() => {
+                const rows = (tasks || [])
+                  .filter((t) => {
+                    if (isCompletedStatus(t.status)) return false;
+
+                    const due = parseDate(t.due_date);
+                    const isOverdue = due && due.getTime() < today.getTime();
+
+                    const statusGroup = normalizeStatusGroup(t.status);
+                    const isInProgress = statusGroup === 'In Progress';
+                    const isNotStarted = statusGroup === 'Not Started';
+
+                    return isOverdue || isInProgress || isNotStarted;
+                  })
+                  .map((t) => {
+                    const info = projectInfoMap.get(t.project_id) || {
+                      customerName: 'Unknown customer',
+                      projectName: 'Unknown project',
+                    };
+                    return { ...t, customerName: info.customerName, projectName: info.projectName };
+                  });
+
+                const groups = { Overdue: [], 'In Progress': [], 'Not Started': [] };
+                (rows || []).forEach((t) => {
+                  const due = parseDate(t.due_date);
+                  const isOverdue = due && due.getTime() < today.getTime();
+
+                  if (isOverdue) groups.Overdue.push(t);
+                  else {
+                    const g = normalizeStatusGroup(t.status);
+                    if (g === 'In Progress') groups['In Progress'].push(t);
+                    else if (g === 'Not Started') groups['Not Started'].push(t);
+                  }
+                });
+
+                Object.keys(groups).forEach((k) => {
+                  groups[k].sort((a, b) => {
+                    const ad = parseDate(a.due_date) || parseDate(a.end_date) || parseDate(a.start_date) || today;
+                    const bd = parseDate(b.due_date) || parseDate(b.end_date) || parseDate(b.start_date) || today;
+                    if (ad.getTime() !== bd.getTime()) return ad - bd;
+                    return priorityScore(a.priority) - priorityScore(b.priority);
+                  });
+                });
+
+                return groups;
+              })()}
               parseDateFn={parseDate}
               today={today}
               formatShortDate={(d) =>
@@ -1008,7 +1086,8 @@ function PresalesOverview() {
           )}
         </div>
       </section>
-{/* 4. ASSIGNMENT HELPER */}
+
+      {/* 4. ASSIGNMENT HELPER */}
       <section className="presales-assignment-section">
         <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
@@ -1082,6 +1161,7 @@ function PresalesOverview() {
           </div>
         </div>
       </section>
+
       {/* 2. WORKLOAD */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
@@ -1326,8 +1406,6 @@ function PresalesOverview() {
           )}
         </div>
       </section>
-
-      
 
       {/* SCHEDULE MODAL */}
       {showScheduleModal && (
