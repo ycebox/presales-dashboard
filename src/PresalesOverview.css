@@ -2174,3 +2174,60 @@ button.day-detail-task-item:hover {
   color: rgba(15, 23, 42, 0.90);
   border-color: rgba(15, 23, 42, 0.10);
 }
+/* =========================================================
+   TEXT READABILITY OVERRIDE
+   Force all text to black / charcoal for clarity
+   ========================================================= */
+
+.presales-page-container.theme-light {
+  color: #111827; /* near-black */
+}
+
+/* Headings */
+.presales-page-container.theme-light h1,
+.presales-page-container.theme-light h2,
+.presales-page-container.theme-light h3,
+.presales-page-container.theme-light h4,
+.presales-page-container.theme-light h5 {
+  color: #111827;
+}
+
+/* Paragraphs, labels, table text */
+.presales-page-container.theme-light p,
+.presales-page-container.theme-light span,
+.presales-page-container.theme-light label,
+.presales-page-container.theme-light th,
+.presales-page-container.theme-light td,
+.presales-page-container.theme-light button {
+  color: #111827;
+}
+
+/* Secondary / helper text — still readable */
+.presales-page-container.theme-light .presales-panel-header p,
+.presales-page-container.theme-light .presales-empty,
+.presales-page-container.theme-light .meta-chip,
+.presales-page-container.theme-light .day-detail-task-desc,
+.presales-page-container.theme-light .day-detail-section h4 {
+  color: #1f2937; /* charcoal */
+}
+
+/* Table headers slightly muted but readable */
+.presales-page-container.theme-light th {
+  color: #1f2937;
+}
+
+/* Links / clickable task names */
+.presales-page-container.theme-light .unassigned-task-link {
+  color: #111827;
+  text-decoration-color: rgba(17, 24, 39, 0.4);
+}
+
+/* Icons inherit readable color */
+.presales-page-container.theme-light svg {
+  color: #111827;
+}
+
+/* Error text stays clear */
+.presales-page-container.theme-light .form-error {
+  color: #7f1d1d;
+}
