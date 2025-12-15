@@ -1632,13 +1632,32 @@ button.day-detail-task-item:hover {
   --shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   --shadow-soft: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
+/* Light theme: actually switch the surface (override dark container background) */
+.presales-page-container.theme-light {
+  font-size: 102%; /* +2% readability */
 
+  /* lighter background than panels so cards/sections pop */
+  background:
+    radial-gradient(circle at 12% 10%, rgba(37, 99, 235, 0.10), transparent 55%),  /* pale blue */
+    radial-gradient(circle at 90% 18%, rgba(22, 163, 74, 0.06), transparent 55%),  /* soft green */
+    radial-gradient(circle at 20% 95%, rgba(245, 158, 11, 0.06), transparent 60%), /* beige/taupe warmth */
+    #f6f7fb; /* very light gray */
+  color: var(--text);
+}
 /* Page background */
 .presales-page-container.theme-light {
   background: var(--bg);
   color: var(--text);
 }
+.presales-page-container.theme-light .presales-panel {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  box-shadow: var(--shadow);
+}
 
+.presales-page-container.theme-light .presales-panel-header p {
+  color: var(--text-2);
+}
 /* Header */
 .presales-page-container.theme-light .presales-header-main h2 {
   color: var(--text);
