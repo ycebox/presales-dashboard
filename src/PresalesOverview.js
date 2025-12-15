@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
 import {
   Users,
-  User,
   AlertTriangle,
   CalendarDays,
   Filter,
@@ -52,6 +51,15 @@ const parseDate = (value) => {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
   return toMidnight(d);
+};
+
+const validateDateRange = (start, end) => {
+  if (!start || !end) return '';
+  const s = parseDate(start);
+  const e = parseDate(end);
+  if (!s || !e) return '';
+  if (s.getTime() > e.getTime()) return 'Start date cannot be later than end date.';
+  return '';
 };
 
 const isWithinRange = (d, start, end) => {
@@ -215,6 +223,7 @@ const getDefaultBlockHoursByType = (type, dailyCapacity) => {
   const t = (type || '').toLowerCase();
   if (t === 'leave' || t === 'travel') return dailyCapacity;
   if (t === 'training') return Math.min(6, dailyCapacity);
+  if (t === 'internal') return Math.min(3, dailyCapacity);
   return Math.min(2, dailyCapacity);
 };
 
@@ -345,6 +354,7 @@ function PresalesOverview() {
   const [assignPriority, setAssignPriority] = useState('Normal');
   const [assignStart, setAssignStart] = useState('');
   const [assignEnd, setAssignEnd] = useState('');
+  const [assignDateError, setAssignDateError] = useState('');
 
   // Calendar view
   const [calendarView, setCalendarView] = useState('14');
@@ -361,6 +371,7 @@ function PresalesOverview() {
   const [scheduleError, setScheduleError] = useState(null);
   const [scheduleMode, setScheduleMode] = useState('create');
   const [editingScheduleId, setEditingScheduleId] = useState(null);
+  const [scheduleDateError, setScheduleDateError] = useState('');
 
   // Day detail modal
   const [dayDetailOpen, setDayDetailOpen] = useState(false);
@@ -867,15 +878,26 @@ function PresalesOverview() {
         let label = 'Free';
 
         if (daySchedules.length > 0) {
-          const hasTravel = daySchedules.some((s) => (s.type || '').toLowerCase() === 'travel');
-          const hasLeave = daySchedules.some((s) => (s.type || '').toLowerCase() === 'leave');
+          const types = daySchedules.map((s) => (s.type || '').toLowerCase());
+          const fullBlocked = isFullDayBlocked(blockedHours, dailyCapacity);
 
-          if (hasLeave && isFullDayBlocked(blockedHours, dailyCapacity)) {
-            status = 'leave';
-            label = 'On leave';
-          } else if (hasTravel && isFullDayBlocked(blockedHours, dailyCapacity)) {
-            status = 'travel';
-            label = 'Travel';
+          if (fullBlocked) {
+            if (types.includes('leave')) {
+              status = 'leave';
+              label = 'On leave';
+            } else if (types.includes('travel')) {
+              status = 'travel';
+              label = 'Travel';
+            } else if (types.includes('training')) {
+              status = 'training';
+              label = 'Training';
+            } else if (types.includes('internal')) {
+              status = 'internal';
+              label = 'Internal';
+            } else {
+              status = 'other';
+              label = 'Other';
+            }
           } else {
             status = 'busy';
             label = blockedHours > 0 ? `Scheduled (${blockedHours.toFixed(1)}h)` : 'Scheduled';
@@ -892,9 +914,7 @@ function PresalesOverview() {
           if (utilization > 120 || taskCount > maxTasksPerDay) prefix = 'Over capacity: ';
           else if (utilization >= 90) prefix = 'Near capacity: ';
 
-          if (status === 'leave') label = `${prefix}Leave + ${baseLabel}${capText}`;
-          else if (status === 'travel') label = `${prefix}Travel + ${baseLabel}${capText}`;
-          else label = `${prefix}${baseLabel}${capText}`;
+          label = `${prefix}${baseLabel}${capText}`;
         } else if (blockedHours > 0 && status === 'busy') {
           label = `Scheduled · Blocked ${blockedHours.toFixed(1)}h · Left ${effectiveCapacity.toFixed(1)}h`;
         }
@@ -928,6 +948,7 @@ function PresalesOverview() {
     setScheduleNote('');
     setScheduleBlockHours('');
     setScheduleError(null);
+    setScheduleDateError('');
     setShowScheduleModal(true);
   };
 
@@ -941,6 +962,7 @@ function PresalesOverview() {
     setScheduleNote(event.note || '');
     setScheduleBlockHours(event.block_hours === null || event.block_hours === undefined ? '' : String(event.block_hours));
     setScheduleError(null);
+    setScheduleDateError(validateDateRange(event.start_date || '', event.end_date || event.start_date || ''));
     setShowScheduleModal(true);
   };
 
@@ -952,6 +974,13 @@ function PresalesOverview() {
 
     if (!scheduleAssignee || !scheduleStart) {
       setScheduleError('Assignee and start date are required.');
+      return;
+    }
+
+    const dateErr = validateDateRange(scheduleStart, scheduleEnd || scheduleStart);
+    if (dateErr) {
+      setScheduleDateError(dateErr);
+      setScheduleError(dateErr);
       return;
     }
 
@@ -1026,7 +1055,7 @@ function PresalesOverview() {
   // ---------- Loading / error ----------
   if (loading) {
     return (
-      <div className="presales-page-container theme-light">
+      <div className="presales-page-container">
         <div className="presales-loading">
           <div className="presales-spinner" />
           <p>Loading presales overview…</p>
@@ -1037,7 +1066,7 @@ function PresalesOverview() {
 
   if (error) {
     return (
-     <div className="presales-page-container theme-light">
+      <div className="presales-page-container">
         <div className="presales-error">
           <AlertTriangle size={24} />
           <p>{error}</p>
@@ -1048,7 +1077,7 @@ function PresalesOverview() {
 
   // ---------- Render ----------
   return (
-    <div className="presales-page-container theme-light">
+    <div className="presales-page-container">
       <header className="presales-header">
         <div className="presales-header-main">
           <div>
@@ -1083,66 +1112,65 @@ function PresalesOverview() {
       </section>
 
       {/* UNASSIGNED TASKS */}
-<section className="presales-crunch-section">
-  <div className="presales-panel presales-panel-large">
-    <div className="presales-panel-header">
-      <div>
-        <h3>
-          <AlertTriangle size={18} className="panel-icon" />
-          Unassigned tasks
-        </h3>
-        <p>Tasks without an owner. Click a task to assign it.</p>
-      </div>
-    </div>
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <AlertTriangle size={18} className="panel-icon" />
+                Unassigned tasks
+              </h3>
+              <p>Tasks without an owner. Click a task to assign it.</p>
+            </div>
+          </div>
 
-    {unassignedOnly.length === 0 ? (
-      <div className="presales-empty small">
-        <p>No unassigned tasks detected right now.</p>
-      </div>
-    ) : (
-      <div className="unassigned-tasks-table-wrapper">
-        <table className="unassigned-tasks-table">
-          <thead>
-            <tr>
-              <th>Task</th>
-              <th>Project</th>
-              <th>Due</th>
-              <th>Priority</th>
-            </tr>
-          </thead>
+          {unassignedOnly.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No unassigned tasks detected right now.</p>
+            </div>
+          ) : (
+            <div className="unassigned-tasks-table-wrapper">
+              <table className="unassigned-tasks-table">
+                <thead>
+                  <tr>
+                    <th>Task</th>
+                    <th>Project</th>
+                    <th>Due</th>
+                    <th>Priority</th>
+                  </tr>
+                </thead>
 
-          <tbody>
-            {unassignedOnly.slice(0, 10).map((t) => (
-              <tr key={t.id}>
-                {/* 👇 THIS IS THE ONLY CHANGE */}
-                <td className="td-ellipsis">
-                  <button
-                    type="button"
-                    className="unassigned-task-link"
-                    onClick={() => openTaskModal(t)}
-                    title="Open task"
-                  >
-                    {t.description || 'Untitled task'}
-                  </button>
-                </td>
+                <tbody>
+                  {unassignedOnly.slice(0, 10).map((t) => (
+                    <tr key={t.id}>
+                      <td className="td-ellipsis">
+                        <button
+                          type="button"
+                          className="unassigned-task-link"
+                          onClick={() => openTaskModal(t)}
+                          title="Open task"
+                        >
+                          {t.description || 'Untitled task'}
+                        </button>
+                      </td>
 
-                <td className="td-ellipsis">
-                  {projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}
-                </td>
+                      <td className="td-ellipsis">
+                        {projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}
+                      </td>
 
-                <td>
-                  {(t.due_date && new Date(t.due_date).toLocaleDateString('en-SG')) || '-'}
-                </td>
+                      <td>
+                        {(t.due_date && new Date(t.due_date).toLocaleDateString('en-SG')) || '-'}
+                      </td>
 
-                <td>{t.priority || 'Normal'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )}
-  </div>
-</section>
+                      <td>{t.priority || 'Normal'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* ASSIGNMENT HELPER */}
       <section className="presales-crunch-section">
@@ -1161,25 +1189,45 @@ function PresalesOverview() {
             <div className="assignment-filters">
               <div className="assignment-field">
                 <label>Priority</label>
-            <select value={assignPriority} onChange={(e) => setAssignPriority(e.target.value)}>
-  <option value="High">High — needs ≥ 4 free hours/day</option>
-  <option value="Normal">Normal — needs ≥ 3 free hours/day</option>
-  <option value="Low">Low — needs ≥ 2 free hours/day</option>
-</select>
+                <select value={assignPriority} onChange={(e) => setAssignPriority(e.target.value)}>
+                  <option value="High">High — needs ≥ 4 free hours/day</option>
+                  <option value="Normal">Normal — needs ≥ 3 free hours/day</option>
+                  <option value="Low">Low — needs ≥ 2 free hours/day</option>
+                </select>
               </div>
 
               <div className="assignment-field">
                 <label>Start date</label>
-                <input type="date" value={assignStart} onChange={(e) => setAssignStart(e.target.value)} />
+                <input
+                  type="date"
+                  value={assignStart}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setAssignStart(v);
+                    setAssignDateError(validateDateRange(v, assignEnd));
+                  }}
+                />
               </div>
 
               <div className="assignment-field">
                 <label>End date</label>
-                <input type="date" value={assignEnd} onChange={(e) => setAssignEnd(e.target.value)} />
+                <input
+                  type="date"
+                  value={assignEnd}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setAssignEnd(v);
+                    setAssignDateError(validateDateRange(assignStart, v));
+                  }}
+                />
               </div>
             </div>
 
-            {(!assignStart || !assignEnd) ? (
+            {assignDateError ? (
+              <div className="presales-empty small">
+                <p>{assignDateError}</p>
+              </div>
+            ) : (!assignStart || !assignEnd) ? (
               <div className="presales-empty small">
                 <p>Select start + end dates to see suggestions.</p>
               </div>
@@ -1276,17 +1324,18 @@ function PresalesOverview() {
             </div>
 
             <div className="schedule-actions">
-              <div className="schedule-view-toggle">
+              {/* Alias to new CSS toggle classes */}
+              <div className="schedule-view-toggle toggle-wrap availability-toggle">
                 <button
                   type="button"
-                  className={calendarView === '14' ? 'active' : ''}
+                  className={`toggle-btn ${calendarView === '14' ? 'active' : ''}`}
                   onClick={() => setCalendarView('14')}
                 >
                   14 days
                 </button>
                 <button
                   type="button"
-                  className={calendarView === '30' ? 'active' : ''}
+                  className={`toggle-btn ${calendarView === '30' ? 'active' : ''}`}
                   onClick={() => setCalendarView('30')}
                 >
                   30 days
@@ -1391,21 +1440,21 @@ function PresalesOverview() {
 
       {/* DAY DETAIL MODAL */}
       {dayDetailOpen && (
-        <div className="schedule-modal-backdrop" onMouseDown={() => setDayDetailOpen(false)}>
-          <div className="schedule-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="schedule-modal-header">
+        <div className="schedule-modal-backdrop modal-backdrop" onMouseDown={() => setDayDetailOpen(false)}>
+          <div className="schedule-modal modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="schedule-modal-header modal-header">
               <div>
                 <div className="schedule-modal-title">Day details</div>
                 <div style={{ fontSize: 12, opacity: 0.8 }}>
                   {dayDetail.assignee} • {formatDayDetailDate(dayDetail.date)}
                 </div>
               </div>
-              <button type="button" className="schedule-modal-close" onClick={() => setDayDetailOpen(false)}>
+              <button type="button" className="schedule-modal-close modal-close" onClick={() => setDayDetailOpen(false)}>
                 <X size={18} />
               </button>
             </div>
 
-            <div className="day-detail-body">
+            <div className="day-detail-body modal-body">
               <div className="day-detail-section">
                 <h4>Schedules</h4>
                 {dayDetail.schedules.length === 0 ? (
@@ -1461,19 +1510,19 @@ function PresalesOverview() {
 
       {/* SCHEDULE MODAL */}
       {showScheduleModal && (
-        <div className="schedule-modal-backdrop" onMouseDown={closeScheduleModal}>
-          <div className="schedule-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="schedule-modal-header">
+        <div className="schedule-modal-backdrop modal-backdrop" onMouseDown={closeScheduleModal}>
+          <div className="schedule-modal modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="schedule-modal-header modal-header">
               <div className="schedule-modal-title">
                 {scheduleMode === 'create' ? 'Add schedule' : 'Edit schedule'}
               </div>
-              <button type="button" className="schedule-modal-close" onClick={closeScheduleModal}>
+              <button type="button" className="schedule-modal-close modal-close" onClick={closeScheduleModal}>
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleScheduleSubmit} className="schedule-form">
-              {scheduleError && <div className="form-error">{scheduleError}</div>}
+            <form onSubmit={handleScheduleSubmit} className="schedule-form modal-body">
+              {(scheduleError || scheduleDateError) && <div className="form-error">{scheduleError || scheduleDateError}</div>}
 
               <div className="schedule-field">
                 <label>Assignee</label>
@@ -1503,12 +1552,28 @@ function PresalesOverview() {
 
               <div className="schedule-field">
                 <label>Start</label>
-                <input type="date" value={scheduleStart} onChange={(e) => setScheduleStart(e.target.value)} />
+                <input
+                  type="date"
+                  value={scheduleStart}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setScheduleStart(v);
+                    setScheduleDateError(validateDateRange(v, scheduleEnd || v));
+                  }}
+                />
               </div>
 
               <div className="schedule-field">
                 <label>End</label>
-                <input type="date" value={scheduleEnd} onChange={(e) => setScheduleEnd(e.target.value)} />
+                <input
+                  type="date"
+                  value={scheduleEnd}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setScheduleEnd(v);
+                    setScheduleDateError(validateDateRange(scheduleStart, v || scheduleStart));
+                  }}
+                />
               </div>
 
               <div className="schedule-field">
@@ -1528,11 +1593,11 @@ function PresalesOverview() {
                 <input value={scheduleNote} onChange={(e) => setScheduleNote(e.target.value)} placeholder="Optional" />
               </div>
 
-              <div className="schedule-actions">
+              <div className="schedule-actions modal-footer">
                 <button type="button" className="btn-secondary" onClick={closeScheduleModal} disabled={scheduleSaving}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary" disabled={scheduleSaving}>
+                <button type="submit" className="btn-primary" disabled={scheduleSaving || !!scheduleDateError}>
                   <Save size={16} /> {scheduleSaving ? 'Saving…' : 'Save'}
                 </button>
               </div>
@@ -1543,18 +1608,18 @@ function PresalesOverview() {
 
       {/* TASK MODAL */}
       {taskModalOpen && (
-        <div className="schedule-modal-backdrop" onMouseDown={closeTaskModal}>
-          <div className="schedule-modal activity-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="schedule-modal-header">
+        <div className="schedule-modal-backdrop modal-backdrop" onMouseDown={closeTaskModal}>
+          <div className="schedule-modal modal activity-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="schedule-modal-header modal-header">
               <div className="schedule-modal-title">Edit task</div>
-              <button type="button" className="schedule-modal-close" onClick={closeTaskModal}>
+              <button type="button" className="schedule-modal-close modal-close" onClick={closeTaskModal}>
                 <X size={18} />
               </button>
             </div>
 
             {taskSaveError && <div className="form-error">{taskSaveError}</div>}
 
-            <div className="schedule-form">
+            <div className="schedule-form modal-body">
               <div className="schedule-field-full">
                 <label>Description</label>
                 <input
@@ -1650,7 +1715,7 @@ function PresalesOverview() {
                 />
               </div>
 
-              <div className="schedule-actions">
+              <div className="schedule-actions modal-footer">
                 <button
                   type="button"
                   className="btn-secondary"
