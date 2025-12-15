@@ -28,15 +28,14 @@ const DEFAULT_TASK_TYPES = [
   { id: 'other', name: 'Other' },
 ];
 
-// These are the canonical names you want to keep consistent.
-// Multipliers apply to estimated_hours to reflect “effort”.
+// Multipliers apply to estimated_hours to reflect “effort”
 const CANONICAL_TYPE_MULTIPLIERS = {
   'rfp / proposal': 1.6,
   'poc / integration / workshop': 1.4,
-  'demo': 1.2,
+  demo: 1.2,
   'meeting / call': 0.8,
   'admin / internal': 0.7,
-  'other': 1.0,
+  other: 1.0,
 };
 
 // ---------- Helpers ----------
@@ -150,7 +149,7 @@ const normalizeStatusGroup = (status) => {
   return 'Other';
 };
 
-// ---------- Task type multiplier (DB-driven) ----------
+// ---------- Task type multiplier ----------
 const legacyKeywordMultiplier = (taskType) => {
   const s = (taskType || '').toLowerCase().trim();
   if (!s) return 1.0;
@@ -167,12 +166,10 @@ const legacyKeywordMultiplier = (taskType) => {
 const buildTaskTypeMultiplierMap = (taskTypes) => {
   const map = new Map();
 
-  // Always seed with canonical defaults (in case DB has the same names).
   Object.entries(CANONICAL_TYPE_MULTIPLIERS).forEach(([nameLower, mult]) => {
     map.set(nameLower, mult);
   });
 
-  // Add DB types
   (taskTypes || []).forEach((t) => {
     const key = (t?.name || '').toLowerCase().trim();
     if (!key) return;
@@ -197,11 +194,9 @@ const getEffectiveTaskHours = (task, taskTypeMultiplierMap) => {
 
   let mult = 1.0;
 
-  // 1) Prefer DB-driven exact name match
   if (typeNameLower && taskTypeMultiplierMap?.has(typeNameLower)) {
     mult = taskTypeMultiplierMap.get(typeNameLower);
   } else {
-    // 2) Legacy fallback for old messy values
     mult = legacyKeywordMultiplier(task?.task_type);
   }
 
@@ -241,7 +236,7 @@ const getPriorityMinFreeHours = (priority) => {
   return 3;
 };
 
-// ---------- Kanban component ----------
+// ---------- Kanban ----------
 function ActivitiesKanban({ groups, parseDateFn, today, formatShortDate, onClickTask, onDeleteTask }) {
   const [limits, setLimits] = useState({
     Overdue: 6,
@@ -492,61 +487,26 @@ function PresalesOverview() {
     return base;
   }, [taskTypes, taskForm?.task_type]);
 
-  // ---------- Presales Activities (Overdue + In Progress + Not Started) ----------
-  const ongoingUpcomingActivities = useMemo(() => {
-    if (!tasks || tasks.length === 0) return [];
-
-    const rows = (tasks || [])
-      .filter((t) => {
-        if (isCompletedStatus(t.status)) return false;
-
-        const due = parseDate(t.due_date);
-        const isOverdue = due && due.getTime() < today.getTime();
-
-        const statusGroup = normalizeStatusGroup(t.status);
-        const isInProgress = statusGroup === 'In Progress';
-        const isNotStarted = statusGroup === 'Not Started';
-
-        return isOverdue || isInProgress || isNotStarted;
-      })
-      .map((t) => {
-        const info = projectInfoMap.get(t.project_id) || {
-          customerName: 'Unknown customer',
-          projectName: 'Unknown project',
-        };
-        return { ...t, customerName: info.customerName, projectName: info.projectName };
-      })
-      .sort((a, b) => {
-        const ad = parseDate(a.due_date) || parseDate(a.end_date) || parseDate(a.start_date) || today;
-        const bd = parseDate(b.due_date) || parseDate(b.end_date) || parseDate(b.start_date) || today;
-
-        const aOverdue = ad && ad.getTime() < today.getTime();
-        const bOverdue = bd && bd.getTime() < today.getTime();
-
-        if (aOverdue && !bOverdue) return -1;
-        if (!aOverdue && bOverdue) return 1;
-
-        if (ad.getTime() !== bd.getTime()) return ad - bd;
-        return priorityScore(a.priority) - priorityScore(b.priority);
-      });
-
-    return rows.slice(0, 60);
-  }, [tasks, projectInfoMap, today]);
-
+  // ---------- Presales Activities grouping ----------
   const ongoingUpcomingGrouped = useMemo(() => {
     const groups = { Overdue: [], 'In Progress': [], 'Not Started': [] };
 
-    (ongoingUpcomingActivities || []).forEach((t) => {
-      const due = parseDate(t.due_date);
-      const isOverdue = due && due.getTime() < today.getTime();
+    (tasks || [])
+      .filter((t) => !isCompletedStatus(t.status))
+      .forEach((t) => {
+        const info = projectInfoMap.get(t.project_id) || { customerName: 'Unknown customer', projectName: 'Unknown project' };
+        const row = { ...t, customerName: info.customerName, projectName: info.projectName };
 
-      if (isOverdue) groups.Overdue.push(t);
-      else {
-        const g = normalizeStatusGroup(t.status);
-        if (g === 'In Progress') groups['In Progress'].push(t);
-        else if (g === 'Not Started') groups['Not Started'].push(t);
-      }
-    });
+        const due = parseDate(row.due_date);
+        const isOverdue = due && due.getTime() < today.getTime();
+
+        if (isOverdue) groups.Overdue.push(row);
+        else {
+          const g = normalizeStatusGroup(row.status);
+          if (g === 'In Progress') groups['In Progress'].push(row);
+          else if (g === 'Not Started') groups['Not Started'].push(row);
+        }
+      });
 
     Object.keys(groups).forEach((k) => {
       groups[k].sort((a, b) => {
@@ -558,7 +518,7 @@ function PresalesOverview() {
     });
 
     return groups;
-  }, [ongoingUpcomingActivities, today]);
+  }, [tasks, projectInfoMap, today]);
 
   // ---------- Task modal ----------
   const openTaskModal = (task) => {
@@ -771,7 +731,7 @@ function PresalesOverview() {
     return arr;
   }, [tasks, presalesResources, thisWeekRange, nextWeekRange, last30DaysRange, today, taskTypeMultiplierMap]);
 
-  // ---------- Unassigned tasks only (KEEP ONLY THIS ONE) ----------
+  // ✅ Unassigned tasks only (ONE declaration only)
   const unassignedOnly = useMemo(() => {
     const unassigned = [];
     (tasks || []).forEach((t) => {
@@ -875,7 +835,8 @@ function PresalesOverview() {
           ? res.daily_capacity_hours
           : HOURS_PER_DAY;
 
-      const maxTasksPerDay = Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0 ? res.max_tasks_per_day : 3;
+      const maxTasksPerDay =
+        Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0 ? res.max_tasks_per_day : 3;
 
       return { dailyCapacity, maxTasksPerDay };
     };
@@ -956,6 +917,98 @@ function PresalesOverview() {
     return { days, rows };
   }, [presalesResources, tasks, scheduleEvents, calendarView, taskTypeMultiplierMap]);
 
+  // ---------- Schedule modal handlers ----------
+  const openScheduleModalForCreate = () => {
+    setScheduleMode('create');
+    setEditingScheduleId(null);
+    setScheduleAssignee('');
+    setScheduleType('Leave');
+    setScheduleStart('');
+    setScheduleEnd('');
+    setScheduleNote('');
+    setScheduleBlockHours('');
+    setScheduleError(null);
+    setShowScheduleModal(true);
+  };
+
+  const openScheduleModalForEdit = (event) => {
+    setScheduleMode('edit');
+    setEditingScheduleId(event.id);
+    setScheduleAssignee(event.assignee || '');
+    setScheduleType(event.type || 'Leave');
+    setScheduleStart(event.start_date || '');
+    setScheduleEnd(event.end_date || event.start_date || '');
+    setScheduleNote(event.note || '');
+    setScheduleBlockHours(event.block_hours === null || event.block_hours === undefined ? '' : String(event.block_hours));
+    setScheduleError(null);
+    setShowScheduleModal(true);
+  };
+
+  const closeScheduleModal = () => setShowScheduleModal(false);
+
+  const handleScheduleSubmit = async (e) => {
+    e.preventDefault();
+    setScheduleError(null);
+
+    if (!scheduleAssignee || !scheduleStart) {
+      setScheduleError('Assignee and start date are required.');
+      return;
+    }
+
+    const payload = {
+      assignee: scheduleAssignee,
+      type: scheduleType,
+      start_date: scheduleStart,
+      end_date: scheduleEnd || scheduleStart,
+      note: scheduleNote || null,
+      block_hours: toNumberOrNull(scheduleBlockHours),
+    };
+
+    setScheduleSaving(true);
+
+    try {
+      if (scheduleMode === 'create') {
+        const { data, error: insertError } = await supabase.from('presales_schedule').insert([payload]).select();
+        if (insertError) setScheduleError('Failed to create schedule entry.');
+        else if (data?.[0]) {
+          setScheduleEvents((prev) => [...prev, data[0]]);
+          closeScheduleModal();
+        }
+      } else if (scheduleMode === 'edit' && editingScheduleId) {
+        const { data, error: updateError } = await supabase
+          .from('presales_schedule')
+          .update(payload)
+          .eq('id', editingScheduleId)
+          .select();
+
+        if (updateError) setScheduleError('Failed to update schedule entry.');
+        else if (data?.[0]) {
+          const updated = data[0];
+          setScheduleEvents((prev) => prev.map((ev) => (ev.id === updated.id ? updated : ev)));
+          closeScheduleModal();
+        }
+      }
+    } catch (err) {
+      console.error('Error saving schedule:', err);
+      setScheduleError('Unexpected error while saving schedule.');
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
+  const handleDeleteSchedule = async (id) => {
+    if (!window.confirm('Delete this schedule entry?')) return;
+
+    try {
+      const { error: deleteError } = await supabase.from('presales_schedule').delete().eq('id', id);
+      if (deleteError) alert('Failed to delete schedule entry.');
+      else setScheduleEvents((prev) => prev.filter((ev) => ev.id !== id));
+    } catch (err) {
+      console.error('Error deleting schedule:', err);
+      alert('Unexpected error while deleting schedule entry.');
+    }
+  };
+
   // ---------- Day detail ----------
   const openDayDetail = (assignee, date) => {
     const day = toMidnight(date);
@@ -964,9 +1017,7 @@ function PresalesOverview() {
       .filter((t) => t.assignee === assignee && !isCompletedStatus(t.status) && isTaskOnDay(t, day))
       .map((t) => ({ ...t, projectName: projectMap.get(t.project_id) || 'Unknown project' }));
 
-    const daySchedules = (scheduleEvents || []).filter(
-      (ev) => ev.assignee === assignee && isWithinRange(day, ev.start_date, ev.end_date)
-    );
+    const daySchedules = (scheduleEvents || []).filter((ev) => ev.assignee === assignee && isWithinRange(day, ev.start_date, ev.end_date));
 
     setDayDetail({ assignee, date: day, tasks: dayTasks, schedules: daySchedules });
     setDayDetailOpen(true);
@@ -995,6 +1046,7 @@ function PresalesOverview() {
     );
   }
 
+  // ---------- Render ----------
   return (
     <div className="presales-page-container">
       <header className="presales-header">
@@ -1006,7 +1058,7 @@ function PresalesOverview() {
         </div>
       </header>
 
-      {/* PRESALES ACTIVITIES (KANBAN) */}
+      {/* PRESALES ACTIVITIES */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
@@ -1020,38 +1072,7 @@ function PresalesOverview() {
           </div>
 
           <ActivitiesKanban
-            groups={(() => {
-              const groups = { Overdue: [], 'In Progress': [], 'Not Started': [] };
-              (tasks || [])
-                .filter((t) => !isCompletedStatus(t.status))
-                .forEach((t) => {
-                  const info = projectInfoMap.get(t.project_id) || {
-                    customerName: 'Unknown customer',
-                    projectName: 'Unknown project',
-                  };
-                  const row = { ...t, customerName: info.customerName, projectName: info.projectName };
-
-                  const due = parseDate(row.due_date);
-                  const isOverdue = due && due.getTime() < today.getTime();
-                  if (isOverdue) groups.Overdue.push(row);
-                  else {
-                    const g = normalizeStatusGroup(row.status);
-                    if (g === 'In Progress') groups['In Progress'].push(row);
-                    else if (g === 'Not Started') groups['Not Started'].push(row);
-                  }
-                });
-
-              Object.keys(groups).forEach((k) => {
-                groups[k].sort((a, b) => {
-                  const ad = parseDate(a.due_date) || parseDate(a.end_date) || parseDate(a.start_date) || today;
-                  const bd = parseDate(b.due_date) || parseDate(b.end_date) || parseDate(b.start_date) || today;
-                  if (ad.getTime() !== bd.getTime()) return ad - bd;
-                  return priorityScore(a.priority) - priorityScore(b.priority);
-                });
-              });
-
-              return groups;
-            })()}
+            groups={ongoingUpcomingGrouped}
             parseDateFn={parseDate}
             today={today}
             formatShortDate={formatShortDate}
@@ -1092,8 +1113,8 @@ function PresalesOverview() {
                 <tbody>
                   {unassignedOnly.slice(0, 10).map((t) => (
                     <tr key={t.id}>
-                      <td>{t.description || 'Untitled task'}</td>
-                      <td>{projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}</td>
+                      <td className="td-ellipsis">{t.description || 'Untitled task'}</td>
+                      <td className="td-ellipsis">{projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}</td>
                       <td>{(t.due_date && new Date(t.due_date).toLocaleDateString('en-SG')) || '-'}</td>
                       <td>{t.priority || 'Normal'}</td>
                     </tr>
@@ -1105,10 +1126,535 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* NOTE:
-          The rest of your sections (Assignment Helper, Workload, Availability, Schedules, Modals)
-          are not included in this file version.
-      */}
+      {/* ASSIGNMENT HELPER */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Filter size={18} className="panel-icon" />
+                Assignment helper
+              </h3>
+              <p>Pick a date range and priority. We’ll suggest who has breathing room.</p>
+            </div>
+          </div>
+
+          <div className="assignment-content">
+            <div className="assignment-filters">
+              <div className="assignment-field">
+                <label>Priority</label>
+                <select value={assignPriority} onChange={(e) => setAssignPriority(e.target.value)}>
+                  <option value="High">High</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+
+              <div className="assignment-field">
+                <label>Start date</label>
+                <input type="date" value={assignStart} onChange={(e) => setAssignStart(e.target.value)} />
+              </div>
+
+              <div className="assignment-field">
+                <label>End date</label>
+                <input type="date" value={assignEnd} onChange={(e) => setAssignEnd(e.target.value)} />
+              </div>
+            </div>
+
+            {(!assignStart || !assignEnd) ? (
+              <div className="presales-empty small">
+                <p>Select start + end dates to see suggestions.</p>
+              </div>
+            ) : assignmentSuggestions.length === 0 ? (
+              <div className="presales-empty small">
+                <p>No good matches in that range (based on current schedule + tasks).</p>
+              </div>
+            ) : (
+              <div className="assignment-table-wrapper">
+                <table className="assignment-table">
+                  <thead>
+                    <tr>
+                      <th>Presales</th>
+                      <th>Free days</th>
+                      <th>Next week load</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assignmentSuggestions.slice(0, 8).map((s) => (
+                      <tr key={s.assignee}>
+                        <td>{s.assignee}</td>
+                        <td>{s.freeDays}</td>
+                        <td>{Math.round(s.nextWeekLoad)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* WORKLOAD */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Users size={18} className="panel-icon" />
+                Presales workload
+              </h3>
+              <p>Open tasks, overdue risk, and weekly utilization (based on estimated hours + task type).</p>
+            </div>
+          </div>
+
+          <div className="workload-table-wrapper">
+            <table className="workload-table">
+              <thead>
+                <tr>
+                  <th>Presales</th>
+                  <th>Open</th>
+                  <th>Overdue</th>
+                  <th>This week (hrs)</th>
+                  <th>This week (%)</th>
+                  <th>Next week (hrs)</th>
+                  <th>Next week (%)</th>
+                  <th>Overdue rate (30d)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {workloadByAssignee.map((w) => (
+                  <tr key={w.assignee}>
+                    <td className="td-ellipsis">{w.assignee}</td>
+                    <td>{w.open}</td>
+                    <td className={w.overdue > 0 ? 'overdue' : ''}>{w.overdue}</td>
+                    <td className="td-right">{w.thisWeekHours.toFixed(1)}</td>
+                    <td>
+                      {Math.round(w.utilThisWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilThisWeek)})</span>
+                    </td>
+                    <td className="td-right">{w.nextWeekHours.toFixed(1)}</td>
+                    <td>
+                      {Math.round(w.utilNextWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilNextWeek)})</span>
+                    </td>
+                    <td>{Math.round(w.overdueRateLast30)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* AVAILABILITY */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <CalendarDays size={18} className="panel-icon" />
+                Presales availability
+              </h3>
+              <p>Click a cell to see task + schedule details for that day.</p>
+            </div>
+
+            <div className="schedule-actions">
+              <div className="schedule-view-toggle">
+                <button
+                  type="button"
+                  className={calendarView === '14' ? 'active' : ''}
+                  onClick={() => setCalendarView('14')}
+                >
+                  14 days
+                </button>
+                <button
+                  type="button"
+                  className={calendarView === '30' ? 'active' : ''}
+                  onClick={() => setCalendarView('30')}
+                >
+                  30 days
+                </button>
+              </div>
+
+              <button type="button" className="btn-secondary" onClick={openScheduleModalForCreate}>
+                <Plane size={16} /> Add schedule
+              </button>
+            </div>
+          </div>
+
+          <div className="heatmap-table">
+            <div className="heatmap-header">
+              <div className="heatmap-presales-name heatmap-header-cell">Presales</div>
+              {availabilityGrid.days.map((d) => (
+                <div key={d.toISOString()} className="heatmap-day-col heatmap-header-cell">
+                  {d.toLocaleDateString('en-SG', { day: '2-digit', month: 'short' })}
+                </div>
+              ))}
+            </div>
+
+            {availabilityGrid.rows.map((row) => (
+              <div key={row.assignee} className="heatmap-row">
+                <div className="heatmap-presales-name">{row.assignee}</div>
+
+                {row.cells.map((cell) => (
+                  <button
+                    key={`${row.assignee}-${cell.date.toISOString()}`}
+                    type="button"
+                    className={`heatmap-cell status-${cell.status}`}
+                    title={cell.label}
+                    onClick={() => openDayDetail(row.assignee, cell.date)}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SCHEDULE LIST */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="schedule-list-header">
+            <div>
+              <h3>
+                <Plane size={18} className="panel-icon" />
+                Schedules
+              </h3>
+              <p>Leaves, travel, training, and other blockers (full day or partial).</p>
+            </div>
+          </div>
+
+          {scheduleEvents.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No schedule entries yet.</p>
+            </div>
+          ) : (
+            <div className="schedule-list-table-wrapper">
+              <table className="schedule-list-table">
+                <thead>
+                  <tr>
+                    <th>Presales</th>
+                    <th>Type</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Block hrs</th>
+                    <th>Note</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...scheduleEvents]
+                    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
+                    .map((ev) => (
+                      <tr key={ev.id}>
+                        <td className="td-ellipsis">{ev.assignee}</td>
+                        <td>
+                          <span className="schedule-type-chip">{ev.type}</span>
+                        </td>
+                        <td>{ev.start_date ? new Date(ev.start_date).toLocaleDateString('en-SG') : '-'}</td>
+                        <td>{ev.end_date ? new Date(ev.end_date).toLocaleDateString('en-SG') : '-'}</td>
+                        <td>{ev.block_hours ?? '-'}</td>
+                        <td className="td-ellipsis">{ev.note || '-'}</td>
+                        <td className="td-right">
+                          <button type="button" className="icon-btn" onClick={() => openScheduleModalForEdit(ev)} title="Edit">
+                            <Edit3 size={14} />
+                          </button>
+                          <button type="button" className="icon-btn danger" onClick={() => handleDeleteSchedule(ev.id)} title="Delete">
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* DAY DETAIL MODAL */}
+      {dayDetailOpen && (
+        <div className="schedule-modal-backdrop" onMouseDown={() => setDayDetailOpen(false)}>
+          <div className="schedule-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="schedule-modal-header">
+              <div>
+                <div className="schedule-modal-title">Day details</div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  {dayDetail.assignee} • {formatDayDetailDate(dayDetail.date)}
+                </div>
+              </div>
+              <button type="button" className="schedule-modal-close" onClick={() => setDayDetailOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="day-detail-body">
+              <div className="day-detail-section">
+                <h4>Schedules</h4>
+                {dayDetail.schedules.length === 0 ? (
+                  <div className="day-detail-empty">No schedules</div>
+                ) : (
+                  <div className="day-detail-list">
+                    {dayDetail.schedules.map((s) => (
+                      <div key={s.id} className="day-detail-task-item">
+                        <div className="day-detail-task-desc">
+                          {s.type} {s.note ? `• ${s.note}` : ''}
+                        </div>
+                        <div style={{ fontSize: 12, opacity: 0.75 }}>
+                          {s.start_date ? new Date(s.start_date).toLocaleDateString('en-SG') : '-'} to{' '}
+                          {s.end_date ? new Date(s.end_date).toLocaleDateString('en-SG') : '-'}
+                          {s.block_hours != null ? ` • block ${s.block_hours}h` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="day-detail-section">
+                <h4>Tasks</h4>
+                {dayDetail.tasks.length === 0 ? (
+                  <div className="day-detail-empty">No tasks</div>
+                ) : (
+                  <div className="day-detail-list">
+                    {dayDetail.tasks.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className="day-detail-task-item"
+                        onClick={() => {
+                          setDayDetailOpen(false);
+                          openTaskModal(t);
+                        }}
+                      >
+                        <div className="day-detail-task-desc">{t.description || 'Untitled task'}</div>
+                        <div style={{ fontSize: 12, opacity: 0.75 }}>
+                          {t.projectName || 'Unknown project'} • Due{' '}
+                          {t.due_date ? new Date(t.due_date).toLocaleDateString('en-SG') : '-'}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SCHEDULE MODAL */}
+      {showScheduleModal && (
+        <div className="schedule-modal-backdrop" onMouseDown={closeScheduleModal}>
+          <div className="schedule-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="schedule-modal-header">
+              <div className="schedule-modal-title">
+                {scheduleMode === 'create' ? 'Add schedule' : 'Edit schedule'}
+              </div>
+              <button type="button" className="schedule-modal-close" onClick={closeScheduleModal}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleScheduleSubmit} className="schedule-form">
+              {scheduleError && <div className="form-error">{scheduleError}</div>}
+
+              <div className="schedule-field">
+                <label>Assignee</label>
+                <select value={scheduleAssignee} onChange={(e) => setScheduleAssignee(e.target.value)}>
+                  <option value="">Select</option>
+                  {presalesResources.map((p) => {
+                    const name = p.name || p.email || 'Unknown';
+                    return (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Type</label>
+                <select value={scheduleType} onChange={(e) => setScheduleType(e.target.value)}>
+                  <option value="Leave">Leave</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Training">Training</option>
+                  <option value="Internal">Internal</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Start</label>
+                <input type="date" value={scheduleStart} onChange={(e) => setScheduleStart(e.target.value)} />
+              </div>
+
+              <div className="schedule-field">
+                <label>End</label>
+                <input type="date" value={scheduleEnd} onChange={(e) => setScheduleEnd(e.target.value)} />
+              </div>
+
+              <div className="schedule-field">
+                <label>Block hours (optional)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={scheduleBlockHours}
+                  onChange={(e) => setScheduleBlockHours(e.target.value)}
+                  placeholder="Leave blank to use defaults"
+                />
+              </div>
+
+              <div className="schedule-field-full">
+                <label>Note</label>
+                <input value={scheduleNote} onChange={(e) => setScheduleNote(e.target.value)} placeholder="Optional" />
+              </div>
+
+              <div className="schedule-actions">
+                <button type="button" className="btn-secondary" onClick={closeScheduleModal} disabled={scheduleSaving}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={scheduleSaving}>
+                  <Save size={16} /> {scheduleSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* TASK MODAL */}
+      {taskModalOpen && (
+        <div className="schedule-modal-backdrop" onMouseDown={closeTaskModal}>
+          <div className="schedule-modal activity-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="schedule-modal-header">
+              <div className="schedule-modal-title">Edit task</div>
+              <button type="button" className="schedule-modal-close" onClick={closeTaskModal}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {taskSaveError && <div className="form-error">{taskSaveError}</div>}
+
+            <div className="schedule-form">
+              <div className="schedule-field-full">
+                <label>Description</label>
+                <input
+                  value={taskForm.description}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, description: e.target.value }))}
+                />
+              </div>
+
+              <div className="schedule-field">
+                <label>Status</label>
+                <select
+                  value={taskForm.status}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, status: e.target.value }))}
+                >
+                  <option value="Not Started">Not Started</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="On Hold">On Hold</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Assignee</label>
+                <select
+                  value={taskForm.assignee}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, assignee: e.target.value }))}
+                >
+                  <option value="">Unassigned</option>
+                  {presalesResources.map((p) => {
+                    const name = p.name || p.email || 'Unknown';
+                    return (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Due date</label>
+                <input
+                  type="date"
+                  value={taskForm.due_date || ''}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, due_date: e.target.value }))}
+                />
+              </div>
+
+              <div className="schedule-field">
+                <label>Estimated hours</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={taskForm.estimated_hours}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, estimated_hours: e.target.value }))}
+                  placeholder="e.g. 4"
+                />
+              </div>
+
+              <div className="schedule-field">
+                <label>Task type</label>
+                <select
+                  value={taskForm.task_type || ''}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, task_type: e.target.value }))}
+                >
+                  <option value="">Select</option>
+                  {taskTypeOptions.map((t) => (
+                    <option key={t.id} value={t.name}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Priority</label>
+                <select
+                  value={taskForm.priority}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, priority: e.target.value }))}
+                >
+                  <option value="High">High</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+
+              <div className="schedule-field-full">
+                <label>Notes</label>
+                <input
+                  value={taskForm.notes || ''}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, notes: e.target.value }))}
+                />
+              </div>
+
+              <div className="schedule-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => deleteTask(taskForm.id)}
+                  disabled={taskSaving}
+                >
+                  <Trash2 size={16} /> Delete
+                </button>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="button" className="btn-secondary" onClick={closeTaskModal} disabled={taskSaving}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn-primary" onClick={saveTaskEdits} disabled={taskSaving}>
+                    <Save size={16} /> {taskSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
