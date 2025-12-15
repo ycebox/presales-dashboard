@@ -2313,3 +2313,217 @@ button.day-detail-task-item:hover {
   border: 1px solid rgba(15, 23, 42, 0.18);
   box-shadow: 0 40px 90px rgba(15, 23, 42, 0.22);
 }
+/* =========================================================
+   PALETTE PATCH (paste at the VERY BOTTOM)
+   Palette:
+   #D1D7D7 (cool light) | #AFA9B4 (lilac) | #D7D1D1 (warm light)
+   #AAAFAF (mid gray)   | #424341 (charcoal)
+   ========================================================= */
+
+.presales-page-container.theme-light {
+  --p-bg: #D1D7D7;
+  --p-accent: #AFA9B4;
+  --p-warm: #D7D1D1;
+  --p-mid: #AAAFAF;
+  --p-ink: #424341;
+
+  /* core surfaces */
+  background: var(--p-bg);
+  color: var(--p-ink);
+
+  /* unify borders + shadows */
+  --border: rgba(66, 67, 65, 0.18);
+  --border-soft: rgba(66, 67, 65, 0.12);
+  --shadow: 0 14px 30px rgba(66, 67, 65, 0.12);
+  --shadow-soft: 0 8px 18px rgba(66, 67, 65, 0.10);
+}
+
+/* Make sure all text stays readable (always charcoal) */
+.presales-page-container.theme-light,
+.presales-page-container.theme-light * {
+  color: var(--p-ink);
+}
+
+/* ---------- Panels ---------- */
+.presales-page-container.theme-light .presales-panel {
+  background: rgba(255, 255, 255, 0.78); /* float above bg */
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+}
+
+/* panel headers slightly tinted (warm) so sections look intentional */
+.presales-page-container.theme-light .presales-panel-header {
+  background: rgba(215, 209, 209, 0.55); /* warm light */
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* icons: use lilac accent so the theme feels consistent */
+.presales-page-container.theme-light .panel-icon,
+.presales-page-container.theme-light .schedule-modal-close svg,
+.presales-page-container.theme-light .icon-btn svg {
+  color: var(--p-accent);
+}
+
+/* ---------- Inner blocks (tables / filters / wrappers) ---------- */
+.presales-page-container.theme-light .assignment-filters,
+.presales-page-container.theme-light .workload-table-wrapper,
+.presales-page-container.theme-light .unassigned-tasks-table-wrapper,
+.presales-page-container.theme-light .schedule-list-table-wrapper,
+.presales-page-container.theme-light .heatmap-table {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
+}
+
+/* subtle table header tint (cool) */
+.presales-page-container.theme-light th {
+  background: rgba(209, 215, 215, 0.40);
+  color: var(--p-ink);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* row hover uses accent very lightly */
+.presales-page-container.theme-light
+  .workload-table tbody tr:hover,
+.presales-page-container.theme-light
+  .schedule-list-table tbody tr:hover,
+.presales-page-container.theme-light
+  .assignment-table tbody tr:hover,
+.presales-page-container.theme-light
+  .unassigned-tasks-table tbody tr:hover {
+  background: rgba(175, 169, 180, 0.14); /* lilac hover */
+}
+
+/* ---------- Buttons ---------- */
+.presales-page-container.theme-light .btn-secondary,
+.presales-page-container.theme-light .ghost-btn,
+.presales-page-container.theme-light .icon-btn {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
+}
+
+.presales-page-container.theme-light .btn-secondary:hover,
+.presales-page-container.theme-light .ghost-btn:hover,
+.presales-page-container.theme-light .icon-btn:hover {
+  border-color: rgba(175, 169, 180, 0.55);
+  background: rgba(175, 169, 180, 0.10);
+}
+
+.presales-page-container.theme-light .btn-primary,
+.presales-page-container.theme-light .primary-btn {
+  background: var(--p-accent);
+  color: #ffffff !important;
+  border: 1px solid rgba(66, 67, 65, 0.12);
+  box-shadow: var(--shadow);
+}
+
+.presales-page-container.theme-light .btn-primary:hover,
+.presales-page-container.theme-light .primary-btn:hover {
+  filter: brightness(0.98);
+}
+
+/* clickable task link (unassigned) */
+.presales-page-container.theme-light .unassigned-task-link {
+  color: var(--p-ink) !important;
+  text-decoration-color: rgba(66, 67, 65, 0.40);
+}
+
+/* ---------- Chips / badges ---------- */
+.presales-page-container.theme-light .meta-chip,
+.presales-page-container.theme-light .schedule-type-chip {
+  background: rgba(209, 215, 215, 0.45);
+  border: 1px solid rgba(66, 67, 65, 0.14);
+  color: var(--p-ink);
+}
+
+/* ---------- Kanban ---------- */
+.presales-page-container.theme-light .activities-col {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
+}
+
+.presales-page-container.theme-light .activities-col-header {
+  background: rgba(209, 215, 215, 0.45); /* cool header */
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.presales-page-container.theme-light .activity-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(66, 67, 65, 0.12);
+  box-shadow: var(--shadow-soft);
+}
+
+.presales-page-container.theme-light .activity-card:hover {
+  border-color: rgba(175, 169, 180, 0.55);
+  background: rgba(175, 169, 180, 0.08);
+}
+
+/* ---------- Availability heatmap (your palette) ---------- */
+.presales-page-container.theme-light .heatmap-cell {
+  border: 1px solid rgba(66, 67, 65, 0.14);
+  border-radius: 10px;
+}
+
+/* Free = cool light (D1D7D7) */
+.presales-page-container.theme-light .heatmap-cell.status-free {
+  background: rgba(209, 215, 215, 0.95);
+}
+
+/* Busy = mid gray (AAAFAF) */
+.presales-page-container.theme-light .heatmap-cell.status-busy {
+  background: rgba(170, 175, 175, 0.65);
+}
+
+/* Leave = warm light (D7D1D1) */
+.presales-page-container.theme-light .heatmap-cell.status-leave {
+  background: rgba(215, 209, 209, 0.90);
+}
+
+/* Travel = accent lilac (AFA9B4) */
+.presales-page-container.theme-light .heatmap-cell.status-travel {
+  background: rgba(175, 169, 180, 0.70);
+}
+
+/* Optional if you have near/over in the future */
+.presales-page-container.theme-light .heatmap-cell.status-near {
+  background: rgba(175, 169, 180, 0.55);
+  border-color: rgba(175, 169, 180, 0.75);
+}
+
+.presales-page-container.theme-light .heatmap-cell.status-over {
+  background: rgba(66, 67, 65, 0.35);
+  border-color: rgba(66, 67, 65, 0.55);
+}
+
+/* ---------- Modals ---------- */
+.presales-page-container.theme-light .schedule-modal-backdrop {
+  background: rgba(66, 67, 65, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.presales-page-container.theme-light .schedule-modal {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(66, 67, 65, 0.18);
+  box-shadow: 0 40px 90px rgba(66, 67, 65, 0.25);
+}
+
+.presales-page-container.theme-light .schedule-modal-header {
+  background: rgba(209, 215, 215, 0.55);
+  border-bottom: 1px solid rgba(66, 67, 65, 0.12);
+}
+
+.presales-page-container.theme-light .schedule-modal-title {
+  color: var(--p-ink);
+}
+
+/* inputs */
+.presales-page-container.theme-light input,
+.presales-page-container.theme-light select,
+.presales-page-container.theme-light textarea {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(66, 67, 65, 0.18);
+  color: var(--p-ink);
+}
