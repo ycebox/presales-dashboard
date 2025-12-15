@@ -1,537 +1,392 @@
-/* App.css – PresalesOverview Light Theme Shell (Global)
-   Goals:
-   - system UI font
-   - 12–14px readable enterprise sizing
-   - warm light background w/ subtle radial gradients
-   - white rounded panels (14–16px radius) + thin slate borders + soft shadow
-   - deep blue primary actions, white secondary actions
-   - minimalist tables/inputs (12px headers)
-   - modals = white card + soft overlay
-   - all text dark/black for clarity
-*/
+// src/App.js
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  HashRouter as Router,
+  Routes,
+  Route,
+  Link,
+  useLocation,
+} from 'react-router-dom';
+import { supabase } from './supabaseClient';
+import Projects from './Projects';
+import ProjectDetails from './ProjectDetails';
+import CustomerDetails from './CustomerDetails';
+import PresalesOverview from './PresalesOverview';
+import ReportsDashboard from './ReportsDashboard';
+import './App.css';
 
-:root {
-  /* Base surfaces */
-  --bg-0: #f7f8fb;
-  --bg-1: #ffffff;
+// ---------- Header ----------
+function AppHeader() {
+  const location = useLocation();
 
-  /* Text */
-  --ink-0: #0b1220;     /* main dark text */
-  --ink-1: #111827;     /* slightly softer */
-  --muted: #475569;     /* slate */
-  --muted-2: #64748b;
+  const isActive = (path) =>
+    location.pathname === path ||
+    (path !== '/' && location.pathname.startsWith(path));
 
-  /* Borders & shadow */
-  --border: rgba(148, 163, 184, 0.55);
-  --border-2: rgba(148, 163, 184, 0.35);
-  --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-  --shadow-2: 0 18px 40px rgba(15, 23, 42, 0.10);
-
-  /* Radius */
-  --radius: 16px;
-  --radius-sm: 12px;
-
-  /* Primary */
-  --primary: #1d4ed8;     /* deep blue */
-  --primary-2: #1e40af;
-  --primary-soft: rgba(29, 78, 216, 0.12);
-  --focus: rgba(29, 78, 216, 0.22);
-
-  /* Status */
-  --success: #16a34a;
-  --success-soft: rgba(22, 163, 74, 0.12);
-  --warning: #d97706;
-  --warning-soft: rgba(217, 119, 6, 0.14);
-  --danger: #dc2626;
-  --danger-soft: rgba(220, 38, 38, 0.12);
-
-  /* Typography */
-  --font: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "Segoe UI", Roboto, sans-serif;
-
-  /* Sizing */
-  --fz-body: 13px;     /* 12–14px target */
-  --fz-title: 24px;    /* page title target */
-  --fz-h3: 14px;
-  --fz-small: 12px;    /* headers/labels */
+  return (
+    <header className="app-header">
+      <div className="app-header-main">
+        <div>
+          <h1>Jonathan&apos;s Command Center</h1>
+          <p>Personal view of customers, deals, and presales workload.</p>
+        </div>
+      </div>
+      <nav className="app-nav">
+        <Link to="/" className={isActive('/') ? 'nav-link active' : 'nav-link'}>
+          Home
+        </Link>
+        <Link
+          to="/presales-overview"
+          className={isActive('/presales-overview') ? 'nav-link active' : 'nav-link'}
+        >
+          Presales overview
+        </Link>
+        <Link
+          to="/reports"
+          className={isActive('/reports') ? 'nav-link active' : 'nav-link'}
+        >
+          Reports
+        </Link>
+      </nav>
+    </header>
+  );
 }
 
-/* Reset */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-  -webkit-text-size-adjust: 100%;
-}
-
-body {
-  margin: 0;
-  font-family: var(--font);
-  font-size: var(--fz-body);
-  line-height: 1.5;
-  color: var(--ink-0);
-
-  /* Warm light background + subtle radial gradients */
-  background:
-    radial-gradient(circle at 12% 6%, rgba(29, 78, 216, 0.10), transparent 46%),
-    radial-gradient(circle at 85% 14%, rgba(15, 118, 110, 0.08), transparent 48%),
-    radial-gradient(circle at 55% 90%, rgba(234, 179, 8, 0.06), transparent 55%),
-    var(--bg-0);
-
-  background-attachment: fixed;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Basic elements */
-h1, h2, h3, h4, h5, h6 {
-  color: var(--ink-0);
-  margin: 0;
-  letter-spacing: -0.02em;
-}
-
-p {
-  margin: 0;
-  color: var(--muted);
-}
-
-a {
-  color: inherit;
-}
-
-/* ========= App Shell ========= */
-
-.app-container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Header */
-.app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 16px;
-  padding: 18px 20px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.app-header-main h1 {
-  margin: 0;
-  font-size: var(--fz-title); /* ~24px */
-  font-weight: 750;
-  color: var(--ink-0);
-  line-height: 1.15;
-}
-
-.app-header-main p {
-  margin: 6px 0 0;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/* Nav */
-.app-nav {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.nav-link {
-  padding: 8px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  border: 1px solid transparent;
-  color: var(--ink-0);
-  text-decoration: none;
-  background: transparent;
-  transition: background 0.18s ease, border-color 0.18s ease, transform 0.08s ease;
-}
-
-.nav-link:hover {
-  border-color: rgba(29, 78, 216, 0.35);
-  background: rgba(29, 78, 216, 0.06);
-  transform: translateY(-1px);
-}
-
-.nav-link.active {
-  border-color: rgba(29, 78, 216, 0.45);
-  background: rgba(29, 78, 216, 0.12);
-}
-
-/* Main */
-.app-main {
-  flex: 1;
-  padding: 16px 20px 24px;
-}
-
-/* ========= Home Layout ========= */
-
-.home-dashboard {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(260px, 1.1fr);
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.home-top-row {
-  grid-column: 1 / -1;
-}
-
-.home-main-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.home-side-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* ========= Home Cards ========= */
-
-.home-card {
-  background: rgba(255, 255, 255, 0.94);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  padding: 12px 14px;
-  box-shadow: var(--shadow);
-}
-
-.home-card-wide {
-  width: 100%;
-}
-
-.home-card-title {
-  margin: 0 0 2px;
-  font-size: var(--fz-h3);
-  font-weight: 750;
-  color: var(--ink-0);
-}
-
-.home-card-subtitle {
-  margin: 0 0 10px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/* Utility muted text */
-.small-muted {
-  font-size: 12px;
-  color: var(--muted-2);
-}
-
-/* ========= KPI Strip ========= */
-
-.home-kpi-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 4px;
-}
-
-.home-kpi-card {
-  background: rgba(255, 255, 255, 0.94);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  padding: 10px 12px;
-  box-shadow: var(--shadow);
-}
-
-.home-kpi-label {
-  font-size: 12px;
-  font-weight: 750;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 4px;
-}
-
-.home-kpi-value {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--ink-0);
-  line-height: 1.1;
-}
-
-.home-kpi-value-small {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ink-0);
-}
-
-.home-kpi-sub {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--muted-2);
-}
-
-/* ========= Top Deals Table (Home) ========= */
-
-.home-topdeals-wrap {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.home-topdeals-table,
-.home-topdeals-table-wide {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: 13px;
-  color: var(--ink-0);
-}
-
-.home-topdeals-table th,
-.home-topdeals-table td,
-.home-topdeals-table-wide th,
-.home-topdeals-table-wide td {
-  padding: 8px 8px;
-  border-bottom: 1px solid var(--border-2);
-  vertical-align: top;
-}
-
-.home-topdeals-table th,
-.home-topdeals-table-wide th {
-  text-align: left;
-  font-size: 12px; /* 12px headers */
-  font-weight: 750;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  background: transparent;
-}
-
-.th-right,
-.td-right {
-  text-align: right;
-}
-
-.td-ellipsis {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.td-nowrap {
-  white-space: nowrap;
-}
-
-/* ========= Notes ========= */
-
-.home-card-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.home-notes-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-/* Buttons (primary + secondary) */
-.home-notes-btn {
-  padding: 7px 12px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: var(--primary);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 750;
-  cursor: pointer;
-  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.08s ease;
-  box-shadow: 0 10px 18px rgba(29, 78, 216, 0.18);
-}
-
-.home-notes-btn:hover {
-  background: var(--primary-2);
-  box-shadow: 0 14px 26px rgba(29, 78, 216, 0.22);
-  transform: translateY(-1px);
-}
-
-.home-notes-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.home-notes-btn.secondary {
-  border: 1px solid var(--border);
-  background: #ffffff;
-  color: var(--ink-0);
-  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06);
-}
-
-.home-notes-btn.secondary:hover {
-  background: rgba(148, 163, 184, 0.12);
-  transform: translateY(-1px);
-}
-
-/* Notes view */
-.home-notes-view {
-  margin-top: 6px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: #ffffff;
-  padding: 10px 10px;
-}
-
-.home-notes-pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--ink-0);
-}
-
-/* Notes edit */
-.home-notes-textarea {
-  width: 100%;
-  min-height: 130px;
-  margin-top: 6px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: #ffffff;
-  color: var(--ink-0);
-  font-size: 13px;
-  padding: 10px 10px;
-  resize: vertical;
-  outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.home-notes-textarea::placeholder {
-  color: var(--muted-2);
-}
-
-.home-notes-textarea:focus {
-  border-color: rgba(29, 78, 216, 0.55);
-  box-shadow: 0 0 0 4px var(--focus);
-}
-
-.home-notes-hint {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--muted-2);
-}
-
-/* ========= Generic States used by pages ========= */
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-height: 60vh;
-}
-
-.loading-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid rgba(148, 163, 184, 0.55);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: app-spin 1s linear infinite;
-  margin-bottom: 10px;
-}
-
-.loading-text {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-@keyframes app-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* ========= Modals (global helpers you can reuse) ========= */
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  z-index: 60;
-}
-
-.modal-card {
-  width: 100%;
-  max-width: 720px;
-  border-radius: var(--radius);
-  background: #ffffff;
-  border: 1px solid var(--border);
-  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.18);
-  overflow: hidden;
-}
-
-/* ========= Focus ========= */
-
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 4px var(--focus);
-}
-
-/* ========= Responsive ========= */
-
-@media (max-width: 1100px) {
-  .home-kpi-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 900px) {
-  .home-dashboard {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .app-header {
-    flex-direction: column;
-    align-items: stretch;
+// ----------------- HOME DASHBOARD (main page) -----------------
+function HomeDashboard() {
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [homeError, setHomeError] = useState(null);
+
+  // Notes (DB-backed)
+  const [notes, setNotes] = useState('');
+  const [notesDraft, setNotesDraft] = useState('');
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesEdit, setNotesEdit] = useState(false);
+  const [notesStatus, setNotesStatus] = useState('');
+
+  useEffect(() => {
+    const loadHomeData = async () => {
+      setLoading(true);
+      setHomeError(null);
+
+      try {
+        const projRes = await supabase
+          .from('projects')
+          .select('id, customer_name, project_name, sales_stage, deal_value')
+          .order('customer_name', { ascending: true });
+
+        if (projRes.error) throw projRes.error;
+
+        setProjects(projRes.data || []);
+      } catch (err) {
+        console.error('Error loading home dashboard data:', err);
+        setHomeError('Failed to load dashboard summary.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadHomeData();
+  }, []);
+
+  // Load notes from DB
+  useEffect(() => {
+    const loadNotes = async () => {
+      setNotesLoading(true);
+      setNotesStatus('');
+      try {
+        const { data, error } = await supabase
+          .from('app_notes')
+          .select('id, notes')
+          .eq('id', 1)
+          .single();
+
+        if (error) throw error;
+
+        const v = data?.notes || '';
+        setNotes(v);
+        setNotesDraft(v);
+      } catch (err) {
+        console.error('Error loading app notes:', err);
+        setNotesStatus('Notes not available (DB table missing?)');
+      } finally {
+        setNotesLoading(false);
+      }
+    };
+
+    loadNotes();
+  }, []);
+
+  // ---------- Deal buckets (Home KPI strip) ----------
+  const openDeals = useMemo(() => {
+    return (projects || []).filter((p) => {
+      const stage = (p.sales_stage || '').toLowerCase();
+      return stage !== 'done' && !stage.startsWith('closed');
+    });
+  }, [projects]);
+
+  const earlyStageDeals = useMemo(() => {
+    return openDeals.filter((p) => {
+      const stage = (p.sales_stage || '').toLowerCase();
+      return stage === 'lead' || stage === 'opportunity';
+    });
+  }, [openDeals]);
+
+  const proposalDeals = useMemo(() => {
+    return openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'proposal');
+  }, [openDeals]);
+
+  const contractingDeals = useMemo(() => {
+    return openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'contracting');
+  }, [openDeals]);
+
+  // ---------- Top deals to watch ----------
+  const topDeals = useMemo(() => {
+    if (!openDeals || openDeals.length === 0) return [];
+    const sorted = openDeals
+      .slice()
+      .sort((a, b) => (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0));
+    return sorted.slice(0, 5);
+  }, [openDeals]);
+
+  const formatCurrency = (value) => {
+    if (!Number.isFinite(value)) return '-';
+    return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  };
+
+  // Notes actions
+  const startEditNotes = () => {
+    setNotesDraft(notes);
+    setNotesEdit(true);
+    setNotesStatus('');
+  };
+
+  const cancelEditNotes = () => {
+    setNotesDraft(notes);
+    setNotesEdit(false);
+    setNotesStatus('');
+  };
+
+  const saveNotes = async () => {
+    setNotesSaving(true);
+    setNotesStatus('Saving…');
+    try {
+      const payload = { id: 1, notes: notesDraft };
+
+      const { error } = await supabase
+        .from('app_notes')
+        .upsert(payload, { onConflict: 'id' });
+
+      if (error) throw error;
+
+      setNotes(notesDraft);
+      setNotesEdit(false);
+      setNotesStatus('Saved');
+      setTimeout(() => setNotesStatus(''), 1500);
+    } catch (err) {
+      console.error('Error saving notes:', err);
+      setNotesStatus('Failed to save notes');
+    } finally {
+      setNotesSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="home-dashboard">
+        <div className="home-main-column">
+          <div className="home-loading">
+            <div className="presales-spinner" />
+            <p>Loading dashboard…</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  .app-nav {
-    justify-content: flex-start;
+  if (homeError) {
+    return (
+      <div className="home-dashboard">
+        <div className="home-main-column">
+          <div className="presales-error">
+            <p>{homeError}</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  .app-main {
-    padding: 14px 14px 20px;
-  }
+  return (
+    <div className="home-dashboard">
+      {/* FULL-WIDTH TOP: Top deals to watch */}
+      <div className="home-top-row">
+        <section className="home-card home-card-wide">
+          <h3 className="home-card-title">Top deals to watch</h3>
+          <p className="home-card-subtitle">Highest-value active opportunities.</p>
+
+          {topDeals.length === 0 ? (
+            <p className="small-muted">
+              No active deals found yet. Create projects to start tracking.
+            </p>
+          ) : (
+            <div className="home-topdeals-wrap">
+              <table className="home-topdeals-table home-topdeals-table-wide">
+                <colgroup>
+                  <col style={{ width: '32%' }} />
+                  <col style={{ width: '36%' }} />
+                  <col style={{ width: '18%' }} />
+                  <col style={{ width: '14%' }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Project</th>
+                    <th>Stage</th>
+                    <th className="th-right">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topDeals.map((p) => (
+                    <tr key={p.id}>
+                      <td className="td-ellipsis" title={p.customer_name || ''}>
+                        {p.customer_name || 'Unknown'}
+                      </td>
+                      <td className="td-ellipsis" title={p.project_name || ''}>
+                        {p.project_name || '-'}
+                      </td>
+                      <td className="td-nowrap">{p.sales_stage || 'N/A'}</td>
+                      <td className="td-right td-nowrap">
+                        {formatCurrency(Number(p.deal_value) || 0)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* LEFT: main work area (Customer portfolio / Projects) */}
+      <div className="home-main-column">
+        <section className="home-kpi-strip">
+          <div className="home-kpi-card">
+            <div className="home-kpi-label">Early-stage deals</div>
+            <div className="home-kpi-value">{earlyStageDeals.length}</div>
+            <div className="home-kpi-sub">Lead + Opportunity</div>
+          </div>
+
+          <div className="home-kpi-card">
+            <div className="home-kpi-label">RFPs / Proposal under preparation</div>
+            <div className="home-kpi-value">{proposalDeals.length}</div>
+            <div className="home-kpi-sub">Proposal stage</div>
+          </div>
+
+          <div className="home-kpi-card">
+            <div className="home-kpi-label">Deals close to signature</div>
+            <div className="home-kpi-value">{contractingDeals.length}</div>
+            <div className="home-kpi-sub">Contracting stage</div>
+          </div>
+
+          <div className="home-kpi-card">
+            <div className="home-kpi-label">Open deals</div>
+            <div className="home-kpi-value">{openDeals.length}</div>
+            <div className="home-kpi-sub">Anything not Done / Closed</div>
+          </div>
+        </section>
+
+        <Projects />
+      </div>
+
+      {/* RIGHT: sidebar (Notes only, commitments removed) */}
+      <div className="home-side-column">
+        <section className="home-card">
+          <div className="home-card-header-row">
+            <div>
+              <h3 className="home-card-title">My notes</h3>
+              <p className="home-card-subtitle">Quick reminders for this week.</p>
+            </div>
+
+            {!notesEdit ? (
+              <button
+                type="button"
+                className="home-notes-btn"
+                onClick={startEditNotes}
+                disabled={notesLoading}
+              >
+                Edit
+              </button>
+            ) : (
+              <div className="home-notes-actions">
+                <button
+                  type="button"
+                  className="home-notes-btn secondary"
+                  onClick={cancelEditNotes}
+                  disabled={notesSaving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="home-notes-btn"
+                  onClick={saveNotes}
+                  disabled={notesSaving}
+                >
+                  {notesSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {notesEdit ? (
+            <textarea
+              className="home-notes-textarea"
+              placeholder="Talking points, follow-ups, reminders for CEO / sales / presales huddle..."
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
+              disabled={notesLoading}
+            />
+          ) : (
+            <div className="home-notes-view">
+              {notesLoading ? (
+                <p className="small-muted">Loading notes…</p>
+              ) : notes?.trim() ? (
+                <pre className="home-notes-pre">{notes}</pre>
+              ) : (
+                <p className="small-muted">No notes yet. Click Edit to add.</p>
+              )}
+            </div>
+          )}
+
+          {notesStatus ? <p className="home-notes-hint">{notesStatus}</p> : null}
+        </section>
+      </div>
+    </div>
+  );
 }
 
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-  }
+// ----------------- MAIN APP -----------------
+function App() {
+  return (
+    <Router>
+      <div className="app-container">
+        <AppHeader />
+        <main className="app-main">
+          <Routes>
+            <Route path="/" element={<HomeDashboard />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/project/:projectId" element={<ProjectDetails />} />
+            <Route path="/customer/:customerId" element={<CustomerDetails />} />
+            <Route path="/presales-overview" element={<PresalesOverview />} />
+            <Route path="/reports" element={<ReportsDashboard />} />
+            <Route path="*" element={<HomeDashboard />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
+  );
 }
+
+export default App;
