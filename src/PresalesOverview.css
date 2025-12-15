@@ -1995,3 +1995,20 @@ button.day-detail-task-item:hover {
   font-size: 14.5px;
   line-height: 1.5;
 }
+.unassigned-task-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.unassigned-task-link:hover {
+  opacity: 0.85;
+}
