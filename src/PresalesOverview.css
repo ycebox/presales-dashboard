@@ -2556,3 +2556,34 @@ button.day-detail-task-item:hover {
   background: transparent !important;
   border: none !important;
 }
+/* =========================================================
+   Assignment Helper – single row filters
+   ========================================================= */
+
+.presales-page-container.theme-light .assignment-filters {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 16px;
+  align-items: end;
+}
+
+/* Make labels consistent */
+.presales-page-container.theme-light .assignment-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Inputs stay readable */
+.presales-page-container.theme-light .assignment-field select,
+.presales-page-container.theme-light .assignment-field input {
+  width: 100%;
+}
+
+/* Responsive: stack on smaller screens */
+@media (max-width: 900px) {
+  .presales-page-container.theme-light .assignment-filters {
+    grid-template-columns: 1fr;
+  }
+}
