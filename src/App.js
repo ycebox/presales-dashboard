@@ -58,14 +58,6 @@ function HomeDashboard() {
   const [loading, setLoading] = useState(true);
   const [homeError, setHomeError] = useState(null);
 
-  // Notes (DB-backed)
-  const [notes, setNotes] = useState('');
-  const [notesDraft, setNotesDraft] = useState('');
-  const [notesLoading, setNotesLoading] = useState(false);
-  const [notesSaving, setNotesSaving] = useState(false);
-  const [notesEdit, setNotesEdit] = useState(false);
-  const [notesStatus, setNotesStatus] = useState('');
-
   useEffect(() => {
     const loadHomeData = async () => {
       setLoading(true);
@@ -91,33 +83,7 @@ function HomeDashboard() {
     loadHomeData();
   }, []);
 
-  // Load notes from DB
-  useEffect(() => {
-    const loadNotes = async () => {
-      setNotesLoading(true);
-      setNotesStatus('');
-      try {
-        const { data, error } = await supabase
-          .from('app_notes')
-          .select('id, notes')
-          .eq('id', 1)
-          .single();
-
-        if (error) throw error;
-
-        const v = data?.notes || '';
-        setNotes(v);
-        setNotesDraft(v);
-      } catch (err) {
-        console.error('Error loading app notes:', err);
-        setNotesStatus('Notes not available (DB table missing?)');
-      } finally {
-        setNotesLoading(false);
-      }
-    };
-
-    loadNotes();
-  }, []);
+  
 
   // ---------- Deal buckets (Home KPI strip) ----------
   const openDeals = useMemo(() => {
@@ -265,72 +231,6 @@ function HomeDashboard() {
         <Projects />
       </div>
 
-      {/* RIGHT: sidebar (Notes only, commitments removed) */}
-      <div className="home-side-column">
-        <section className="home-card">
-          <div className="home-card-header-row">
-            <div>
-              <h3 className="home-card-title">My notes</h3>
-              <p className="home-card-subtitle">Quick reminders for this week.</p>
-            </div>
-
-            {!notesEdit ? (
-              <button
-                type="button"
-                className="home-notes-btn"
-                onClick={startEditNotes}
-                disabled={notesLoading}
-              >
-                Edit
-              </button>
-            ) : (
-              <div className="home-notes-actions">
-                <button
-                  type="button"
-                  className="home-notes-btn secondary"
-                  onClick={cancelEditNotes}
-                  disabled={notesSaving}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="home-notes-btn"
-                  onClick={saveNotes}
-                  disabled={notesSaving}
-                >
-                  {notesSaving ? 'Saving…' : 'Save'}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {notesEdit ? (
-            <textarea
-              className="home-notes-textarea"
-              placeholder="Talking points, follow-ups, reminders for CEO / sales / presales huddle..."
-              value={notesDraft}
-              onChange={(e) => setNotesDraft(e.target.value)}
-              disabled={notesLoading}
-            />
-          ) : (
-            <div className="home-notes-view">
-              {notesLoading ? (
-                <p className="small-muted">Loading notes…</p>
-              ) : notes?.trim() ? (
-                <pre className="home-notes-pre">{notes}</pre>
-              ) : (
-                <p className="small-muted">No notes yet. Click Edit to add.</p>
-              )}
-            </div>
-          )}
-
-          {notesStatus ? <p className="home-notes-hint">{notesStatus}</p> : null}
-        </section>
-      </div>
-    </div>
-  );
-}
 
 // ----------------- MAIN APP -----------------
 function App() {
