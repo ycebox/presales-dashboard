@@ -1,4 +1,4 @@
-<div className="presales-page-container theme-light">import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
 import {
   Users,
