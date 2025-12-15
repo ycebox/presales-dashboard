@@ -1604,3 +1604,257 @@ button.day-detail-task-item:hover {
   font-size: 12px;
   padding: 8px 10px;
 }
+/* =========================================================
+   LIGHT THEME PATCH (incremental)
+   How to use:
+   - Add class "theme-light" to <div className="presales-page-container">
+   - Example: <div className="presales-page-container theme-light">
+   ========================================================= */
+
+/* Theme tokens */
+.presales-page-container.theme-light {
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --panel-2: #f1f5f9;
+  --border: #e5e7eb;
+
+  --text: #0f172a;
+  --text-2: #475569;
+  --text-3: #64748b;
+
+  --accent: #2563eb;
+  --accent-2: #0ea5e9;
+
+  --danger: #dc2626;
+  --warn: #f59e0b;
+  --success: #16a34a;
+
+  --shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --shadow-soft: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+/* Page background */
+.presales-page-container.theme-light {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Header */
+.presales-page-container.theme-light .presales-header-main h2 {
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .presales-header-main p {
+  color: var(--text-2);
+}
+
+/* Panels */
+.presales-page-container.theme-light .presales-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+/* Panel header icons + text */
+.presales-page-container.theme-light .panel-icon {
+  color: var(--accent);
+}
+
+.presales-page-container.theme-light .presales-panel-header p {
+  color: var(--text-2);
+}
+
+/* Empty states */
+.presales-page-container.theme-light .presales-empty {
+  background: var(--panel-2);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+
+/* Buttons */
+.presales-page-container.theme-light .btn-secondary,
+.presales-page-container.theme-light .ghost-btn {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+
+.presales-page-container.theme-light .btn-secondary:hover,
+.presales-page-container.theme-light .ghost-btn:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: #ffffff;
+}
+
+.presales-page-container.theme-light .btn-primary,
+.presales-page-container.theme-light .primary-btn {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #ffffff;
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.25);
+}
+
+/* Tables */
+.presales-page-container.theme-light .workload-table th,
+.presales-page-container.theme-light .country-table th,
+.presales-page-container.theme-light .schedule-list-table th,
+.presales-page-container.theme-light .assignment-table th {
+  color: var(--text-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.presales-page-container.theme-light .workload-table td,
+.presales-page-container.theme-light .country-table td,
+.presales-page-container.theme-light .schedule-list-table td,
+.presales-page-container.theme-light .assignment-table td {
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+/* subtle zebra rows */
+.presales-page-container.theme-light .workload-table tbody tr:nth-child(even),
+.presales-page-container.theme-light .schedule-list-table tbody tr:nth-child(even),
+.presales-page-container.theme-light .assignment-table tbody tr:nth-child(even) {
+  background: rgba(241, 245, 249, 0.6);
+}
+
+/* Overdue text */
+.presales-page-container.theme-light .overdue {
+  color: var(--danger);
+}
+
+/* Kanban columns */
+.presales-page-container.theme-light .activities-col {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+.presales-page-container.theme-light .activities-col-header {
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.presales-page-container.theme-light .activities-col-title {
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .activities-col-count {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+
+/* Kanban cards */
+.presales-page-container.theme-light .activity-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .activity-card:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: #ffffff;
+}
+
+.presales-page-container.theme-light .activity-card-title {
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .activity-card-sub {
+  color: var(--text-2);
+}
+
+.presales-page-container.theme-light .meta-chip {
+  background: rgba(241, 245, 249, 0.85);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+
+.presales-page-container.theme-light .meta-chip.chip-overdue {
+  border-color: rgba(220, 38, 38, 0.35);
+  color: var(--danger);
+}
+
+/* Overdue column highlight (subtle, not loud) */
+.presales-page-container.theme-light .activities-col.is-overdue {
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+/* Heatmap container */
+.presales-page-container.theme-light .heatmap-table {
+  border: 1px solid var(--border);
+}
+
+.presales-page-container.theme-light .heatmap-header-cell {
+  background: var(--panel-2);
+  color: var(--text-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.presales-page-container.theme-light .heatmap-presales-name {
+  color: var(--text);
+}
+
+/* Heatmap cells (soft colors) */
+.presales-page-container.theme-light .heatmap-cell.status-free {
+  background: rgba(22, 163, 74, 0.18);
+}
+
+.presales-page-container.theme-light .heatmap-cell.status-busy {
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.presales-page-container.theme-light .heatmap-cell.status-leave {
+  background: rgba(220, 38, 38, 0.16);
+}
+
+.presales-page-container.theme-light .heatmap-cell.status-travel {
+  background: rgba(37, 99, 235, 0.16);
+}
+
+/* Modals */
+.presales-page-container.theme-light .schedule-modal {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: 0 35px 90px rgba(15, 23, 42, 0.18);
+}
+
+.presales-page-container.theme-light .schedule-modal-header {
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.presales-page-container.theme-light .schedule-modal-close,
+.presales-page-container.theme-light .icon-btn {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .icon-btn.danger {
+  border-color: rgba(220, 38, 38, 0.28);
+  color: var(--danger);
+}
+
+/* Inputs */
+.presales-page-container.theme-light .schedule-field input,
+.presales-page-container.theme-light .schedule-field select,
+.presales-page-container.theme-light .assignment-field input,
+.presales-page-container.theme-light .assignment-field select {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .schedule-field label,
+.presales-page-container.theme-light .assignment-field label {
+  color: var(--text-3);
+}
+
+/* Error banners */
+.presales-page-container.theme-light .form-error {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.25);
+  color: var(--danger);
+}
