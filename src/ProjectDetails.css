@@ -964,3 +964,49 @@ body {
 .presales-page-container.theme-light .availability-toggle button.active {
   color: #424341;
 }
+/* =========================================================
+   Availability heatmap – refined blocked shades (red family)
+   ========================================================= */
+
+/* AVAILABLE */
+.presales-page-container.theme-light .heatmap-cell.status-free {
+  background: rgba(22, 163, 74, 0.18);   /* soft green */
+  border-color: rgba(22, 163, 74, 0.28);
+}
+
+/* BUSY (working, but assignable) */
+.presales-page-container.theme-light .heatmap-cell.status-busy {
+  background: rgba(170, 175, 175, 0.55); /* neutral gray */
+  border-color: rgba(66, 67, 65, 0.18);
+}
+
+/* BLOCKED – Leave (strongest red) */
+.presales-page-container.theme-light .heatmap-cell.status-leave {
+  background: rgba(220, 38, 38, 0.20);
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+/* BLOCKED – Travel (lighter red) */
+.presales-page-container.theme-light .heatmap-cell.status-travel {
+  background: rgba(220, 38, 38, 0.16);
+  border-color: rgba(220, 38, 38, 0.28);
+}
+
+/* BLOCKED – Training (rose / muted red) */
+.presales-page-container.theme-light .heatmap-cell.status-training {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.24);
+}
+
+/* BLOCKED – Internal / Other (very light red) */
+.presales-page-container.theme-light .heatmap-cell.status-internal,
+.presales-page-container.theme-light .heatmap-cell.status-other {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.22);
+}
+
+/* Hover stays consistent */
+.presales-page-container.theme-light .heatmap-cell:hover {
+  filter: brightness(0.98);
+  border-color: rgba(66, 67, 65, 0.35);
+}
