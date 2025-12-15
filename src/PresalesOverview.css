@@ -2622,3 +2622,57 @@ button.day-detail-task-item:hover {
   filter: brightness(0.98);
   border-color: rgba(66, 67, 65, 0.35);
 }
+/* =========================================================
+   FORCE LIGHT THEME FOR AVAILABILITY TOGGLE (FINAL OVERRIDE)
+   ========================================================= */
+
+.presales-page-container.theme-light
+.availability-toggle,
+.presales-page-container.theme-light
+.availability-toggle * {
+  background-image: none !important;
+}
+
+/* Toggle container */
+.presales-page-container.theme-light .availability-toggle {
+  background-color: #e5e7eb !important; /* light gray */
+  border: 1px solid rgba(66, 67, 65, 0.25) !important;
+  border-radius: 10px;
+  padding: 4px;
+}
+
+/* Toggle buttons – reset EVERYTHING dark */
+.presales-page-container.theme-light .availability-toggle button {
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
+
+  color: #424341 !important; /* charcoal */
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 8px;
+}
+
+/* Hover (inactive) */
+.presales-page-container.theme-light
+.availability-toggle button:hover:not(.active) {
+  background-color: rgba(175, 169, 180, 0.20) !important;
+}
+
+/* Active state */
+.presales-page-container.theme-light
+.availability-toggle button.active {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(66, 67, 65, 0.28) !important;
+  box-shadow: 0 4px 10px rgba(66, 67, 65, 0.15) !important;
+  color: #424341 !important;
+}
+
+/* Make sure text is never white */
+.presales-page-container.theme-light
+.availability-toggle button.active,
+.presales-page-container.theme-light
+.availability-toggle button {
+  text-shadow: none !important;
+}
