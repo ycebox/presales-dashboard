@@ -1858,3 +1858,140 @@ button.day-detail-task-item:hover {
   border-color: rgba(220, 38, 38, 0.25);
   color: var(--danger);
 }
+/* =========================================================
+   MAX READABILITY PATCH – ENTERPRISE COMFORT MODE
+   (Feels ~2× bigger without breaking layout)
+   ========================================================= */
+
+/* 1️⃣ Global base font */
+.presales-page-container {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* 2️⃣ Section headers */
+.presales-panel-header h3 {
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.presales-panel-header p {
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+/* 3️⃣ Kanban */
+.activities-col-title {
+  font-size: 15.5px;
+}
+
+.activities-col-count {
+  font-size: 13.5px;
+}
+
+.activity-card {
+  padding: 10px 12px;
+}
+
+.activity-card-title {
+  font-size: 15.5px;
+  line-height: 1.4;
+}
+
+.activity-card-sub {
+  font-size: 13.5px;
+}
+
+.meta-chip {
+  font-size: 12.5px;
+  padding: 3px 10px;
+}
+
+/* 4️⃣ Tables (Workload, Assignment, Unassigned, Schedule) */
+.workload-table,
+.assignment-table,
+.schedule-list-table,
+.unassigned-tasks-table {
+  font-size: 14.5px;
+}
+
+.workload-table th,
+.assignment-table th,
+.schedule-list-table th,
+.unassigned-tasks-table th {
+  font-size: 13.5px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.workload-table td,
+.assignment-table td,
+.schedule-list-table td,
+.unassigned-tasks-table td {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+/* 5️⃣ Assignment helper */
+.assignment-field label {
+  font-size: 13.5px;
+}
+
+.assignment-field input,
+.assignment-field select {
+  font-size: 15.5px;
+  padding: 10px 12px;
+}
+
+/* 6️⃣ Availability heatmap */
+.heatmap-presales-name {
+  font-size: 14.5px;
+}
+
+.heatmap-header-cell {
+  font-size: 12.5px;
+}
+
+.heatmap-cell {
+  height: 38px;
+}
+
+/* 7️⃣ Modals */
+.schedule-modal-title {
+  font-size: 20px;
+}
+
+.schedule-field label {
+  font-size: 13.5px;
+}
+
+.schedule-field input,
+.schedule-field select {
+  font-size: 15.5px;
+  padding: 10px 12px;
+}
+
+/* 8️⃣ Day detail modal */
+.day-detail-task-desc {
+  font-size: 14.5px;
+}
+
+.day-detail-section h4 {
+  font-size: 14px;
+}
+
+/* 9️⃣ Buttons */
+.btn-primary,
+.btn-secondary,
+.ghost-btn {
+  font-size: 14.5px;
+  padding: 9px 16px;
+}
+
+/* 🔟 Empty & helper text */
+.presales-empty,
+.form-error {
+  font-size: 14.5px;
+  line-height: 1.5;
+}
