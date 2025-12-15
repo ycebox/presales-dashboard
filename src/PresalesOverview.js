@@ -164,6 +164,39 @@ const getEffectiveTaskHours = (task) => {
   return Math.min(effective, 80);
 };
 
+// ---------- Enhancement 2: Partial-day schedule blocking ----------
+const toNumberOrNull = (v) => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isNaN(n) ? null : n;
+};
+
+// Defaults if block_hours not provided
+const getDefaultBlockHoursByType = (type, dailyCapacity) => {
+  const t = (type || '').toLowerCase();
+  if (t === 'leave' || t === 'travel') return dailyCapacity; // full-day
+  if (t === 'training') return Math.min(6, dailyCapacity);
+  return Math.min(2, dailyCapacity); // other/meetings
+};
+
+const getScheduleBlockHours = (event, dailyCapacity) => {
+  const explicit = toNumberOrNull(event?.block_hours);
+  if (explicit !== null) return Math.max(0, Math.min(explicit, dailyCapacity));
+  return getDefaultBlockHoursByType(event?.type, dailyCapacity);
+};
+
+const isFullDayBlocked = (blockedHours, dailyCapacity) => {
+  if (!dailyCapacity) return false;
+  return blockedHours >= dailyCapacity * 0.95;
+};
+
+const getPriorityMinFreeHours = (priority) => {
+  const p = (priority || '').toLowerCase();
+  if (p === 'high') return 4;
+  if (p === 'low') return 2;
+  return 3; // normal/medium/default
+};
+
 // ---------- Kanban component ----------
 function ActivitiesKanban({
   groups,
@@ -294,6 +327,7 @@ function PresalesOverview() {
   const [scheduleStart, setScheduleStart] = useState('');
   const [scheduleEnd, setScheduleEnd] = useState('');
   const [scheduleNote, setScheduleNote] = useState('');
+  const [scheduleBlockHours, setScheduleBlockHours] = useState(''); // Enhancement 2
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleError, setScheduleError] = useState(null);
   const [scheduleMode, setScheduleMode] = useState('create');
@@ -340,7 +374,8 @@ function PresalesOverview() {
             .select(
               'id, project_id, assignee, status, due_date, start_date, end_date, estimated_hours, priority, task_type, description, notes, created_at'
             ),
-          supabase.from('presales_schedule').select('id, assignee, type, start_date, end_date, note'),
+          // Enhancement 2: include block_hours
+          supabase.from('presales_schedule').select('id, assignee, type, start_date, end_date, note, block_hours'),
           supabase
             .from('presales_resources')
             .select('id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day')
@@ -579,9 +614,6 @@ function PresalesOverview() {
       const targetHours =
         res && typeof res.target_hours === 'number' && !Number.isNaN(res.target_hours) ? res.target_hours : 6;
 
-      const maxTasksPerDay = res && Number.isInteger(res.max_tasks_per_day) ? res.max_tasksPerDay : 3;
-
-      // NOTE: keep existing behavior if max_tasks_per_day is stored on resource
       const safeMaxTasksPerDay =
         res && Number.isInteger(res.max_tasks_per_day) ? res.max_tasks_per_day : 3;
 
@@ -660,9 +692,7 @@ function PresalesOverview() {
       }
 
       if (isOpen) {
-        // Enhancement 1: weighted effort
         const taskEffort = getEffectiveTaskHours(t);
-
         entry.thisWeekHours += addHoursToRange(thisWeekRange, t, taskEffort);
         entry.nextWeekHours += addHoursToRange(nextWeekRange, t, taskEffort);
       }
@@ -693,13 +723,15 @@ function PresalesOverview() {
     return unassigned;
   }, [tasks]);
 
-  // ---------- Assignment helper ----------
+  // ---------- Assignment helper (Enhanced for partial-day blocks) ----------
   const assignmentSuggestions = useMemo(() => {
     if (!assignStart || !assignEnd || !presalesResources) return [];
 
     const start = parseDate(assignStart);
     const end = parseDate(assignEnd);
     if (!start || !end || end.getTime() < start.getTime()) return [];
+
+    const minFreeHours = getPriorityMinFreeHours(assignPriority);
 
     const days = [];
     const cur = new Date(start);
@@ -708,19 +740,42 @@ function PresalesOverview() {
       cur.setDate(cur.getDate() + 1);
     }
 
+    const getCapacityFor = (name) => {
+      const res = (presalesResources || []).find((p) => (p.name || p.email || 'Unknown') === name) || {};
+      const dailyCapacity =
+        typeof res.daily_capacity_hours === 'number' && !Number.isNaN(res.daily_capacity_hours)
+          ? res.daily_capacity_hours
+          : HOURS_PER_DAY;
+      return { dailyCapacity };
+    };
+
     return (presalesResources || [])
       .map((res) => {
         const name = res.name || res.email || 'Unknown';
+        const { dailyCapacity } = getCapacityFor(name);
 
         let freeDays = 0;
+
         days.forEach((d) => {
-          const hasTask = (tasks || []).some(
-            (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
-          );
-          const hasSchedule = (scheduleEvents || []).some(
+          const daySchedules = (scheduleEvents || []).filter(
             (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
           );
-          if (!hasTask && !hasSchedule) freeDays += 1;
+
+          const blockedHours = daySchedules.reduce((sum, s) => sum + getScheduleBlockHours(s, dailyCapacity), 0);
+          const effectiveCapacity = Math.max(0, dailyCapacity - blockedHours);
+          const fullyBlocked = isFullDayBlocked(blockedHours, dailyCapacity);
+
+          // if full-day blocked (leave/travel/full training), not free
+          if (fullyBlocked) return;
+
+          const dayTasks = (tasks || []).filter(
+            (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
+          );
+          const taskHours = dayTasks.reduce((sum, t) => sum + getEffectiveTaskHours(t), 0);
+
+          const remaining = effectiveCapacity - taskHours;
+
+          if (remaining >= minFreeHours) freeDays += 1;
         });
 
         const work = workloadByAssignee.find((w) => w.assignee === name);
@@ -733,9 +788,9 @@ function PresalesOverview() {
         if (b.freeDays !== a.freeDays) return b.freeDays - a.freeDays;
         return a.nextWeekLoad - b.nextWeekLoad;
       });
-  }, [assignStart, assignEnd, presalesResources, tasks, scheduleEvents, workloadByAssignee]);
+  }, [assignStart, assignEnd, assignPriority, presalesResources, tasks, scheduleEvents, workloadByAssignee]);
 
-  // ---------- Availability grid ----------
+  // ---------- Availability grid (Enhanced with partial-day blocks) ----------
   const availabilityGrid = useMemo(() => {
     if (!presalesResources || presalesResources.length === 0) return { days: [], rows: [] };
 
@@ -774,29 +829,31 @@ function PresalesOverview() {
           (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
         );
 
+        const taskCount = dayTasks.length;
+        const totalHours = dayTasks.reduce((sum, t) => sum + getEffectiveTaskHours(t), 0);
+
+        const blockedHours = daySchedules.reduce((sum, s) => sum + getScheduleBlockHours(s, dailyCapacity), 0);
+        const effectiveCapacity = Math.max(0, dailyCapacity - blockedHours);
+
+        const utilization = effectiveCapacity > 0 ? Math.round((totalHours / effectiveCapacity) * 100) : (totalHours > 0 ? 999 : 0);
+
         let status = 'free';
         let label = 'Free';
 
-        const taskCount = dayTasks.length;
-
-        // Enhancement 1: weighted total hours
-        const totalHours = dayTasks.reduce((sum, t) => sum + getEffectiveTaskHours(t), 0);
-
-        const utilization = dailyCapacity ? Math.round((totalHours / dailyCapacity) * 100) : 0;
-
+        // schedule affects status label
         if (daySchedules.length > 0) {
           const hasTravel = daySchedules.some((s) => (s.type || '').toLowerCase() === 'travel');
           const hasLeave = daySchedules.some((s) => (s.type || '').toLowerCase() === 'leave');
 
-          if (hasLeave) {
+          if (hasLeave && isFullDayBlocked(blockedHours, dailyCapacity)) {
             status = 'leave';
             label = 'On leave';
-          } else if (hasTravel) {
+          } else if (hasTravel && isFullDayBlocked(blockedHours, dailyCapacity)) {
             status = 'travel';
             label = 'Travel';
           } else {
             status = 'busy';
-            label = 'Scheduled';
+            label = blockedHours > 0 ? `Scheduled (${blockedHours.toFixed(1)}h)` : 'Scheduled';
           }
         }
 
@@ -804,7 +861,10 @@ function PresalesOverview() {
           if (status === 'free') status = 'busy';
 
           const baseLabel = `${taskCount} task${taskCount > 1 ? 's' : ''}`;
-          const capText = dailyCapacity && totalHours ? ` · ${totalHours.toFixed(1)}h / ${dailyCapacity}h` : '';
+          const capText =
+            dailyCapacity
+              ? ` · Tasks ${totalHours.toFixed(1)}h · Blocked ${blockedHours.toFixed(1)}h · Left ${effectiveCapacity.toFixed(1)}h`
+              : '';
 
           let prefix = '';
           if (utilization > 120 || taskCount > maxTasksPerDay) prefix = 'Over capacity: ';
@@ -813,9 +873,21 @@ function PresalesOverview() {
           if (status === 'leave') label = `${prefix}Leave + ${baseLabel}${capText}`;
           else if (status === 'travel') label = `${prefix}Travel + ${baseLabel}${capText}`;
           else label = `${prefix}${baseLabel}${capText}`;
+        } else if (blockedHours > 0 && status === 'busy') {
+          // no tasks, but has partial blocks
+          label = `Scheduled · Blocked ${blockedHours.toFixed(1)}h · Left ${effectiveCapacity.toFixed(1)}h`;
         }
 
-        return { date: d, status, label, tasks: dayTasks, schedules: daySchedules };
+        return {
+          date: d,
+          status,
+          label,
+          tasks: dayTasks,
+          schedules: daySchedules,
+          blockedHours,
+          effectiveCapacity,
+          taskHours: totalHours,
+        };
       });
 
       return { assignee: name, cells };
@@ -833,6 +905,7 @@ function PresalesOverview() {
     setScheduleStart('');
     setScheduleEnd('');
     setScheduleNote('');
+    setScheduleBlockHours(''); // Enhancement 2
     setScheduleError(null);
     setShowScheduleModal(true);
   };
@@ -845,6 +918,9 @@ function PresalesOverview() {
     setScheduleStart(event.start_date || '');
     setScheduleEnd(event.end_date || event.start_date || '');
     setScheduleNote(event.note || '');
+    setScheduleBlockHours(
+      event.block_hours === null || event.block_hours === undefined ? '' : String(event.block_hours)
+    ); // Enhancement 2
     setScheduleError(null);
     setShowScheduleModal(true);
   };
@@ -866,6 +942,8 @@ function PresalesOverview() {
       start_date: scheduleStart,
       end_date: scheduleEnd || scheduleStart,
       note: scheduleNote || null,
+      // Enhancement 2: partial-day blocks
+      block_hours: toNumberOrNull(scheduleBlockHours),
     };
 
     setScheduleSaving(true);
@@ -1096,7 +1174,7 @@ function PresalesOverview() {
                 <Filter size={18} className="panel-icon" />
                 Assignment helper
               </h3>
-              <p>Pick dates and see who is safest to assign.</p>
+              <p>Pick dates and see who is safest to assign (considers partial-day blocks).</p>
             </div>
           </div>
 
@@ -1244,7 +1322,7 @@ function PresalesOverview() {
                 <CalendarDays size={20} className="panel-icon" />
                 Presales availability ({calendarView === '14' ? 'next 14 days' : 'next 30 days'})
               </h3>
-              <p>See who is free, busy, on leave, or travelling so you can assign tasks safely.</p>
+              <p>Now considers partial-day blocks (meetings/calls) via block_hours.</p>
             </div>
 
             <div className="calendar-header-actions">
@@ -1334,7 +1412,7 @@ function PresalesOverview() {
                 <ListChecks size={18} className="panel-icon" />
                 Leave / travel schedule
               </h3>
-              <p>Upcoming leave, travel, training and other blocks.</p>
+              <p>Supports partial-day blocks using block_hours (e.g. 2h client calls).</p>
             </div>
 
             <button type="button" className="ghost-btn ghost-btn-sm" onClick={openScheduleModalForCreate}>
@@ -1360,6 +1438,7 @@ function PresalesOverview() {
                     <th>Presales</th>
                     <th>Type</th>
                     <th>Dates</th>
+                    <th>Blocked hours</th>
                     <th>Note</th>
                     <th className="th-center">Actions</th>
                   </tr>
@@ -1384,6 +1463,11 @@ function PresalesOverview() {
                         <td>
                           {formatShortDate(e.start_date)}
                           {e.end_date && e.end_date !== e.start_date ? ` – ${formatShortDate(e.end_date)}` : ''}
+                        </td>
+                        <td>
+                          {e.block_hours === null || e.block_hours === undefined || e.block_hours === ''
+                            ? 'Auto'
+                            : `${Number(e.block_hours).toFixed(1)}h`}
                         </td>
                         <td className="schedule-note-cell">{e.note}</td>
                         <td className="td-center">
@@ -1416,7 +1500,7 @@ function PresalesOverview() {
                 <Plane />
                 <div>
                   <h4>{scheduleMode === 'create' ? 'Add leave / travel' : 'Edit schedule'}</h4>
-                  <p>Block days where this presales is not fully available.</p>
+                  <p>Use blocked hours for partial-day events (calls, meetings, workshops).</p>
                 </div>
               </div>
               <button type="button" className="schedule-modal-close" onClick={closeScheduleModal}>
@@ -1461,13 +1545,25 @@ function PresalesOverview() {
               </div>
 
               <div className="schedule-form-row">
+                <div className="schedule-field">
+                  <label>Blocked hours (optional)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={scheduleBlockHours}
+                    onChange={(e) => setScheduleBlockHours(e.target.value)}
+                    placeholder="e.g. 2 (leave blank = auto by type)"
+                  />
+                </div>
+
                 <div className="schedule-field schedule-field-full">
                   <label>Note</label>
                   <input
                     type="text"
                     value={scheduleNote}
                     onChange={(e) => setScheduleNote(e.target.value)}
-                    placeholder="Optional note (e.g. client visit, internal training)"
+                    placeholder="Optional note (e.g. client calls, workshop, onsite)"
                   />
                 </div>
               </div>
@@ -1719,7 +1815,13 @@ function PresalesOverview() {
                           {formatShortDate(s.start_date)}
                           {s.end_date && s.end_date !== s.start_date ? ` – ${formatShortDate(s.end_date)}` : ''}
                         </span>
-                        {s.note && <span className="day-detail-schedule-note">{s.note}</span>}
+                        <span className="day-detail-schedule-note">
+                          {s.note ? `${s.note} · ` : ''}
+                          Blocked:{' '}
+                          {s.block_hours === null || s.block_hours === undefined || s.block_hours === ''
+                            ? 'Auto'
+                            : `${Number(s.block_hours).toFixed(1)}h`}
+                        </span>
                       </li>
                     ))}
                   </ul>
