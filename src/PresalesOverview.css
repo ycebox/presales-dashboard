@@ -850,3 +850,60 @@
     height: 32px;
   }
 }
+/* ===== FIX: PRESALES AVAILABILITY HEADER OVERLAP (use flex instead of grid) ===== */
+.heatmap-header,
+.heatmap-row {
+  display: flex;              /* override grid */
+  align-items: center;
+}
+
+.heatmap-presales-name {
+  flex: 0 0 180px;            /* fixed name column */
+  width: 180px;
+  min-width: 180px;
+  position: sticky;
+  left: 0;
+  z-index: 5;                 /* make sure name always sits on top */
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.heatmap-day-col,
+.heatmap-cell {
+  flex: 0 0 64px;             /* fixed day column width */
+}
+
+.heatmap-header-cell {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+/* ===== READABILITY: MAKE ALL TEXT BLACK (keep primary button text white) ===== */
+.presales-page-container,
+.presales-page-container p,
+.presales-page-container span,
+.presales-page-container td,
+.presales-page-container th,
+.presales-page-container label,
+.presales-page-container h1,
+.presales-page-container h2,
+.presales-page-container h3,
+.presales-page-container h4,
+.presales-page-container h5,
+.presales-page-container h6,
+.presales-page-container input,
+.presales-page-container select,
+.presales-page-container textarea {
+  color: #0b0b0b !important;
+}
+
+/* Keep primary button text white */
+.btn-primary,
+.btn-primary * {
+  color: #ffffff !important;
+}
+
+/* Keep danger text red where needed */
+.overdue {
+  color: #b91c1c !important;
+}
