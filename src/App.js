@@ -156,42 +156,7 @@ function HomeDashboard() {
     return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
   };
 
-  // Notes actions
-  const startEditNotes = () => {
-    setNotesDraft(notes);
-    setNotesEdit(true);
-    setNotesStatus('');
-  };
 
-  const cancelEditNotes = () => {
-    setNotesDraft(notes);
-    setNotesEdit(false);
-    setNotesStatus('');
-  };
-
-  const saveNotes = async () => {
-    setNotesSaving(true);
-    setNotesStatus('Saving…');
-    try {
-      const payload = { id: 1, notes: notesDraft };
-
-      const { error } = await supabase
-        .from('app_notes')
-        .upsert(payload, { onConflict: 'id' });
-
-      if (error) throw error;
-
-      setNotes(notesDraft);
-      setNotesEdit(false);
-      setNotesStatus('Saved');
-      setTimeout(() => setNotesStatus(''), 1500);
-    } catch (err) {
-      console.error('Error saving notes:', err);
-      setNotesStatus('Failed to save notes');
-    } finally {
-      setNotesSaving(false);
-    }
-  };
 
   if (loading) {
     return (
