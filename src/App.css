@@ -179,11 +179,13 @@ a {
 
 .home-dashboard {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(260px, 1.1fr);
+  grid-template-columns: 1fr;
   gap: 16px;
   align-items: flex-start;
 }
-
+.home-main-column {
+  max-width: 100%;
+}
 .home-top-row {
   grid-column: 1 / -1;
 }
