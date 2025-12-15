@@ -2012,3 +2012,89 @@ button.day-detail-task-item:hover {
 .unassigned-task-link:hover {
   opacity: 0.85;
 }
+/* =========================================================
+   LIGHT THEME – polish patch (minimal, data pops more)
+   ========================================================= */
+
+/* 1) Slightly bigger base font (~2%) */
+.presales-page-container.theme-light {
+  font-size: 102%;
+}
+
+/* 2) Softer, lighter background with subtle tints:
+      - pale blue + beige + soft green (very light)
+      - panels stay white so data pops */
+.presales-page-container.theme-light {
+  --bg: #f6f8fb;        /* pale cool gray */
+  --bg-2: #f1f5f9;      /* slate-100 like */
+  --panel: #ffffff;     /* keep panels white */
+  --panel-2: #f7fafc;   /* slightly lifted */
+  --border: #e6e9ef;
+
+  --text: #111827;      /* near-black */
+  --text-2: #334155;    /* charcoal */
+  --text-3: #64748b;    /* gray */
+
+  --accent: #2b6cb0;    /* pale blue leaning */
+  --accent-2: #38bdf8;  /* soft sky */
+
+  --shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  --shadow-soft: 0 8px 18px rgba(15, 23, 42, 0.06);
+
+  background:
+    radial-gradient(circle at 12% 10%, rgba(56, 189, 248, 0.10), transparent 55%), /* pale blue */
+    radial-gradient(circle at 90% 18%, rgba(34, 197, 94, 0.06), transparent 55%), /* soft green */
+    radial-gradient(circle at 20% 95%, rgba(245, 158, 11, 0.06), transparent 60%), /* beige/taupe warmth */
+    var(--bg);
+}
+
+/* 3) Make panels clearly lifted vs background */
+.presales-page-container.theme-light .presales-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+/* 4) Make “inside panel” surfaces slightly tinted (taupe/gray) */
+.presales-page-container.theme-light .assignment-filters,
+.presales-page-container.theme-light .activities-col-header,
+.presales-page-container.theme-light .heatmap-header-cell,
+.presales-page-container.theme-light .presales-empty {
+  background: linear-gradient(135deg, rgba(241, 245, 249, 0.90), rgba(250, 250, 249, 0.90));
+  border-color: var(--border);
+}
+
+/* 5) Improve table readability without making it loud */
+.presales-page-container.theme-light
+  .workload-table tbody tr:hover,
+.presales-page-container.theme-light
+  .schedule-list-table tbody tr:hover,
+.presales-page-container.theme-light
+  .assignment-table tbody tr:hover,
+.presales-page-container.theme-light
+  .unassigned-tasks-table tbody tr:hover {
+  background: rgba(56, 189, 248, 0.06);
+}
+
+/* 6) Subtle “data emphasis”: headings darker, body text clearer */
+.presales-page-container.theme-light .presales-panel-header h3 {
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .presales-panel-header p {
+  color: var(--text-2);
+}
+
+/* 7) Buttons stay minimalist */
+.presales-page-container.theme-light .btn-secondary,
+.presales-page-container.theme-light .ghost-btn {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .btn-secondary:hover,
+.presales-page-container.theme-light .ghost-btn:hover {
+  border-color: rgba(43, 108, 176, 0.35);
+  background: rgba(43, 108, 176, 0.04);
+}
