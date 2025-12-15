@@ -1,74 +1,2089 @@
+/* ===== PAGE CONTAINER & GLOBAL LAYOUT ===== */
+
+.presales-page-container {
+  min-height: 100vh;
+  padding: 24px 32px 40px;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(236, 72, 153, 0.12), transparent 55%),
+    #020617;
+  color: #e5e7eb;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", sans-serif;
+}
+
+/* spacing wrapper used by JS */
+.presales-crunch-section {
+  margin-bottom: 16px;
+}
+
+/* ===== HEADER ===== */
+
+.presales-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.presales-header-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.presales-header-main h2 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #f9fafb;
+  margin: 0;
+}
+
+.presales-header-main p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.back-to-home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e5e7eb;
+  text-decoration: none;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.back-to-home-link:hover {
+  background: rgba(30, 64, 175, 0.75);
+  border-color: rgba(129, 140, 248, 0.9);
+}
+
+/* ===== TEAM SUMMARY BAR ===== */
+
+.team-summary-bar {
+  display: flex;
+  gap: 16px;
+  padding: 10px 16px;
+  border-radius: 16px;
+  background: linear-gradient(
+      120deg,
+      rgba(30, 64, 175, 0.25),
+      rgba(15, 23, 42, 0.9)
+    );
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  backdrop-filter: blur(18px);
+}
+
+.team-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.team-summary-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9ca3af;
+}
+
+.team-summary-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+/* ===== SUMMARY CARDS ===== */
+
+.presales-summary-section {
+  margin-bottom: 18px;
+}
+
+.presales-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.presales-summary-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 14px 14px;
+  background: radial-gradient(
+      circle at top left,
+      rgba(96, 165, 250, 0.18),
+      transparent 55%
+    ),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.85));
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  box-shadow: 0 14px 45px rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(18px);
+  display: flex;
+  gap: 10px;
+}
+
+.psc-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.psc-icon-primary {
+  background: radial-gradient(circle at 30% 0%, #3b82f6, #1d4ed8);
+  color: white;
+}
+
+.psc-icon-accent {
+  background: radial-gradient(circle at 30% 0%, #22c55e, #15803d);
+  color: white;
+}
+
+.psc-icon-orange {
+  background: radial-gradient(circle at 30% 0%, #f97316, #c2410c);
+  color: white;
+}
+
+.psc-icon-neutral {
+  background: radial-gradient(circle at 30% 0%, #6b7280, #111827);
+  color: white;
+}
+
+.psc-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.psc-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9ca3af;
+}
+
+.psc-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f9fafb;
+}
+
+.psc-value-suffix {
+  font-size: 12px;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.psc-sub {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* ===== MAIN GRID (WORKLOAD + DEALS) ===== */
+
+.presales-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+/* ===== PANEL (GLASS CARD) ===== */
+
+.presales-panel {
+  border-radius: 20px;
+  padding: 14px 16px 16px;
+  background: linear-gradient(
+      135deg,
+      rgba(15, 23, 42, 0.96),
+      rgba(15, 23, 42, 0.88)
+    );
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  box-shadow:
+    0 20px 40px rgba(15, 23, 42, 0.8),
+    0 0 0 1px rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(18px);
+}
+
+.presales-panel-large {
+  width: 100%;
+}
+
+.presales-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.presales-panel-header-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.presales-panel-header-row .ghost-btn {
+  flex-shrink: 0;
+}
+
+.presales-panel-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #f9fafb;
+  margin: 0;
+}
+
+.presales-panel-header p {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 2px 0 0;
+}
+
+.panel-icon {
+  color: #a5b4fc;
+}
+
+/* ===== EMPTY STATE & LOADING / ERROR ===== */
+
+.presales-empty {
+  border-radius: 16px;
+  padding: 16px 14px;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.9),
+    rgba(15, 23, 42, 0.85)
+  );
+  border: 1px dashed rgba(75, 85, 99, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.presales-empty.small {
+  padding: 12px 12px;
+  font-size: 11px;
+}
+
+.presales-empty svg {
+  color: #6b7280;
+}
+
+.presales-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 60px;
+  color: #9ca3af;
+}
+
+.presales-spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 3px solid rgba(148, 163, 184, 0.4);
+  border-top-color: #6366f1;
+  animation: presales-spin 0.9s linear infinite;
+}
+
+@keyframes presales-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.presales-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(127, 29, 29, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.7);
+  color: #fecaca;
+  font-size: 12px;
+}
+
+/* ===== TABLES (WORKLOAD & COUNTRY) ===== */
+
+.workload-table-wrapper,
+.country-table-wrapper,
+.schedule-list-table-wrapper,
+.assignment-table-wrapper {
+  margin-top: 6px;
+  overflow: auto;
+}
+
+.workload-table,
+.country-table,
+.schedule-list-table,
+.assignment-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.workload-table th,
+.country-table th,
+.schedule-list-table th,
+.assignment-table th {
+  text-align: left;
+  padding: 8px 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9ca3af;
+  border-bottom: 1px solid rgba(55, 65, 81, 0.9);
+  white-space: nowrap;
+}
+
+.workload-table td,
+.country-table td,
+.schedule-list-table td,
+.assignment-table td {
+  padding: 7px 6px;
+  border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+  color: #e5e7eb;
+}
+
+.th-center {
+  text-align: center;
+}
+
+.td-center {
+  text-align: center;
+}
+
+.th-right {
+  text-align: right;
+}
+
+.td-right {
+  text-align: right;
+}
+
+.overdue {
+  color: #fecaca;
+}
+
+/* Workload name cell */
+
+.wl-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wl-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 0%, #38bdf8, #1d4ed8);
+  font-size: 12px;
+  font-weight: 600;
+  color: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.wl-name-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.wl-name-main {
+  font-size: 13px;
+  font-weight: 500;
+  color: #f9fafb;
+}
+
+.wl-name-sub {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Country cell */
+
+.cty-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cty-flag-placeholder {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 0%, #4b5563, #111827);
+  font-size: 11px;
+  font-weight: 600;
+  color: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== CALENDAR HEADER / BUTTONS ===== */
+
+.calendar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendar-toggle {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 2px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(55, 65, 81, 0.9);
+}
+
+.calendar-toggle-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.calendar-toggle-btn.active {
+  background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+  color: #f9fafb;
+}
+
+/* Ghost & primary buttons */
+
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(75, 85, 99, 0.9);
+  color: #e5e7eb;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ghost-btn span {
+  font-size: 11px;
+}
+
+.ghost-btn:hover {
+  background: rgba(30, 64, 175, 0.85);
+  border-color: rgba(129, 140, 248, 0.9);
+}
+
+.ghost-btn-sm {
+  padding: 5px 10px;
+}
+
+.primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+  color: #f9fafb;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 14px 35px rgba(37, 99, 235, 0.55);
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ✅ Aliases for JS button classes */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(75, 85, 99, 0.9);
+  color: #e5e7eb;
+  font-size: 11px;
+  cursor: pointer;
+}
+.btn-secondary:hover {
+  background: rgba(30, 64, 175, 0.85);
+  border-color: rgba(129, 140, 248, 0.9);
+}
+.btn-secondary:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+  color: #f9fafb;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 14px 35px rgba(37, 99, 235, 0.55);
+}
+.btn-primary:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+/* ===== HEATMAP (Availability) ===== */
+
+.heatmap-wrapper {
+  margin-top: 6px;
+  overflow-x: auto; /* ✅ allow scroll instead of overlap */
+}
+
+/* Legend */
+.heatmap-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 4px;
+}
+
+/* Legend colors */
+.legend-dot.status-free {
+  background: rgba(34, 197, 94, 0.8);
+}
+
+.legend-dot.status-busy {
+  background: rgba(234, 179, 8, 0.9);
+}
+
+.legend-dot.status-leave {
+  background: rgba(248, 113, 113, 0.95);
+}
+
+.legend-dot.status-travel {
+  background: rgba(59, 130, 246, 0.95);
+}
+
+/* Heatmap table */
+.heatmap-table {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  min-width: 980px; /* ✅ prevents columns from crushing */
+  overflow: hidden;
+}
+
+/* ✅ JS uses .heatmap-header (not heatmap-header-row) */
+.heatmap-header {
+  display: grid;
+  grid-template-columns: 170px repeat(auto-fit, minmax(44px, 1fr));
+}
+
+/* row */
+.heatmap-row {
+  display: grid;
+  grid-template-columns: 170px repeat(auto-fit, minmax(44px, 1fr));
+}
+
+.heatmap-header-cell {
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  font-size: 11px;
+  color: #9ca3af;
+  background: rgba(2, 6, 23, 0.65);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.heatmap-name-col {
+  text-align: left;
+  padding-left: 12px;
+  min-width: 170px;
+}
+
+.heatmap-day-col {
+  min-width: 44px;
+}
+
+.heatmap-row:nth-child(even) .heatmap-presales-cell {
+  background: rgba(2, 6, 23, 0.25);
+}
+
+.heatmap-presales-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  background: rgba(2, 6, 23, 0.35);
+}
+
+.heatmap-presales-name {
+  font-size: 12px;
+  color: #f9fafb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.heatmap-cell {
+  height: 34px;
+  border: none;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  border-left: 1px solid rgba(148, 163, 184, 0.06);
+  cursor: pointer;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.heatmap-cell:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+/* Cell colors */
+.heatmap-cell.status-free {
+  background: rgba(34, 197, 94, 0.28);
+}
+
+.heatmap-cell.status-busy {
+  background: rgba(234, 179, 8, 0.28);
+}
+
+.heatmap-cell.status-leave {
+  background: rgba(248, 113, 113, 0.3);
+}
+
+.heatmap-cell.status-travel {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+/* ===== SCHEDULE LIST ===== */
+
+.schedule-list-wrapper {
+  margin-top: 6px;
+}
+
+.schedule-list-header h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f9fafb;
+}
+
+.schedule-list-header p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.schedule-type-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  background: rgba(30, 64, 175, 0.2);
+  color: #bfdbfe;
+  font-size: 11px;
+}
+
+.schedule-note-cell {
+  color: #cbd5f5;
+}
+
+/* ✅ schedule header controls used in JS */
+.schedule-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.schedule-view-toggle {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 2px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(55, 65, 81, 0.9);
+}
+
+.schedule-view-toggle button {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.schedule-view-toggle button.active {
+  background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+  color: #f9fafb;
+}
+
+/* ===== ICON BUTTONS ===== */
+
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(75, 85, 99, 0.9);
+  background: rgba(15, 23, 42, 0.85);
+  color: #e5e7eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin: 0 4px;
+}
+
+.icon-btn:hover {
+  background: rgba(30, 64, 175, 0.75);
+  border-color: rgba(129, 140, 248, 0.9);
+}
+
+.icon-btn-danger {
+  border-color: rgba(153, 27, 27, 0.9);
+  color: #fecaca;
+}
+
+.icon-btn-danger:hover {
+  background: rgba(127, 29, 29, 0.45);
+  border-color: rgba(248, 113, 113, 0.9);
+}
+
+/* ✅ JS uses "icon-btn danger" */
+.icon-btn.danger {
+  border-color: rgba(153, 27, 27, 0.9);
+  color: #fecaca;
+}
+.icon-btn.danger:hover {
+  background: rgba(127, 29, 29, 0.45);
+  border-color: rgba(248, 113, 113, 0.9);
+}
+
+/* ===== ASSIGNMENT HELPER ===== */
+
+.presales-assignment-section {
+  margin-top: 16px;
+}
+
+.assignment-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.assignment-filters {
+  display: grid;
+  grid-template-columns: 1.6fr 0.7fr;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(2, 6, 23, 0.35);
+}
+
+.assignment-field label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9ca3af;
+  margin-bottom: 6px;
+}
+
+.assignment-dates {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assignment-dash {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.assignment-field input,
+.assignment-field select {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(55, 65, 81, 0.95);
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  font-size: 12px;
+}
+
+.assignment-list {
+  margin-top: 6px;
+}
+
+/* ===== SCHEDULE MODAL ===== */
+
+.schedule-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  z-index: 999;
+}
+
+.schedule-modal {
+  width: 720px;
+  max-width: 100%;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.98),
+    rgba(15, 23, 42, 0.92)
+  );
+  box-shadow: 0 35px 90px rgba(2, 6, 23, 0.8);
+  overflow: hidden;
+}
+
+.schedule-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(2, 6, 23, 0.45);
+}
+
+.schedule-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-modal-title svg {
+  color: #a5b4fc;
+}
+
+.schedule-modal-title h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #f9fafb;
+}
+
+.schedule-modal-title p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.schedule-modal-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(75, 85, 99, 0.9);
+  background: rgba(15, 23, 42, 0.85);
+  color: #e5e7eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.schedule-modal-close:hover {
+  background: rgba(30, 64, 175, 0.75);
+  border-color: rgba(129, 140, 248, 0.9);
+}
+
+.schedule-form {
+  padding: 14px 16px 16px;
+}
+
+.schedule-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.schedule-field label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9ca3af;
+  margin-bottom: 6px;
+}
+
+.schedule-field input,
+.schedule-field select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(55, 65, 81, 0.95);
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  font-size: 12px;
+}
+
+.schedule-field-full {
+  grid-column: 1 / -1;
+}
+
+.schedule-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.schedule-form-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-message-error {
+  color: #fecaca;
+  font-size: 12px;
+}
+
+/* ✅ JS uses .form-error sometimes */
+.form-error {
+  margin: 0 16px 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(127, 29, 29, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.7);
+  color: #fecaca;
+  font-size: 12px;
+}
+
+/* ===== DAY DETAIL MODAL CONTENT ===== */
+
+.day-detail-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.day-detail-section h5 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+}
+
+/* ✅ JS uses h4 in the day detail sections */
+.day-detail-section h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+}
+
+.day-detail-empty {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.day-detail-task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ✅ JS uses .day-detail-list (buttons/divs), so alias it */
+.day-detail-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.day-detail-task-item {
+  padding: 7px 9px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(55, 65, 81, 0.95);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  width: 100%;
+}
+
+/* if it's a button (JS uses button), remove default button styles */
+button.day-detail-task-item {
+  cursor: pointer;
+}
+button.day-detail-task-item:hover {
+  border-color: rgba(129, 140, 248, 0.55);
+  background: rgba(30, 41, 59, 0.45);
+}
+
+.day-detail-task-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.day-detail-task-project {
+  font-size: 12px;
+  font-weight: 500;
+  color: #e5e7eb;
+}
+
+.day-detail-task-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.7);
+  color: #bfdbfe;
+  background: rgba(30, 64, 175, 0.35);
+}
+
+.day-detail-task-desc {
+  font-size: 11px;
+  color: #cbd5f5;
+}
+
+/* Schedule list in day detail */
+.day-detail-schedule-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.day-detail-schedule-item {
+  padding: 7px 9px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(55, 65, 81, 0.95);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.day-detail-schedule-type {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.7);
+  color: #e0f2fe;
+  background: rgba(8, 47, 73, 0.8);
+}
+
+.day-detail-schedule-dates {
+  font-size: 11px;
+  color: #e5e7eb;
+}
+
+.day-detail-schedule-note {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 1024px) {
+  .presales-main-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .presales-page-container {
+    padding: 16px 16px 28px;
+  }
+
+  .presales-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .presales-panel {
+    padding: 12px 12px 14px;
+  }
+
+  .presales-header-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .heatmap-header-cell,
+  .heatmap-day-col {
+    font-size: 10px;
+  }
+
+  .heatmap-name-col {
+    min-width: 140px;
+  }
+
+  .schedule-modal {
+    width: 100%;
+  }
+
+  .activities-kanban {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* =========================================================
-   PALETTE PATCH (paste at the VERY BOTTOM)
-   Palette:
-   #D1D7D7 (cool light) | #AFA9B4 (lilac) | #D7D1D1 (warm light)
-   #AAAFAF (mid gray)   | #424341 (charcoal)
+   TASK MIX (fix light-theme forcing)
    ========================================================= */
 
+.presales-taskmix-section {
+  margin-top: 24px;
+}
+
+.taskmix-table-wrapper {
+  overflow-x: auto;
+  padding-top: 4px;
+}
+
+.taskmix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.taskmix-table th,
+.taskmix-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(31, 41, 55, 0.9); /* ✅ dark */
+}
+
+.taskmix-table th {
+  font-weight: 600;
+  color: #9ca3af; /* ✅ dark theme label */
+  text-align: left;
+}
+
+.taskmix-table .th-center,
+.taskmix-table .td-center {
+  text-align: center;
+}
+
+.taskmix-footer {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #9ca3af; /* ✅ dark theme */
+}
+
+/* =========================================================
+   Ongoing & upcoming presales activities (table view styles)
+   ========================================================= */
+
+.presales-panel-wide {
+  grid-column: 1 / -1;
+}
+
+.activities-table-wrapper {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+}
+
+.activities-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.activities-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(2, 6, 23, 0.95);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.activities-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.10);
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.95);
+}
+
+.activities-row {
+  cursor: pointer;
+}
+
+.activities-row:hover {
+  background: rgba(30, 41, 59, 0.45);
+}
+
+.activities-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.55);
+  font-size: 12px;
+  white-space: nowrap;
+  color: rgba(226, 232, 240, 0.95);
+}
+
+.activities-link {
+  color: rgba(147, 197, 253, 0.95);
+  text-decoration: none;
+}
+
+.activities-link:hover {
+  text-decoration: underline;
+}
+
+.activity-modal {
+  max-width: 760px;
+}
+
+/* =========================================================
+   ALIASES for your JS table classes (commitments-*)
+   ========================================================= */
+
+.commitments-table-wrapper {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+}
+
+.commitments-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.commitments-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(2, 6, 23, 0.95);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.commitments-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.10);
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.95);
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: rgba(30, 41, 59, 0.45);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.55);
+  font-size: 12px;
+  white-space: nowrap;
+  color: rgba(226, 232, 240, 0.95);
+}
+
+/* text ellipsis helper used by JS */
+.td-ellipsis {
+  max-width: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* helper class used inside kanban */
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================================================
+   KANBAN VIEW (Presales activities)
+   ========================================================= */
+
+.activities-kanban {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.activities-col {
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.55);
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.6);
+  overflow: hidden;
+}
+
+.activities-col.is-overdue {
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.activities-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(2, 6, 23, 0.55);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.activities-col-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f9fafb;
+  letter-spacing: 0.02em;
+}
+
+.activities-col-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.95);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.activities-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.activities-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 8px 10px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+/* smaller cards */
+.activity-card {
+  width: 100%;
+  text-align: left;
+  border-radius: 12px;
+  padding: 8px 9px;
+  background: linear-gradient(
+      135deg,
+      rgba(15, 23, 42, 0.92),
+      rgba(15, 23, 42, 0.78)
+    );
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: rgba(226, 232, 240, 0.96);
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.55);
+}
+
+.activity-card:hover {
+  border-color: rgba(129, 140, 248, 0.55);
+  background: linear-gradient(
+      135deg,
+      rgba(30, 64, 175, 0.22),
+      rgba(15, 23, 42, 0.86)
+    );
+}
+
+.activity-card.is-overdue {
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.activity-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.activity-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f9fafb;
+  margin: 0 0 5px;
+  line-height: 1.25;
+}
+
+.activity-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.activity-card-iconbtn {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(55, 65, 81, 0.9);
+  background: rgba(15, 23, 42, 0.92);
+  color: #e5e7eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.activity-card-iconbtn:hover {
+  border-color: rgba(129, 140, 248, 0.95);
+  background: rgba(30, 64, 175, 0.55);
+}
+
+.activity-card-iconbtn.danger {
+  border-color: rgba(153, 27, 27, 0.85);
+  color: #fecaca;
+}
+
+.activity-card-iconbtn.danger:hover {
+  background: rgba(127, 29, 29, 0.55);
+  border-color: rgba(248, 113, 113, 0.75);
+}
+
+.activity-card-sub {
+  margin: 0 0 7px;
+  font-size: 10.5px;
+  color: rgba(148, 163, 184, 0.95);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.activity-card-sub .dot {
+  opacity: 0.65;
+}
+
+.activity-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(2, 6, 23, 0.4);
+  font-size: 10.5px;
+  color: rgba(226, 232, 240, 0.95);
+  white-space: nowrap;
+}
+
+.meta-chip.chip-overdue {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: rgba(254, 202, 202, 0.95);
+}
+
+.activities-more {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(2, 6, 23, 0.35);
+  color: rgba(147, 197, 253, 0.95);
+  padding: 10px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.activities-more:hover {
+  background: rgba(30, 64, 175, 0.22);
+}
+
+/* =========================================================
+   Unassigned tasks - compact table
+   ========================================================= */
+
+.unassigned-tasks-table-wrapper {
+  border-radius: 14px;
+}
+
+.unassigned-tasks-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px; /* slightly smaller */
+}
+
+.unassigned-tasks-table thead th {
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.unassigned-tasks-table tbody td {
+  font-size: 12px;
+  padding: 8px 10px;
+}
+/* =========================================================
+   LIGHT THEME PATCH (incremental)
+   How to use:
+   - Add class "theme-light" to <div className="presales-page-container">
+   - Example: <div className="presales-page-container theme-light">
+   ========================================================= */
+
+/* Theme tokens */
 .presales-page-container.theme-light {
-  --p-bg: #D1D7D7;
-  --p-accent: #AFA9B4;
-  --p-warm: #D7D1D1;
-  --p-mid: #AAAFAF;
-  --p-ink: #424341;
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --panel-2: #f1f5f9;
+  --border: #e5e7eb;
 
-  /* core surfaces */
-  background: var(--p-bg);
-  color: var(--p-ink);
+  --text: #0f172a;
+  --text-2: #475569;
+  --text-3: #64748b;
 
-  /* unify borders + shadows */
-  --border: rgba(66, 67, 65, 0.18);
-  --border-soft: rgba(66, 67, 65, 0.12);
-  --shadow: 0 14px 30px rgba(66, 67, 65, 0.12);
-  --shadow-soft: 0 8px 18px rgba(66, 67, 65, 0.10);
+  --accent: #2563eb;
+  --accent-2: #0ea5e9;
+
+  --danger: #dc2626;
+  --warn: #f59e0b;
+  --success: #16a34a;
+
+  --shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --shadow-soft: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
+/* Light theme: actually switch the surface (override dark container background) */
+.presales-page-container.theme-light {
+  font-size: 102%; /* +2% readability */
 
-/* Make sure all text stays readable (always charcoal) */
-.presales-page-container.theme-light,
-.presales-page-container.theme-light * {
-  color: var(--p-ink);
+  /* lighter background than panels so cards/sections pop */
+  background:
+    radial-gradient(circle at 12% 10%, rgba(37, 99, 235, 0.10), transparent 55%),  /* pale blue */
+    radial-gradient(circle at 90% 18%, rgba(22, 163, 74, 0.06), transparent 55%),  /* soft green */
+    radial-gradient(circle at 20% 95%, rgba(245, 158, 11, 0.06), transparent 60%), /* beige/taupe warmth */
+    #f6f7fb; /* very light gray */
+  color: var(--text);
 }
-
-/* ---------- Panels ---------- */
+/* Page background */
+.presales-page-container.theme-light {
+  background: var(--bg);
+  color: var(--text);
+}
 .presales-page-container.theme-light .presales-panel {
-  background: rgba(255, 255, 255, 0.78); /* float above bg */
-  border: 1px solid var(--border-soft);
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.10);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(6px);
 }
 
-/* panel headers slightly tinted (warm) so sections look intentional */
-.presales-page-container.theme-light .presales-panel-header {
-  background: rgba(215, 209, 209, 0.55); /* warm light */
-  border-bottom: 1px solid var(--border-soft);
+.presales-page-container.theme-light .presales-panel-header p {
+  color: var(--text-2);
+}
+/* Header */
+.presales-page-container.theme-light .presales-header-main h2 {
+  color: var(--text);
 }
 
-/* icons: use lilac accent so the theme feels consistent */
-.presales-page-container.theme-light .panel-icon,
-.presales-page-container.theme-light .schedule-modal-close svg,
-.presales-page-container.theme-light .icon-btn svg {
-  color: var(--p-accent);
+.presales-page-container.theme-light .presales-header-main p {
+  color: var(--text-2);
 }
 
-/* ---------- Inner blocks (tables / filters / wrappers) ---------- */
-.presales-page-container.theme-light .assignment-filters,
-.presales-page-container.theme-light .workload-table-wrapper,
-.presales-page-container.theme-light .unassigned-tasks-table-wrapper,
-.presales-page-container.theme-light .schedule-list-table-wrapper,
-.presales-page-container.theme-light .heatmap-table {
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid var(--border-soft);
+/* Panels */
+.presales-page-container.theme-light .presales-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+/* Panel header icons + text */
+.presales-page-container.theme-light .panel-icon {
+  color: var(--accent);
+}
+
+.presales-page-container.theme-light .presales-panel-header p {
+  color: var(--text-2);
+}
+
+/* Empty states */
+.presales-page-container.theme-light .presales-empty {
+  background: var(--panel-2);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+
+/* Buttons */
+.presales-page-container.theme-light .btn-secondary,
+.presales-page-container.theme-light .ghost-btn {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
   box-shadow: var(--shadow-soft);
 }
 
-/* subtle table header tint (cool) */
-.presales-page-container.theme-light th {
-  background: rgba(209, 215, 215, 0.40);
-  color: var(--p-ink);
-  border-bottom: 1px solid var(--border-soft);
+.presales-page-container.theme-light .btn-secondary:hover,
+.presales-page-container.theme-light .ghost-btn:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: #ffffff;
 }
 
-/* row hover uses accent very lightly */
+.presales-page-container.theme-light .btn-primary,
+.presales-page-container.theme-light .primary-btn {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #ffffff;
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.25);
+}
+
+/* Tables */
+.presales-page-container.theme-light .workload-table th,
+.presales-page-container.theme-light .country-table th,
+.presales-page-container.theme-light .schedule-list-table th,
+.presales-page-container.theme-light .assignment-table th {
+  color: var(--text-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.presales-page-container.theme-light .workload-table td,
+.presales-page-container.theme-light .country-table td,
+.presales-page-container.theme-light .schedule-list-table td,
+.presales-page-container.theme-light .assignment-table td {
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+/* subtle zebra rows */
+.presales-page-container.theme-light .workload-table tbody tr:nth-child(even),
+.presales-page-container.theme-light .schedule-list-table tbody tr:nth-child(even),
+.presales-page-container.theme-light .assignment-table tbody tr:nth-child(even) {
+  background: rgba(241, 245, 249, 0.6);
+}
+
+/* Overdue text */
+.presales-page-container.theme-light .overdue {
+  color: var(--danger);
+}
+
+/* Kanban columns */
+.presales-page-container.theme-light .activities-col {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+.presales-page-container.theme-light .activities-col-header {
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.presales-page-container.theme-light .activities-col-title {
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .activities-col-count {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+
+/* Kanban cards */
+.presales-page-container.theme-light .activity-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .activity-card:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: #ffffff;
+}
+
+.presales-page-container.theme-light .activity-card-title {
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .activity-card-sub {
+  color: var(--text-2);
+}
+
+.presales-page-container.theme-light .meta-chip {
+  background: rgba(241, 245, 249, 0.85);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+
+.presales-page-container.theme-light .meta-chip.chip-overdue {
+  border-color: rgba(220, 38, 38, 0.35);
+  color: var(--danger);
+}
+
+/* Overdue column highlight (subtle, not loud) */
+.presales-page-container.theme-light .activities-col.is-overdue {
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+/* Heatmap container */
+.presales-page-container.theme-light .heatmap-table {
+  border: 1px solid var(--border);
+}
+
+.presales-page-container.theme-light .heatmap-header-cell {
+  background: var(--panel-2);
+  color: var(--text-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.presales-page-container.theme-light .heatmap-presales-name {
+  color: var(--text);
+}
+
+/* Heatmap cells (soft colors) */
+.presales-page-container.theme-light .heatmap-cell.status-free {
+  background: rgba(22, 163, 74, 0.18);
+}
+
+.presales-page-container.theme-light .heatmap-cell.status-busy {
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.presales-page-container.theme-light .heatmap-cell.status-leave {
+  background: rgba(220, 38, 38, 0.16);
+}
+
+.presales-page-container.theme-light .heatmap-cell.status-travel {
+  background: rgba(37, 99, 235, 0.16);
+}
+
+/* Modals */
+.presales-page-container.theme-light .schedule-modal {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: 0 35px 90px rgba(15, 23, 42, 0.18);
+}
+
+.presales-page-container.theme-light .schedule-modal-header {
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.presales-page-container.theme-light .schedule-modal-close,
+.presales-page-container.theme-light .icon-btn {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .icon-btn.danger {
+  border-color: rgba(220, 38, 38, 0.28);
+  color: var(--danger);
+}
+
+/* Inputs */
+.presales-page-container.theme-light .schedule-field input,
+.presales-page-container.theme-light .schedule-field select,
+.presales-page-container.theme-light .assignment-field input,
+.presales-page-container.theme-light .assignment-field select {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .schedule-field label,
+.presales-page-container.theme-light .assignment-field label {
+  color: var(--text-3);
+}
+
+/* Error banners */
+.presales-page-container.theme-light .form-error {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.25);
+  color: var(--danger);
+}
+/* =========================================================
+   MAX READABILITY PATCH – ENTERPRISE COMFORT MODE
+   (Feels ~2× bigger without breaking layout)
+   ========================================================= */
+
+/* 1️⃣ Global base font */
+.presales-page-container {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* 2️⃣ Section headers */
+.presales-panel-header h3 {
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.presales-panel-header p {
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+/* 3️⃣ Kanban */
+.activities-col-title {
+  font-size: 15.5px;
+}
+
+.activities-col-count {
+  font-size: 13.5px;
+}
+
+.activity-card {
+  padding: 10px 12px;
+}
+
+.activity-card-title {
+  font-size: 15.5px;
+  line-height: 1.4;
+}
+
+.activity-card-sub {
+  font-size: 13.5px;
+}
+
+.meta-chip {
+  font-size: 12.5px;
+  padding: 3px 10px;
+}
+
+/* 4️⃣ Tables (Workload, Assignment, Unassigned, Schedule) */
+.workload-table,
+.assignment-table,
+.schedule-list-table,
+.unassigned-tasks-table {
+  font-size: 14.5px;
+}
+
+.workload-table th,
+.assignment-table th,
+.schedule-list-table th,
+.unassigned-tasks-table th {
+  font-size: 13.5px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.workload-table td,
+.assignment-table td,
+.schedule-list-table td,
+.unassigned-tasks-table td {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+/* 5️⃣ Assignment helper */
+.assignment-field label {
+  font-size: 13.5px;
+}
+
+.assignment-field input,
+.assignment-field select {
+  font-size: 15.5px;
+  padding: 10px 12px;
+}
+
+/* 6️⃣ Availability heatmap */
+.heatmap-presales-name {
+  font-size: 14.5px;
+}
+
+.heatmap-header-cell {
+  font-size: 12.5px;
+}
+
+.heatmap-cell {
+  height: 38px;
+}
+
+/* 7️⃣ Modals */
+.schedule-modal-title {
+  font-size: 20px;
+}
+
+.schedule-field label {
+  font-size: 13.5px;
+}
+
+.schedule-field input,
+.schedule-field select {
+  font-size: 15.5px;
+  padding: 10px 12px;
+}
+
+/* 8️⃣ Day detail modal */
+.day-detail-task-desc {
+  font-size: 14.5px;
+}
+
+.day-detail-section h4 {
+  font-size: 14px;
+}
+
+/* 9️⃣ Buttons */
+.btn-primary,
+.btn-secondary,
+.ghost-btn {
+  font-size: 14.5px;
+  padding: 9px 16px;
+}
+
+/* 🔟 Empty & helper text */
+.presales-empty,
+.form-error {
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.unassigned-task-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.unassigned-task-link:hover {
+  opacity: 0.85;
+}
+/* =========================================================
+   LIGHT THEME – polish patch (minimal, data pops more)
+   ========================================================= */
+
+/* 1) Slightly bigger base font (~2%) */
+.presales-page-container.theme-light {
+  font-size: 102%;
+}
+
+/* 2) Softer, lighter background with subtle tints:
+      - pale blue + beige + soft green (very light)
+      - panels stay white so data pops */
+.presales-page-container.theme-light {
+  --bg: #f6f8fb;        /* pale cool gray */
+  --bg-2: #f1f5f9;      /* slate-100 like */
+  --panel: #ffffff;     /* keep panels white */
+  --panel-2: #f7fafc;   /* slightly lifted */
+  --border: #e6e9ef;
+
+  --text: #111827;      /* near-black */
+  --text-2: #334155;    /* charcoal */
+  --text-3: #64748b;    /* gray */
+
+  --accent: #2b6cb0;    /* pale blue leaning */
+  --accent-2: #38bdf8;  /* soft sky */
+
+  --shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  --shadow-soft: 0 8px 18px rgba(15, 23, 42, 0.06);
+
+  background:
+    radial-gradient(circle at 12% 10%, rgba(56, 189, 248, 0.10), transparent 55%), /* pale blue */
+    radial-gradient(circle at 90% 18%, rgba(34, 197, 94, 0.06), transparent 55%), /* soft green */
+    radial-gradient(circle at 20% 95%, rgba(245, 158, 11, 0.06), transparent 60%), /* beige/taupe warmth */
+    var(--bg);
+}
+
+/* 3) Make panels clearly lifted vs background */
+.presales-page-container.theme-light .presales-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+/* 4) Make “inside panel” surfaces slightly tinted (taupe/gray) */
+.presales-page-container.theme-light .assignment-filters,
+.presales-page-container.theme-light .activities-col-header,
+.presales-page-container.theme-light .heatmap-header-cell,
+.presales-page-container.theme-light .presales-empty {
+  background: linear-gradient(135deg, rgba(241, 245, 249, 0.90), rgba(250, 250, 249, 0.90));
+  border-color: var(--border);
+}
+
+/* 5) Improve table readability without making it loud */
 .presales-page-container.theme-light
   .workload-table tbody tr:hover,
 .presales-page-container.theme-light
@@ -77,138 +2092,224 @@
   .assignment-table tbody tr:hover,
 .presales-page-container.theme-light
   .unassigned-tasks-table tbody tr:hover {
-  background: rgba(175, 169, 180, 0.14); /* lilac hover */
+  background: rgba(56, 189, 248, 0.06);
 }
 
-/* ---------- Buttons ---------- */
+/* 6) Subtle “data emphasis”: headings darker, body text clearer */
+.presales-page-container.theme-light .presales-panel-header h3 {
+  color: var(--text);
+}
+
+.presales-page-container.theme-light .presales-panel-header p {
+  color: var(--text-2);
+}
+
+/* 7) Buttons stay minimalist */
 .presales-page-container.theme-light .btn-secondary,
-.presales-page-container.theme-light .ghost-btn,
-.presales-page-container.theme-light .icon-btn {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-soft);
+.presales-page-container.theme-light .ghost-btn {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 .presales-page-container.theme-light .btn-secondary:hover,
-.presales-page-container.theme-light .ghost-btn:hover,
-.presales-page-container.theme-light .icon-btn:hover {
-  border-color: rgba(175, 169, 180, 0.55);
-  background: rgba(175, 169, 180, 0.10);
+.presales-page-container.theme-light .ghost-btn:hover {
+  border-color: rgba(43, 108, 176, 0.35);
+  background: rgba(43, 108, 176, 0.04);
+}
+/* =========================================================
+   Availability Heatmap – new color coding (light palette)
+   Black / charcoal / gray / pale blue / beige / taupe / soft green
+   ========================================================= */
+
+.presales-page-container.theme-light .heatmap-table {
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.55);
 }
 
-.presales-page-container.theme-light .btn-primary,
-.presales-page-container.theme-light .primary-btn {
-  background: var(--p-accent);
-  color: #ffffff !important;
-  border: 1px solid rgba(66, 67, 65, 0.12);
-  box-shadow: var(--shadow);
-}
-
-.presales-page-container.theme-light .btn-primary:hover,
-.presales-page-container.theme-light .primary-btn:hover {
-  filter: brightness(0.98);
-}
-
-/* clickable task link (unassigned) */
-.presales-page-container.theme-light .unassigned-task-link {
-  color: var(--p-ink) !important;
-  text-decoration-color: rgba(66, 67, 65, 0.40);
-}
-
-/* ---------- Chips / badges ---------- */
-.presales-page-container.theme-light .meta-chip,
-.presales-page-container.theme-light .schedule-type-chip {
-  background: rgba(209, 215, 215, 0.45);
-  border: 1px solid rgba(66, 67, 65, 0.14);
-  color: var(--p-ink);
-}
-
-/* ---------- Kanban ---------- */
-.presales-page-container.theme-light .activities-col {
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-soft);
-}
-
-.presales-page-container.theme-light .activities-col-header {
-  background: rgba(209, 215, 215, 0.45); /* cool header */
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.presales-page-container.theme-light .activity-card {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(66, 67, 65, 0.12);
-  box-shadow: var(--shadow-soft);
-}
-
-.presales-page-container.theme-light .activity-card:hover {
-  border-color: rgba(175, 169, 180, 0.55);
-  background: rgba(175, 169, 180, 0.08);
-}
-
-/* ---------- Availability heatmap (your palette) ---------- */
+/* Make the cells feel “clickable” but still minimalist */
 .presales-page-container.theme-light .heatmap-cell {
-  border: 1px solid rgba(66, 67, 65, 0.14);
+  border: 1px solid rgba(15, 23, 42, 0.10);
   border-radius: 10px;
+  transition: transform 0.08s ease, filter 0.12s ease, border-color 0.12s ease;
 }
 
-/* Free = cool light (D1D7D7) */
+.presales-page-container.theme-light .heatmap-cell:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.98);
+  border-color: rgba(15, 23, 42, 0.22);
+}
+
+/* Base status colors (light shades) */
 .presales-page-container.theme-light .heatmap-cell.status-free {
-  background: rgba(209, 215, 215, 0.95);
+  background: rgba(34, 197, 94, 0.14); /* soft green */
 }
 
-/* Busy = mid gray (AAAFAF) */
 .presales-page-container.theme-light .heatmap-cell.status-busy {
-  background: rgba(170, 175, 175, 0.65);
+  background: rgba(148, 163, 184, 0.22); /* light gray */
 }
 
-/* Leave = warm light (D7D1D1) */
+/* Leave vs travel: warm neutrals (beige / taupe) */
 .presales-page-container.theme-light .heatmap-cell.status-leave {
-  background: rgba(215, 209, 209, 0.90);
+  background: rgba(245, 158, 11, 0.14); /* beige */
 }
 
-/* Travel = accent lilac (AFA9B4) */
 .presales-page-container.theme-light .heatmap-cell.status-travel {
-  background: rgba(175, 169, 180, 0.70);
+  background: rgba(168, 139, 112, 0.16); /* taupe */
 }
 
-/* Optional if you have near/over in the future */
+/* Optional: if your code ever sets these statuses, style them too */
 .presales-page-container.theme-light .heatmap-cell.status-near {
-  background: rgba(175, 169, 180, 0.55);
-  border-color: rgba(175, 169, 180, 0.75);
+  background: rgba(56, 189, 248, 0.16); /* pale blue */
 }
 
 .presales-page-container.theme-light .heatmap-cell.status-over {
-  background: rgba(66, 67, 65, 0.35);
-  border-color: rgba(66, 67, 65, 0.55);
+  background: rgba(17, 24, 39, 0.18); /* charcoal tint (still light) */
+  border-color: rgba(17, 24, 39, 0.25);
 }
 
-/* ---------- Modals ---------- */
-.presales-page-container.theme-light .schedule-modal-backdrop {
-  background: rgba(66, 67, 65, 0.35);
-  backdrop-filter: blur(8px);
+/* Header row slightly darker so the grid reads better */
+.presales-page-container.theme-light .heatmap-header-cell {
+  background: rgba(15, 23, 42, 0.04);
+  color: rgba(15, 23, 42, 0.90);
+  border-color: rgba(15, 23, 42, 0.10);
+}
+/* =========================================================
+   TEXT READABILITY OVERRIDE
+   Force all text to black / charcoal for clarity
+   ========================================================= */
+
+.presales-page-container.theme-light {
+  color: #111827; /* near-black */
 }
 
+/* Headings */
+.presales-page-container.theme-light h1,
+.presales-page-container.theme-light h2,
+.presales-page-container.theme-light h3,
+.presales-page-container.theme-light h4,
+.presales-page-container.theme-light h5 {
+  color: #111827;
+}
+
+/* Paragraphs, labels, table text */
+.presales-page-container.theme-light p,
+.presales-page-container.theme-light span,
+.presales-page-container.theme-light label,
+.presales-page-container.theme-light th,
+.presales-page-container.theme-light td,
+.presales-page-container.theme-light button {
+  color: #111827;
+}
+
+/* Secondary / helper text — still readable */
+.presales-page-container.theme-light .presales-panel-header p,
+.presales-page-container.theme-light .presales-empty,
+.presales-page-container.theme-light .meta-chip,
+.presales-page-container.theme-light .day-detail-task-desc,
+.presales-page-container.theme-light .day-detail-section h4 {
+  color: #1f2937; /* charcoal */
+}
+
+/* Table headers slightly muted but readable */
+.presales-page-container.theme-light th {
+  color: #1f2937;
+}
+
+/* Links / clickable task names */
+.presales-page-container.theme-light .unassigned-task-link {
+  color: #111827;
+  text-decoration-color: rgba(17, 24, 39, 0.4);
+}
+
+/* Icons inherit readable color */
+.presales-page-container.theme-light svg {
+  color: #111827;
+}
+
+/* Error text stays clear */
+.presales-page-container.theme-light .form-error {
+  color: #7f1d1d;
+}
+/* =========================================================
+   PANEL LAYERING & CONTRAST
+   Make sections and details pop clearly
+   ========================================================= */
+
+/* 1️⃣ Page background (lightest layer) */
+.presales-page-container.theme-light {
+  background-color: #f6f7fb; /* very light cool gray */
+}
+
+/* 2️⃣ Main panels (slightly tinted so they stand out from page) */
+.presales-page-container.theme-light .presales-panel {
+  background-color: #f1f5f9; /* light slate / pale blue-gray */
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+}
+
+/* Panel headers a touch darker for separation */
+.presales-page-container.theme-light .presales-panel-header {
+  background-color: rgba(226, 232, 240, 0.6); /* slate-200 */
+  border-bottom: 1px solid rgba(15, 23, 42, 0.10);
+}
+
+/* 3️⃣ Inner content surfaces (tables, kanban, filters) */
+.presales-page-container.theme-light
+  .workload-table-wrapper,
+.presales-page-container.theme-light
+  .assignment-content,
+.presales-page-container.theme-light
+  .activities-kanban,
+.presales-page-container.theme-light
+  .unassigned-tasks-table-wrapper,
+.presales-page-container.theme-light
+  .schedule-list-table-wrapper,
+.presales-page-container.theme-light
+  .heatmap-table {
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+}
+
+/* 4️⃣ Kanban columns slightly lifted from kanban background */
+.presales-page-container.theme-light .activities-col {
+  background-color: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+/* Kanban column headers */
+.presales-page-container.theme-light .activities-col-header {
+  background-color: #f8fafc;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.10);
+}
+
+/* 5️⃣ Assignment helper filters pop */
+.presales-page-container.theme-light .assignment-filters {
+  background-color: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  border-radius: 12px;
+}
+
+/* 6️⃣ Empty states look intentional, not flat */
+.presales-page-container.theme-light .presales-empty {
+  background-color: #f8fafc;
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+}
+
+/* 7️⃣ Subtle hover lift for rows and cards */
+.presales-page-container.theme-light
+  .workload-table tbody tr:hover,
+.presales-page-container.theme-light
+  .assignment-table tbody tr:hover,
+.presales-page-container.theme-light
+  .schedule-list-table tbody tr:hover {
+  background-color: rgba(226, 232, 240, 0.6);
+}
+
+/* 8️⃣ Keep modals clearly above everything */
 .presales-page-container.theme-light .schedule-modal {
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(66, 67, 65, 0.18);
-  box-shadow: 0 40px 90px rgba(66, 67, 65, 0.25);
-}
-
-.presales-page-container.theme-light .schedule-modal-header {
-  background: rgba(209, 215, 215, 0.55);
-  border-bottom: 1px solid rgba(66, 67, 65, 0.12);
-}
-
-.presales-page-container.theme-light .schedule-modal-title {
-  color: var(--p-ink);
-}
-
-/* inputs */
-.presales-page-container.theme-light input,
-.presales-page-container.theme-light select,
-.presales-page-container.theme-light textarea {
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(66, 67, 65, 0.18);
-  color: var(--p-ink);
+  background-color: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  box-shadow: 0 40px 90px rgba(15, 23, 42, 0.22);
 }
