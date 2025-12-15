@@ -172,8 +172,7 @@ const buildTaskTypeMultiplierMap = (taskTypes) => {
     map.set(nameLower, mult);
   });
 
-  // Add DB types: if the DB uses the canonical names, it will match perfectly.
-  // If DB has extra names, they default to 1.0 unless you decide to add a rule later.
+  // Add DB types
   (taskTypes || []).forEach((t) => {
     const key = (t?.name || '').toLowerCase().trim();
     if (!key) return;
@@ -181,8 +180,6 @@ const buildTaskTypeMultiplierMap = (taskTypes) => {
     if (CANONICAL_TYPE_MULTIPLIERS[key] !== undefined) {
       map.set(key, CANONICAL_TYPE_MULTIPLIERS[key]);
     } else {
-      // For custom DB values, keep it neutral by default (no surprise overload).
-      // You can later add per-name multipliers here if needed.
       if (!map.has(key)) map.set(key, 1.0);
     }
   });
@@ -245,21 +242,13 @@ const getPriorityMinFreeHours = (priority) => {
 };
 
 // ---------- Kanban component ----------
-function ActivitiesKanban({
-  groups,
-  parseDateFn,
-  today,
-  formatShortDate,
-  onClickTask,
-  onDeleteTask,
-}) {
+function ActivitiesKanban({ groups, parseDateFn, today, formatShortDate, onClickTask, onDeleteTask }) {
   const [limits, setLimits] = useState({
     Overdue: 6,
     'In Progress': 6,
     'Not Started': 6,
   });
 
-  // Order: Not Started (left) -> In Progress (center) -> Overdue (right)
   const columns = [
     { key: 'Not Started', title: 'Not Started' },
     { key: 'In Progress', title: 'In Progress' },
@@ -682,8 +671,7 @@ function PresalesOverview() {
       const targetHours =
         res && typeof res.target_hours === 'number' && !Number.isNaN(res.target_hours) ? res.target_hours : 6;
 
-      const safeMaxTasksPerDay =
-        res && Number.isInteger(res.max_tasks_per_day) ? res.max_tasks_per_day : 3;
+      const safeMaxTasksPerDay = res && Number.isInteger(res.max_tasks_per_day) ? res.max_tasks_per_day : 3;
 
       return { dailyCapacity, targetHours, maxTasksPerDay: safeMaxTasksPerDay };
     };
@@ -783,7 +771,7 @@ function PresalesOverview() {
     return arr;
   }, [tasks, presalesResources, thisWeekRange, nextWeekRange, last30DaysRange, today, taskTypeMultiplierMap]);
 
-  // ---------- Unassigned tasks only ----------
+  // ---------- Unassigned tasks only (KEEP ONLY THIS ONE) ----------
   const unassignedOnly = useMemo(() => {
     const unassigned = [];
     (tasks || []).forEach((t) => {
@@ -840,10 +828,7 @@ function PresalesOverview() {
           const dayTasks = (tasks || []).filter(
             (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
           );
-          const taskHours = dayTasks.reduce(
-            (sum, t) => sum + getEffectiveTaskHours(t, taskTypeMultiplierMap),
-            0
-          );
+          const taskHours = dayTasks.reduce((sum, t) => sum + getEffectiveTaskHours(t, taskTypeMultiplierMap), 0);
 
           const remaining = effectiveCapacity - taskHours;
           if (remaining >= minFreeHours) freeDays += 1;
@@ -890,8 +875,7 @@ function PresalesOverview() {
           ? res.daily_capacity_hours
           : HOURS_PER_DAY;
 
-      const maxTasksPerDay =
-        Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0 ? res.max_tasks_per_day : 3;
+      const maxTasksPerDay = Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0 ? res.max_tasks_per_day : 3;
 
       return { dailyCapacity, maxTasksPerDay };
     };
@@ -910,10 +894,7 @@ function PresalesOverview() {
         );
 
         const taskCount = dayTasks.length;
-        const totalHours = dayTasks.reduce(
-          (sum, t) => sum + getEffectiveTaskHours(t, taskTypeMultiplierMap),
-          0
-        );
+        const totalHours = dayTasks.reduce((sum, t) => sum + getEffectiveTaskHours(t, taskTypeMultiplierMap), 0);
 
         const blockedHours = daySchedules.reduce((sum, s) => sum + getScheduleBlockHours(s, dailyCapacity), 0);
         const effectiveCapacity = Math.max(0, dailyCapacity - blockedHours);
@@ -975,100 +956,6 @@ function PresalesOverview() {
     return { days, rows };
   }, [presalesResources, tasks, scheduleEvents, calendarView, taskTypeMultiplierMap]);
 
-  // ---------- Schedule handlers ----------
-  const openScheduleModalForCreate = () => {
-    setScheduleMode('create');
-    setEditingScheduleId(null);
-    setScheduleAssignee('');
-    setScheduleType('Leave');
-    setScheduleStart('');
-    setScheduleEnd('');
-    setScheduleNote('');
-    setScheduleBlockHours('');
-    setScheduleError(null);
-    setShowScheduleModal(true);
-  };
-
-  const openScheduleModalForEdit = (event) => {
-    setScheduleMode('edit');
-    setEditingScheduleId(event.id);
-    setScheduleAssignee(event.assignee || '');
-    setScheduleType(event.type || 'Leave');
-    setScheduleStart(event.start_date || '');
-    setScheduleEnd(event.end_date || event.start_date || '');
-    setScheduleNote(event.note || '');
-    setScheduleBlockHours(
-      event.block_hours === null || event.block_hours === undefined ? '' : String(event.block_hours)
-    );
-    setScheduleError(null);
-    setShowScheduleModal(true);
-  };
-
-  const closeScheduleModal = () => setShowScheduleModal(false);
-
-  const handleScheduleSubmit = async (e) => {
-    e.preventDefault();
-    setScheduleError(null);
-
-    if (!scheduleAssignee || !scheduleStart) {
-      setScheduleError('Assignee and start date are required.');
-      return;
-    }
-
-    const payload = {
-      assignee: scheduleAssignee,
-      type: scheduleType,
-      start_date: scheduleStart,
-      end_date: scheduleEnd || scheduleStart,
-      note: scheduleNote || null,
-      block_hours: toNumberOrNull(scheduleBlockHours),
-    };
-
-    setScheduleSaving(true);
-
-    try {
-      if (scheduleMode === 'create') {
-        const { data, error: insertError } = await supabase.from('presales_schedule').insert([payload]).select();
-        if (insertError) setScheduleError('Failed to create schedule entry.');
-        else if (data?.[0]) {
-          setScheduleEvents((prev) => [...prev, data[0]]);
-          closeScheduleModal();
-        }
-      } else if (scheduleMode === 'edit' && editingScheduleId) {
-        const { data, error: updateError } = await supabase
-          .from('presales_schedule')
-          .update(payload)
-          .eq('id', editingScheduleId)
-          .select();
-
-        if (updateError) setScheduleError('Failed to update schedule entry.');
-        else if (data?.[0]) {
-          const updated = data[0];
-          setScheduleEvents((prev) => prev.map((ev) => (ev.id === updated.id ? updated : ev)));
-          closeScheduleModal();
-        }
-      }
-    } catch (err) {
-      console.error('Error saving schedule:', err);
-      setScheduleError('Unexpected error while saving schedule.');
-    } finally {
-      setScheduleSaving(false);
-    }
-  };
-
-  const handleDeleteSchedule = async (id) => {
-    if (!window.confirm('Delete this schedule entry?')) return;
-
-    try {
-      const { error: deleteError } = await supabase.from('presales_schedule').delete().eq('id', id);
-      if (deleteError) alert('Failed to delete schedule entry.');
-      else setScheduleEvents((prev) => prev.filter((ev) => ev.id !== id));
-    } catch (err) {
-      console.error('Error deleting schedule:', err);
-      alert('Unexpected error while deleting schedule entry.');
-    }
-  };
-
   // ---------- Day detail ----------
   const openDayDetail = (assignee, date) => {
     const day = toMidnight(date);
@@ -1084,16 +971,6 @@ function PresalesOverview() {
     setDayDetail({ assignee, date: day, tasks: dayTasks, schedules: daySchedules });
     setDayDetailOpen(true);
   };
-
-  // ---------- Unassigned only ----------
-  const unassignedOnly = useMemo(() => {
-    const unassigned = [];
-    (tasks || []).forEach((t) => {
-      if (isCompletedStatus(t.status)) return;
-      if (!t.assignee) unassigned.push(t);
-    });
-    return unassigned;
-  }, [tasks]);
 
   // ---------- Loading / error ----------
   if (loading) {
@@ -1164,7 +1041,6 @@ function PresalesOverview() {
                   }
                 });
 
-              // Sort by due date then priority
               Object.keys(groups).forEach((k) => {
                 groups[k].sort((a, b) => {
                   const ad = parseDate(a.due_date) || parseDate(a.end_date) || parseDate(a.start_date) || today;
@@ -1231,12 +1107,8 @@ function PresalesOverview() {
 
       {/* NOTE:
           The rest of your sections (Assignment Helper, Workload, Availability, Schedules, Modals)
-          are still included in your project CSS and previous versions.
-          If you want, I can paste the remaining JSX exactly as your last working layout,
-          but the key patch you requested (DB-driven task type multipliers) is already applied above
-          through taskTypeMultiplierMap + getEffectiveTaskHours usage.
+          are not included in this file version.
       */}
-      {/* If you want the full remaining layout pasted too, tell me: "paste the full remaining sections" */}
     </div>
   );
 }
