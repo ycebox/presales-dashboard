@@ -1083,48 +1083,66 @@ function PresalesOverview() {
       </section>
 
       {/* UNASSIGNED TASKS */}
-      <section className="presales-crunch-section">
-        <div className="presales-panel presales-panel-large">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <AlertTriangle size={18} className="panel-icon" />
-                Unassigned tasks
-              </h3>
-              <p>Tasks that still need an owner.</p>
-            </div>
-          </div>
+<section className="presales-crunch-section">
+  <div className="presales-panel presales-panel-large">
+    <div className="presales-panel-header">
+      <div>
+        <h3>
+          <AlertTriangle size={18} className="panel-icon" />
+          Unassigned tasks
+        </h3>
+        <p>Tasks without an owner. Click a task to assign it.</p>
+      </div>
+    </div>
 
-          {unassignedOnly.length === 0 ? (
-            <div className="presales-empty small">
-              <p>No unassigned tasks detected right now.</p>
-            </div>
-          ) : (
-            <div className="assignment-table-wrapper unassigned-tasks-table-wrapper">
-              <table className="assignment-table unassigned-tasks-table">
-                <thead>
-                  <tr>
-                    <th>Task</th>
-                    <th>Project</th>
-                    <th>Due</th>
-                    <th>Priority</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {unassignedOnly.slice(0, 10).map((t) => (
-                    <tr key={t.id}>
-                      <td className="td-ellipsis">{t.description || 'Untitled task'}</td>
-                      <td className="td-ellipsis">{projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}</td>
-                      <td>{(t.due_date && new Date(t.due_date).toLocaleDateString('en-SG')) || '-'}</td>
-                      <td>{t.priority || 'Normal'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </section>
+    {unassignedOnly.length === 0 ? (
+      <div className="presales-empty small">
+        <p>No unassigned tasks detected right now.</p>
+      </div>
+    ) : (
+      <div className="unassigned-tasks-table-wrapper">
+        <table className="unassigned-tasks-table">
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Project</th>
+              <th>Due</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {unassignedOnly.slice(0, 10).map((t) => (
+              <tr key={t.id}>
+                {/* 👇 THIS IS THE ONLY CHANGE */}
+                <td className="td-ellipsis">
+                  <button
+                    type="button"
+                    className="unassigned-task-link"
+                    onClick={() => openTaskModal(t)}
+                    title="Open task"
+                  >
+                    {t.description || 'Untitled task'}
+                  </button>
+                </td>
+
+                <td className="td-ellipsis">
+                  {projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}
+                </td>
+
+                <td>
+                  {(t.due_date && new Date(t.due_date).toLocaleDateString('en-SG')) || '-'}
+                </td>
+
+                <td>{t.priority || 'Normal'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</section>
 
       {/* ASSIGNMENT HELPER */}
       <section className="presales-crunch-section">
