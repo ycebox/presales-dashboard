@@ -811,3 +811,111 @@ body {
     padding-right: 52px;
   }
 }
+/* =========================================================
+   READABILITY PATCH – ENTERPRISE FONT SIZES
+   Incremental, safe, no layout rewrite
+   ========================================================= */
+
+/* Base font size */
+.presales-page-container {
+  font-size: 14px;
+}
+
+/* Section headers */
+.presales-panel-header h3 {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.presales-panel-header p {
+  font-size: 13px;
+}
+
+/* Kanban column headers */
+.activities-col-title {
+  font-size: 14px;
+}
+
+/* Kanban cards */
+.activity-card-title {
+  font-size: 14px;
+}
+
+.activity-card-sub {
+  font-size: 12.5px;
+}
+
+.meta-chip {
+  font-size: 12px;
+}
+
+/* Tables – workload, assignment, schedules */
+.workload-table,
+.assignment-table,
+.schedule-list-table,
+.unassigned-tasks-table {
+  font-size: 13.5px;
+}
+
+.workload-table th,
+.assignment-table th,
+.schedule-list-table th,
+.unassigned-tasks-table th {
+  font-size: 12.5px;
+}
+
+/* Availability heatmap */
+.heatmap-presales-name {
+  font-size: 13.5px;
+}
+
+.heatmap-header-cell {
+  font-size: 12px;
+}
+
+/* Assignment helper */
+.assignment-field label {
+  font-size: 12px;
+}
+
+.assignment-field input,
+.assignment-field select {
+  font-size: 14px;
+}
+
+/* Modals */
+.schedule-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.schedule-field label {
+  font-size: 12px;
+}
+
+.schedule-field input,
+.schedule-field select {
+  font-size: 14px;
+}
+
+/* Day detail modal */
+.day-detail-task-desc {
+  font-size: 13.5px;
+}
+
+.day-detail-section h4 {
+  font-size: 13px;
+}
+
+/* Buttons */
+.btn-primary,
+.btn-secondary,
+.ghost-btn {
+  font-size: 13.5px;
+}
+
+/* Small helper text – still readable */
+.presales-empty,
+.form-error {
+  font-size: 13px;
+}
