@@ -919,3 +919,48 @@ body {
 .form-error {
   font-size: 13px;
 }
+/* =========================================================
+   Presales availability toggle – light theme
+   (14 days / 30 days)
+   ========================================================= */
+
+/* Toggle container */
+.presales-page-container.theme-light .availability-toggle {
+  display: inline-flex;
+  background: rgba(209, 215, 215, 0.6); /* soft cool gray */
+  border: 1px solid rgba(66, 67, 65, 0.18);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 4px;
+}
+
+/* Toggle buttons */
+.presales-page-container.theme-light .availability-toggle button {
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #424341; /* charcoal */
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Hover (inactive) */
+.presales-page-container.theme-light .availability-toggle button:hover:not(.active) {
+  background: rgba(175, 169, 180, 0.18); /* lilac tint */
+}
+
+/* Active state */
+.presales-page-container.theme-light .availability-toggle button.active {
+  background: #ffffff;
+  border: 1px solid rgba(66, 67, 65, 0.22);
+  box-shadow: 0 4px 10px rgba(66, 67, 65, 0.12);
+}
+
+/* Remove any dark-theme leftovers */
+.presales-page-container.theme-light .availability-toggle button,
+.presales-page-container.theme-light .availability-toggle button.active {
+  color: #424341;
+}
