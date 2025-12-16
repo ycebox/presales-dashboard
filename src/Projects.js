@@ -4,7 +4,6 @@ import { supabase } from './supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2,
-  Plus,
   Trash2,
   User,
   UserPlus,
@@ -28,9 +27,8 @@ function Projects() {
     country: '',
     account_manager: '',
     customer_type: '',
-    status_id: '' // status filter
+    status_id: ''
   });
-  const [selectedCustomers, setSelectedCustomers] = useState(new Set());
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [toast, setToast] = useState(null);
@@ -62,18 +60,42 @@ function Projects() {
     byStage: {}
   });
 
-  // Customer ↔ Deals rollup (for "Top Deals to Watch" alignment)
+  // Customer ↔ Deals rollup (for Active Deal + Attention columns)
   const [customerDeals, setCustomerDeals] = useState({});
-  const [loadingCustomerDeals, setLoadingCustomerDeals] = useState(false);
-  const [showTopDeals, setShowTopDeals] = useState(false);
 
   // Static data arrays
-  const asiaPacificCountries = useMemo(() => [
-    "Australia", "Bangladesh", "Brunei", "Cambodia", "China", "Fiji", "India", "Indonesia",
-    "Japan", "Laos", "Malaysia", "Myanmar", "Nepal", "New Zealand", "Pakistan",
-    "Papua New Guinea", "Philippines", "Singapore", "Solomon Islands", "South Korea",
-    "Sri Lanka", "Thailand", "Timor-Leste", "Tonga", "Vanuatu", "Vietnam"
-  ].sort(), []);
+  const asiaPacificCountries = useMemo(
+    () =>
+      [
+        'Australia',
+        'Bangladesh',
+        'Brunei',
+        'Cambodia',
+        'China',
+        'Fiji',
+        'India',
+        'Indonesia',
+        'Japan',
+        'Laos',
+        'Malaysia',
+        'Myanmar',
+        'Nepal',
+        'New Zealand',
+        'Pakistan',
+        'Papua New Guinea',
+        'Philippines',
+        'Singapore',
+        'Solomon Islands',
+        'South Korea',
+        'Sri Lanka',
+        'Thailand',
+        'Timor-Leste',
+        'Tonga',
+        'Vanuatu',
+        'Vietnam'
+      ].sort(),
+    []
+  );
 
   useEffect(() => {
     fetchCustomers();
@@ -164,9 +186,7 @@ function Projects() {
   useEffect(() => {
     const fetchDealsSummary = async () => {
       try {
-        const { data, error } = await supabase
-          .from('projects')
-          .select('id, sales_stage');
+        const { data, error } = await supabase.from('projects').select('id, sales_stage');
 
         if (error) {
           console.error('Error fetching projects for deals summary:', error);
@@ -180,13 +200,13 @@ function Projects() {
         }
 
         // Active = anything not starting with "Closed"
-        const activeProjects = data.filter(p => {
+        const activeProjects = data.filter((p) => {
           const stage = (p.sales_stage || '').toString().toLowerCase();
           return !stage.startsWith('closed');
         });
 
         const byStage = {};
-        activeProjects.forEach(p => {
+        activeProjects.forEach((p) => {
           const stage = p.sales_stage || 'Unspecified';
           byStage[stage] = (byStage[stage] || 0) + 1;
         });
@@ -204,170 +224,15 @@ function Projects() {
     fetchDealsSummary();
   }, []);
 
-  // Helpers for deal signals (kept resilient to missing columns)
-  const isDealActive = useCallback((stage) => {
-    const s = (stage || '').toString().trim().toLowerCase();
-    if (!s) return true; // treat unknown as active
-    if (s.startsWith('closed')) return false;
-    if (s === 'done' || s === 'won' || s === 'lost') return false;
-    if (s.includes('closed')) return false;
-    return true;
-  }, []);
-
-  const getStageRank = useCallback((stage) => {
-    const s = (stage || '').toString().toLowerCase();
-    // Adjust freely later — this is only for ordering/primary deal selection
-    const rank = [
-      { k: 'contract', r: 60 },
-      { k: 'sow', r: 55 },
-      { k: 'rfp', r: 50 },
-      { k: 'proposal', r: 45 },
-      { k: 'opportunity', r: 40 },
-      { k: 'lead', r: 30 },
-    ];
-    for (const it of rank) {
-      if (s.includes(it.k)) return it.r;
-    }
-    return 10; // unspecified / other
-  }, []);
-
-  const formatDealValue = useCallback((value) => {
-    const num = Number(value);
-    if (!Number.isFinite(num) || num === 0) return '';
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: 'USD',
-        maximumFractionDigits: 0
-      }).format(num);
-    } catch {
-      return `$${Math.round(num).toLocaleString()}`;
-    }
-  }, []);
-
-  const computeAttention = useCallback((deal) => {
-    // Prefer explicit risk flags if your projects table has them
-    const overdue = Number(deal?.overdue_tasks_count || 0);
-    const atRisk = Boolean(deal?.at_risk);
-    const rank = getStageRank(deal?.sales_stage);
-
-    if (overdue > 0 || atRisk) return 'red';
-    if (rank >= 55) return 'red';     // Contracting / SoW
-    if (rank >= 50) return 'amber';   // RFP
-    if (rank >= 40) return 'amber';   // Opportunity / Proposal
-    if (isDealActive(deal?.sales_stage)) return 'green';
-    return 'none';
-  }, [getStageRank, isDealActive]);
-
-  const attentionLabel = useCallback((level) => {
-    if (level === 'red') return 'High';
-    if (level === 'amber') return 'Medium';
-    if (level === 'green') return 'Low';
-    return '—';
-  }, []);
-
-  const fetchCustomerDeals = useCallback(async () => {
-    setLoadingCustomerDeals(true);
-    try {
-      // NOTE: keep select list defensive (columns may or may not exist in your schema)
-      const { data, error } = await supabase
-        .from('projects')
-        .select('id, customer_id, customer_name, sales_stage, deal_value, updated_at, next_milestone, next_step, next_action, last_activity_at, overdue_tasks_count, at_risk')
-        .order('updated_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching projects for customer deals:', error);
-        setCustomerDeals({});
-        return;
-      }
-
-      const rows = data || [];
-
-      // Group by customer_id when possible; fallback to customer_name (case-insensitive)
-      const byCustomerId = {};
-      const byCustomerName = {};
-
-      rows.forEach((p) => {
-        if (!isDealActive(p.sales_stage)) return;
-
-        const cid = p.customer_id ? String(p.customer_id) : '';
-        const cname = (p.customer_name || '').toString().trim().toLowerCase();
-
-        if (cid) {
-          if (!byCustomerId[cid]) byCustomerId[cid] = [];
-          byCustomerId[cid].push(p);
-        } else if (cname) {
-          if (!byCustomerName[cname]) byCustomerName[cname] = [];
-          byCustomerName[cname].push(p);
-        }
-      });
-
-      const rollup = {};
-      // Build rollup for known customers (so we can show — when none)
-      customers.forEach((c) => {
-        const cid = c.id ? String(c.id) : '';
-        const cnameKey = (c.customer_name || '').toString().trim().toLowerCase();
-
-        const deals =
-          (cid && byCustomerId[cid]) ||
-          (cnameKey && byCustomerName[cnameKey]) ||
-          [];
-
-        if (!deals.length) {
-          rollup[cid || cnameKey] = { deals: [], primary: null, attention: 'none', nextMilestone: '' };
-          return;
-        }
-
-        // Pick a primary deal (highest stage rank, then highest value, then most recently updated)
-        const sorted = [...deals].sort((a, b) => {
-          const sr = getStageRank(b.sales_stage) - getStageRank(a.sales_stage);
-          if (sr !== 0) return sr;
-          const vr = (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0);
-          if (vr !== 0) return vr;
-          return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
-        });
-
-        const primary = sorted[0];
-        const attention = computeAttention(primary);
-
-        const nextMilestone =
-          primary.next_milestone ||
-          primary.next_step ||
-          primary.next_action ||
-          '';
-
-        rollup[cid || cnameKey] = {
-          deals: sorted,
-          primary,
-          attention,
-          nextMilestone
-        };
-      });
-
-      setCustomerDeals(rollup);
-    } catch (err) {
-      console.error('Unexpected error in fetchCustomerDeals:', err);
-      setCustomerDeals({});
-    } finally {
-      setLoadingCustomerDeals(false);
-    }
-  }, [customers, computeAttention, getStageRank, isDealActive]);
-
-  // Refresh deal rollup when customers list changes
-  useEffect(() => {
-    if (!customers || customers.length === 0) return;
-    fetchCustomerDeals();
-  }, [customers, fetchCustomerDeals]);
-
   // Default: show only Active customers once statuses are loaded
   useEffect(() => {
     if (!statusOptions || statusOptions.length === 0) return;
 
-    setFilters(prev => {
+    setFilters((prev) => {
       if (prev.status_id && prev.status_id !== '') return prev;
 
       const activeStatus = statusOptions.find(
-        s =>
+        (s) =>
           (s.code && s.code.toUpperCase() === 'ACTIVE') ||
           (s.label && s.label.toLowerCase().includes('active'))
       );
@@ -404,11 +269,150 @@ function Projects() {
     }
   }, []);
 
+  // ---------- Deal signal layer helpers ----------
+  const isDealActive = useCallback((stage) => {
+    const s = (stage || '').toString().trim().toLowerCase();
+    if (!s) return true; // treat unknown as active
+    if (s.startsWith('closed')) return false;
+    if (s === 'done' || s === 'won' || s === 'lost') return false;
+    if (s.includes('closed')) return false;
+    return true;
+  }, []);
+
+  const getStageRank = useCallback((stage) => {
+    const s = (stage || '').toString().toLowerCase();
+    const rank = [
+      { k: 'contract', r: 60 },
+      { k: 'sow', r: 55 },
+      { k: 'rfp', r: 50 },
+      { k: 'proposal', r: 45 },
+      { k: 'opportunity', r: 40 },
+      { k: 'lead', r: 30 }
+    ];
+    for (const it of rank) {
+      if (s.includes(it.k)) return it.r;
+    }
+    return 10;
+  }, []);
+
+  const formatDealValue = useCallback((value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num) || num === 0) return '';
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 0
+      }).format(num);
+    } catch {
+      return `$${Math.round(num).toLocaleString()}`;
+    }
+  }, []);
+
+  const computeAttention = useCallback(
+    (deal) => {
+      const overdue = Number(deal?.overdue_tasks_count || 0);
+      const atRisk = Boolean(deal?.at_risk);
+      const rank = getStageRank(deal?.sales_stage);
+
+      if (overdue > 0 || atRisk) return 'red';
+      if (rank >= 55) return 'red'; // Contracting / SoW
+      if (rank >= 50) return 'amber'; // RFP
+      if (rank >= 40) return 'amber'; // Opportunity / Proposal
+      if (isDealActive(deal?.sales_stage)) return 'green';
+      return 'none';
+    },
+    [getStageRank, isDealActive]
+  );
+
+  const attentionLabel = useCallback((level) => {
+    if (level === 'red') return 'High';
+    if (level === 'amber') return 'Medium';
+    if (level === 'green') return 'Low';
+    return '—';
+  }, []);
+
+  const fetchCustomerDeals = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select(
+          'id, customer_id, customer_name, sales_stage, deal_value, updated_at, overdue_tasks_count, at_risk'
+        )
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching projects for customer deals:', error);
+        setCustomerDeals({});
+        return;
+      }
+
+      const rows = data || [];
+
+      const byCustomerId = {};
+      const byCustomerName = {};
+
+      rows.forEach((p) => {
+        if (!isDealActive(p.sales_stage)) return;
+
+        const cid = p.customer_id ? String(p.customer_id) : '';
+        const cname = (p.customer_name || '').toString().trim().toLowerCase();
+
+        if (cid) {
+          if (!byCustomerId[cid]) byCustomerId[cid] = [];
+          byCustomerId[cid].push(p);
+        } else if (cname) {
+          if (!byCustomerName[cname]) byCustomerName[cname] = [];
+          byCustomerName[cname].push(p);
+        }
+      });
+
+      const rollup = {};
+      customers.forEach((c) => {
+        const cid = c.id ? String(c.id) : '';
+        const cnameKey = (c.customer_name || '').toString().trim().toLowerCase();
+        const key = cid || cnameKey;
+
+        const deals = (cid && byCustomerId[cid]) || (cnameKey && byCustomerName[cnameKey]) || [];
+
+        if (!deals.length) {
+          rollup[key] = { deals: [], primary: null, attention: 'none' };
+          return;
+        }
+
+        const sorted = [...deals].sort((a, b) => {
+          const sr = getStageRank(b.sales_stage) - getStageRank(a.sales_stage);
+          if (sr !== 0) return sr;
+
+          const vr = (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0);
+          if (vr !== 0) return vr;
+
+          return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+        });
+
+        const primary = sorted[0];
+        const attention = computeAttention(primary);
+
+        rollup[key] = { deals: sorted, primary, attention };
+      });
+
+      setCustomerDeals(rollup);
+    } catch (err) {
+      console.error('Unexpected error in fetchCustomerDeals:', err);
+      setCustomerDeals({});
+    }
+  }, [customers, computeAttention, getStageRank, isDealActive]);
+
+  useEffect(() => {
+    if (!customers || customers.length === 0) return;
+    fetchCustomerDeals();
+  }, [customers, fetchCustomerDeals]);
+
   // Map status from id
   const getCustomerStatus = useCallback(
     (customer) => {
       if (!customer || !customer.status_id || !statusOptions.length) return null;
-      return statusOptions.find(s => s.id === customer.status_id) || null;
+      return statusOptions.find((s) => s.id === customer.status_id) || null;
     },
     [statusOptions]
   );
@@ -427,10 +431,10 @@ function Projects() {
   }, []);
 
   // Filter and search customers (includes status filter)
-  // If "Top Deals to Watch" is enabled, we also filter down to customers that have an active deal needing attention.
   const filteredCustomers = useMemo(() => {
-    const base = customers.filter(customer => {
-      const matchesSearch = !searchTerm ||
+    return customers.filter((customer) => {
+      const matchesSearch =
+        !searchTerm ||
         customer.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.account_manager?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.country?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -448,74 +452,36 @@ function Projects() {
 
       return matchesSearch && matchesFilters;
     });
-
-    if (!showTopDeals) return base;
-
-    // Only customers with an active deal and at least Amber/Red attention
-    const pickKey = (c) => (c.id ? String(c.id) : (c.customer_name || '').toString().trim().toLowerCase());
-    const filtered = base.filter((c) => {
-      const key = pickKey(c);
-      const info = customerDeals?.[key];
-      if (!info || !info.primary) return false;
-      return info.attention === 'red' || info.attention === 'amber';
-    });
-
-    // Sort: Red first, then Amber; tie-breaker: stage rank / value / recency
-    const attentionRank = { red: 2, amber: 1, green: 0, none: -1 };
-    return filtered.sort((a, b) => {
-      const ka = pickKey(a);
-      const kb = pickKey(b);
-      const ia = customerDeals?.[ka];
-      const ib = customerDeals?.[kb];
-
-      const ar = (attentionRank[ib?.attention] || 0) - (attentionRank[ia?.attention] || 0);
-      if (ar !== 0) return ar;
-
-      const sr = getStageRank(ib?.primary?.sales_stage) - getStageRank(ia?.primary?.sales_stage);
-      if (sr !== 0) return sr;
-
-      const vr = (Number(ib?.primary?.deal_value) || 0) - (Number(ia?.primary?.deal_value) || 0);
-      if (vr !== 0) return vr;
-
-      return new Date(ib?.primary?.updated_at || 0) - new Date(ia?.primary?.updated_at || 0);
-    });
-  }, [customers, searchTerm, filters, showTopDeals, customerDeals, getStageRank]);
+  }, [customers, searchTerm, filters]);
 
   // Get unique filter options
-  const filterOptions = useMemo(() => ({
-    countries: [...new Set(customers.map(c => c.country).filter(Boolean))].sort(),
-    managers: [...new Set(customers.map(c => c.account_manager).filter(Boolean))].sort(),
-    types: [...new Set(customers.map(c => c.customer_type).filter(Boolean))].sort()
-  }), [customers]);
+  const filterOptions = useMemo(
+    () => ({
+      countries: [...new Set(customers.map((c) => c.country).filter(Boolean))].sort(),
+      managers: [...new Set(customers.map((c) => c.account_manager).filter(Boolean))].sort(),
+      types: [...new Set(customers.map((c) => c.customer_type).filter(Boolean))].sort()
+    }),
+    [customers]
+  );
 
-  // Portfolio stats (simplified: no more average health)
+  // Portfolio stats
   const portfolioStats = useMemo(() => {
-    if (!customers || customers.length === 0) {
-      return null;
-    }
+    if (!customers || customers.length === 0) return null;
 
     const total = customers.length;
-    const uniqueCountries = new Set(
-      customers.map(c => c.country).filter(Boolean)
-    ).size;
+    const uniqueCountries = new Set(customers.map((c) => c.country).filter(Boolean)).size;
 
     let existingCount = 0;
     let newCount = 0;
     let internalCount = 0;
 
-    customers.forEach(c => {
+    customers.forEach((c) => {
       if (c.customer_type === 'Existing') existingCount += 1;
       else if (c.customer_type === 'New') newCount += 1;
       else if (c.customer_type === 'Internal Initiative') internalCount += 1;
     });
 
-    return {
-      total,
-      uniqueCountries,
-      existingCount,
-      newCount,
-      internalCount
-    };
+    return { total, uniqueCountries, existingCount, newCount, internalCount };
   }, [customers]);
 
   // Active filters for chips (including status)
@@ -524,7 +490,7 @@ function Projects() {
       .filter(([_, value]) => value)
       .map(([key, value]) => {
         if (key === 'status_id') {
-          const status = statusOptions.find(s => String(s.id) === String(value));
+          const status = statusOptions.find((s) => String(s.id) === String(value));
           return { key, value, label: `Status: ${status?.label || 'Unknown'}` };
         }
         return { key, value, label: `${key.replace('_', ' ')}: ${value}` };
@@ -541,11 +507,11 @@ function Projects() {
   }, []);
 
   const handleFilterChange = useCallback((key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
   }, []);
 
   const removeFilter = useCallback((key) => {
-    setFilters(prev => ({ ...prev, [key]: '' }));
+    setFilters((prev) => ({ ...prev, [key]: '' }));
   }, []);
 
   const clearAllFilters = useCallback(() => {
@@ -553,62 +519,19 @@ function Projects() {
     setSearchTerm('');
   }, []);
 
-  const handleCustomerSelect = useCallback((customerId) => {
-    setSelectedCustomers(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(customerId)) {
-        newSet.delete(customerId);
-      } else {
-        newSet.add(customerId);
-      }
-      return newSet;
-    });
-  }, []);
-
-  const handleSelectAll = useCallback(() => {
-    if (selectedCustomers.size === filteredCustomers.length) {
-      setSelectedCustomers(new Set());
-    } else {
-      setSelectedCustomers(new Set(filteredCustomers.map(c => c.id)));
-    }
-  }, [selectedCustomers.size, filteredCustomers]);
-
-  const handleBulkDelete = useCallback(async () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedCustomers.size} customer(s)? This action cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('customers')
-        .delete()
-        .in('id', Array.from(selectedCustomers));
-
-      if (error) throw error;
-
-      await fetchCustomers();
-      setSelectedCustomers(new Set());
-      showToast(`Successfully deleted ${selectedCustomers.size} customer(s)`);
-    } catch (err) {
-      console.error('Error deleting customers:', err);
-      showToast('Failed to delete customers', 'error');
-    }
-  }, [selectedCustomers, fetchCustomers, showToast]);
-
   const handleCustomerChange = useCallback((e) => {
     const { name, value, type } = e.target;
 
-    setNewCustomer(prev => {
+    setNewCustomer((prev) => {
       if (type === 'number') {
         return { ...prev, [name]: parseFloat(value) || 0 };
-      } else {
-        return { ...prev, [name]: value };
       }
+      return { ...prev, [name]: value };
     });
   }, []);
 
   const handleCustomerTypeChange = useCallback((type) => {
-    setNewCustomer(prev => ({ ...prev, customer_type: type }));
+    setNewCustomer((prev) => ({ ...prev, customer_type: type }));
   }, []);
 
   const resetCustomerForm = useCallback(() => {
@@ -625,87 +548,86 @@ function Projects() {
   }, []);
 
   // Add customer: default status = Active if none selected
-  const handleAddCustomer = useCallback(async (e) => {
-    e.preventDefault();
+  const handleAddCustomer = useCallback(
+    async (e) => {
+      e.preventDefault();
 
-    try {
-      const activeStatus = statusOptions.find(
-        s =>
-          (s.code && s.code.toUpperCase() === 'ACTIVE') ||
-          (s.label && s.label.toLowerCase().includes('active'))
-      );
+      try {
+        const activeStatus = statusOptions.find(
+          (s) =>
+            (s.code && s.code.toUpperCase() === 'ACTIVE') ||
+            (s.label && s.label.toLowerCase().includes('active'))
+        );
 
-      const statusId =
-        newCustomer.status_id ||
-        (activeStatus ? activeStatus.id : null);
+        const statusId = newCustomer.status_id || (activeStatus ? activeStatus.id : null);
 
-      const payload = {
-        ...newCustomer,
-        status_id: statusId ? Number(statusId) : null
-      };
+        const payload = {
+          ...newCustomer,
+          status_id: statusId ? Number(statusId) : null
+        };
 
-      const { data, error } = await supabase
-        .from('customers')
-        .insert([payload])
-        .select();
+        const { data, error } = await supabase.from('customers').insert([payload]).select();
+        if (error) throw error;
 
-      if (error) throw error;
+        if (data && data.length > 0) {
+          await fetchCustomers();
+          setShowCustomerModal(false);
+          resetCustomerForm();
+          showToast('Customer added successfully!');
+        }
+      } catch (err) {
+        console.error('Error adding customer:', err);
+        showToast('Failed to add customer', 'error');
+      }
+    },
+    [newCustomer, fetchCustomers, resetCustomerForm, showToast, statusOptions]
+  );
 
-      if (data && data.length > 0) {
+  const handleUpdateCustomer = useCallback(
+    async (e) => {
+      e.preventDefault();
+
+      try {
+        const payload = {
+          ...newCustomer,
+          status_id: newCustomer.status_id ? Number(newCustomer.status_id) : null
+        };
+
+        const { error } = await supabase.from('customers').update(payload).eq('id', editingCustomer.id);
+        if (error) throw error;
+
         await fetchCustomers();
         setShowCustomerModal(false);
         resetCustomerForm();
-        showToast('Customer added successfully!');
+        showToast('Customer updated successfully!');
+      } catch (err) {
+        console.error('Error updating customer:', err);
+        showToast('Failed to update customer', 'error');
       }
-    } catch (err) {
-      console.error('Error adding customer:', err);
-      showToast('Failed to add customer', 'error');
-    }
-  }, [newCustomer, fetchCustomers, resetCustomerForm, showToast, statusOptions]);
+    },
+    [newCustomer, editingCustomer, fetchCustomers, resetCustomerForm, showToast]
+  );
 
-  const handleUpdateCustomer = useCallback(async (e) => {
-    e.preventDefault();
+  const handleDeleteCustomer = useCallback(
+    async (id) => {
+      const customer = customers.find((c) => c.id === id);
+      if (!window.confirm(`Are you sure you want to delete "${customer?.customer_name}"? This action cannot be undone.`)) {
+        return;
+      }
 
-    try {
-      const payload = {
-        ...newCustomer,
-        status_id: newCustomer.status_id ? Number(newCustomer.status_id) : null
-      };
+      try {
+        const { error } = await supabase.from('customers').delete().eq('id', id);
+        if (error) throw error;
 
-      const { error } = await supabase
-        .from('customers')
-        .update(payload)
-        .eq('id', editingCustomer.id);
-
-      if (error) throw error;
-
-      await fetchCustomers();
-      setShowCustomerModal(false);
-      resetCustomerForm();
-      showToast('Customer updated successfully!');
-    } catch (err) {
-      console.error('Error updating customer:', err);
-      showToast('Failed to update customer', 'error');
-    }
-  }, [newCustomer, editingCustomer, fetchCustomers, resetCustomerForm, showToast]);
-
-  const handleDeleteCustomer = useCallback(async (id) => {
-    const customer = customers.find(c => c.id === id);
-    if (!window.confirm(`Are you sure you want to delete "${customer?.customer_name}"? This action cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from('customers').delete().eq('id', id);
-      if (error) throw error;
-
-      await fetchCustomers();
-      showToast('Customer deleted successfully!');
-    } catch (err) {
-      console.error('Error deleting customer:', err);
-      showToast('Failed to delete customer', 'error');
-    }
-  }, [customers, fetchCustomers, showToast]);
+        await fetchCustomers();
+        showToast('Customer deleted successfully!');
+      } catch (err) {
+        console.error('Error deleting customer:', err);
+        showToast('Failed to delete customer', 'error');
+      }
+    },
+    [customers, fetchCustomers, showToast]
+  );
 
   const handleEditCustomer = useCallback((customer) => {
     setEditingCustomer(customer);
@@ -721,9 +643,12 @@ function Projects() {
     setShowCustomerModal(true);
   }, []);
 
-  const handleCustomerClick = useCallback((customerId) => {
-    navigate(`/customer/${customerId}`);
-  }, [navigate]);
+  const handleCustomerClick = useCallback(
+    (customerId) => {
+      navigate(`/customer/${customerId}`);
+    },
+    [navigate]
+  );
 
   const handleModalClose = useCallback(() => {
     setShowCustomerModal(false);
@@ -758,15 +683,11 @@ function Projects() {
       <h3 className="empty-title">No customers found</h3>
       <p className="empty-description">
         {searchTerm || activeFilters.length > 0
-          ? "No customers match your current search or filters. Try adjusting your criteria."
-          : "Get started by adding your first customer to begin managing your portfolio."
-        }
+          ? 'No customers match your current search or filters. Try adjusting your criteria.'
+          : 'Get started by adding your first customer to begin managing your portfolio.'}
       </p>
-      {(!searchTerm && activeFilters.length === 0) && (
-        <button
-          onClick={() => setShowCustomerModal(true)}
-          className="empty-action-button"
-        >
+      {!searchTerm && activeFilters.length === 0 && (
+        <button onClick={() => setShowCustomerModal(true)} className="empty-action-button">
           <UserPlus size={16} />
           Add Your First Customer
         </button>
@@ -798,52 +719,16 @@ function Projects() {
                 {portfolioStats.uniqueCountries} countr{portfolioStats.uniqueCountries === 1 ? 'y' : 'ies'}
               </>
             )}
-            {selectedCustomers.size > 0 && ` • ${selectedCustomers.size} selected`}
           </p>
         </div>
 
         <div className="header-actions">
-          <button
-            className={`action-button secondary ${showTopDeals ? 'active' : ''}`}
-            onClick={() => setShowTopDeals(v => !v)}
-            title="Show only customers with deals that need attention"
-          >
-            <Briefcase size={12} className="button-icon" />
-            {showTopDeals ? 'Top Deals: On' : 'Top Deals: Off'}
-            {loadingCustomerDeals && <span className="tiny-loading-dot" />}
-          </button>
-
-          <button
-            className="action-button primary"
-            onClick={() => setShowCustomerModal(true)}
-          >
+          <button className="action-button primary" onClick={() => setShowCustomerModal(true)}>
             <UserPlus size={12} className="button-icon" />
             Add Customer
           </button>
         </div>
       </header>
-
-      {/* Bulk Actions */}
-      <div className={`bulk-actions ${selectedCustomers.size === 0 ? 'hidden' : ''}`}>
-        <div className="selected-count">
-          {selectedCustomers.size} customer{selectedCustomers.size !== 1 ? 's' : ''} selected
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button
-            className="bulk-action-button danger"
-            onClick={handleBulkDelete}
-          >
-            <Trash2 size={12} />
-            Delete Selected
-          </button>
-          <button
-            className="bulk-action-button"
-            onClick={() => setSelectedCustomers(new Set())}
-          >
-            Clear Selection
-          </button>
-        </div>
-      </div>
 
       {/* Portfolio summary (with Active Deals card) */}
       {portfolioStats && (
@@ -884,8 +769,7 @@ function Projects() {
                 <p className="summary-card-sub">
                   {dealsSummary.activeCount > 0 ? (
                     <>
-                      {(dealsSummary.byStage['RFP'] || 0)} RFP ·{' '}
-                      {(dealsSummary.byStage['SoW'] || 0)} SoW ·{' '}
+                      {(dealsSummary.byStage['RFP'] || 0)} RFP · {(dealsSummary.byStage['SoW'] || 0)} SoW ·{' '}
                       {(dealsSummary.byStage['Contracting'] || 0)} Contracting
                     </>
                   ) : (
@@ -925,14 +809,12 @@ function Projects() {
         <div className="filters-row">
           <div className="filter-group">
             <label className="filter-label">Country</label>
-            <select
-              value={filters.country}
-              onChange={(e) => handleFilterChange('country', e.target.value)}
-              className="filter-select"
-            >
+            <select value={filters.country} onChange={(e) => handleFilterChange('country', e.target.value)} className="filter-select">
               <option value="">All Countries</option>
-              {filterOptions.countries.map(country => (
-                <option key={country} value={country}>{country}</option>
+              {filterOptions.countries.map((country) => (
+                <option key={country} value={country}>
+                  {country}
+                </option>
               ))}
             </select>
           </div>
@@ -945,8 +827,10 @@ function Projects() {
               className="filter-select"
             >
               <option value="">All Managers</option>
-              {filterOptions.managers.map(manager => (
-                <option key={manager} value={manager}>{manager}</option>
+              {filterOptions.managers.map((manager) => (
+                <option key={manager} value={manager}>
+                  {manager}
+                </option>
               ))}
             </select>
           </div>
@@ -959,13 +843,14 @@ function Projects() {
               className="filter-select"
             >
               <option value="">All Types</option>
-              {filterOptions.types.map(type => (
-                <option key={type} value={type}>{type}</option>
+              {filterOptions.types.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
               ))}
             </select>
           </div>
 
-          {/* Status filter */}
           <div className="filter-group">
             <label className="filter-label">Status</label>
             <select
@@ -974,10 +859,8 @@ function Projects() {
               className="filter-select"
               disabled={loadingStatuses || !statusOptions.length}
             >
-              <option value="">
-                {loadingStatuses ? 'Loading…' : 'All Statuses'}
-              </option>
-              {statusOptions.map(status => (
+              <option value="">{loadingStatuses ? 'Loading…' : 'All Statuses'}</option>
+              {statusOptions.map((status) => (
                 <option key={status.id} value={status.id}>
                   {status.label}
                 </option>
@@ -986,25 +869,17 @@ function Projects() {
           </div>
         </div>
 
-        {/* Active Filters */}
         {activeFilters.length > 0 && (
           <div className="active-filters">
-            {activeFilters.map(filter => (
+            {activeFilters.map((filter) => (
               <div key={filter.key} className="filter-chip">
                 <span>{filter.label}</span>
-                <button
-                  className="filter-chip-remove"
-                  onClick={() => removeFilter(filter.key)}
-                >
+                <button className="filter-chip-remove" onClick={() => removeFilter(filter.key)}>
                   <X size={12} />
                 </button>
               </div>
             ))}
-            <button
-              className="filter-chip"
-              onClick={clearAllFilters}
-              style={{ background: '#fee2e2', color: '#991b1b' }}
-            >
+            <button className="filter-chip" onClick={clearAllFilters} style={{ background: '#fee2e2', color: '#991b1b' }}>
               Clear All
             </button>
           </div>
@@ -1021,17 +896,6 @@ function Projects() {
               <table className="customers-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '40px' }}>
-                      <input
-                        type="checkbox"
-                        className="table-checkbox"
-                        checked={
-                          selectedCustomers.size === filteredCustomers.length &&
-                          filteredCustomers.length > 0
-                        }
-                        onChange={handleSelectAll}
-                      />
-                    </th>
                     <th>Customer</th>
                     <th>Location</th>
                     <th>Account Manager</th>
@@ -1039,7 +903,6 @@ function Projects() {
                     <th>Status</th>
                     <th>Active Deal</th>
                     <th style={{ width: '110px' }}>Attention</th>
-                    <th>Next Milestone</th>
                     <th style={{ width: '80px' }}>Actions</th>
                   </tr>
                 </thead>
@@ -1047,71 +910,67 @@ function Projects() {
                   {filteredCustomers.map((customer) => {
                     const statusObj = getCustomerStatus(customer);
                     const statusLabel = statusObj?.label || 'Not Set';
-                    const statusClass = getStatusBadgeClass(
-                      statusObj?.code || statusObj?.label
-                    );
+                    const statusClass = getStatusBadgeClass(statusObj?.code || statusObj?.label);
+
+                    const dealKey = customer.id ? String(customer.id) : (customer.customer_name || '').toString().trim().toLowerCase();
+                    const dealInfo = customerDeals?.[dealKey];
+                    const primary = dealInfo?.primary;
+
+                    const activeDealNode = (() => {
+                      if (!primary) return <span className="deal-empty">—</span>;
+
+                      const stage = primary.sales_stage || 'Unspecified';
+                      const value = formatDealValue(primary.deal_value);
+                      const dealCount = dealInfo?.deals?.length || 0;
+
+                      return (
+                        <div className="deal-cell">
+                          <span className="deal-stage">{stage}</span>
+                          {value && <span className="deal-value">{value}</span>}
+                          {dealCount > 1 && <span className="deal-count">+{dealCount - 1}</span>}
+                        </div>
+                      );
+                    })();
+
+                    const attentionLevel = dealInfo?.attention || 'none';
 
                     return (
-                      <tr
-                        key={customer.id}
-                        className={
-                          selectedCustomers.has(customer.id) ? 'selected' : ''
-                        }
-                        onClick={() => handleCustomerClick(customer.id)}
-                      >
+                      <tr key={customer.id} onClick={() => handleCustomerClick(customer.id)}>
                         <td>
-                          <input
-                            type="checkbox"
-                            className="table-checkbox"
-                            checked={selectedCustomers.has(customer.id)}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              handleCustomerSelect(customer.id);
-                            }}
-                          />
-                        </td>
-                        <td>
-                          <div className="customer-cell">
-                            <div className="customer-avatar">
-                              {customer.customer_name
-                                ?.charAt(0)
-                                ?.toUpperCase() || 'C'}
-                            </div>
+                          <div className="customer-cell no-avatar">
                             <div className="customer-info">
-                              <div className="customer-name">
-                                {customer.customer_name}
-                              </div>
+                              <div className="customer-name">{customer.customer_name}</div>
                               <div className="customer-email">
-                                {customer.customer_type === 'Internal Initiative'
-                                  ? 'Internal'
-                                  : 'External Client'}
+                                {customer.customer_type === 'Internal Initiative' ? 'Internal' : 'External Client'}
                               </div>
                             </div>
                           </div>
                         </td>
+
                         <td>
                           <div className="location-cell">
                             <Globe size={14} className="location-icon" />
                             <span>{customer.country}</span>
                           </div>
                         </td>
+
                         <td>
                           <div className="manager-cell">
                             <User size={14} className="manager-icon" />
                             <span>{customer.account_manager}</span>
                           </div>
                         </td>
+
                         <td className="status-cell">
                           <span
                             className={`status-badge ${
-                              customer.customer_type
-                                ?.toLowerCase()
-                                .replace(/\s+/g, '-') || 'new'
+                              customer.customer_type?.toLowerCase().replace(/\s+/g, '-') || 'new'
                             }`}
                           >
                             {customer.customer_type || 'New'}
                           </span>
                         </td>
+
                         <td className="status-cell">
                           <span className={statusClass}>
                             <span className="status-dot-pill" />
@@ -1119,55 +978,13 @@ function Projects() {
                           </span>
                         </td>
 
-                        {/* Deal signal layer (aligns Customer Portfolio with Top Deals to Watch) */}
-                        <td>
-                          {(() => {
-                            const key = customer.id ? String(customer.id) : (customer.customer_name || '').toString().trim().toLowerCase();
-                            const info = customerDeals?.[key];
-                            const primary = info?.primary;
-
-                            if (!primary) return <span className="deal-empty">—</span>;
-
-                            const stage = primary.sales_stage || 'Unspecified';
-                            const value = formatDealValue(primary.deal_value);
-                            const dealCount = info?.deals?.length || 0;
-
-                            return (
-                              <div className="deal-cell">
-                                <span className="deal-stage">{stage}</span>
-                                {value && <span className="deal-value">{value}</span>}
-                                {dealCount > 1 && <span className="deal-count">+{dealCount - 1}</span>}
-                              </div>
-                            );
-                          })()}
-                        </td>
+                        <td>{activeDealNode}</td>
 
                         <td className="attention-cell">
-                          {(() => {
-                            const key = customer.id ? String(customer.id) : (customer.customer_name || '').toString().trim().toLowerCase();
-                            const info = customerDeals?.[key];
-                            const level = info?.attention || 'none';
-
-                            return (
-                              <span className={`attention-pill ${level}`}>
-                                <span className="attention-dot" />
-                                {attentionLabel(level)}
-                              </span>
-                            );
-                          })()}
-                        </td>
-
-                        <td>
-                          {(() => {
-                            const key = customer.id ? String(customer.id) : (customer.customer_name || '').toString().trim().toLowerCase();
-                            const info = customerDeals?.[key];
-                            const milestone = (info?.nextMilestone || '').toString().trim();
-                            return milestone ? (
-                              <span className="milestone-text" title={milestone}>{milestone}</span>
-                            ) : (
-                              <span className="deal-empty">—</span>
-                            );
-                          })()}
+                          <span className={`attention-pill ${attentionLevel}`}>
+                            <span className="attention-dot" />
+                            {attentionLabel(attentionLevel)}
+                          </span>
                         </td>
 
                         <td className="actions-cell">
@@ -1211,10 +1028,7 @@ function Projects() {
             <UserPlus size={20} className="title-icon-compact" />
             {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
           </h3>
-          <button
-            onClick={handleModalClose}
-            className="modal-close-button-compact"
-          >
+          <button onClick={handleModalClose} className="modal-close-button-compact">
             <X size={20} />
           </button>
         </div>
@@ -1258,9 +1072,7 @@ function Projects() {
                       required
                       disabled={loadingAccountManagers}
                     >
-                      <option value="">
-                        {loadingAccountManagers ? 'Loading…' : 'Select Account Manager'}
-                      </option>
+                      <option value="">{loadingAccountManagers ? 'Loading…' : 'Select Account Manager'}</option>
                       {accountManagers.map((m) => (
                         <option key={m.id} value={m.name}>
                           {m.name}
@@ -1281,7 +1093,6 @@ function Projects() {
                 </div>
               </div>
 
-              {/* Presales selection */}
               <div className="form-row-compact">
                 <div className="form-group-compact">
                   <label className="form-label-compact">Primary Presales</label>
@@ -1293,9 +1104,7 @@ function Projects() {
                       className="form-select-compact"
                       disabled={loadingPresales}
                     >
-                      <option value="">
-                        {loadingPresales ? 'Loading…' : 'Select Presales'}
-                      </option>
+                      <option value="">{loadingPresales ? 'Loading…' : 'Select Presales'}</option>
                       {presalesOptions.map((p) => (
                         <option key={p.id} value={p.name}>
                           {p.name}
@@ -1316,16 +1125,12 @@ function Projects() {
 
                 <div className="form-group-compact">
                   <label className="form-label-compact required">Country</label>
-                  <select
-                    name="country"
-                    value={newCustomer.country}
-                    onChange={handleCustomerChange}
-                    required
-                    className="form-select-compact"
-                  >
+                  <select name="country" value={newCustomer.country} onChange={handleCustomerChange} required className="form-select-compact">
                     <option value="">Select Country</option>
-                    {asiaPacificCountries.map(country => (
-                      <option key={country} value={country}>{country}</option>
+                    {asiaPacificCountries.map((country) => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1340,7 +1145,7 @@ function Projects() {
             </h4>
 
             <div className="type-pills-compact" style={{ marginBottom: '0.75rem' }}>
-              {['Existing', 'New', 'Internal Initiative'].map(type => (
+              {['Existing', 'New', 'Internal Initiative'].map((type) => (
                 <button
                   key={type}
                   type="button"
@@ -1352,7 +1157,6 @@ function Projects() {
               ))}
             </div>
 
-            {/* Status dropdown (for both add & edit) */}
             <div className="form-group-compact">
               <label className="form-label-compact">Customer Status</label>
               <select
@@ -1362,9 +1166,7 @@ function Projects() {
                 className="form-select-compact"
                 disabled={loadingStatuses}
               >
-                <option value="">
-                  {loadingStatuses ? 'Loading statuses…' : 'Select Status (default Active)'}
-                </option>
+                <option value="">{loadingStatuses ? 'Loading statuses…' : 'Select Status (default Active)'}</option>
                 {statusOptions.map((status) => (
                   <option key={status.id} value={status.id}>
                     {status.label}
@@ -1376,11 +1178,7 @@ function Projects() {
         </form>
 
         <div className="modal-actions-compact">
-          <button
-            type="button"
-            onClick={handleModalClose}
-            className="button-cancel-compact"
-          >
+          <button type="button" onClick={handleModalClose} className="button-cancel-compact">
             Cancel
           </button>
           <button
