@@ -830,7 +830,6 @@ const CustomerDetails = () => {
 
       const oldName = customer?.customer_name || '';
 
-      // update customers first
       const { error: updateError } = await supabase
         .from('customers')
         .update({
@@ -845,7 +844,6 @@ const CustomerDetails = () => {
 
       if (updateError) throw updateError;
 
-      // if customer_name changed, keep projects linked by renaming in projects table too
       if (oldName && newName && oldName !== newName) {
         const { error: projErr } = await supabase
           .from('projects')
@@ -860,7 +858,6 @@ const CustomerDetails = () => {
         }
       }
 
-      // refresh customer + projects
       const updatedCustomer = {
         ...customer,
         customer_name: newName,
@@ -921,15 +918,14 @@ const CustomerDetails = () => {
     await fetchTasks(projects);
   };
 
-  // IMPORTANT: insert required customer_name + set DATE created_at
   const handleCreateProject = async (payload) => {
     const insertPayload = {
       ...payload,
-      customer_name: customer.customer_name, // REQUIRED by schema
+      customer_name: customer.customer_name,
       account_manager: customer.account_manager || null,
       country: customer.country || null,
       primary_presales: customer.primary_presales || null,
-      created_at: todayISODate(), // projects.created_at is DATE
+      created_at: todayISODate(),
     };
 
     const { error } = await supabase.from('projects').insert([insertPayload]);
@@ -938,7 +934,6 @@ const CustomerDetails = () => {
     await fetchProjects(customer.customer_name);
   };
 
-  // Keyboard shortcuts (no eslint-disable comments so build won’t fail)
   useEffect(() => {
     const handler = (e) => {
       const tag = e.target?.tagName ? e.target.tagName.toLowerCase() : '';
@@ -993,9 +988,7 @@ const CustomerDetails = () => {
     <div className="customer-details-container">
       <header className="customer-header">
         <div className="customer-header-main">
-          <div className="customer-avatar">
-            <span>{customer.customer_name?.charAt(0) || 'C'}</span>
-          </div>
+          {/* Removed customer avatar / circle icon */}
           <div className="customer-header-text">
             <h1 className="customer-title">{customer.customer_name || 'Customer'}</h1>
             <div className="customer-subtitle-row">
@@ -1068,9 +1061,7 @@ const CustomerDetails = () => {
                 className="health-link"
                 onClick={() => navigate(`/project/${dealInsight.primary.id}`)}
               >
-                {dealInsight.primary.project_name || dealInsight.primary.project_name === ''
-                  ? dealInsight.primary.project_name
-                  : dealInsight.primary.project_name}
+                {dealInsight.primary.project_name}
                 {dealInsight.primary.sales_stage ? ` • ${dealInsight.primary.sales_stage}` : ''}
               </button>
             ) : (
@@ -1430,7 +1421,8 @@ const CustomerDetails = () => {
                 <span className="recent-activity-value">
                   {recentActivity.lastCustomer
                     ? formatDate(
-                        recentActivity.lastCustomer.updated_at || recentActivity.lastCustomer.created_at
+                        recentActivity.lastCustomer.updated_at ||
+                          recentActivity.lastCustomer.created_at
                       )
                     : '—'}
                 </span>
