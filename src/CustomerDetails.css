@@ -45,7 +45,8 @@
   min-height: calc(100vh - 64px);
   box-sizing: border-box;
 
-  max-width: 1600px;
+  /* slightly wider */
+  max-width: 1720px;
   margin: 0 auto;
 
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
@@ -55,9 +56,17 @@
 
 .customer-main-layout {
   display: grid;
-  grid-template-columns: minmax(0, 2.1fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 2.35fr) minmax(340px, 1fr);
   gap: 1rem;
   align-items: flex-start;
+}
+
+/* sticky right column on wide screens */
+@media (min-width: 1200px) {
+  .customer-main-right {
+    position: sticky;
+    top: 18px;
+  }
 }
 
 /* On smaller screens, stack the columns */
@@ -68,6 +77,10 @@
   .customer-main-layout {
     grid-template-columns: minmax(0, 1fr);
   }
+  .customer-main-right {
+    position: static;
+    top: auto;
+  }
 }
 
 /* ====== Header ====== */
@@ -75,7 +88,7 @@
 .customer-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 14px;
   gap: 1rem;
 }
@@ -86,35 +99,24 @@
   gap: 0.75rem;
 }
 
+/* avatar removed in JS; keep class safe in case other pages reuse it */
 .customer-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 750;
-  background: rgba(29, 78, 216, 0.12);
-  border: 1px solid rgba(29, 78, 216, 0.25);
-  color: var(--primary-2);
-  box-shadow: 0 10px 18px rgba(29, 78, 216, 0.10);
-}
-
-.customer-avatar span {
-  font-size: 16px;
+  display: none;
 }
 
 .customer-header-text {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.25rem;
 }
 
 .customer-title {
-  font-size: 24px; /* ~24px page title */
+  /* make the name stand out more */
+  font-size: 30px;
+  line-height: 1.05;
   margin: 0;
-  font-weight: 750;
-  letter-spacing: -0.02em;
+  font-weight: 820;
+  letter-spacing: -0.03em;
   color: var(--ink-0);
 }
 
@@ -147,6 +149,8 @@
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
+  align-items: center;
+  padding-top: 2px;
 }
 
 /* ====== Buttons (light theme) ====== */
@@ -227,7 +231,7 @@
   background: rgba(255, 255, 255, 0.94);
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  padding: 0.9rem 1rem;
+  padding: 0.95rem 1.05rem;
   box-shadow: var(--shadow);
 }
 
@@ -301,7 +305,7 @@
 
 .info-value.main-name {
   font-size: 14px;
-  font-weight: 750;
+  font-weight: 800;
 }
 
 .info-input,
@@ -450,12 +454,6 @@
   color: var(--muted-2);
 }
 
-.stakeholder-notes {
-  margin: 0.2rem 0 0;
-  font-size: 12px;
-  color: var(--muted);
-}
-
 /* ====== Projects list ====== */
 
 .projects-section .project-list {
@@ -552,31 +550,87 @@
   align-self: stretch;
 }
 
+/* --- Snapshot enhancement --- */
 .snapshot-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
+  gap: 0.65rem;
 }
 
 .snapshot-item {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  background: #ffffff;
-  padding: 0.6rem 0.65rem;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(255, 255, 255, 1));
+  padding: 0.7rem 0.75rem;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  transition: transform 0.10s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.snapshot-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(29, 78, 216, 0.28);
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.09);
 }
 
 .snapshot-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
-  font-weight: 750;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
 }
 
 .snapshot-value {
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 20px;
+  font-weight: 850;
   color: var(--ink-0);
+  margin-top: 0.15rem;
+}
+
+/* --- Recent activity enhancement --- */
+.recent-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.recent-activity-row {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-2);
+  background: rgba(248, 250, 252, 0.85);
+}
+
+.recent-activity-row:hover {
+  border-color: rgba(29, 78, 216, 0.22);
+  background: rgba(29, 78, 216, 0.04);
+}
+
+.recent-activity-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.recent-activity-value {
+  font-size: 13px;
+  color: var(--ink-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-activity-hint {
+  margin-top: 0.75rem;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 /* ====== Tasks by project (right column) ====== */
@@ -592,12 +646,10 @@
 .customer-tasks-list::-webkit-scrollbar {
   width: 8px;
 }
-
 .customer-tasks-list::-webkit-scrollbar-track {
   background: rgba(148, 163, 184, 0.12);
   border-radius: 999px;
 }
-
 .customer-tasks-list::-webkit-scrollbar-thumb {
   background: rgba(100, 116, 139, 0.55);
   border-radius: 999px;
@@ -1028,41 +1080,6 @@
 
 .health-link:hover { text-decoration: underline; }
 
-.recent-activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.recent-activity-row {
-  display: grid;
-  grid-template-columns: 160px minmax(0, 1fr);
-  gap: 0.75rem;
-  align-items: baseline;
-}
-
-.recent-activity-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-  font-weight: 750;
-}
-
-.recent-activity-value {
-  font-size: 13px;
-  color: var(--ink-0);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.recent-activity-hint {
-  margin-top: 0.75rem;
-  font-size: 12px;
-  color: var(--muted);
-}
-
 .kbd {
   display: inline-flex;
   align-items: center;
@@ -1088,6 +1105,7 @@
 }
 
 @media (max-width: 640px) {
+  .customer-title { font-size: 24px; }
   .health-grid { grid-template-columns: 1fr; }
   .recent-activity-row { grid-template-columns: 1fr; gap: 0.2rem; }
 }
@@ -1109,21 +1127,18 @@
   flex-direction: column;
 }
 
-/* Make the tasks list scroll inside the card and fill the card */
 .tasks-section .customer-tasks-list {
   flex: 1;
   max-height: none;
   overflow-y: auto;
 }
 
-/* Give a bit more room on wide screens */
 @media (min-width: 1200px) {
   .tasks-section .customer-tasks-list {
     min-height: 340px;
   }
 }
 
-/* On smaller screens, let sections flow naturally */
 @media (max-width: 960px) {
   .snapshot-section,
   .recent-activity-section,
