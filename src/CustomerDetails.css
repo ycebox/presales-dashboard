@@ -548,7 +548,8 @@
 .customer-main-right {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 1rem;
+  align-self: stretch;
 }
 
 .snapshot-grid {
@@ -584,7 +585,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  max-height: 340px;
   overflow-y: auto;
 }
 
@@ -1090,4 +1090,48 @@
 @media (max-width: 640px) {
   .health-grid { grid-template-columns: 1fr; }
   .recent-activity-row { grid-template-columns: 1fr; gap: 0.2rem; }
+}
+
+/* ===== Right column rhythm polish ===== */
+
+.snapshot-section {
+  min-height: 220px;
+}
+
+.recent-activity-section {
+  min-height: 180px;
+}
+
+.tasks-section {
+  flex: 1;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Make the tasks list scroll inside the card and fill the card */
+.tasks-section .customer-tasks-list {
+  flex: 1;
+  max-height: none;
+  overflow-y: auto;
+}
+
+/* Give a bit more room on wide screens */
+@media (min-width: 1200px) {
+  .tasks-section .customer-tasks-list {
+    min-height: 340px;
+  }
+}
+
+/* On smaller screens, let sections flow naturally */
+@media (max-width: 960px) {
+  .snapshot-section,
+  .recent-activity-section,
+  .tasks-section {
+    min-height: unset;
+  }
+
+  .tasks-section .customer-tasks-list {
+    max-height: 420px;
+  }
 }
