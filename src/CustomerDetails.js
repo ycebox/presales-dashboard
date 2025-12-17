@@ -47,9 +47,7 @@ const customerTypes = ['Existing', 'New', 'Internal Initiative'];
 
 // Parse a single "Name | Role | Contact" string
 const parseStakeholderEntry = (entry) => {
-  if (!entry) {
-    return { name: '', role: '', contact: '' };
-  }
+  if (!entry) return { name: '', role: '', contact: '' };
   const parts = String(entry).split('|');
   return {
     name: (parts[0] || '').trim(),
@@ -69,13 +67,13 @@ const StakeholdersModal = ({ isOpen, onClose, onSave, existingStakeholders }) =>
   const [rows, setRows] = useState([]);
 
   useEffect(() => {
-    if (isOpen) {
-      const parsed = Array.isArray(existingStakeholders)
-        ? existingStakeholders.map(parseStakeholderEntry)
-        : [];
+    if (!isOpen) return;
 
-      setRows(parsed.length ? parsed : [{ name: '', role: '', contact: '' }]);
-    }
+    const parsed = Array.isArray(existingStakeholders)
+      ? existingStakeholders.map(parseStakeholderEntry)
+      : [];
+
+    setRows(parsed.length ? parsed : [{ name: '', role: '', contact: '' }]);
   }, [isOpen, existingStakeholders]);
 
   if (!isOpen) return null;
@@ -86,13 +84,9 @@ const StakeholdersModal = ({ isOpen, onClose, onSave, existingStakeholders }) =>
     );
   };
 
-  const addRow = () => {
-    setRows((prev) => [...prev, { name: '', role: '', contact: '' }]);
-  };
+  const addRow = () => setRows((prev) => [...prev, { name: '', role: '', contact: '' }]);
 
-  const removeRow = (index) => {
-    setRows((prev) => prev.filter((_, i) => i !== index));
-  };
+  const removeRow = (index) => setRows((prev) => prev.filter((_, i) => i !== index));
 
   const handleSave = () => {
     const cleaned = rows
@@ -109,10 +103,7 @@ const StakeholdersModal = ({ isOpen, onClose, onSave, existingStakeholders }) =>
 
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
-      <div
-        className="modal-container"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
+      <div className="modal-container" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-wrapper">
             <FaUsers className="modal-icon" />
@@ -163,11 +154,7 @@ const StakeholdersModal = ({ isOpen, onClose, onSave, existingStakeholders }) =>
               </div>
             ))}
 
-            <button
-              type="button"
-              className="btn-secondary inline"
-              onClick={addRow}
-            >
+            <button type="button" className="btn-secondary inline" onClick={addRow}>
               <FaPlus />
               Add another
             </button>
@@ -200,16 +187,8 @@ const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) {
-      setForm({
-        project_id: '',
-        description: '',
-        status: 'Not Started',
-        priority: 'Normal',
-        due_date: '',
-      });
-      setSaving(false);
-    }
+    if (!isOpen) return;
+    setSaving(false);
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -221,7 +200,8 @@ const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.project_id || !form.description.trim()) {
+
+    if (!form.project_id || !String(form.description || '').trim()) {
       alert('Please select a project and enter a task description.');
       return;
     }
@@ -235,6 +215,13 @@ const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
       });
       setSaving(false);
       onClose();
+      setForm({
+        project_id: '',
+        description: '',
+        status: 'Not Started',
+        priority: 'Normal',
+        due_date: '',
+      });
     } catch (err) {
       setSaving(false);
       alert('Failed to create task: ' + err.message);
@@ -243,10 +230,7 @@ const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
 
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
-      <div
-        className="modal-container"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
+      <div className="modal-container" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-wrapper">
             <FaTasks className="modal-icon" />
@@ -370,16 +354,8 @@ const ProjectModal = ({ isOpen, onClose, onSave, customerId }) => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) {
-      setForm({
-        project_name: '',
-        scope: '',
-        sales_stage: 'Opportunity',
-        deal_value: '',
-        product: '',
-      });
-      setSaving(false);
-    }
+    if (!isOpen) return;
+    setSaving(false);
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -391,7 +367,7 @@ const ProjectModal = ({ isOpen, onClose, onSave, customerId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.project_name.trim()) {
+    if (!String(form.project_name || '').trim()) {
       alert('Project name is required.');
       return;
     }
@@ -408,6 +384,13 @@ const ProjectModal = ({ isOpen, onClose, onSave, customerId }) => {
       });
       setSaving(false);
       onClose();
+      setForm({
+        project_name: '',
+        scope: '',
+        sales_stage: 'Opportunity',
+        deal_value: '',
+        product: '',
+      });
     } catch (err) {
       setSaving(false);
       alert('Failed to create project: ' + err.message);
@@ -416,10 +399,7 @@ const ProjectModal = ({ isOpen, onClose, onSave, customerId }) => {
 
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
-      <div
-        className="modal-container"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
+      <div className="modal-container" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-wrapper">
             <FaProjectDiagram className="modal-icon" />
@@ -610,14 +590,12 @@ const CustomerDetails = () => {
       setTasks([]);
       return;
     }
+
     try {
       const { data, error } = await supabase
         .from('project_tasks')
         .select('*')
-        .in(
-          'project_id',
-          projects.length > 0 ? projects.map((p) => p.id) : [-1]
-        )
+        .in('project_id', projects.map((p) => p.id))
         .order('due_date', { ascending: true });
 
       if (error) throw error;
@@ -675,10 +653,10 @@ const CustomerDetails = () => {
 
   const parsedStakeholders = useMemo(() => {
     if (!customer?.key_stakeholders) return [];
-    const list = Array.isArray(customer.key_stakeholders)
-      ? customer.key_stakeholders
-      : [];
-    return list.map(parseStakeholderEntry).filter((s) => s.name || s.role || s.contact);
+    const list = Array.isArray(customer.key_stakeholders) ? customer.key_stakeholders : [];
+    return list
+      .map(parseStakeholderEntry)
+      .filter((s) => s.name || s.role || s.contact);
   }, [customer]);
 
   const handleUpdateCustomer = async () => {
@@ -709,6 +687,7 @@ const CustomerDetails = () => {
         customer_type: editCustomer.customer_type || null,
         status_id: editCustomer.status_id || null,
       }));
+
       setIsEditing(false);
       alert('Customer updated successfully');
     } catch (err) {
@@ -760,7 +739,7 @@ const CustomerDetails = () => {
     await fetchProjects();
   };
 
-  // ----- Summary snapshot -----
+  // ----- Snapshot summary -----
   const summary = useMemo(() => {
     const totalProjects = projects.length;
     const activeProjects = projects.filter((p) => p.sales_stage !== 'Done').length;
@@ -788,7 +767,7 @@ const CustomerDetails = () => {
     };
   }, [projects, tasks]);
 
-  // ----- Deal insight (align with Customer Portfolio: Active Deal + Attention) -----
+  // ----- Primary Active Deal + Attention (aligned with portfolio/top deals) -----
   const isDealActive = (stage) => {
     const s = String(stage || '').trim().toLowerCase();
     if (!s) return true;
@@ -843,13 +822,7 @@ const CustomerDetails = () => {
     const active = (projects || []).filter((p) => isDealActive(p.sales_stage));
 
     if (!active.length) {
-      return {
-        primary: null,
-        attention: 'none',
-        attentionLabel: '—',
-        overdueCount: 0,
-        openTasksCount: 0,
-      };
+      return { primary: null, attention: 'none', attentionLabel: '—', overdueCount: 0 };
     }
 
     const sorted = [...active].sort((a, b) => {
@@ -881,24 +854,12 @@ const CustomerDetails = () => {
     else attention = 'green';
 
     const attentionLabel =
-      attention === 'red'
-        ? 'High'
-        : attention === 'amber'
-        ? 'Medium'
-        : attention === 'green'
-        ? 'Low'
-        : '—';
+      attention === 'red' ? 'High' : attention === 'amber' ? 'Medium' : 'Low';
 
-    return {
-      primary,
-      attention,
-      attentionLabel,
-      overdueCount,
-      openTasksCount: openTasks.length,
-    };
+    return { primary, attention, attentionLabel, overdueCount };
   }, [projects, tasks]);
 
-  // ----- Recent activity (lightweight) -----
+  // ----- Recent activity -----
   const recentActivity = useMemo(() => {
     const lastProject = [...(projects || [])]
       .filter((p) => p.updated_at || p.created_at)
@@ -917,31 +878,22 @@ const CustomerDetails = () => {
       )[0];
 
     const lastCustomer = customer?.updated_at || customer?.created_at ? customer : null;
-
     return { lastProject, lastTask, lastCustomer };
   }, [projects, tasks, customer]);
 
-  // ----- Keyboard shortcuts (power user, optional) -----
+  // ----- Keyboard shortcuts -----
   useEffect(() => {
     const handler = (e) => {
       const tag = e.target?.tagName ? e.target.tagName.toLowerCase() : '';
       const isTyping =
-        tag === 'input' ||
-        tag === 'textarea' ||
-        tag === 'select' ||
-        e.target?.isContentEditable;
+        tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable;
       if (isTyping) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       const k = String(e.key || '').toLowerCase();
-
-      if (k === 'e') {
-        setIsEditing(true);
-      } else if (k === 'a') {
-        setShowStakeholdersModal(true);
-      } else if (k === 't') {
-        setShowTaskModal(true);
-      }
+      if (k === 'e') setIsEditing(true);
+      if (k === 'a') setShowStakeholdersModal(true);
+      if (k === 't') setShowTaskModal(true);
     };
 
     window.addEventListener('keydown', handler);
@@ -988,9 +940,7 @@ const CustomerDetails = () => {
             <span>{customer.customer_name?.charAt(0) || 'C'}</span>
           </div>
           <div className="customer-header-text">
-            <h1 className="customer-title">
-              {customer.customer_name || 'Customer'}
-            </h1>
+            <h1 className="customer-title">{customer.customer_name || 'Customer'}</h1>
             <div className="customer-subtitle-row">
               <span className="customer-subtitle">
                 <FaBuilding />
@@ -1009,14 +959,7 @@ const CustomerDetails = () => {
                 </span>
               )}
               {dealInsight.primary && (
-                <span
-                  className={`customer-subtitle attention-subtitle ${dealInsight.attention}`}
-                  title={
-                    dealInsight.overdueCount > 0
-                      ? `${dealInsight.overdueCount} overdue task(s) in primary deal`
-                      : 'Attention level based on stage and task due dates'
-                  }
-                >
+                <span className={`customer-subtitle attention-subtitle ${dealInsight.attention}`}>
                   <FaExclamationTriangle />
                   Attention: {dealInsight.attentionLabel}
                 </span>
@@ -1051,6 +994,7 @@ const CustomerDetails = () => {
         </div>
       </header>
 
+      {/* Health strip */}
       <section className="section-card health-strip">
         <div className="health-grid">
           <div className="health-item">
@@ -1060,7 +1004,6 @@ const CustomerDetails = () => {
                 type="button"
                 className="health-link"
                 onClick={() => navigate(`/project/${dealInsight.primary.id}`)}
-                title="Open primary deal"
               >
                 {dealInsight.primary.sales_stage || 'Unspecified stage'}
               </button>
@@ -1098,6 +1041,7 @@ const CustomerDetails = () => {
 
       <main className="customer-main-layout">
         <div className="customer-main-left">
+          {/* Customer Info */}
           <section className="section-card customer-info-section">
             <div className="section-header">
               <div className="section-title">
@@ -1114,16 +1058,11 @@ const CustomerDetails = () => {
                     className="info-input"
                     value={editCustomer.customer_name || ''}
                     onChange={(e) =>
-                      setEditCustomer((prev) => ({
-                        ...prev,
-                        customer_name: e.target.value,
-                      }))
+                      setEditCustomer((prev) => ({ ...prev, customer_name: e.target.value }))
                     }
                   />
                 ) : (
-                  <div className="info-value main-name">
-                    {customer.customer_name || '—'}
-                  </div>
+                  <div className="info-value main-name">{customer.customer_name || '—'}</div>
                 )}
               </div>
 
@@ -1134,10 +1073,7 @@ const CustomerDetails = () => {
                     className="info-input"
                     value={editCustomer.customer_type || ''}
                     onChange={(e) =>
-                      setEditCustomer((prev) => ({
-                        ...prev,
-                        customer_type: e.target.value,
-                      }))
+                      setEditCustomer((prev) => ({ ...prev, customer_type: e.target.value }))
                     }
                   >
                     <option value="">Select</option>
@@ -1159,10 +1095,7 @@ const CustomerDetails = () => {
                     className="info-input"
                     value={editCustomer.country || ''}
                     onChange={(e) =>
-                      setEditCustomer((prev) => ({
-                        ...prev,
-                        country: e.target.value,
-                      }))
+                      setEditCustomer((prev) => ({ ...prev, country: e.target.value }))
                     }
                   >
                     <option value="">Select</option>
@@ -1184,10 +1117,7 @@ const CustomerDetails = () => {
                     className="info-input"
                     value={editCustomer.account_manager || ''}
                     onChange={(e) =>
-                      setEditCustomer((prev) => ({
-                        ...prev,
-                        account_manager: e.target.value,
-                      }))
+                      setEditCustomer((prev) => ({ ...prev, account_manager: e.target.value }))
                     }
                   />
                 ) : (
@@ -1225,6 +1155,7 @@ const CustomerDetails = () => {
             </div>
           </section>
 
+          {/* Stakeholders */}
           <section className="section-card stakeholders-section">
             <div className="section-header">
               <div className="section-title">
@@ -1232,11 +1163,7 @@ const CustomerDetails = () => {
                 <h2>Key Stakeholders</h2>
               </div>
               <div className="section-actions">
-                <button
-                  className="icon-btn"
-                  onClick={() => setShowStakeholdersModal(true)}
-                  title="Edit stakeholders"
-                >
+                <button className="icon-btn" onClick={() => setShowStakeholdersModal(true)}>
                   <FaEdit />
                 </button>
               </div>
@@ -1244,9 +1171,7 @@ const CustomerDetails = () => {
 
             {parsedStakeholders.length === 0 ? (
               <div className="empty-state small">
-                <p>
-                  No stakeholders recorded yet. Add key contacts so you can track who matters for this account.
-                </p>
+                <p>No stakeholders recorded yet. Add key contacts for this account.</p>
               </div>
             ) : (
               <div className="stakeholder-list">
@@ -1259,9 +1184,7 @@ const CustomerDetails = () => {
                         <div className="stakeholder-info">
                           <div className="stakeholder-name-row">
                             <h3>{s.name || '—'}</h3>
-                            {s.role ? (
-                              <span className="stakeholder-role">{s.role}</span>
-                            ) : null}
+                            {s.role ? <span className="stakeholder-role">{s.role}</span> : null}
                           </div>
 
                           <div className="stakeholder-contact">
@@ -1274,10 +1197,6 @@ const CustomerDetails = () => {
                               <span className="muted">No contact details</span>
                             )}
                           </div>
-
-                          {s.notes ? (
-                            <p className="stakeholder-notes">{s.notes}</p>
-                          ) : null}
                         </div>
                       </div>
                       <div className="stakeholder-actions" />
@@ -1288,6 +1207,7 @@ const CustomerDetails = () => {
             )}
           </section>
 
+          {/* Projects */}
           <section className="section-card projects-section">
             <div className="section-header">
               <div className="section-title">
@@ -1304,56 +1224,59 @@ const CustomerDetails = () => {
 
             {projects.length === 0 ? (
               <div className="empty-state small">
-                <p>
-                  No opportunities yet for this customer. Add a project to start tracking presales work and commitments.
-                </p>
+                <p>No opportunities yet. Add a project to start tracking presales work.</p>
               </div>
             ) : (
               <div className="project-list">
-                {projects.map((p) => (
-                  <div
-                    key={p.id}
-                    className={`project-item ${dealInsight.primary && String(dealInsight.primary.id) === String(p.id) ? 'project-primary' : ''}`}
-                    onClick={() => navigate(`/project/${p.id}`)}
-                    title={dealInsight.primary && String(dealInsight.primary.id) === String(p.id) ? 'Primary deal' : 'Open project'}
-                  >
-                    <div className="project-main">
-                      <h3>
-                        {p.project_name}
-                        {dealInsight.primary && String(dealInsight.primary.id) === String(p.id) ? (
-                          <span className="project-primary-badge">Primary</span>
-                        ) : null}
-                      </h3>
-                      {p.scope ? <p className="project-scope">{p.scope}</p> : null}
-                    </div>
+                {projects.map((p) => {
+                  const isPrimary =
+                    dealInsight.primary && String(dealInsight.primary.id) === String(p.id);
 
-                    <div className="project-details">
-                      <div className="project-meta">
-                        <span className="project-meta-item">
-                          <FaChartLine />
-                          {p.sales_stage || '—'}
-                        </span>
-                        {p.product ? (
+                  return (
+                    <div
+                      key={p.id}
+                      className={`project-item ${isPrimary ? 'project-primary' : ''}`}
+                      onClick={() => navigate(`/project/${p.id}`)}
+                      title={isPrimary ? 'Primary deal' : 'Open project'}
+                    >
+                      <div className="project-main">
+                        <h3>
+                          {p.project_name}
+                          {isPrimary ? <span className="project-primary-badge">Primary</span> : null}
+                        </h3>
+                        {p.scope ? <p className="project-scope">{p.scope}</p> : null}
+                      </div>
+
+                      <div className="project-details">
+                        <div className="project-meta">
                           <span className="project-meta-item">
-                            <FaInfoCircle />
-                            {p.product}
+                            <FaChartLine />
+                            {p.sales_stage || '—'}
                           </span>
-                        ) : null}
-                      </div>
+                          {p.product ? (
+                            <span className="project-meta-item">
+                              <FaInfoCircle />
+                              {p.product}
+                            </span>
+                          ) : null}
+                        </div>
 
-                      <div className="project-value">
-                        <FaMoneyBillWave />
-                        {formatCurrency(p.deal_value)}
+                        <div className="project-value">
+                          <FaMoneyBillWave />
+                          {formatCurrency(p.deal_value)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
         </div>
 
+        {/* Right column */}
         <aside className="customer-main-right">
+          {/* Snapshot */}
           <section className="section-card snapshot-section">
             <div className="section-header">
               <div className="section-title">
@@ -1361,6 +1284,7 @@ const CustomerDetails = () => {
                 <h2>Customer Snapshot</h2>
               </div>
             </div>
+
             <div className="snapshot-grid">
               <div className="snapshot-item">
                 <span className="snapshot-label">Total projects</span>
@@ -1389,6 +1313,7 @@ const CustomerDetails = () => {
             </div>
           </section>
 
+          {/* Recent activity */}
           <section className="section-card recent-activity-section">
             <div className="section-header">
               <div className="section-title">
@@ -1433,11 +1358,12 @@ const CustomerDetails = () => {
             </div>
 
             <div className="recent-activity-hint">
-              Tip: press <span className="kbd">E</span> to edit, <span className="kbd">A</span> to add stakeholders,{' '}
+              Tip: press <span className="kbd">E</span> to edit, <span className="kbd">A</span> for stakeholders,{' '}
               <span className="kbd">T</span> to add a task.
             </div>
           </section>
 
+          {/* Tasks */}
           <section className="section-card tasks-section">
             <div className="section-header">
               <div className="section-title">
@@ -1459,29 +1385,33 @@ const CustomerDetails = () => {
             ) : (
               <div className="customer-tasks-list">
                 {projects.map((p) => {
-                  const projectTasks = tasks.filter(
-                    (t) => String(t.project_id) === String(p.id)
-                  );
-
+                  const projectTasks = tasks.filter((t) => String(t.project_id) === String(p.id));
                   if (!projectTasks.length) return null;
 
                   return (
                     <div key={p.id} className="customer-project-task-group">
                       <div className="customer-project-task-header">
-                        <h3 onClick={() => navigate(`/project/${p.id}`)}>
-                          {p.project_name}
-                        </h3>
+                        <h3 onClick={() => navigate(`/project/${p.id}`)}>{p.project_name}</h3>
                         <span className="task-count-badge">
                           {projectTasks.length} task{projectTasks.length > 1 ? 's' : ''}
                         </span>
                       </div>
+
                       <ul className="project-task-list">
                         {projectTasks.map((t) => (
                           <li
                             key={t.id}
-                            className={`task-item status-${(t.status || '')
+                            className={`task-item status-${String(t.status || '')
                               .toLowerCase()
-                              .replace(/\s/g, '-')} ${isOverdue(t.due_date) ? 'due-overdue' : isDueSoon(t.due_date, 7) ? 'due-soon' : ''}`}
+                              .replace(/\s/g, '-')}
+
+                              ${
+                                isOverdue(t.due_date)
+                                  ? 'due-overdue'
+                                  : isDueSoon(t.due_date, 7)
+                                  ? 'due-soon'
+                                  : ''
+                              }`}
                           >
                             <div className="task-main">
                               <div className="task-desc">{t.description}</div>
@@ -1492,16 +1422,17 @@ const CustomerDetails = () => {
                                 </span>
                               )}
                             </div>
+
                             <div className="task-meta">
                               <span
-                                className={`task-status-badge status-${(t.status || '')
+                                className={`task-status-badge status-${String(t.status || '')
                                   .toLowerCase()
                                   .replace(/\s/g, '-')}`}
                               >
                                 {t.status || 'Not Started'}
                               </span>
                               <span
-                                className={`task-priority-badge priority-${(t.priority || '')
+                                className={`task-priority-badge priority-${String(t.priority || '')
                                   .toLowerCase()}`}
                               >
                                 {t.priority || 'Normal'}
