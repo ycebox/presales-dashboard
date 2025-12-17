@@ -437,7 +437,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
 };
 
 const LoadingScreen = () => (
-  <div className="project-details-container">
+  <div className="project-details-container theme-light">
     <div className="loading-state">
       <div className="loading-spinner"></div>
       <p className="loading-text">Loading project details...</p>
@@ -446,7 +446,7 @@ const LoadingScreen = () => (
 );
 
 const ErrorScreen = ({ error, onBack }) => (
-  <div className="project-details-container">
+  <div className="project-details-container theme-light">
     <div className="error-state">
       <div className="error-icon-wrapper">
         <FaExclamationTriangle className="error-icon" />
@@ -502,11 +502,7 @@ const useProjectData = (projectId) => {
       setLoading(true);
       setError(null);
 
-      const { data: projectData, error: projectError } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("id", projectId)
-        .single();
+      const { data: projectData, error: projectError } = await supabase.from("projects").select("*").eq("id", projectId).single();
 
       if (projectError) throw projectError;
       if (!projectData) throw new Error("Project not found");
@@ -547,7 +543,6 @@ function ProjectDetails() {
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
 
-  // Project Background uses projects.remarks (per your schema)
   const [isEditingBackground, setIsEditingBackground] = useState(false);
   const [backgroundDraft, setBackgroundDraft] = useState("");
   const [savingBackground, setSavingBackground] = useState(false);
@@ -607,9 +602,7 @@ function ProjectDetails() {
   const activeTasksCount = tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status)).length;
   const completedTasksCount = tasks.filter((t) => t.status === "Completed").length;
 
-  const filteredTasks = showCompleted
-    ? tasks
-    : tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status));
+  const filteredTasks = showCompleted ? tasks : tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status));
 
   const handleEditToggle = () => {
     if (isEditing) {
@@ -648,13 +641,7 @@ function ProjectDetails() {
         primary_presales: editProject.primary_presales || null,
       };
 
-      const { data, error } = await supabase
-        .from("projects")
-        .update(payload)
-        .eq("id", project.id)
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from("projects").update(payload).eq("id", project.id).select().single();
       if (error) throw error;
 
       setProject(data);
@@ -773,13 +760,7 @@ function ProjectDetails() {
     try {
       setSavingBackground(true);
 
-      const { data, error } = await supabase
-        .from("projects")
-        .update({ remarks: backgroundDraft })
-        .eq("id", projectId)
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from("projects").update({ remarks: backgroundDraft }).eq("id", projectId).select().single();
       if (error) throw error;
 
       setProject(data);
@@ -797,7 +778,7 @@ function ProjectDetails() {
   if (error || !project) return <ErrorScreen error={error} onBack={() => navigate("/")} />;
 
   return (
-    <div className="project-details-container">
+    <div className="project-details-container theme-light">
       <header className="navigation-header">
         <div className="nav-left">
           {project.customer_name && (
@@ -809,7 +790,6 @@ function ProjectDetails() {
         </div>
       </header>
 
-      {/* Project Header (customer name + stage stacked, due date removed) */}
       <section className="project-header">
         <div className="project-hero">
           <div className="project-title-section">
@@ -850,9 +830,7 @@ function ProjectDetails() {
       </section>
 
       <div className="main-content-grid">
-        {/* Left Column */}
         <div className="main-column">
-          {/* Project Details */}
           <section className="content-card">
             <div className="card-header">
               <div className="header-title">
@@ -873,13 +851,7 @@ function ProjectDetails() {
                       <FaBullseye className="form-icon" />
                       Project Name
                     </label>
-                    <input
-                      type="text"
-                      name="project_name"
-                      value={editProject.project_name || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
+                    <input type="text" name="project_name" value={editProject.project_name || ""} onChange={handleEditChange} className="form-input" />
                   </div>
 
                   <div className="form-group">
@@ -887,35 +859,17 @@ function ProjectDetails() {
                       <FaUsers className="form-icon" />
                       Customer
                     </label>
-                    <input
-                      type="text"
-                      name="customer_name"
-                      value={editProject.customer_name || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
+                    <input type="text" name="customer_name" value={editProject.customer_name || ""} onChange={handleEditChange} className="form-input" />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Account Manager</label>
-                    <input
-                      type="text"
-                      name="account_manager"
-                      value={editProject.account_manager || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
+                    <input type="text" name="account_manager" value={editProject.account_manager || ""} onChange={handleEditChange} className="form-input" />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Country</label>
-                    <input
-                      type="text"
-                      name="country"
-                      value={editProject.country || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
+                    <input type="text" name="country" value={editProject.country || ""} onChange={handleEditChange} className="form-input" />
                   </div>
 
                   <div className="form-group">
@@ -923,12 +877,7 @@ function ProjectDetails() {
                       <FaChartLine className="form-icon" />
                       Sales Stage
                     </label>
-                    <select
-                      name="sales_stage"
-                      value={editProject.sales_stage || ""}
-                      onChange={handleEditChange}
-                      className="form-select"
-                    >
+                    <select name="sales_stage" value={editProject.sales_stage || ""} onChange={handleEditChange} className="form-select">
                       <option value="">Select stage</option>
                       {SALES_STAGES.map((s) => (
                         <option key={s} value={s}>
@@ -943,79 +892,37 @@ function ProjectDetails() {
                       <FaDollarSign className="form-icon" />
                       Deal Value (USD)
                     </label>
-                    <input
-                      type="number"
-                      name="deal_value"
-                      value={editProject.deal_value ?? ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
+                    <input type="number" name="deal_value" value={editProject.deal_value ?? ""} onChange={handleEditChange} className="form-input" />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Product</label>
-                    <input
-                      type="text"
-                      name="product"
-                      value={editProject.product || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
+                    <input type="text" name="product" value={editProject.product || ""} onChange={handleEditChange} className="form-input" />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Primary Presales</label>
-                    <input
-                      type="text"
-                      name="primary_presales"
-                      value={editProject.primary_presales || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
+                    <input type="text" name="primary_presales" value={editProject.primary_presales || ""} onChange={handleEditChange} className="form-input" />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Backup Presales</label>
-                    <input
-                      type="text"
-                      name="backup_presales"
-                      value={editProject.backup_presales || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
+                    <input type="text" name="backup_presales" value={editProject.backup_presales || ""} onChange={handleEditChange} className="form-input" />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Due Date</label>
-                    <input
-                      type="date"
-                      name="due_date"
-                      value={editProject.due_date || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
+                    <input type="date" name="due_date" value={editProject.due_date || ""} onChange={handleEditChange} className="form-input" />
                   </div>
 
                   <div className="form-group full-width">
                     <label className="form-label">Scope</label>
-                    <textarea
-                      name="scope"
-                      value={editProject.scope || ""}
-                      onChange={handleEditChange}
-                      rows="3"
-                      className="form-textarea"
-                    />
+                    <textarea name="scope" value={editProject.scope || ""} onChange={handleEditChange} rows="3" className="form-textarea" />
                   </div>
 
                   <div className="form-group full-width">
                     <label className="form-label">Remarks</label>
-                    <textarea
-                      name="remarks"
-                      value={editProject.remarks || ""}
-                      onChange={handleEditChange}
-                      rows="3"
-                      className="form-textarea"
-                    />
+                    <textarea name="remarks" value={editProject.remarks || ""} onChange={handleEditChange} rows="3" className="form-textarea" />
                   </div>
 
                   <div className="project-edit-actions">
@@ -1071,7 +978,6 @@ function ProjectDetails() {
             </div>
           </section>
 
-          {/* Tasks */}
           <section className="content-card">
             <div className="card-header">
               <div className="header-title">
@@ -1202,9 +1108,7 @@ function ProjectDetails() {
           </section>
         </div>
 
-        {/* Right Column */}
         <div className="side-column">
-          {/* Project Background (Scrollable) */}
           <section className="content-card">
             <div className="card-header">
               <div className="header-title">
@@ -1264,7 +1168,6 @@ function ProjectDetails() {
             </div>
           </section>
 
-          {/* Project Logs (Scrollable) */}
           <section className="content-card">
             <div className="card-header">
               <div className="header-title">
