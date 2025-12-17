@@ -622,17 +622,14 @@ const CustomerDetails = () => {
   useEffect(() => {
     fetchCustomer();
     fetchStatusOptions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
 
   useEffect(() => {
     fetchProjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
 
   useEffect(() => {
     fetchTasks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects]);
 
   const getStatusLabel = (statusId) => {
@@ -767,7 +764,7 @@ const CustomerDetails = () => {
     };
   }, [projects, tasks]);
 
-  // ----- Primary Active Deal + Attention (aligned with portfolio/top deals) -----
+  // ----- Primary Active Deal + Attention -----
   const isDealActive = (stage) => {
     const s = String(stage || '').trim().toLowerCase();
     if (!s) return true;
