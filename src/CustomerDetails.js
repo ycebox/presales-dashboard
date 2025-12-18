@@ -1,5 +1,4 @@
 // src/CustomerDetails.js
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -79,13 +78,10 @@ const StakeholdersModal = ({ isOpen, onClose, onSave, existingStakeholders }) =>
   if (!isOpen) return null;
 
   const updateRow = (index, field, value) => {
-    setRows((prev) =>
-      prev.map((r, i) => (i === index ? { ...r, [field]: value } : r))
-    );
+    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
   };
 
   const addRow = () => setRows((prev) => [...prev, { name: '', role: '', contact: '' }]);
-
   const removeRow = (index) => setRows((prev) => prev.filter((_, i) => i !== index));
 
   const handleSave = () => {
@@ -343,7 +339,7 @@ const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
   );
 };
 
-// NOTE: customerId is not used because projects table links via customer_name
+// Projects table links via customer_name
 const ProjectModal = ({ isOpen, onClose, onSave }) => {
   const [form, setForm] = useState({
     project_name: '',
@@ -588,7 +584,7 @@ const CustomerDetails = () => {
     }
   };
 
-  // IMPORTANT: projects table links via customer_name, not customer_id
+  // projects table links via customer_name
   const fetchProjects = async (customerName) => {
     try {
       if (!customerName) {
@@ -648,13 +644,11 @@ const CustomerDetails = () => {
     fetchStatusOptions();
   }, [customerId, isValidCustomerId]);
 
-  // fetch projects AFTER customer loads (needs customer_name)
   useEffect(() => {
     if (!customer?.customer_name) return;
     fetchProjects(customer.customer_name);
   }, [customer?.customer_name]);
 
-  // fetch tasks AFTER projects load
   useEffect(() => {
     fetchTasks(projects);
   }, [projects]);
@@ -678,9 +672,7 @@ const CustomerDetails = () => {
   const parsedStakeholders = useMemo(() => {
     if (!customer?.key_stakeholders) return [];
     const list = Array.isArray(customer.key_stakeholders) ? customer.key_stakeholders : [];
-    return list
-      .map(parseStakeholderEntry)
-      .filter((s) => s.name || s.role || s.contact);
+    return list.map(parseStakeholderEntry).filter((s) => s.name || s.role || s.contact);
   }, [customer]);
 
   // --- Date helpers for due indicators ---
@@ -709,14 +701,18 @@ const CustomerDetails = () => {
     return due >= start && due <= soon;
   };
 
-  const isDealActive = (stage) => {
+  // === NEW: define what "completed project" means for UI ===
+  const isProjectCompleted = (stage) => {
     const s = String(stage || '').trim().toLowerCase();
-    if (!s) return true;
-    if (s.startsWith('closed')) return false;
-    if (s === 'done' || s === 'won' || s === 'lost') return false;
-    if (s.includes('closed')) return false;
-    return true;
+    if (!s) return false;
+    if (s === 'done') return true;
+    if (s.startsWith('closed')) return true; // Closed - Won / Closed - Lost / etc.
+    if (s.includes('closed')) return true;
+    return false;
   };
+
+  // Active deal logic (used for health strip / primary deal selection)
+  const isDealActive = (stage) => !isProjectCompleted(stage);
 
   const getStageRank = (stage) => {
     const s = String(stage || '').toLowerCase();
@@ -734,7 +730,19 @@ const CustomerDetails = () => {
     return 10;
   };
 
-  // Primary active deal + attention
+  // === NEW: hide completed projects from the UI list ===
+  const visibleProjects = useMemo(() => {
+    return (projects || []).filter((p) => !isProjectCompleted(p.sales_stage));
+  }, [projects]);
+
+  // === NEW: hide completed tasks from the UI list ===
+  const visibleTasks = useMemo(() => {
+    return (tasks || []).filter(
+      (t) => String(t.status || '').trim().toLowerCase() !== 'completed'
+    );
+  }, [tasks]);
+
+  // Primary active deal + attention (still based on active deals only)
   const dealInsight = useMemo(() => {
     const active = (projects || []).filter((p) => isDealActive(p.sales_stage));
 
@@ -754,11 +762,9 @@ const CustomerDetails = () => {
 
     const primary = sorted[0];
 
-    const projectTasks = (tasks || []).filter(
-      (t) => String(t.project_id) === String(primary.id)
-    );
+    const projectTasks = (tasks || []).filter((t) => String(t.project_id) === String(primary.id));
     const openTasks = projectTasks.filter(
-      (t) => String(t.status || '').toLowerCase() !== 'completed'
+      (t) => String(t.status || '').trim().toLowerCase() !== 'completed'
     );
     const overdueCount = openTasks.filter((t) => isOverdue(t.due_date)).length;
 
@@ -795,17 +801,18 @@ const CustomerDetails = () => {
 
   const summary = useMemo(() => {
     const totalProjects = projects.length;
-    const activeProjects = projects.filter((p) => p.sales_stage !== 'Done').length;
-    const closedWon = projects.filter((p) =>
+    const activeProjects = (projects || []).filter((p) => !isProjectCompleted(p.sales_stage)).length;
+
+    const closedWon = (projects || []).filter((p) =>
       String(p.sales_stage || '').toLowerCase().includes('won')
     ).length;
 
-    const openTasks = tasks.filter(
-      (t) => String(t.status || '').toLowerCase() !== 'completed'
+    const openTasks = (tasks || []).filter(
+      (t) => String(t.status || '').trim().toLowerCase() !== 'completed'
     );
     const highPriorityOpen = openTasks.filter((t) => t.priority === 'High').length;
 
-    const totalPipeline = projects.reduce((sum, p) => {
+    const totalPipeline = (projects || []).reduce((sum, p) => {
       if (!p.deal_value) return sum;
       return sum + Number(p.deal_value);
     }, 0);
@@ -890,10 +897,7 @@ const CustomerDetails = () => {
 
       if (error) throw error;
 
-      setCustomer((prev) => ({
-        ...prev,
-        key_stakeholders: encodedArray,
-      }));
+      setCustomer((prev) => ({ ...prev, key_stakeholders: encodedArray }));
 
       alert('Stakeholders updated successfully');
       setShowStakeholdersModal(false);
@@ -988,7 +992,6 @@ const CustomerDetails = () => {
     <div className="customer-details-container">
       <header className="customer-header">
         <div className="customer-header-main">
-          {/* Removed customer avatar / circle icon */}
           <div className="customer-header-text">
             <h1 className="customer-title">{customer.customer_name || 'Customer'}</h1>
             <div className="customer-subtitle-row">
@@ -1293,13 +1296,13 @@ const CustomerDetails = () => {
               </div>
             </div>
 
-            {projects.length === 0 ? (
+            {visibleProjects.length === 0 ? (
               <div className="empty-state small">
-                <p>No opportunities yet. Add a project to start tracking presales work.</p>
+                <p>No active opportunities to show. (Done/Closed projects are hidden.)</p>
               </div>
             ) : (
               <div className="project-list">
-                {projects.map((p) => {
+                {visibleProjects.map((p) => {
                   const isPrimary =
                     dealInsight.primary && String(dealInsight.primary.id) === String(p.id);
 
@@ -1430,8 +1433,8 @@ const CustomerDetails = () => {
             </div>
 
             <div className="recent-activity-hint">
-              Tip: press <span className="kbd">E</span> to edit, <span className="kbd">A</span> for stakeholders,{' '}
-              <span className="kbd">T</span> to add a task.
+              Tip: press <span className="kbd">E</span> to edit, <span className="kbd">A</span> for
+              stakeholders, <span className="kbd">T</span> to add a task.
             </div>
           </section>
 
@@ -1450,14 +1453,16 @@ const CustomerDetails = () => {
               </div>
             </div>
 
-            {tasks.length === 0 ? (
+            {visibleTasks.length === 0 ? (
               <div className="empty-state small">
-                <p>No tasks linked yet. Add tasks to track presales commitments and due dates.</p>
+                <p>No open tasks to show. (Completed tasks are hidden.)</p>
               </div>
             ) : (
               <div className="customer-tasks-list">
-                {projects.map((p) => {
-                  const projectTasks = tasks.filter((t) => String(t.project_id) === String(p.id));
+                {visibleProjects.map((p) => {
+                  const projectTasks = visibleTasks.filter(
+                    (t) => String(t.project_id) === String(p.id)
+                  );
                   if (!projectTasks.length) return null;
 
                   return (
