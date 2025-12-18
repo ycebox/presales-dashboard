@@ -12,7 +12,6 @@ import {
   FaUsers,
   FaProjectDiagram,
   FaCalendarAlt,
-  FaFlag,
   FaMoneyBillWave,
   FaChartLine,
   FaPlus,
@@ -274,7 +273,7 @@ const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
 
             <div className="form-group">
               <label className="form-label">
-                <FaFlag className="form-icon" />
+                <FaInfoCircle className="form-icon" />
                 Status
               </label>
               <select
@@ -554,6 +553,9 @@ const CustomerDetails = () => {
 
   const todayISODate = () => new Date().toISOString().slice(0, 10);
 
+  // ✅ single source of truth for "stage/status" in projects table
+  const getProjectStage = (p) => String(p?.sales_stage || p?.current_status || '').trim();
+
   const fetchCustomer = async () => {
     try {
       setLoading(true);
@@ -699,10 +701,12 @@ const CustomerDetails = () => {
     return due >= start && due <= soon;
   };
 
+  // ✅ improved completed detection (supports sales_stage OR current_status)
   const isProjectCompleted = (stage) => {
     const s = String(stage || '').trim().toLowerCase();
     if (!s) return false;
     if (s === 'done') return true;
+    if (s.includes('completed')) return true;
     if (s.startsWith('closed')) return true;
     if (s.includes('closed')) return true;
     return false;
@@ -726,9 +730,10 @@ const CustomerDetails = () => {
     return 10;
   };
 
+  // ✅ FIX: use stage fallback so completed hide/show works
   const visibleProjects = useMemo(() => {
     if (showCompletedProjects) return projects || [];
-    return (projects || []).filter((p) => !isProjectCompleted(p.sales_stage));
+    return (projects || []).filter((p) => !isProjectCompleted(getProjectStage(p)));
   }, [projects, showCompletedProjects]);
 
   const visibleTasks = useMemo(() => {
@@ -737,15 +742,16 @@ const CustomerDetails = () => {
     );
   }, [tasks]);
 
+  // ✅ FIX: primary deal + attention uses stage fallback
   const dealInsight = useMemo(() => {
-    const active = (projects || []).filter((p) => isDealActive(p.sales_stage));
+    const active = (projects || []).filter((p) => isDealActive(getProjectStage(p)));
 
     if (!active.length) {
       return { primary: null, attention: 'none', attentionLabel: '—', overdueCount: 0 };
     }
 
     const sorted = [...active].sort((a, b) => {
-      const sr = getStageRank(b.sales_stage) - getStageRank(a.sales_stage);
+      const sr = getStageRank(getProjectStage(b)) - getStageRank(getProjectStage(a));
       if (sr !== 0) return sr;
 
       const vr = (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0);
@@ -763,7 +769,7 @@ const CustomerDetails = () => {
     const overdueCount = openTasks.filter((t) => isOverdue(t.due_date)).length;
 
     let attention = 'green';
-    const rank = getStageRank(primary.sales_stage);
+    const rank = getStageRank(getProjectStage(primary));
 
     if (overdueCount > 0) attention = 'red';
     else if (rank >= 55) attention = 'red';
@@ -793,13 +799,18 @@ const CustomerDetails = () => {
     return { lastProject, lastTask, lastCustomer };
   }, [projects, tasks, customer]);
 
+  // ✅ FIX: snapshot counts use stage fallback too
   const summary = useMemo(() => {
     const totalProjects = projects.length;
-    const activeProjects = (projects || []).filter((p) => !isProjectCompleted(p.sales_stage)).length;
 
-    const closedWon = (projects || []).filter((p) =>
-      String(p.sales_stage || '').toLowerCase().includes('won')
+    const activeProjects = (projects || []).filter(
+      (p) => !isProjectCompleted(getProjectStage(p))
     ).length;
+
+    const closedWon = (projects || []).filter((p) => {
+      const s = getProjectStage(p).toLowerCase();
+      return s.includes('won') && s.includes('closed');
+    }).length;
 
     const openTasks = (tasks || []).filter(
       (t) => String(t.status || '').trim().toLowerCase() !== 'completed'
@@ -932,7 +943,6 @@ const CustomerDetails = () => {
     await fetchProjects(customer.customer_name);
   };
 
-  // NEW: delete project (and its tasks) safely
   const handleDeleteProject = async (project) => {
     if (!project?.id) return;
 
@@ -945,7 +955,6 @@ const CustomerDetails = () => {
     try {
       setDeletingProjectId(project.id);
 
-      // 1) delete tasks under project
       const { error: taskDelErr } = await supabase
         .from('project_tasks')
         .delete()
@@ -953,13 +962,10 @@ const CustomerDetails = () => {
 
       if (taskDelErr) throw taskDelErr;
 
-      // 2) delete project
       const { error: projDelErr } = await supabase.from('projects').delete().eq('id', project.id);
       if (projDelErr) throw projDelErr;
 
       await fetchProjects(customer.customer_name);
-      // tasks refresh happens via useEffect(projects)
-
       alert('Project deleted.');
     } catch (err) {
       console.error('Error deleting project:', err);
@@ -1096,7 +1102,9 @@ const CustomerDetails = () => {
                 onClick={() => navigate(`/project/${dealInsight.primary.id}`)}
               >
                 {dealInsight.primary.project_name}
-                {dealInsight.primary.sales_stage ? ` • ${dealInsight.primary.sales_stage}` : ''}
+                {getProjectStage(dealInsight.primary)
+                  ? ` • ${getProjectStage(dealInsight.primary)}`
+                  : ''}
               </button>
             ) : (
               <div className="health-value muted">No active deal</div>
@@ -1366,7 +1374,7 @@ const CustomerDetails = () => {
                         <div className="project-meta">
                           <span className="project-meta-item">
                             <FaChartLine />
-                            {p.sales_stage || '—'}
+                            {getProjectStage(p) || '—'}
                           </span>
                           {p.product ? (
                             <span className="project-meta-item">
@@ -1381,7 +1389,6 @@ const CustomerDetails = () => {
                           {formatCurrency(p.deal_value)}
                         </div>
 
-                        {/* NEW: delete project button */}
                         <button
                           type="button"
                           className="btn-icon"
