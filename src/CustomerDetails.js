@@ -27,6 +27,7 @@ import {
 
 const asiaPacificCountries = [
   'Singapore',
+  'Bangladesh',
   'Philippines',
   'Thailand',
   'Vietnam',
@@ -44,7 +45,6 @@ const asiaPacificCountries = [
 
 const customerTypes = ['Existing', 'New', 'Internal Initiative'];
 
-// Parse a single "Name | Role | Contact" string
 const parseStakeholderEntry = (entry) => {
   if (!entry) return { name: '', role: '', contact: '' };
   const parts = String(entry).split('|');
@@ -55,7 +55,6 @@ const parseStakeholderEntry = (entry) => {
   };
 };
 
-// Convert structured stakeholder to "Name | Role | Contact"
 const encodeStakeholderEntry = ({ name, role, contact }) => {
   return `${String(name || '').trim()} | ${String(role || '').trim()} | ${String(
     contact || ''
@@ -339,7 +338,6 @@ const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
   );
 };
 
-// Projects table links via customer_name
 const ProjectModal = ({ isOpen, onClose, onSave }) => {
   const [form, setForm] = useState({
     project_name: '',
@@ -506,7 +504,6 @@ const CustomerDetails = () => {
   const params = useParams();
   const navigate = useNavigate();
 
-  // supports /customer/:id or /customer/:customerId
   const customerId = params.id || params.customerId;
 
   const [customer, setCustomer] = useState(null);
@@ -523,6 +520,9 @@ const CustomerDetails = () => {
   const [showStakeholdersModal, setShowStakeholdersModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
+
+  // NEW: toggle for completed projects
+  const [showCompletedProjects, setShowCompletedProjects] = useState(false);
 
   const isValidCustomerId = useMemo(() => {
     if (!customerId) return false;
@@ -584,7 +584,6 @@ const CustomerDetails = () => {
     }
   };
 
-  // projects table links via customer_name
   const fetchProjects = async (customerName) => {
     try {
       if (!customerName) {
@@ -675,7 +674,6 @@ const CustomerDetails = () => {
     return list.map(parseStakeholderEntry).filter((s) => s.name || s.role || s.contact);
   }, [customer]);
 
-  // --- Date helpers for due indicators ---
   const todayStart = () => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -701,17 +699,15 @@ const CustomerDetails = () => {
     return due >= start && due <= soon;
   };
 
-  // === NEW: define what "completed project" means for UI ===
   const isProjectCompleted = (stage) => {
     const s = String(stage || '').trim().toLowerCase();
     if (!s) return false;
     if (s === 'done') return true;
-    if (s.startsWith('closed')) return true; // Closed - Won / Closed - Lost / etc.
+    if (s.startsWith('closed')) return true;
     if (s.includes('closed')) return true;
     return false;
   };
 
-  // Active deal logic (used for health strip / primary deal selection)
   const isDealActive = (stage) => !isProjectCompleted(stage);
 
   const getStageRank = (stage) => {
@@ -730,19 +726,19 @@ const CustomerDetails = () => {
     return 10;
   };
 
-  // === NEW: hide completed projects from the UI list ===
+  // NEW: projects list respects the toggle
   const visibleProjects = useMemo(() => {
+    if (showCompletedProjects) return projects || [];
     return (projects || []).filter((p) => !isProjectCompleted(p.sales_stage));
-  }, [projects]);
+  }, [projects, showCompletedProjects]);
 
-  // === NEW: hide completed tasks from the UI list ===
+  // Completed tasks hidden
   const visibleTasks = useMemo(() => {
     return (tasks || []).filter(
       (t) => String(t.status || '').trim().toLowerCase() !== 'completed'
     );
   }, [tasks]);
 
-  // Primary active deal + attention (still based on active deals only)
   const dealInsight = useMemo(() => {
     const active = (projects || []).filter((p) => isDealActive(p.sales_stage));
 
@@ -1289,6 +1285,14 @@ const CustomerDetails = () => {
                 <h2>Projects / Opportunities</h2>
               </div>
               <div className="section-actions">
+                <button
+                  className="btn-secondary"
+                  onClick={() => setShowCompletedProjects((v) => !v)}
+                  title="Toggle completed projects"
+                >
+                  {showCompletedProjects ? 'Hide completed' : 'Show completed'}
+                </button>
+
                 <button className="btn-secondary" onClick={() => setShowProjectModal(true)}>
                   <FaPlus />
                   Add Project
@@ -1298,7 +1302,7 @@ const CustomerDetails = () => {
 
             {visibleProjects.length === 0 ? (
               <div className="empty-state small">
-                <p>No active opportunities to show. (Done/Closed projects are hidden.)</p>
+                <p>No projects to show.</p>
               </div>
             ) : (
               <div className="project-list">
@@ -1311,7 +1315,7 @@ const CustomerDetails = () => {
                       key={p.id}
                       className={`project-item ${isPrimary ? 'project-primary' : ''}`}
                       onClick={() => navigate(`/project/${p.id}`)}
-                      title={isPrimary ? 'Primary deal' : 'Open project'}
+                      title={isPrimary ? 'Primary deal' : 'Project'}
                     >
                       <div className="project-main">
                         <h3>
