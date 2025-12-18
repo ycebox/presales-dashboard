@@ -23,11 +23,11 @@ import {
   FaInfoCircle,
   FaEnvelope,
   FaRegStickyNote,
+  FaTrash,
 } from 'react-icons/fa';
 
 const asiaPacificCountries = [
   'Singapore',
-  'Bangladesh',
   'Philippines',
   'Thailand',
   'Vietnam',
@@ -521,8 +521,8 @@ const CustomerDetails = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
 
-  // NEW: toggle for completed projects
   const [showCompletedProjects, setShowCompletedProjects] = useState(false);
+  const [deletingProjectId, setDeletingProjectId] = useState(null);
 
   const isValidCustomerId = useMemo(() => {
     if (!customerId) return false;
@@ -726,13 +726,11 @@ const CustomerDetails = () => {
     return 10;
   };
 
-  // NEW: projects list respects the toggle
   const visibleProjects = useMemo(() => {
     if (showCompletedProjects) return projects || [];
     return (projects || []).filter((p) => !isProjectCompleted(p.sales_stage));
   }, [projects, showCompletedProjects]);
 
-  // Completed tasks hidden
   const visibleTasks = useMemo(() => {
     return (tasks || []).filter(
       (t) => String(t.status || '').trim().toLowerCase() !== 'completed'
@@ -932,6 +930,43 @@ const CustomerDetails = () => {
     if (error) throw error;
 
     await fetchProjects(customer.customer_name);
+  };
+
+  // NEW: delete project (and its tasks) safely
+  const handleDeleteProject = async (project) => {
+    if (!project?.id) return;
+
+    const name = project.project_name || 'this project';
+    const ok = window.confirm(
+      `Delete "${name}"?\n\nThis will also delete ALL tasks under this project. This cannot be undone.`
+    );
+    if (!ok) return;
+
+    try {
+      setDeletingProjectId(project.id);
+
+      // 1) delete tasks under project
+      const { error: taskDelErr } = await supabase
+        .from('project_tasks')
+        .delete()
+        .eq('project_id', project.id);
+
+      if (taskDelErr) throw taskDelErr;
+
+      // 2) delete project
+      const { error: projDelErr } = await supabase.from('projects').delete().eq('id', project.id);
+      if (projDelErr) throw projDelErr;
+
+      await fetchProjects(customer.customer_name);
+      // tasks refresh happens via useEffect(projects)
+
+      alert('Project deleted.');
+    } catch (err) {
+      console.error('Error deleting project:', err);
+      alert('Failed to delete project: ' + (err.message || 'Unknown error'));
+    } finally {
+      setDeletingProjectId(null);
+    }
   };
 
   useEffect(() => {
@@ -1310,6 +1345,8 @@ const CustomerDetails = () => {
                   const isPrimary =
                     dealInsight.primary && String(dealInsight.primary.id) === String(p.id);
 
+                  const isDeleting = deletingProjectId === p.id;
+
                   return (
                     <div
                       key={p.id}
@@ -1343,6 +1380,21 @@ const CustomerDetails = () => {
                           <FaMoneyBillWave />
                           {formatCurrency(p.deal_value)}
                         </div>
+
+                        {/* NEW: delete project button */}
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          title="Delete project"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteProject(p);
+                          }}
+                          disabled={isDeleting}
+                          style={{ marginLeft: 8 }}
+                        >
+                          <FaTrash />
+                        </button>
                       </div>
                     </div>
                   );
