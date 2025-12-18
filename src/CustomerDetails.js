@@ -61,6 +61,20 @@ const encodeStakeholderEntry = ({ name, role, contact }) => {
   ).trim()}`.trim();
 };
 
+const isUuid = (value) => {
+  if (!value) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    String(value)
+  );
+};
+
+const formatNumber = (value) => {
+  if (value === null || value === undefined || value === '') return '—';
+  const n = Number(value);
+  if (Number.isNaN(n)) return '—';
+  return n.toLocaleString();
+};
+
 const StakeholdersModal = ({ isOpen, onClose, onSave, existingStakeholders }) => {
   const [rows, setRows] = useState([]);
 
@@ -515,6 +529,179 @@ const ProjectModal = ({ isOpen, onClose, onSave }) => {
   );
 };
 
+const MetricsModal = ({ isOpen, onClose, onSave, initial }) => {
+  const [form, setForm] = useState({
+    atms: '',
+    debit_cards: '',
+    credit_cards: '',
+    pos_terminals: '',
+    merchants: '',
+    tx_per_day: '',
+    active_cards: '',
+    digital_users: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSaving(false);
+    setForm({
+      atms: initial?.atms ?? '',
+      debit_cards: initial?.debit_cards ?? '',
+      credit_cards: initial?.credit_cards ?? '',
+      pos_terminals: initial?.pos_terminals ?? '',
+      merchants: initial?.merchants ?? '',
+      tx_per_day: initial?.tx_per_day ?? '',
+      active_cards: initial?.active_cards ?? '',
+      digital_users: initial?.digital_users ?? '',
+    });
+  }, [isOpen, initial]);
+
+  if (!isOpen) return null;
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    // keep as string in UI; convert to int on save
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const toIntOrNull = (v) => {
+    const s = String(v ?? '').trim();
+    if (!s) return null;
+    const n = Number(s);
+    if (!Number.isFinite(n)) return null;
+    return Math.trunc(n);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      await onSave({
+        atms: toIntOrNull(form.atms),
+        debit_cards: toIntOrNull(form.debit_cards),
+        credit_cards: toIntOrNull(form.credit_cards),
+        pos_terminals: toIntOrNull(form.pos_terminals),
+        merchants: toIntOrNull(form.merchants),
+        tx_per_day: toIntOrNull(form.tx_per_day),
+        active_cards: toIntOrNull(form.active_cards),
+        digital_users: toIntOrNull(form.digital_users),
+      });
+      setSaving(false);
+      onClose();
+    } catch (err) {
+      setSaving(false);
+      alert('Failed to save metrics: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onMouseDown={onClose}>
+      <div className="modal-container" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title-wrapper">
+            <FaChartLine className="modal-icon" />
+            <h2 className="modal-title">Edit Customer Metrics</h2>
+          </div>
+          <button className="modal-close-button" onClick={onClose}>
+            <FaTimes />
+          </button>
+        </div>
+
+        <form className="modal-form" onSubmit={handleSubmit}>
+          <div className="form-grid">
+            <div className="form-group">
+              <label className="form-label">Number of ATMs</label>
+              <input className="form-input" name="atms" value={form.atms} onChange={handleChange} />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Debit cards</label>
+              <input
+                className="form-input"
+                name="debit_cards"
+                value={form.debit_cards}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Credit cards</label>
+              <input
+                className="form-input"
+                name="credit_cards"
+                value={form.credit_cards}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">POS terminals</label>
+              <input
+                className="form-input"
+                name="pos_terminals"
+                value={form.pos_terminals}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Merchants</label>
+              <input
+                className="form-input"
+                name="merchants"
+                value={form.merchants}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Transactions / day</label>
+              <input
+                className="form-input"
+                name="tx_per_day"
+                value={form.tx_per_day}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Active cards</label>
+              <input
+                className="form-input"
+                name="active_cards"
+                value={form.active_cards}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Digital users</label>
+              <input
+                className="form-input"
+                name="digital_users"
+                value={form.digital_users}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" className="button-cancel" onClick={onClose}>
+              <FaTimes />
+              Cancel
+            </button>
+            <button type="submit" className="button-submit" disabled={saving}>
+              <FaSave />
+              {saving ? 'Saving...' : 'Save Metrics'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const CustomerDetails = () => {
   const params = useParams();
   const navigate = useNavigate();
@@ -539,20 +726,19 @@ const CustomerDetails = () => {
   const [showCompletedProjects, setShowCompletedProjects] = useState(false);
   const [deletingProjectId, setDeletingProjectId] = useState(null);
 
-  // NEW: project controls
+  // project controls
   const [projectSort, setProjectSort] = useState('stage'); // stage | value | due
-  const [myProjectsOnly, setMyProjectsOnly] = useState(false);
 
-  // NEW: notes
+  // notes
   const [notesDraft, setNotesDraft] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
 
-  const isValidCustomerId = useMemo(() => {
-    if (!customerId) return false;
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      String(customerId)
-    );
-  }, [customerId]);
+  // metrics (from customer_metrics table)
+  const [metrics, setMetrics] = useState(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
+  const [showMetricsModal, setShowMetricsModal] = useState(false);
+
+  const isValidCustomerId = useMemo(() => isUuid(customerId), [customerId]);
 
   const todayISODate = () => new Date().toISOString().slice(0, 10);
 
@@ -624,8 +810,6 @@ const CustomerDetails = () => {
     return false;
   };
 
-  const isDealActive = (stage) => !isProjectCompleted(stage);
-
   const getStageRank = (stage) => {
     const s = String(stage || '').toLowerCase();
     const rank = [
@@ -650,9 +834,7 @@ const CustomerDetails = () => {
         await navigator.clipboard.writeText(t);
         return true;
       }
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
     try {
       const el = document.createElement('textarea');
       el.value = t;
@@ -697,6 +879,45 @@ const CustomerDetails = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchCustomerMetrics = async () => {
+    if (!isValidCustomerId) return;
+    try {
+      setMetricsLoading(true);
+      const { data, error: mErr } = await supabase
+        .from('customer_metrics')
+        .select('*')
+        .eq('customer_id', customerId)
+        .maybeSingle();
+
+      // maybeSingle returns null when not found (that’s OK)
+      if (mErr) throw mErr;
+      setMetrics(data || null);
+    } catch (err) {
+      console.error('Error fetching customer metrics:', err);
+      setMetrics(null);
+    } finally {
+      setMetricsLoading(false);
+    }
+  };
+
+  const saveCustomerMetrics = async (payload) => {
+    if (!isValidCustomerId) return;
+
+    const upsertPayload = {
+      customer_id: customerId,
+      ...payload,
+    };
+
+    const { error: upErr } = await supabase
+      .from('customer_metrics')
+      .upsert(upsertPayload, { onConflict: 'customer_id' });
+
+    if (upErr) throw upErr;
+
+    await fetchCustomerMetrics();
+    alert('Metrics saved.');
   };
 
   const fetchProjects = async (customerName) => {
@@ -756,6 +977,7 @@ const CustomerDetails = () => {
   useEffect(() => {
     fetchCustomer();
     fetchStatusOptions();
+    fetchCustomerMetrics();
   }, [customerId, isValidCustomerId]);
 
   useEffect(() => {
@@ -766,22 +988,6 @@ const CustomerDetails = () => {
   useEffect(() => {
     fetchTasks(projects);
   }, [projects]);
-
-  const getStatusLabel = (statusId) => {
-    if (!statusId) return '';
-    const found = statusOptions.find((s) => String(s.id) === String(statusId));
-    return found ? found.status_name : '';
-  };
-
-  const getStatusClass = (statusLabel) => {
-    const s = String(statusLabel || '').toLowerCase();
-    if (s.includes('active')) return 'status-active';
-    if (s.includes('prospect')) return 'status-prospect';
-    if (s.includes('hold')) return 'status-onhold';
-    if (s.includes('dormant')) return 'status-dormant';
-    if (s.includes('inactive')) return 'status-inactive';
-    return 'status-none';
-  };
 
   const parsedStakeholders = useMemo(() => {
     if (!customer?.key_stakeholders) return [];
@@ -806,7 +1012,7 @@ const CustomerDetails = () => {
   }, [visibleTasks]);
 
   const dealInsight = useMemo(() => {
-    const active = (projects || []).filter((p) => isDealActive(getProjectStage(p)));
+    const active = (projects || []).filter((p) => !isProjectCompleted(getProjectStage(p)));
 
     if (!active.length) {
       return {
@@ -862,13 +1068,6 @@ const CustomerDetails = () => {
       list = list.filter((p) => !isProjectCompleted(getProjectStage(p)));
     }
 
-    if (myProjectsOnly) {
-      const my = String(customer?.primary_presales || '').trim();
-      if (my) {
-        list = list.filter((p) => String(p.primary_presales || '').trim() === my);
-      }
-    }
-
     const withSort = [...list];
 
     if (projectSort === 'value') {
@@ -880,7 +1079,6 @@ const CustomerDetails = () => {
         return ad - bd;
       });
     } else {
-      // stage
       withSort.sort((a, b) => {
         const sr = getStageRank(getProjectStage(b)) - getStageRank(getProjectStage(a));
         if (sr !== 0) return sr;
@@ -889,7 +1087,7 @@ const CustomerDetails = () => {
     }
 
     return withSort;
-  }, [projects, showCompletedProjects, projectSort, myProjectsOnly, customer]);
+  }, [projects, showCompletedProjects, projectSort]);
 
   const tasksGrouped = useMemo(() => {
     const overdue = [];
@@ -902,7 +1100,6 @@ const CustomerDetails = () => {
       else later.push(t);
     }
 
-    // best experience: overdue first, then earliest due
     const sortByDue = (a, b) => {
       const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
       const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
@@ -940,13 +1137,7 @@ const CustomerDetails = () => {
       (p) => !isProjectCompleted(getProjectStage(p))
     ).length;
 
-    const closedWon = (projects || []).filter((p) => {
-      const s = getProjectStage(p).toLowerCase();
-      return s.includes('won') && s.includes('closed');
-    }).length;
-
     const openTasks = visibleTasks;
-    const highPriorityOpen = openTasks.filter((t) => t.priority === 'High').length;
     const overdueCount = openTasks.filter((t) => isOverdue(t.due_date)).length;
 
     const totalPipeline = (projects || []).reduce((sum, p) => {
@@ -957,9 +1148,7 @@ const CustomerDetails = () => {
     return {
       totalProjects,
       activeProjects,
-      closedWon,
       openTasksCount: openTasks.length,
-      highPriorityOpen,
       overdueCount,
       totalPipeline,
     };
@@ -1028,12 +1217,12 @@ const CustomerDetails = () => {
 
   const handleSaveStakeholders = async (encodedArray) => {
     try {
-      const { error } = await supabase
+      const { error: sErr } = await supabase
         .from('customers')
         .update({ key_stakeholders: encodedArray })
         .eq('id', customerId);
 
-      if (error) throw error;
+      if (sErr) throw sErr;
 
       setCustomer((prev) => ({ ...prev, key_stakeholders: encodedArray }));
       alert('Stakeholders updated successfully');
@@ -1045,7 +1234,7 @@ const CustomerDetails = () => {
   };
 
   const handleCreateTask = async (payload) => {
-    const { error } = await supabase.from('project_tasks').insert([
+    const { error: tErr } = await supabase.from('project_tasks').insert([
       {
         project_id: payload.project_id,
         description: payload.description,
@@ -1055,7 +1244,7 @@ const CustomerDetails = () => {
       },
     ]);
 
-    if (error) throw error;
+    if (tErr) throw tErr;
     await fetchTasks(projects);
   };
 
@@ -1069,8 +1258,8 @@ const CustomerDetails = () => {
       created_at: todayISODate(),
     };
 
-    const { error } = await supabase.from('projects').insert([insertPayload]);
-    if (error) throw error;
+    const { error: pErr } = await supabase.from('projects').insert([insertPayload]);
+    if (pErr) throw pErr;
 
     await fetchProjects(customer.customer_name);
   };
@@ -1078,12 +1267,12 @@ const CustomerDetails = () => {
   const handleSaveNotes = async () => {
     try {
       setSavingNotes(true);
-      const { error } = await supabase
+      const { error: nErr } = await supabase
         .from('customers')
         .update({ notes: String(notesDraft || '') })
         .eq('id', customerId);
 
-      if (error) throw error;
+      if (nErr) throw nErr;
 
       setCustomer((prev) => ({ ...prev, notes: String(notesDraft || '') }));
       alert('Notes saved.');
@@ -1187,8 +1376,21 @@ const CustomerDetails = () => {
     );
   }
 
-  const statusLabel = getStatusLabel(customer.status_id);
-  const statusClass = getStatusClass(statusLabel);
+  const statusLabel = (() => {
+    if (!customer.status_id) return '';
+    const found = statusOptions.find((s) => String(s.id) === String(customer.status_id));
+    return found ? found.status_name : '';
+  })();
+
+  const statusClass = (() => {
+    const s = String(statusLabel || '').toLowerCase();
+    if (s.includes('active')) return 'status-active';
+    if (s.includes('prospect')) return 'status-prospect';
+    if (s.includes('hold')) return 'status-onhold';
+    if (s.includes('dormant')) return 'status-dormant';
+    if (s.includes('inactive')) return 'status-inactive';
+    return 'status-none';
+  })();
 
   const lastUpdatedDisplay = formatDate(customer.updated_at || customer.created_at);
 
@@ -1225,7 +1427,6 @@ const CustomerDetails = () => {
               )}
             </div>
 
-            {/* NEW: At-a-glance chips */}
             <div className="customer-chips-row">
               <span className="customer-chip">
                 <FaProjectDiagram /> Active projects: <b>{summary.activeProjects}</b>
@@ -1249,7 +1450,6 @@ const CustomerDetails = () => {
             Back
           </button>
 
-          {/* NEW: quick actions */}
           <button className="btn-secondary" onClick={() => setShowProjectModal(true)}>
             <FaPlus />
             Add Project
@@ -1291,7 +1491,6 @@ const CustomerDetails = () => {
 
       <main className="customer-main-layout">
         <div className="customer-main-left">
-          {/* Customer Info */}
           <section className="section-card customer-info-section">
             <div className="section-header">
               <div className="section-title">
@@ -1421,7 +1620,6 @@ const CustomerDetails = () => {
             </div>
           </section>
 
-          {/* Stakeholders */}
           <section className="section-card stakeholders-section">
             <div className="section-header">
               <div className="section-title">
@@ -1481,7 +1679,6 @@ const CustomerDetails = () => {
             )}
           </section>
 
-          {/* Projects */}
           <section className="section-card projects-section">
             <div className="section-header">
               <div className="section-title">
@@ -1504,7 +1701,6 @@ const CustomerDetails = () => {
               </div>
             </div>
 
-            {/* NEW: sort + filters */}
             <div className="project-controls-row">
               <div className="project-controls-left">
                 <label className="control-label">
@@ -1518,15 +1714,6 @@ const CustomerDetails = () => {
                     <option value="value">By value</option>
                     <option value="due">By due date</option>
                   </select>
-                </label>
-
-                <label className="control-toggle">
-                  <input
-                    type="checkbox"
-                    checked={myProjectsOnly}
-                    onChange={(e) => setMyProjectsOnly(e.target.checked)}
-                  />
-                  My projects only
                 </label>
               </div>
             </div>
@@ -1601,7 +1788,6 @@ const CustomerDetails = () => {
             )}
           </section>
 
-          {/* NEW: Notes panel */}
           <section className="section-card notes-section">
             <div className="section-header">
               <div className="section-title">
@@ -1624,51 +1810,70 @@ const CustomerDetails = () => {
 - Next meeting:
 - Key risks:
 - Next action:`}
-              rows={6}
+              rows={8}
             />
           </section>
         </div>
 
-        {/* Right column */}
         <aside className="customer-main-right">
-          {/* Snapshot */}
+          {/* Snapshot (from customer_metrics table) */}
           <section className="section-card snapshot-section">
             <div className="section-header">
               <div className="section-title">
                 <FaChartLine />
                 <h2>Customer Snapshot</h2>
               </div>
+              <div className="section-actions">
+                <button className="btn-secondary" onClick={() => setShowMetricsModal(true)}>
+                  <FaEdit />
+                  Edit Metrics
+                </button>
+              </div>
             </div>
 
-            <div className="snapshot-grid">
-              <div className="snapshot-item">
-                <span className="snapshot-label">Total projects</span>
-                <span className="snapshot-value">{summary.totalProjects}</span>
+            {metricsLoading ? (
+              <div className="empty-state small">
+                <p>Loading metrics…</p>
               </div>
-              <div className="snapshot-item">
-                <span className="snapshot-label">Active opportunities</span>
-                <span className="snapshot-value">{summary.activeProjects}</span>
+            ) : (
+              <div className="snapshot-grid">
+                <div className="snapshot-item">
+                  <span className="snapshot-label">Number of ATMs</span>
+                  <span className="snapshot-value">{formatNumber(metrics?.atms)}</span>
+                </div>
+                <div className="snapshot-item">
+                  <span className="snapshot-label">Debit cards</span>
+                  <span className="snapshot-value">{formatNumber(metrics?.debit_cards)}</span>
+                </div>
+                <div className="snapshot-item">
+                  <span className="snapshot-label">Credit cards</span>
+                  <span className="snapshot-value">{formatNumber(metrics?.credit_cards)}</span>
+                </div>
+                <div className="snapshot-item">
+                  <span className="snapshot-label">POS terminals</span>
+                  <span className="snapshot-value">{formatNumber(metrics?.pos_terminals)}</span>
+                </div>
+                <div className="snapshot-item">
+                  <span className="snapshot-label">Merchants</span>
+                  <span className="snapshot-value">{formatNumber(metrics?.merchants)}</span>
+                </div>
+                <div className="snapshot-item">
+                  <span className="snapshot-label">Transactions / day</span>
+                  <span className="snapshot-value">{formatNumber(metrics?.tx_per_day)}</span>
+                </div>
+
+                <div className="snapshot-item">
+                  <span className="snapshot-label">Active cards</span>
+                  <span className="snapshot-value">{formatNumber(metrics?.active_cards)}</span>
+                </div>
+                <div className="snapshot-item">
+                  <span className="snapshot-label">Digital users</span>
+                  <span className="snapshot-value">{formatNumber(metrics?.digital_users)}</span>
+                </div>
               </div>
-              <div className="snapshot-item">
-                <span className="snapshot-label">Open tasks</span>
-                <span className="snapshot-value">{summary.openTasksCount}</span>
-              </div>
-              <div className="snapshot-item">
-                <span className="snapshot-label">Overdue tasks</span>
-                <span className="snapshot-value">{summary.overdueCount}</span>
-              </div>
-              <div className="snapshot-item">
-                <span className="snapshot-label">High priority tasks</span>
-                <span className="snapshot-value">{summary.highPriorityOpen}</span>
-              </div>
-              <div className="snapshot-item">
-                <span className="snapshot-label">Total pipeline</span>
-                <span className="snapshot-value">{formatCurrency(summary.totalPipeline)}</span>
-              </div>
-            </div>
+            )}
           </section>
 
-          {/* Recent activity */}
           <section className="section-card recent-activity-section">
             <div className="section-header">
               <div className="section-title">
@@ -1719,7 +1924,6 @@ const CustomerDetails = () => {
             </div>
           </section>
 
-          {/* Tasks grouped */}
           <section className="section-card tasks-section">
             <div className="section-header">
               <div className="section-title">
@@ -1763,17 +1967,13 @@ const CustomerDetails = () => {
                           return (
                             <li
                               key={t.id}
-                              className={`task-item status-${String(t.status || '')
-                                .toLowerCase()
-                                .replace(/\s/g, '-')}
-
-                                ${
-                                  isOverdue(t.due_date)
-                                    ? 'due-overdue'
-                                    : isDueSoon(t.due_date, 7)
-                                    ? 'due-soon'
-                                    : ''
-                                }`}
+                              className={`task-item ${
+                                isOverdue(t.due_date)
+                                  ? 'due-overdue'
+                                  : isDueSoon(t.due_date, 7)
+                                  ? 'due-soon'
+                                  : ''
+                              }`}
                             >
                               <div className="task-main">
                                 <div className="task-desc">{t.description}</div>
@@ -1808,17 +2008,8 @@ const CustomerDetails = () => {
                               </div>
 
                               <div className="task-meta">
-                                <span
-                                  className={`task-status-badge status-${String(t.status || '')
-                                    .toLowerCase()
-                                    .replace(/\s/g, '-')}`}
-                                >
-                                  {t.status || 'Not Started'}
-                                </span>
-                                <span
-                                  className={`task-priority-badge priority-${String(t.priority || '')
-                                    .toLowerCase()}`}
-                                >
+                                <span className="task-status-badge">{t.status || 'Not Started'}</span>
+                                <span className="task-priority-badge">
                                   {t.priority || 'Normal'}
                                 </span>
                               </div>
@@ -1835,7 +2026,6 @@ const CustomerDetails = () => {
         </aside>
       </main>
 
-      {/* Modals */}
       <TaskModal
         isOpen={showTaskModal}
         onClose={() => setShowTaskModal(false)}
@@ -1854,6 +2044,13 @@ const CustomerDetails = () => {
         onClose={() => setShowStakeholdersModal(false)}
         onSave={handleSaveStakeholders}
         existingStakeholders={customer.key_stakeholders || []}
+      />
+
+      <MetricsModal
+        isOpen={showMetricsModal}
+        onClose={() => setShowMetricsModal(false)}
+        onSave={saveCustomerMetrics}
+        initial={metrics}
       />
     </div>
   );
