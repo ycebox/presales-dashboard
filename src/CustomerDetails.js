@@ -1,29 +1,29 @@
 // src/CustomerDetails.js
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './CustomerDetails.css';
 
 import {
-  FaUserTie,
   FaBuilding,
-  FaGlobeAsia,
-  FaTasks,
-  FaUsers,
-  FaProjectDiagram,
   FaCalendarAlt,
-  FaMoneyBillWave,
   FaChartLine,
-  FaPlus,
   FaEdit,
-  FaSave,
-  FaTimes,
-  FaExclamationTriangle,
-  FaInfoCircle,
   FaEnvelope,
+  FaExclamationTriangle,
+  FaGlobeAsia,
+  FaInfoCircle,
+  FaMoneyBillWave,
+  FaPlus,
+  FaProjectDiagram,
   FaRegStickyNote,
+  FaSave,
+  FaTasks,
+  FaTimes,
   FaTrash,
+  FaUserTie,
+  FaUsers,
 } from 'react-icons/fa';
 
 const asiaPacificCountries = [
@@ -66,11 +66,9 @@ const StakeholdersModal = ({ isOpen, onClose, onSave, existingStakeholders }) =>
 
   useEffect(() => {
     if (!isOpen) return;
-
     const parsed = Array.isArray(existingStakeholders)
       ? existingStakeholders.map(parseStakeholderEntry)
       : [];
-
     setRows(parsed.length ? parsed : [{ name: '', role: '', contact: '' }]);
   }, [isOpen, existingStakeholders]);
 
@@ -345,6 +343,7 @@ const ProjectModal = ({ isOpen, onClose, onSave }) => {
     sales_stage: 'Opportunity',
     deal_value: '',
     product: '',
+    due_date: '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -375,6 +374,7 @@ const ProjectModal = ({ isOpen, onClose, onSave }) => {
         sales_stage: form.sales_stage || null,
         deal_value: form.deal_value ? Number(form.deal_value) : null,
         product: String(form.product || '').trim() || null,
+        due_date: form.due_date || null,
       });
       setSaving(false);
       onClose();
@@ -384,6 +384,7 @@ const ProjectModal = ({ isOpen, onClose, onSave }) => {
         sales_stage: 'Opportunity',
         deal_value: '',
         product: '',
+        due_date: '',
       });
     } catch (err) {
       setSaving(false);
@@ -482,6 +483,20 @@ const ProjectModal = ({ isOpen, onClose, onSave }) => {
                 placeholder="e.g. SmartVista CMS"
               />
             </div>
+
+            <div className="form-group full-width">
+              <label className="form-label">
+                <FaCalendarAlt className="form-icon" />
+                Due date
+              </label>
+              <input
+                className="form-input"
+                type="date"
+                name="due_date"
+                value={form.due_date}
+                onChange={handleChange}
+              />
+            </div>
           </div>
 
           <div className="modal-actions">
@@ -524,12 +539,22 @@ const CustomerDetails = () => {
   const [showCompletedProjects, setShowCompletedProjects] = useState(false);
   const [deletingProjectId, setDeletingProjectId] = useState(null);
 
+  // NEW: project controls
+  const [projectSort, setProjectSort] = useState('stage'); // stage | value | due
+  const [myProjectsOnly, setMyProjectsOnly] = useState(false);
+
+  // NEW: notes
+  const [notesDraft, setNotesDraft] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
+
   const isValidCustomerId = useMemo(() => {
     if (!customerId) return false;
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       String(customerId)
     );
   }, [customerId]);
+
+  const todayISODate = () => new Date().toISOString().slice(0, 10);
 
   const formatCurrency = (amount) => {
     const n = Number(amount);
@@ -552,9 +577,96 @@ const CustomerDetails = () => {
     });
   };
 
-  const todayISODate = () => new Date().toISOString().slice(0, 10);
+  const todayStart = () => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const isOverdue = (dueDate) => {
+    if (!dueDate) return false;
+    const due = new Date(dueDate);
+    if (Number.isNaN(due.getTime())) return false;
+    due.setHours(0, 0, 0, 0);
+    return due < todayStart();
+  };
+
+  const isDueSoon = (dueDate, days = 7) => {
+    if (!dueDate) return false;
+    const due = new Date(dueDate);
+    if (Number.isNaN(due.getTime())) return false;
+    due.setHours(0, 0, 0, 0);
+    const start = todayStart();
+    const soon = new Date(start);
+    soon.setDate(soon.getDate() + days);
+    return due >= start && due <= soon;
+  };
+
+  const daysUntil = (dueDate) => {
+    if (!dueDate) return null;
+    const d = new Date(dueDate);
+    if (Number.isNaN(d.getTime())) return null;
+    const start = todayStart().getTime();
+    d.setHours(0, 0, 0, 0);
+    const diff = d.getTime() - start;
+    return Math.round(diff / (1000 * 60 * 60 * 24));
+  };
 
   const getProjectStage = (p) => String(p?.sales_stage || p?.current_status || '').trim();
+
+  const isProjectCompleted = (stage) => {
+    const s = String(stage || '').trim().toLowerCase();
+    if (!s) return false;
+    if (s === 'done') return true;
+    if (s.includes('completed')) return true;
+    if (s.startsWith('closed')) return true;
+    if (s.includes('closed')) return true;
+    return false;
+  };
+
+  const isDealActive = (stage) => !isProjectCompleted(stage);
+
+  const getStageRank = (stage) => {
+    const s = String(stage || '').toLowerCase();
+    const rank = [
+      { k: 'contract', r: 60 },
+      { k: 'sow', r: 55 },
+      { k: 'rfp', r: 50 },
+      { k: 'proposal', r: 45 },
+      { k: 'opportunity', r: 40 },
+      { k: 'lead', r: 30 },
+    ];
+    for (const it of rank) {
+      if (s.includes(it.k)) return it.r;
+    }
+    return 10;
+  };
+
+  const copyToClipboard = async (text) => {
+    const t = String(text || '').trim();
+    if (!t) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(t);
+        return true;
+      }
+    } catch (e) {
+      // ignore
+    }
+    try {
+      const el = document.createElement('textarea');
+      el.value = t;
+      el.style.position = 'fixed';
+      el.style.left = '-9999px';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
 
   const fetchCustomer = async () => {
     try {
@@ -578,6 +690,7 @@ const CustomerDetails = () => {
 
       setCustomer(data);
       setEditCustomer(data);
+      setNotesDraft(data?.notes || '');
     } catch (err) {
       console.error('Error fetching customer:', err);
       setError(err.message || 'Failed to load customer');
@@ -676,75 +789,33 @@ const CustomerDetails = () => {
     return list.map(parseStakeholderEntry).filter((s) => s.name || s.role || s.contact);
   }, [customer]);
 
-  const todayStart = () => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  };
-
-  const isOverdue = (dueDate) => {
-    if (!dueDate) return false;
-    const due = new Date(dueDate);
-    if (Number.isNaN(due.getTime())) return false;
-    due.setHours(0, 0, 0, 0);
-    return due < todayStart();
-  };
-
-  const isDueSoon = (dueDate, days = 7) => {
-    if (!dueDate) return false;
-    const due = new Date(dueDate);
-    if (Number.isNaN(due.getTime())) return false;
-    due.setHours(0, 0, 0, 0);
-    const start = todayStart();
-    const soon = new Date(start);
-    soon.setDate(soon.getDate() + days);
-    return due >= start && due <= soon;
-  };
-
-  const isProjectCompleted = (stage) => {
-    const s = String(stage || '').trim().toLowerCase();
-    if (!s) return false;
-    if (s === 'done') return true;
-    if (s.includes('completed')) return true;
-    if (s.startsWith('closed')) return true;
-    if (s.includes('closed')) return true;
-    return false;
-  };
-
-  const isDealActive = (stage) => !isProjectCompleted(stage);
-
-  const getStageRank = (stage) => {
-    const s = String(stage || '').toLowerCase();
-    const rank = [
-      { k: 'contract', r: 60 },
-      { k: 'sow', r: 55 },
-      { k: 'rfp', r: 50 },
-      { k: 'proposal', r: 45 },
-      { k: 'opportunity', r: 40 },
-      { k: 'lead', r: 30 },
-    ];
-    for (const it of rank) {
-      if (s.includes(it.k)) return it.r;
-    }
-    return 10;
-  };
-
-  const visibleProjects = useMemo(() => {
-    if (showCompletedProjects) return projects || [];
-    return (projects || []).filter((p) => !isProjectCompleted(getProjectStage(p)));
-  }, [projects, showCompletedProjects]);
-
   const visibleTasks = useMemo(() => {
     return (tasks || []).filter(
       (t) => String(t.status || '').trim().toLowerCase() !== 'completed'
     );
   }, [tasks]);
 
+  const projectOpenTaskCount = useMemo(() => {
+    const map = {};
+    for (const t of visibleTasks) {
+      const pid = String(t.project_id || '');
+      if (!pid) continue;
+      map[pid] = (map[pid] || 0) + 1;
+    }
+    return map;
+  }, [visibleTasks]);
+
   const dealInsight = useMemo(() => {
     const active = (projects || []).filter((p) => isDealActive(getProjectStage(p)));
 
     if (!active.length) {
-      return { primary: null, attention: 'none', attentionLabel: '—', overdueCount: 0 };
+      return {
+        primary: null,
+        attention: 'none',
+        attentionLabel: '—',
+        overdueCount: 0,
+        reason: '',
+      };
     }
 
     const sorted = [...active].sort((a, b) => {
@@ -776,8 +847,74 @@ const CustomerDetails = () => {
     const attentionLabel =
       attention === 'red' ? 'High' : attention === 'amber' ? 'Medium' : 'Low';
 
-    return { primary, attention, attentionLabel, overdueCount };
+    let reason = '';
+    if (overdueCount > 0) reason = `${overdueCount} overdue task${overdueCount > 1 ? 's' : ''}`;
+    else if (rank >= 55) reason = 'late-stage deal';
+    else if (rank >= 40) reason = 'active opportunity';
+
+    return { primary, attention, attentionLabel, overdueCount, reason };
   }, [projects, tasks]);
+
+  const visibleProjects = useMemo(() => {
+    let list = projects || [];
+
+    if (!showCompletedProjects) {
+      list = list.filter((p) => !isProjectCompleted(getProjectStage(p)));
+    }
+
+    if (myProjectsOnly) {
+      const my = String(customer?.primary_presales || '').trim();
+      if (my) {
+        list = list.filter((p) => String(p.primary_presales || '').trim() === my);
+      }
+    }
+
+    const withSort = [...list];
+
+    if (projectSort === 'value') {
+      withSort.sort((a, b) => (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0));
+    } else if (projectSort === 'due') {
+      withSort.sort((a, b) => {
+        const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
+        const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
+        return ad - bd;
+      });
+    } else {
+      // stage
+      withSort.sort((a, b) => {
+        const sr = getStageRank(getProjectStage(b)) - getStageRank(getProjectStage(a));
+        if (sr !== 0) return sr;
+        return (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0);
+      });
+    }
+
+    return withSort;
+  }, [projects, showCompletedProjects, projectSort, myProjectsOnly, customer]);
+
+  const tasksGrouped = useMemo(() => {
+    const overdue = [];
+    const dueSoon = [];
+    const later = [];
+
+    for (const t of visibleTasks) {
+      if (t.due_date && isOverdue(t.due_date)) overdue.push(t);
+      else if (t.due_date && isDueSoon(t.due_date, 7)) dueSoon.push(t);
+      else later.push(t);
+    }
+
+    // best experience: overdue first, then earliest due
+    const sortByDue = (a, b) => {
+      const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
+      const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
+      return ad - bd;
+    };
+
+    overdue.sort(sortByDue);
+    dueSoon.sort(sortByDue);
+    later.sort(sortByDue);
+
+    return { overdue, dueSoon, later };
+  }, [visibleTasks]);
 
   const recentActivity = useMemo(() => {
     const lastProject = [...(projects || [])]
@@ -808,10 +945,9 @@ const CustomerDetails = () => {
       return s.includes('won') && s.includes('closed');
     }).length;
 
-    const openTasks = (tasks || []).filter(
-      (t) => String(t.status || '').trim().toLowerCase() !== 'completed'
-    );
+    const openTasks = visibleTasks;
     const highPriorityOpen = openTasks.filter((t) => t.priority === 'High').length;
+    const overdueCount = openTasks.filter((t) => isOverdue(t.due_date)).length;
 
     const totalPipeline = (projects || []).reduce((sum, p) => {
       if (!p.deal_value) return sum;
@@ -824,9 +960,10 @@ const CustomerDetails = () => {
       closedWon,
       openTasksCount: openTasks.length,
       highPriorityOpen,
+      overdueCount,
       totalPipeline,
     };
-  }, [projects, tasks]);
+  }, [projects, visibleTasks]);
 
   const handleUpdateCustomer = async () => {
     try {
@@ -899,7 +1036,6 @@ const CustomerDetails = () => {
       if (error) throw error;
 
       setCustomer((prev) => ({ ...prev, key_stakeholders: encodedArray }));
-
       alert('Stakeholders updated successfully');
       setShowStakeholdersModal(false);
     } catch (err) {
@@ -939,14 +1075,47 @@ const CustomerDetails = () => {
     await fetchProjects(customer.customer_name);
   };
 
+  const handleSaveNotes = async () => {
+    try {
+      setSavingNotes(true);
+      const { error } = await supabase
+        .from('customers')
+        .update({ notes: String(notesDraft || '') })
+        .eq('id', customerId);
+
+      if (error) throw error;
+
+      setCustomer((prev) => ({ ...prev, notes: String(notesDraft || '') }));
+      alert('Notes saved.');
+    } catch (err) {
+      console.error('Error saving notes:', err);
+      alert('Failed to save notes: ' + err.message);
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
   const handleDeleteProject = async (project) => {
     if (!project?.id) return;
 
+    const projectId = String(project.id);
     const name = project.project_name || 'this project';
-    const ok = window.confirm(
+    const taskCount = projectOpenTaskCount[projectId] || 0;
+
+    let ok = window.confirm(
       `Delete "${name}"?\n\nThis will also delete ALL tasks under this project. This cannot be undone.`
     );
     if (!ok) return;
+
+    if (taskCount > 0) {
+      const typed = window.prompt(
+        `This project has ${taskCount} open task(s).\n\nType DELETE to confirm:`
+      );
+      if (String(typed || '').trim().toUpperCase() !== 'DELETE') {
+        alert('Delete cancelled.');
+        return;
+      }
+    }
 
     try {
       setDeletingProjectId(project.id);
@@ -1021,12 +1190,15 @@ const CustomerDetails = () => {
   const statusLabel = getStatusLabel(customer.status_id);
   const statusClass = getStatusClass(statusLabel);
 
+  const lastUpdatedDisplay = formatDate(customer.updated_at || customer.created_at);
+
   return (
     <div className="customer-details-container">
       <header className="customer-header">
         <div className="customer-header-main">
           <div className="customer-header-text">
             <h1 className="customer-title">{customer.customer_name || 'Customer'}</h1>
+
             <div className="customer-subtitle-row">
               <span className="customer-subtitle">
                 <FaBuilding />
@@ -1048,8 +1220,25 @@ const CustomerDetails = () => {
                 <span className={`customer-subtitle attention-subtitle ${dealInsight.attention}`}>
                   <FaExclamationTriangle />
                   Attention: {dealInsight.attentionLabel}
+                  {dealInsight.reason ? ` • ${dealInsight.reason}` : ''}
                 </span>
               )}
+            </div>
+
+            {/* NEW: At-a-glance chips */}
+            <div className="customer-chips-row">
+              <span className="customer-chip">
+                <FaProjectDiagram /> Active projects: <b>{summary.activeProjects}</b>
+              </span>
+              <span className="customer-chip">
+                <FaExclamationTriangle /> Overdue tasks: <b>{summary.overdueCount}</b>
+              </span>
+              <span className="customer-chip">
+                <FaMoneyBillWave /> Pipeline: <b>{formatCurrency(summary.totalPipeline)}</b>
+              </span>
+              <span className="customer-chip">
+                <FaCalendarAlt /> Updated: <b>{lastUpdatedDisplay || '—'}</b>
+              </span>
             </div>
           </div>
         </div>
@@ -1058,6 +1247,20 @@ const CustomerDetails = () => {
           <button className="btn-secondary" onClick={() => navigate(-1)}>
             <FaTimes />
             Back
+          </button>
+
+          {/* NEW: quick actions */}
+          <button className="btn-secondary" onClick={() => setShowProjectModal(true)}>
+            <FaPlus />
+            Add Project
+          </button>
+          <button className="btn-secondary" onClick={() => setShowTaskModal(true)}>
+            <FaPlus />
+            Add Task
+          </button>
+          <button className="btn-secondary" onClick={() => setShowStakeholdersModal(true)}>
+            <FaPlus />
+            Stakeholder
           </button>
 
           {!isEditing ? (
@@ -1252,10 +1455,18 @@ const CustomerDetails = () => {
 
                           <div className="stakeholder-contact">
                             {s.contact ? (
-                              <>
+                              <button
+                                type="button"
+                                className="stakeholder-contact-btn"
+                                title="Click to copy"
+                                onClick={async () => {
+                                  const ok = await copyToClipboard(s.contact);
+                                  if (ok) alert('Copied to clipboard');
+                                }}
+                              >
                                 <FaEnvelope />
                                 <span>{s.contact}</span>
-                              </>
+                              </button>
                             ) : (
                               <span className="muted">No contact details</span>
                             )}
@@ -1293,6 +1504,33 @@ const CustomerDetails = () => {
               </div>
             </div>
 
+            {/* NEW: sort + filters */}
+            <div className="project-controls-row">
+              <div className="project-controls-left">
+                <label className="control-label">
+                  Sort
+                  <select
+                    className="control-select"
+                    value={projectSort}
+                    onChange={(e) => setProjectSort(e.target.value)}
+                  >
+                    <option value="stage">By stage</option>
+                    <option value="value">By value</option>
+                    <option value="due">By due date</option>
+                  </select>
+                </label>
+
+                <label className="control-toggle">
+                  <input
+                    type="checkbox"
+                    checked={myProjectsOnly}
+                    onChange={(e) => setMyProjectsOnly(e.target.checked)}
+                  />
+                  My projects only
+                </label>
+              </div>
+            </div>
+
             {visibleProjects.length === 0 ? (
               <div className="empty-state small">
                 <p>No projects to show.</p>
@@ -1304,6 +1542,10 @@ const CustomerDetails = () => {
                     dealInsight.primary && String(dealInsight.primary.id) === String(p.id);
 
                   const isDeleting = deletingProjectId === p.id;
+
+                  const stage = getProjectStage(p) || '—';
+                  const openCount = projectOpenTaskCount[String(p.id)] || 0;
+                  const dueText = p.due_date ? formatDate(p.due_date) : '';
 
                   return (
                     <div
@@ -1318,22 +1560,21 @@ const CustomerDetails = () => {
                           {isPrimary ? <span className="project-primary-badge">Primary</span> : null}
                         </h3>
                         {p.scope ? <p className="project-scope">{p.scope}</p> : null}
-                      </div>
 
-                      <div className="project-details">
-                        <div className="project-meta">
-                          <span className="project-meta-item">
-                            <FaChartLine />
-                            {getProjectStage(p) || '—'}
+                        <div className="project-mini-row">
+                          <span className="project-stage-badge">{stage}</span>
+                          <span className="project-taskcount-badge">
+                            {openCount} open task{openCount !== 1 ? 's' : ''}
                           </span>
-                          {p.product ? (
-                            <span className="project-meta-item">
-                              <FaInfoCircle />
-                              {p.product}
+                          {dueText ? (
+                            <span className="project-due-badge">
+                              <FaCalendarAlt /> {dueText}
                             </span>
                           ) : null}
                         </div>
+                      </div>
 
+                      <div className="project-details">
                         <div className="project-value">
                           <FaMoneyBillWave />
                           {formatCurrency(p.deal_value)}
@@ -1359,6 +1600,33 @@ const CustomerDetails = () => {
               </div>
             )}
           </section>
+
+          {/* NEW: Notes panel */}
+          <section className="section-card notes-section">
+            <div className="section-header">
+              <div className="section-title">
+                <FaRegStickyNote />
+                <h2>Notes / Next steps</h2>
+              </div>
+              <div className="section-actions">
+                <button className="btn-secondary" onClick={handleSaveNotes} disabled={savingNotes}>
+                  <FaSave />
+                  {savingNotes ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
+
+            <textarea
+              className="notes-textarea"
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
+              placeholder={`Suggested format:
+- Next meeting:
+- Key risks:
+- Next action:`}
+              rows={6}
+            />
+          </section>
         </div>
 
         {/* Right column */}
@@ -1382,12 +1650,12 @@ const CustomerDetails = () => {
                 <span className="snapshot-value">{summary.activeProjects}</span>
               </div>
               <div className="snapshot-item">
-                <span className="snapshot-label">Closed / won</span>
-                <span className="snapshot-value">{summary.closedWon}</span>
-              </div>
-              <div className="snapshot-item">
                 <span className="snapshot-label">Open tasks</span>
                 <span className="snapshot-value">{summary.openTasksCount}</span>
+              </div>
+              <div className="snapshot-item">
+                <span className="snapshot-label">Overdue tasks</span>
+                <span className="snapshot-value">{summary.overdueCount}</span>
               </div>
               <div className="snapshot-item">
                 <span className="snapshot-label">High priority tasks</span>
@@ -1451,12 +1719,12 @@ const CustomerDetails = () => {
             </div>
           </section>
 
-          {/* Tasks */}
+          {/* Tasks grouped */}
           <section className="section-card tasks-section">
             <div className="section-header">
               <div className="section-title">
                 <FaTasks />
-                <h2>Tasks (by project)</h2>
+                <h2>Tasks (grouped)</h2>
               </div>
               <div className="section-actions">
                 <button className="btn-secondary" onClick={() => setShowTaskModal(true)}>
@@ -1471,71 +1739,96 @@ const CustomerDetails = () => {
                 <p>No open tasks to show. (Completed tasks are hidden.)</p>
               </div>
             ) : (
-              <div className="customer-tasks-list">
-                {visibleProjects.map((p) => {
-                  const projectTasks = visibleTasks.filter(
-                    (t) => String(t.project_id) === String(p.id)
-                  );
-                  if (!projectTasks.length) return null;
-
-                  return (
-                    <div key={p.id} className="customer-project-task-group">
-                      <div className="customer-project-task-header">
-                        <h3 onClick={() => navigate(`/project/${p.id}`)}>
-                          {p.project_name || '(Unnamed Project)'}
-                        </h3>
-                        <span className="task-count-badge">
-                          {projectTasks.length} task{projectTasks.length > 1 ? 's' : ''}
-                        </span>
-                      </div>
-
-                      <ul className="project-task-list">
-                        {projectTasks.map((t) => (
-                          <li
-                            key={t.id}
-                            className={`task-item status-${String(t.status || '')
-                              .toLowerCase()
-                              .replace(/\s/g, '-')}
-
-                              ${
-                                isOverdue(t.due_date)
-                                  ? 'due-overdue'
-                                  : isDueSoon(t.due_date, 7)
-                                  ? 'due-soon'
-                                  : ''
-                              }`}
-                          >
-                            <div className="task-main">
-                              <div className="task-desc">{t.description}</div>
-                              {t.due_date && (
-                                <span className="task-due">
-                                  <FaCalendarAlt />
-                                  {formatDate(t.due_date)}
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="task-meta">
-                              <span
-                                className={`task-status-badge status-${String(t.status || '')
-                                  .toLowerCase()
-                                  .replace(/\s/g, '-')}`}
-                              >
-                                {t.status || 'Not Started'}
-                              </span>
-                              <span
-                                className={`task-priority-badge priority-${String(t.priority || '')
-                                  .toLowerCase()}`}
-                              >
-                                {t.priority || 'Normal'}
-                              </span>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+              <div className="tasks-grouped">
+                {[
+                  { key: 'overdue', title: 'Overdue', items: tasksGrouped.overdue },
+                  { key: 'dueSoon', title: 'Due soon (next 7 days)', items: tasksGrouped.dueSoon },
+                  { key: 'later', title: 'Later / No due date', items: tasksGrouped.later },
+                ].map((g) => (
+                  <div key={g.key} className="task-group">
+                    <div className="task-group-header">
+                      <h3>{g.title}</h3>
+                      <span className="task-count-badge">{g.items.length}</span>
                     </div>
-                  );
-                })}
+
+                    {g.items.length === 0 ? (
+                      <div className="muted small">Nothing here</div>
+                    ) : (
+                      <ul className="project-task-list">
+                        {g.items.map((t) => {
+                          const pid = String(t.project_id || '');
+                          const p = (projects || []).find((x) => String(x.id) === pid);
+                          const dd = t.due_date ? daysUntil(t.due_date) : null;
+
+                          return (
+                            <li
+                              key={t.id}
+                              className={`task-item status-${String(t.status || '')
+                                .toLowerCase()
+                                .replace(/\s/g, '-')}
+
+                                ${
+                                  isOverdue(t.due_date)
+                                    ? 'due-overdue'
+                                    : isDueSoon(t.due_date, 7)
+                                    ? 'due-soon'
+                                    : ''
+                                }`}
+                            >
+                              <div className="task-main">
+                                <div className="task-desc">{t.description}</div>
+
+                                <div className="task-subrow">
+                                  {p?.project_name ? (
+                                    <button
+                                      type="button"
+                                      className="task-project-link"
+                                      onClick={() => navigate(`/project/${pid}`)}
+                                      title="Go to project"
+                                    >
+                                      <FaProjectDiagram /> {p.project_name}
+                                    </button>
+                                  ) : null}
+
+                                  {t.due_date ? (
+                                    <span className="task-due">
+                                      <FaCalendarAlt />
+                                      {formatDate(t.due_date)}
+                                      {typeof dd === 'number' ? (
+                                        <span className="task-due-mini">
+                                          {' '}
+                                          • {dd < 0 ? `${Math.abs(dd)}d late` : `due in ${dd}d`}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  ) : (
+                                    <span className="task-due muted">No due date</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="task-meta">
+                                <span
+                                  className={`task-status-badge status-${String(t.status || '')
+                                    .toLowerCase()
+                                    .replace(/\s/g, '-')}`}
+                                >
+                                  {t.status || 'Not Started'}
+                                </span>
+                                <span
+                                  className={`task-priority-badge priority-${String(t.priority || '')
+                                    .toLowerCase()}`}
+                                >
+                                  {t.priority || 'Normal'}
+                                </span>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </section>
