@@ -553,7 +553,6 @@ const CustomerDetails = () => {
 
   const todayISODate = () => new Date().toISOString().slice(0, 10);
 
-  // ✅ single source of truth for "stage/status" in projects table
   const getProjectStage = (p) => String(p?.sales_stage || p?.current_status || '').trim();
 
   const fetchCustomer = async () => {
@@ -701,7 +700,6 @@ const CustomerDetails = () => {
     return due >= start && due <= soon;
   };
 
-  // ✅ improved completed detection (supports sales_stage OR current_status)
   const isProjectCompleted = (stage) => {
     const s = String(stage || '').trim().toLowerCase();
     if (!s) return false;
@@ -730,7 +728,6 @@ const CustomerDetails = () => {
     return 10;
   };
 
-  // ✅ FIX: use stage fallback so completed hide/show works
   const visibleProjects = useMemo(() => {
     if (showCompletedProjects) return projects || [];
     return (projects || []).filter((p) => !isProjectCompleted(getProjectStage(p)));
@@ -742,7 +739,6 @@ const CustomerDetails = () => {
     );
   }, [tasks]);
 
-  // ✅ FIX: primary deal + attention uses stage fallback
   const dealInsight = useMemo(() => {
     const active = (projects || []).filter((p) => isDealActive(getProjectStage(p)));
 
@@ -799,7 +795,6 @@ const CustomerDetails = () => {
     return { lastProject, lastTask, lastCustomer };
   }, [projects, tasks, customer]);
 
-  // ✅ FIX: snapshot counts use stage fallback too
   const summary = useMemo(() => {
     const totalProjects = projects.length;
 
@@ -1090,27 +1085,9 @@ const CustomerDetails = () => {
         </div>
       </header>
 
-      {/* Health strip */}
+      {/* Health strip (Active Deal removed) */}
       <section className="section-card health-strip">
         <div className="health-grid">
-          <div className="health-item">
-            <div className="health-label">Active deal</div>
-            {dealInsight.primary ? (
-              <button
-                type="button"
-                className="health-link"
-                onClick={() => navigate(`/project/${dealInsight.primary.id}`)}
-              >
-                {dealInsight.primary.project_name}
-                {getProjectStage(dealInsight.primary)
-                  ? ` • ${getProjectStage(dealInsight.primary)}`
-                  : ''}
-              </button>
-            ) : (
-              <div className="health-value muted">No active deal</div>
-            )}
-          </div>
-
           <div className="health-item">
             <div className="health-label">Attention</div>
             {dealInsight.primary ? (
