@@ -1,4 +1,5 @@
 // src/CustomerDetails.js
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -1084,34 +1085,6 @@ const CustomerDetails = () => {
           )}
         </div>
       </header>
-
-      {/* Health strip (Active Deal removed) */}
-      <section className="section-card health-strip">
-        <div className="health-grid">
-          <div className="health-item">
-            <div className="health-label">Attention</div>
-            {dealInsight.primary ? (
-              <span className={`attention-pill ${dealInsight.attention}`}>
-                <span className="attention-dot" />
-                {dealInsight.attentionLabel}
-                {dealInsight.overdueCount > 0 ? ` • ${dealInsight.overdueCount} overdue` : ''}
-              </span>
-            ) : (
-              <div className="health-value muted">—</div>
-            )}
-          </div>
-
-          <div className="health-item">
-            <div className="health-label">Primary presales</div>
-            <div className="health-value">{customer.primary_presales || '—'}</div>
-          </div>
-
-          <div className="health-item">
-            <div className="health-label">Account manager</div>
-            <div className="health-value">{customer.account_manager || '—'}</div>
-          </div>
-        </div>
-      </section>
 
       <main className="customer-main-layout">
         <div className="customer-main-left">
