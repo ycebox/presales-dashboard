@@ -26,25 +26,18 @@
 }
 
 /* ROOT CONTAINER */
+/* ROOT CONTAINER — let App.css control page padding/width */
 .projects-container {
-  padding: 24px 32px 40px;
-  max-width: 1600px; /* widened (was 1400) */
-  margin: 0 auto;
+  padding: 0;            /* important: remove extra side padding */
+  max-width: 100%;       /* important: remove 1600px constraint */
+  margin: 0;             /* important: no auto-centering */
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "Segoe UI", sans-serif;
-
-  /* Warm light background + subtle radial gradients */
-  background:
-    radial-gradient(circle at 12% 6%, rgba(29, 78, 216, 0.10), transparent 46%),
-    radial-gradient(circle at 85% 14%, rgba(15, 118, 110, 0.08), transparent 48%),
-    radial-gradient(circle at 55% 90%, rgba(234, 179, 8, 0.06), transparent 55%),
-    var(--bg-0);
-
   color: var(--ink-0);
-  min-height: 100vh;
-  font-size: 13px; /* enterprise base */
+  min-height: auto;      /* avoid forcing full page height */
+  background: transparent; /* use the global body background */
+  font-size: 14px;       /* match your App.css base sizing */
 }
-
 /* Legacy class - keep it as "white panel" */
 .projects-glass {
   border-radius: var(--radius);
@@ -970,7 +963,7 @@
 }
 
 .summary-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px); /* was -2px */
   box-shadow: var(--shadow-2);
   border-color: rgba(29, 78, 216, 0.28);
 }
