@@ -111,8 +111,6 @@ a {
   flex-direction: column;
 }
 
-/* Header */
-/* Header */
 .app-header {
   position: sticky;
   top: 0;
@@ -122,19 +120,22 @@ a {
   justify-content: space-between;
   align-items: flex-end;
   gap: 16px;
+
   padding: 18px 20px;
   border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.92);
+
+  background: rgba(248, 250, 252, 0.96);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06),
+              0 8px 24px rgba(15, 23, 42, 0.04);
 }
 
-.app-header-main h1 {
-  margin: 0;
-  font-size: var(--fz-title); /* ~24px */
-  font-weight: 750;
+.app-header h1 {
+  font-size: 26px;
+  font-weight: 800;
   color: var(--ink-0);
-  line-height: 1.15;
 }
 
 .app-header-main p {
