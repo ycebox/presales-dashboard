@@ -62,9 +62,7 @@ function Projects() {
     byStage: {}
   });
 
-  // Customer ↔ Deals rollup (for Attention column)
-  const [customerDeals, setCustomerDeals] = useState({});
-
+ 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3200);
@@ -151,47 +149,7 @@ function Projects() {
     fetchDealsSummary();
   }, []);
 
-  // Fetch customer-deals rollup (for Attention only)
-  useEffect(() => {
-    const fetchCustomerDeals = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('projects')
-          .select('id, customer_name, sales_stage');
-
-        if (error) {
-          console.error('Error fetching projects for customer rollup:', error);
-          setCustomerDeals({});
-          return;
-        }
-
-        const rollup = {};
-        (data || []).forEach((p) => {
-          const name = String(p.customer_name || '').trim();
-          if (!name) return;
-
-          const stage = String(p.sales_stage || '').trim().toLowerCase();
-          const isCompleted =
-            stage === 'done' || stage.startsWith('closed') || stage.includes('completed');
-
-          if (!rollup[name]) {
-            rollup[name] = { activeCount: 0, hasAnyCompleted: false };
-          }
-
-          if (isCompleted) rollup[name].hasAnyCompleted = true;
-          else rollup[name].activeCount += 1;
-        });
-
-        setCustomerDeals(rollup);
-      } catch (err) {
-        console.error('Unexpected error building customerDeals:', err);
-        setCustomerDeals({});
-      }
-    };
-
-    fetchCustomerDeals();
-  }, []);
-
+  
   const kpiCounts = useMemo(() => {
     const byStage = dealsSummary?.byStage || {};
     const findCount = (label) => {
@@ -690,18 +648,17 @@ function Projects() {
             ) : (
               <div className="customers-table-scroll">
                 <table className="customers-table">
-                  <thead>
-                    <tr>
-                      <th>Customer</th>
-                      <th>Country</th>
-                      <th>Primary Presales</th>
-                      <th>Account Manager</th>
-                      <th>Type</th>
-                      <th>Status</th>
-                      <th style={{ width: '110px' }}>Attention</th>
-                      <th style={{ width: '80px' }}>Actions</th>
-                    </tr>
-                  </thead>
+           <thead>
+  <tr>
+    <th>Customer</th>
+    <th>Country</th>
+    <th>Primary Presales</th>
+    <th>Account Manager</th>
+    <th>Type</th>
+    <th>Status</th>
+    <th style={{ width: '80px' }}>Actions</th>
+  </tr>
+</thead>
 
                   <tbody>
                     {filteredCustomers.map((customer) => {
@@ -710,17 +667,7 @@ function Projects() {
                       const statusClass = getStatusBadgeClass(statusObj?.code || statusObj?.label);
 
                       const key = String(customer.customer_name || '').trim();
-                      const dealRollup = customerDeals[key] || { activeCount: 0, hasAnyCompleted: false };
-
-                      const activeCount = Number(dealRollup.activeCount || 0);
-
-                      // Attention: show multiple projects clearly
-                      const attentionText =
-                        activeCount > 0 ? `${activeCount} Active` : dealRollup.hasAnyCompleted ? 'Done' : '—';
-
-                      const attentionClass =
-                        activeCount > 0 ? 'attention-pill attention-active' : 'attention-pill';
-
+                    
                       return (
                         <tr key={customer.id}>
                           <td className="cell-customer">
@@ -742,10 +689,7 @@ function Projects() {
                             <span className={statusClass}>{statusLabel}</span>
                           </td>
 
-                          <td>
-                            <span className={attentionClass}>{attentionText}</span>
-                          </td>
-
+                          
                           <td className="cell-actions">
                             <button
                               className="icon-btn"
