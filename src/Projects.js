@@ -62,7 +62,6 @@ function Projects() {
     byStage: {}
   });
 
- 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3200);
@@ -149,7 +148,6 @@ function Projects() {
     fetchDealsSummary();
   }, []);
 
-  
   const kpiCounts = useMemo(() => {
     const byStage = dealsSummary?.byStage || {};
     const findCount = (label) => {
@@ -215,14 +213,11 @@ function Projects() {
   const portfolioStats = useMemo(() => {
     if (!customers || customers.length === 0) return null;
 
-    const typesCount = customers.reduce(
-      (acc, c) => {
-        const t = c.customer_type || 'Unknown';
-        acc[t] = (acc[t] || 0) + 1;
-        return acc;
-      },
-      {}
-    );
+    const typesCount = customers.reduce((acc, c) => {
+      const t = c.customer_type || 'Unknown';
+      acc[t] = (acc[t] || 0) + 1;
+      return acc;
+    }, {});
 
     return {
       totalCustomers: customers.length,
@@ -288,7 +283,10 @@ function Projects() {
       }
 
       if (editingCustomer?.id) {
-        const { error } = await supabase.from('customers').update(payload).eq('id', editingCustomer.id);
+        const { error } = await supabase
+          .from('customers')
+          .update(payload)
+          .eq('id', editingCustomer.id);
         if (error) throw error;
 
         setCustomers((prev) =>
@@ -297,12 +295,18 @@ function Projects() {
 
         showToast('Customer updated.');
       } else {
-        const { data, error } = await supabase.from('customers').insert([payload]).select('*').single();
+        const { data, error } = await supabase
+          .from('customers')
+          .insert([payload])
+          .select('*')
+          .single();
         if (error) throw error;
 
         setCustomers((prev) => {
           const next = [...prev, data];
-          next.sort((a, b) => String(a.customer_name || '').localeCompare(String(b.customer_name || '')));
+          next.sort((a, b) =>
+            String(a.customer_name || '').localeCompare(String(b.customer_name || ''))
+          );
           return next;
         });
 
@@ -404,8 +408,8 @@ function Projects() {
     </div>
   );
 
-  const Modal = ({ children }) => {
-    return ReactDOM.createPortal(
+  const Modal = ({ children }) =>
+    ReactDOM.createPortal(
       <div
         className="modal-overlay"
         onMouseDown={(e) => e.target === e.currentTarget && setShowCustomerModal(false)}
@@ -414,7 +418,6 @@ function Projects() {
       </div>,
       document.body
     );
-  };
 
   if (loading) {
     return (
@@ -440,7 +443,6 @@ function Projects() {
 
   return (
     <div className="projects-container">
-      {/* Toast */}
       {toast && (
         <div className={`toast ${toast.type === 'error' ? 'toast-error' : ''}`}>
           {toast.type === 'error' ? <AlertTriangle size={16} /> : <Check size={16} />}
@@ -449,16 +451,17 @@ function Projects() {
       )}
 
       <div className="projects-inner">
-        {/* Header */}
         <header className="projects-header">
           <div className="header-title-section">
             <h2>Customer Portfolio</h2>
             <p className="header-subtitle">
-              {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}
+              {filteredCustomers.length} of {customers.length} customer
+              {customers.length !== 1 ? 's' : ''}
               {portfolioStats && (
                 <>
                   {' • '}
-                  {portfolioStats.uniqueCountries} countr{portfolioStats.uniqueCountries === 1 ? 'y' : 'ies'}
+                  {portfolioStats.uniqueCountries} countr
+                  {portfolioStats.uniqueCountries === 1 ? 'y' : 'ies'}
                 </>
               )}
             </p>
@@ -472,7 +475,6 @@ function Projects() {
           </div>
         </header>
 
-        {/* KPI strip */}
         <section className="portfolio-kpi-strip">
           <div className="portfolio-kpi-card">
             <div className="portfolio-kpi-label">Lead</div>
@@ -492,7 +494,6 @@ function Projects() {
           </div>
         </section>
 
-        {/* Portfolio summary */}
         {portfolioStats && (
           <section className="portfolio-summary-section">
             <div className="portfolio-summary-grid">
@@ -547,7 +548,6 @@ function Projects() {
           </section>
         )}
 
-        {/* Filters */}
         <section className="filters-section">
           <div className="filters-row">
             <div className="search-wrapper">
@@ -628,7 +628,6 @@ function Projects() {
           )}
         </section>
 
-        {/* Customers Table */}
         <section className="table-section">
           <div className="table-section-header">
             <div className="table-section-header-left">
@@ -648,17 +647,17 @@ function Projects() {
             ) : (
               <div className="customers-table-scroll">
                 <table className="customers-table">
-           <thead>
-  <tr>
-    <th>Customer</th>
-    <th>Country</th>
-    <th>Primary Presales</th>
-    <th>Account Manager</th>
-    <th>Type</th>
-    <th>Status</th>
-    <th style={{ width: '80px' }}>Actions</th>
-  </tr>
-</thead>
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th>Country</th>
+                      <th>Primary Presales</th>
+                      <th>Account Manager</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th className="th-actions">Actions</th>
+                    </tr>
+                  </thead>
 
                   <tbody>
                     {filteredCustomers.map((customer) => {
@@ -666,10 +665,8 @@ function Projects() {
                       const statusLabel = statusObj?.label || 'Not Set';
                       const statusClass = getStatusBadgeClass(statusObj?.code || statusObj?.label);
 
-                      const key = String(customer.customer_name || '').trim();
-                    
                       return (
-                        <tr key={customer.id}>
+                        <tr key={customer.id} className="table-row">
                           <td className="cell-customer">
                             <button
                               className="link-btn"
@@ -680,16 +677,15 @@ function Projects() {
                             </button>
                           </td>
 
-                          <td>{customer.country || '—'}</td>
-                          <td>{customer.primary_presales || '—'}</td>
-                          <td>{customer.account_manager || '—'}</td>
-                          <td>{customer.customer_type || '—'}</td>
+                          <td className="td-center">{customer.country || '—'}</td>
+                          <td className="td-center">{customer.primary_presales || '—'}</td>
+                          <td className="td-center">{customer.account_manager || '—'}</td>
+                          <td className="td-center">{customer.customer_type || '—'}</td>
 
-                          <td>
+                          <td className="td-center">
                             <span className={statusClass}>{statusLabel}</span>
                           </td>
 
-                          
                           <td className="cell-actions">
                             <button
                               className="icon-btn"
@@ -716,7 +712,6 @@ function Projects() {
           </div>
         </section>
 
-        {/* Customer Modal */}
         {showCustomerModal && (
           <Modal>
             <div className="modal-header">
