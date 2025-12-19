@@ -833,10 +833,12 @@
 }
 
 .snapshot-value {
-  font-size: 20px;
+  /* CHANGED: smaller + tighter */
+  font-size: 16px;
+  line-height: 1.15;
   font-weight: 850;
   color: var(--ink-0);
-  margin-top: 0.15rem;
+  margin-top: 0.18rem;
 }
 
 /* --- Recent activity enhancement --- */
@@ -1383,6 +1385,9 @@
   .customer-title { font-size: 24px; }
   .recent-activity-row { grid-template-columns: 1fr; gap: 0.2rem; }
   .customer-chip { font-size: 11px; }
+
+  /* NEW: even smaller snapshot value on small screens */
+  .snapshot-value { font-size: 15px; }
 }
 
 /* ===== Right column rhythm polish ===== */
