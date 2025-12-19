@@ -19,9 +19,12 @@ import './Projects.css';
 
 function Projects() {
   const navigate = useNavigate();
+
   const [customers, setCustomers] = useState([]);
+  const [customerStatuses, setCustomerStatuses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     country: '',
@@ -29,30 +32,29 @@ function Projects() {
     customer_type: '',
     status_id: ''
   });
+
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [toast, setToast] = useState(null);
+
   const [newCustomer, setNewCustomer] = useState({
     customer_name: '',
     account_manager: '',
     primary_presales: '',
     country: '',
-    customer_type: 'Existing',
+    industry_vertical: '',
+    customer_type: 'New',
+    year_first_closed: '',
+    company_size: '',
+    annual_revenue: '',
+    technical_complexity: 'Medium',
+    relationship_strength: 'Medium',
+    health_score: '',
+    key_stakeholders: [],
+    competitors: [],
     notes: '',
     status_id: ''
   });
-
-  // Customer status lookup
-  const [statusOptions, setStatusOptions] = useState([]);
-  const [loadingStatuses, setLoadingStatuses] = useState(false);
-
-  // Presales resources lookup
-  const [presalesOptions, setPresalesOptions] = useState([]);
-  const [loadingPresales, setLoadingPresales] = useState(false);
-
-  // Account managers lookup
-  const [accountManagers, setAccountManagers] = useState([]);
-  const [loadingAccountManagers, setLoadingAccountManagers] = useState(false);
 
   // Deals summary (Active Deals card)
   const [dealsSummary, setDealsSummary] = useState({
@@ -60,129 +62,67 @@ function Projects() {
     byStage: {}
   });
 
+  // Lightweight KPI counts from dealsSummary.byStage (keeps Projects aligned with Home KPI strip idea)
+  const kpiCounts = useMemo(() => {
+    const byStage = dealsSummary?.byStage || {};
+    const findCount = (label) => {
+      const target = String(label || '').toLowerCase();
+      const key = Object.keys(byStage).find((k) => String(k).toLowerCase() === target);
+      return key ? Number(byStage[key] || 0) : 0;
+    };
+
+    return {
+      lead: findCount('Lead'),
+      opportunity: findCount('Opportunity'),
+      proposal: findCount('Proposal'),
+      contracting: findCount('Contracting')
+    };
+  }, [dealsSummary]);
+
   // Customer ↔ Deals rollup (for Active Deal + Attention columns)
   const [customerDeals, setCustomerDeals] = useState({});
 
-  // Static data arrays
-  const asiaPacificCountries = useMemo(
-    () =>
-      [
-        'Australia',
-        'Bangladesh',
-        'Brunei',
-        'Cambodia',
-        'China',
-        'Fiji',
-        'India',
-        'Indonesia',
-        'Japan',
-        'Laos',
-        'Malaysia',
-        'Myanmar',
-        'Nepal',
-        'New Zealand',
-        'Pakistan',
-        'Papua New Guinea',
-        'Philippines',
-        'Singapore',
-        'Solomon Islands',
-        'South Korea',
-        'Sri Lanka',
-        'Thailand',
-        'Timor-Leste',
-        'Tonga',
-        'Vanuatu',
-        'Vietnam'
-      ].sort(),
-    []
-  );
+  // Toggle to show completed projects in opportunities list (if used elsewhere)
+  const [showCompletedProjects, setShowCompletedProjects] = useState(false);
 
-  useEffect(() => {
-    fetchCustomers();
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3200);
   }, []);
 
-  // Load customer statuses for dropdown + status column
+  // Fetch customers + statuses
   useEffect(() => {
-    const fetchStatuses = async () => {
-      try {
-        setLoadingStatuses(true);
-        const { data, error } = await supabase
-          .from('customer_statuses')
-          .select('id, code, label')
-          .order('id', { ascending: true });
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
 
-        if (error) {
-          console.error('Error fetching customer_statuses:', error);
-          setStatusOptions([]);
-        } else {
-          setStatusOptions(data || []);
-        }
+      try {
+        const statusRes = await supabase.from('customer_statuses').select('*').order('id', { ascending: true });
+        if (statusRes.error) throw statusRes.error;
+
+        setCustomerStatuses(statusRes.data || []);
+
+        const customersRes = await supabase
+          .from('customers')
+          .select('*')
+          .eq('is_archived', false)
+          .order('customer_name', { ascending: true });
+
+        if (customersRes.error) throw customersRes.error;
+
+        setCustomers(customersRes.data || []);
       } catch (err) {
-        console.error('Unexpected error fetching customer_statuses:', err);
-        setStatusOptions([]);
+        console.error('Error fetching customers:', err);
+        setError('Failed to load customers.');
       } finally {
-        setLoadingStatuses(false);
+        setLoading(false);
       }
     };
 
-    fetchStatuses();
+    fetchData();
   }, []);
 
-  // Load presales resources for dropdown
-  useEffect(() => {
-    const fetchPresales = async () => {
-      try {
-        setLoadingPresales(true);
-        const { data, error } = await supabase
-          .from('presales_resources')
-          .select('id, name, region, role, email')
-          .order('name', { ascending: true });
-
-        if (error) {
-          console.error('Error fetching presales_resources:', error);
-          setPresalesOptions([]);
-        } else {
-          setPresalesOptions(data || []);
-        }
-      } catch (err) {
-        console.error('Unexpected error fetching presales_resources:', err);
-        setPresalesOptions([]);
-      } finally {
-        setLoadingPresales(false);
-      }
-    };
-
-    fetchPresales();
-  }, []);
-
-  // Load account managers for dropdown
-  useEffect(() => {
-    const fetchAccountManagers = async () => {
-      try {
-        setLoadingAccountManagers(true);
-        const { data, error } = await supabase
-          .from('account_managers')
-          .select('id, name, email, region')
-          .order('name', { ascending: true });
-
-        if (error) {
-          console.error('Error fetching account_managers:', error);
-          setAccountManagers([]);
-        } else {
-          setAccountManagers(data || []);
-        }
-      } catch (err) {
-        console.error('Unexpected error fetching account_managers:', err);
-        setAccountManagers([]);
-      } finally {
-        setLoadingAccountManagers(false);
-      }
-    };
-
-    fetchAccountManagers();
-  }, []);
-
-  // Load deals summary for Active Deals card
+  // Fetch deals summary (Active deals by stage)
   useEffect(() => {
     const fetchDealsSummary = async () => {
       try {
@@ -201,13 +141,17 @@ function Projects() {
 
         // Active = anything not starting with "Closed"
         const activeProjects = data.filter((p) => {
-          const stage = (p.sales_stage || '').toString().toLowerCase();
-          return !stage.startsWith('closed');
+          const stage = String(p.sales_stage || '').trim().toLowerCase();
+          if (!stage) return true;
+          if (stage.startsWith('closed')) return false;
+          if (stage === 'done') return false;
+          if (stage.includes('completed')) return false;
+          return true;
         });
 
         const byStage = {};
         activeProjects.forEach((p) => {
-          const stage = p.sales_stage || 'Unspecified';
+          const stage = String(p.sales_stage || 'Unspecified').trim() || 'Unspecified';
           byStage[stage] = (byStage[stage] || 0) + 1;
         });
 
@@ -224,972 +168,741 @@ function Projects() {
     fetchDealsSummary();
   }, []);
 
-  // Default: show only Active customers once statuses are loaded
+  // Fetch customer-deals rollup (Active Deal + Attention)
   useEffect(() => {
-    if (!statusOptions || statusOptions.length === 0) return;
+    const fetchCustomerDeals = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('id, customer_name, project_name, sales_stage, deal_value, due_date, current_status, is_corporate');
 
-    setFilters((prev) => {
-      if (prev.status_id && prev.status_id !== '') return prev;
-
-      const activeStatus = statusOptions.find(
-        (s) =>
-          (s.code && s.code.toUpperCase() === 'ACTIVE') ||
-          (s.label && s.label.toLowerCase().includes('active'))
-      );
-
-      if (activeStatus) {
-        return { ...prev, status_id: String(activeStatus.id) };
-      }
-      return { ...prev, status_id: '' };
-    });
-  }, [statusOptions]);
-
-  const fetchCustomers = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .order('customer_name', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching customers:', error);
-        setError('Failed to load customers');
-        return;
-      }
-
-      setCustomers(data || []);
-    } catch (err) {
-      console.error('Unexpected error fetching customers:', err);
-      setError('Failed to load customers');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // ---------- Deal signal layer helpers ----------
-  const isDealActive = useCallback((stage) => {
-    const s = (stage || '').toString().trim().toLowerCase();
-    if (!s) return true; // treat unknown as active
-    if (s.startsWith('closed')) return false;
-    if (s === 'done' || s === 'won' || s === 'lost') return false;
-    if (s.includes('closed')) return false;
-    return true;
-  }, []);
-
-  const getStageRank = useCallback((stage) => {
-    const s = (stage || '').toString().toLowerCase();
-    const rank = [
-      { k: 'contract', r: 60 },
-      { k: 'sow', r: 55 },
-      { k: 'rfp', r: 50 },
-      { k: 'proposal', r: 45 },
-      { k: 'opportunity', r: 40 },
-      { k: 'lead', r: 30 }
-    ];
-    for (const it of rank) {
-      if (s.includes(it.k)) return it.r;
-    }
-    return 10;
-  }, []);
-
-  const formatDealValue = useCallback((value) => {
-    const num = Number(value);
-    if (!Number.isFinite(num) || num === 0) return '';
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: 'USD',
-        maximumFractionDigits: 0
-      }).format(num);
-    } catch {
-      return `$${Math.round(num).toLocaleString()}`;
-    }
-  }, []);
-
-  const computeAttention = useCallback(
-    (deal) => {
-      const overdue = Number(deal?.overdue_tasks_count || 0);
-      const atRisk = Boolean(deal?.at_risk);
-      const rank = getStageRank(deal?.sales_stage);
-
-      if (overdue > 0 || atRisk) return 'red';
-      if (rank >= 55) return 'red'; // Contracting / SoW
-      if (rank >= 50) return 'amber'; // RFP
-      if (rank >= 40) return 'amber'; // Opportunity / Proposal
-      if (isDealActive(deal?.sales_stage)) return 'green';
-      return 'none';
-    },
-    [getStageRank, isDealActive]
-  );
-
-  const attentionLabel = useCallback((level) => {
-    if (level === 'red') return 'High';
-    if (level === 'amber') return 'Medium';
-    if (level === 'green') return 'Low';
-    return '—';
-  }, []);
-
-  const fetchCustomerDeals = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select(
-          'id, customer_id, customer_name, sales_stage, deal_value, updated_at, overdue_tasks_count, at_risk'
-        )
-        .order('updated_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching projects for customer deals:', error);
-        setCustomerDeals({});
-        return;
-      }
-
-      const rows = data || [];
-
-      const byCustomerId = {};
-      const byCustomerName = {};
-
-      rows.forEach((p) => {
-        if (!isDealActive(p.sales_stage)) return;
-
-        const cid = p.customer_id ? String(p.customer_id) : '';
-        const cname = (p.customer_name || '').toString().trim().toLowerCase();
-
-        if (cid) {
-          if (!byCustomerId[cid]) byCustomerId[cid] = [];
-          byCustomerId[cid].push(p);
-        } else if (cname) {
-          if (!byCustomerName[cname]) byCustomerName[cname] = [];
-          byCustomerName[cname].push(p);
-        }
-      });
-
-      const rollup = {};
-      customers.forEach((c) => {
-        const cid = c.id ? String(c.id) : '';
-        const cnameKey = (c.customer_name || '').toString().trim().toLowerCase();
-        const key = cid || cnameKey;
-
-        const deals = (cid && byCustomerId[cid]) || (cnameKey && byCustomerName[cnameKey]) || [];
-
-        if (!deals.length) {
-          rollup[key] = { deals: [], primary: null, attention: 'none' };
+        if (error) {
+          console.error('Error fetching projects for customer rollup:', error);
+          setCustomerDeals({});
           return;
         }
 
-        const sorted = [...deals].sort((a, b) => {
-          const sr = getStageRank(b.sales_stage) - getStageRank(a.sales_stage);
-          if (sr !== 0) return sr;
+        const rollup = {};
+        (data || []).forEach((p) => {
+          const name = String(p.customer_name || '').trim();
+          if (!name) return;
 
-          const vr = (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0);
-          if (vr !== 0) return vr;
+          // determine "active" vs completed
+          const stage = String(p.sales_stage || '').trim().toLowerCase();
+          const isCompleted = stage === 'done' || stage.startsWith('closed') || stage.includes('completed');
 
-          return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+          if (!rollup[name]) {
+            rollup[name] = {
+              active: [],
+              completed: []
+            };
+          }
+
+          const item = {
+            id: p.id,
+            project_name: p.project_name,
+            sales_stage: p.sales_stage,
+            deal_value: p.deal_value,
+            due_date: p.due_date,
+            current_status: p.current_status,
+            is_corporate: p.is_corporate
+          };
+
+          if (isCompleted) rollup[name].completed.push(item);
+          else rollup[name].active.push(item);
         });
 
-        const primary = sorted[0];
-        const attention = computeAttention(primary);
+        setCustomerDeals(rollup);
+      } catch (err) {
+        console.error('Unexpected error building customerDeals:', err);
+        setCustomerDeals({});
+      }
+    };
 
-        rollup[key] = { deals: sorted, primary, attention };
-      });
-
-      setCustomerDeals(rollup);
-    } catch (err) {
-      console.error('Unexpected error in fetchCustomerDeals:', err);
-      setCustomerDeals({});
-    }
-  }, [customers, computeAttention, getStageRank, isDealActive]);
-
-  useEffect(() => {
-    if (!customers || customers.length === 0) return;
     fetchCustomerDeals();
-  }, [customers, fetchCustomerDeals]);
-
-  // Map status from id
-  const getCustomerStatus = useCallback(
-    (customer) => {
-      if (!customer || !customer.status_id || !statusOptions.length) return null;
-      return statusOptions.find((s) => s.id === customer.status_id) || null;
-    },
-    [statusOptions]
-  );
-
-  const getStatusBadgeClass = useCallback((statusCodeOrLabel) => {
-    const value = (statusCodeOrLabel || '').toString().toLowerCase();
-    if (!value) return 'status-badge status-unknown';
-
-    if (value.includes('active')) return 'status-badge status-active';
-    if (value.includes('prospect')) return 'status-badge status-prospect';
-    if (value.includes('hold')) return 'status-badge status-onhold';
-    if (value.includes('dormant')) return 'status-badge status-dormant';
-    if (value.includes('inactive')) return 'status-badge status-inactive';
-
-    return 'status-badge status-unknown';
   }, []);
 
-  // Filter and search customers (includes status filter)
   const filteredCustomers = useMemo(() => {
-    return customers.filter((customer) => {
-      const matchesSearch =
-        !searchTerm ||
-        customer.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.account_manager?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.country?.toLowerCase().includes(searchTerm.toLowerCase());
+    let list = [...customers];
 
-      const matchesFilters = Object.entries(filters).every(([key, value]) => {
-        if (!value) return true;
-
-        if (key === 'status_id') {
-          if (!customer.status_id) return false;
-          return String(customer.status_id) === String(value);
-        }
-
-        return customer[key] === value;
+    if (searchTerm.trim()) {
+      const t = searchTerm.trim().toLowerCase();
+      list = list.filter((c) => {
+        const n = String(c.customer_name || '').toLowerCase();
+        const a = String(c.account_manager || '').toLowerCase();
+        const p = String(c.primary_presales || '').toLowerCase();
+        const co = String(c.country || '').toLowerCase();
+        return n.includes(t) || a.includes(t) || p.includes(t) || co.includes(t);
       });
+    }
 
-      return matchesSearch && matchesFilters;
-    });
+    if (filters.country) {
+      list = list.filter((c) => String(c.country || '') === String(filters.country));
+    }
+    if (filters.account_manager) {
+      list = list.filter((c) => String(c.account_manager || '') === String(filters.account_manager));
+    }
+    if (filters.customer_type) {
+      list = list.filter((c) => String(c.customer_type || '') === String(filters.customer_type));
+    }
+    if (filters.status_id) {
+      list = list.filter((c) => String(c.status_id || '') === String(filters.status_id));
+    }
+
+    return list;
   }, [customers, searchTerm, filters]);
 
-  // Get unique filter options
-  const filterOptions = useMemo(
-    () => ({
-      countries: [...new Set(customers.map((c) => c.country).filter(Boolean))].sort(),
-      managers: [...new Set(customers.map((c) => c.account_manager).filter(Boolean))].sort(),
-      types: [...new Set(customers.map((c) => c.customer_type).filter(Boolean))].sort()
-    }),
-    [customers]
-  );
-
-  // Portfolio stats
-  const portfolioStats = useMemo(() => {
-    if (!customers || customers.length === 0) return null;
-
-    const total = customers.length;
-    const uniqueCountries = new Set(customers.map((c) => c.country).filter(Boolean)).size;
-
-    let existingCount = 0;
-    let newCount = 0;
-    let internalCount = 0;
-
+  const uniqueCountries = useMemo(() => {
+    const set = new Set();
     customers.forEach((c) => {
-      if (c.customer_type === 'Existing') existingCount += 1;
-      else if (c.customer_type === 'New') newCount += 1;
-      else if (c.customer_type === 'Internal Initiative') internalCount += 1;
+      if (c.country) set.add(c.country);
     });
-
-    return { total, uniqueCountries, existingCount, newCount, internalCount };
+    return Array.from(set).sort();
   }, [customers]);
 
-  // Active filters for chips (including status)
-  const activeFilters = useMemo(() => {
-    return Object.entries(filters)
-      .filter(([_, value]) => value)
-      .map(([key, value]) => {
-        if (key === 'status_id') {
-          const status = statusOptions.find((s) => String(s.id) === String(value));
-          return { key, value, label: `Status: ${status?.label || 'Unknown'}` };
-        }
-        return { key, value, label: `${key.replace('_', ' ')}: ${value}` };
-      });
-  }, [filters, statusOptions]);
-
-  const showToast = useCallback((message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  }, []);
-
-  const handleSearchChange = useCallback((e) => {
-    setSearchTerm(e.target.value);
-  }, []);
-
-  const handleFilterChange = useCallback((key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  }, []);
-
-  const removeFilter = useCallback((key) => {
-    setFilters((prev) => ({ ...prev, [key]: '' }));
-  }, []);
-
-  const clearAllFilters = useCallback(() => {
-    setFilters({ country: '', account_manager: '', customer_type: '', status_id: '' });
-    setSearchTerm('');
-  }, []);
-
-  const handleCustomerChange = useCallback((e) => {
-    const { name, value, type } = e.target;
-
-    setNewCustomer((prev) => {
-      if (type === 'number') {
-        return { ...prev, [name]: parseFloat(value) || 0 };
-      }
-      return { ...prev, [name]: value };
+  const uniqueAccountManagers = useMemo(() => {
+    const set = new Set();
+    customers.forEach((c) => {
+      if (c.account_manager) set.add(c.account_manager);
     });
-  }, []);
+    return Array.from(set).sort();
+  }, [customers]);
 
-  const handleCustomerTypeChange = useCallback((type) => {
-    setNewCustomer((prev) => ({ ...prev, customer_type: type }));
-  }, []);
+  const portfolioStats = useMemo(() => {
+    if (!customers || customers.length === 0) return null;
+    const uniqueCountriesCount = uniqueCountries.length;
 
-  const resetCustomerForm = useCallback(() => {
+    const typesCount = customers.reduce(
+      (acc, c) => {
+        const t = c.customer_type || 'Unknown';
+        acc[t] = (acc[t] || 0) + 1;
+        return acc;
+      },
+      {}
+    );
+
+    return {
+      totalCustomers: customers.length,
+      uniqueCountries: uniqueCountriesCount,
+      byType: typesCount
+    };
+  }, [customers, uniqueCountries]);
+
+  const getCustomerStatus = (customer) => {
+    const id = customer?.status_id;
+    if (!id) return null;
+    return customerStatuses.find((s) => String(s.id) === String(id)) || null;
+  };
+
+  const getStatusBadgeClass = (statusCodeOrLabel) => {
+    const s = String(statusCodeOrLabel || '').toLowerCase();
+    if (!s) return 'status-badge';
+    if (s.includes('at risk') || s.includes('risk')) return 'status-badge status-risk';
+    if (s.includes('active')) return 'status-badge status-active';
+    if (s.includes('prospect')) return 'status-badge status-prospect';
+    if (s.includes('hold')) return 'status-badge status-hold';
+    return 'status-badge';
+  };
+
+  const openCustomer = (customer) => {
+    if (!customer?.id) return;
+    navigate(`/customer/${customer.id}`);
+  };
+
+  const openProject = (projectId) => {
+    if (!projectId) return;
+    navigate(`/project/${projectId}`);
+  };
+
+  const deleteCustomer = async (customer) => {
+    if (!customer?.id) return;
+
+    const ok = window.confirm(`Archive customer "${customer.customer_name}"?`);
+    if (!ok) return;
+
+    try {
+      const { error } = await supabase.from('customers').update({ is_archived: true }).eq('id', customer.id);
+      if (error) throw error;
+
+      setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
+      showToast('Customer archived.');
+    } catch (err) {
+      console.error('Error archiving customer:', err);
+      showToast('Failed to archive customer.', 'error');
+    }
+  };
+
+  const handleSaveCustomer = async () => {
+    try {
+      const payload = {
+        ...newCustomer,
+        status_id: newCustomer.status_id ? Number(newCustomer.status_id) : null,
+        health_score: newCustomer.health_score ? Number(newCustomer.health_score) : null
+      };
+
+      if (!payload.customer_name || !payload.customer_name.trim()) {
+        showToast('Customer name is required.', 'error');
+        return;
+      }
+
+      if (editingCustomer?.id) {
+        const { error } = await supabase.from('customers').update(payload).eq('id', editingCustomer.id);
+        if (error) throw error;
+
+        setCustomers((prev) =>
+          prev.map((c) => (c.id === editingCustomer.id ? { ...c, ...payload } : c))
+        );
+
+        showToast('Customer updated.');
+      } else {
+        const { data, error } = await supabase.from('customers').insert([payload]).select('*').single();
+        if (error) throw error;
+
+        setCustomers((prev) => {
+          const next = [...prev, data];
+          next.sort((a, b) => String(a.customer_name || '').localeCompare(String(b.customer_name || '')));
+          return next;
+        });
+
+        showToast('Customer added.');
+      }
+
+      setShowCustomerModal(false);
+      setEditingCustomer(null);
+    } catch (err) {
+      console.error('Error saving customer:', err);
+      showToast('Failed to save customer.', 'error');
+    }
+  };
+
+  const resetCustomerForm = () => {
     setNewCustomer({
       customer_name: '',
       account_manager: '',
       primary_presales: '',
       country: '',
-      customer_type: 'Existing',
+      industry_vertical: '',
+      customer_type: 'New',
+      year_first_closed: '',
+      company_size: '',
+      annual_revenue: '',
+      technical_complexity: 'Medium',
+      relationship_strength: 'Medium',
+      health_score: '',
+      key_stakeholders: [],
+      competitors: [],
       notes: '',
       status_id: ''
     });
+  };
+
+  const openAddCustomerModal = () => {
     setEditingCustomer(null);
-  }, []);
+    resetCustomerForm();
+    setShowCustomerModal(true);
+  };
 
-  // Add customer: default status = Active if none selected
-  const handleAddCustomer = useCallback(
-    async (e) => {
-      e.preventDefault();
-
-      try {
-        const activeStatus = statusOptions.find(
-          (s) =>
-            (s.code && s.code.toUpperCase() === 'ACTIVE') ||
-            (s.label && s.label.toLowerCase().includes('active'))
-        );
-
-        const statusId = newCustomer.status_id || (activeStatus ? activeStatus.id : null);
-
-        const payload = {
-          ...newCustomer,
-          status_id: statusId ? Number(statusId) : null
-        };
-
-        const { data, error } = await supabase.from('customers').insert([payload]).select();
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          await fetchCustomers();
-          setShowCustomerModal(false);
-          resetCustomerForm();
-          showToast('Customer added successfully!');
-        }
-      } catch (err) {
-        console.error('Error adding customer:', err);
-        showToast('Failed to add customer', 'error');
-      }
-    },
-    [newCustomer, fetchCustomers, resetCustomerForm, showToast, statusOptions]
-  );
-
-  const handleUpdateCustomer = useCallback(
-    async (e) => {
-      e.preventDefault();
-
-      try {
-        const payload = {
-          ...newCustomer,
-          status_id: newCustomer.status_id ? Number(newCustomer.status_id) : null
-        };
-
-        const { error } = await supabase.from('customers').update(payload).eq('id', editingCustomer.id);
-        if (error) throw error;
-
-        await fetchCustomers();
-        setShowCustomerModal(false);
-        resetCustomerForm();
-        showToast('Customer updated successfully!');
-      } catch (err) {
-        console.error('Error updating customer:', err);
-        showToast('Failed to update customer', 'error');
-      }
-    },
-    [newCustomer, editingCustomer, fetchCustomers, resetCustomerForm, showToast]
-  );
-
-  const handleDeleteCustomer = useCallback(
-    async (id) => {
-      const customer = customers.find((c) => c.id === id);
-      if (!window.confirm(`Are you sure you want to delete "${customer?.customer_name}"? This action cannot be undone.`)) {
-        return;
-      }
-
-      try {
-        const { error } = await supabase.from('customers').delete().eq('id', id);
-        if (error) throw error;
-
-        await fetchCustomers();
-        showToast('Customer deleted successfully!');
-      } catch (err) {
-        console.error('Error deleting customer:', err);
-        showToast('Failed to delete customer', 'error');
-      }
-    },
-    [customers, fetchCustomers, showToast]
-  );
-
-  const handleEditCustomer = useCallback((customer) => {
+  const openEditCustomerModal = (customer) => {
     setEditingCustomer(customer);
+
     setNewCustomer({
       customer_name: customer.customer_name || '',
       account_manager: customer.account_manager || '',
       primary_presales: customer.primary_presales || '',
       country: customer.country || '',
-      customer_type: customer.customer_type || 'Existing',
+      industry_vertical: customer.industry_vertical || '',
+      customer_type: customer.customer_type || 'New',
+      year_first_closed: customer.year_first_closed || '',
+      company_size: customer.company_size || '',
+      annual_revenue: customer.annual_revenue || '',
+      technical_complexity: customer.technical_complexity || 'Medium',
+      relationship_strength: customer.relationship_strength || 'Medium',
+      health_score: customer.health_score ?? '',
+      key_stakeholders: customer.key_stakeholders || [],
+      competitors: customer.competitors || [],
       notes: customer.notes || '',
-      status_id: customer.status_id ? String(customer.status_id) : ''
+      status_id: customer.status_id ?? ''
     });
-    setShowCustomerModal(true);
-  }, []);
 
-  const handleCustomerClick = useCallback(
-    (customerId) => {
-      navigate(`/customer/${customerId}`);
-    },
-    [navigate]
+    setShowCustomerModal(true);
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      country: '',
+      account_manager: '',
+      customer_type: '',
+      status_id: ''
+    });
+    setSearchTerm('');
+  };
+
+  const hasActiveFilters = useMemo(() => {
+    return (
+      !!searchTerm.trim() ||
+      !!filters.country ||
+      !!filters.account_manager ||
+      !!filters.customer_type ||
+      !!filters.status_id
+    );
+  }, [searchTerm, filters]);
+
+  // --------- UI Helpers ----------
+  const EmptyState = () => (
+    <div className="empty-state">
+      <div className="empty-state-icon">
+        <Building2 size={22} />
+      </div>
+      <h3>No customers found</h3>
+      <p>Try adjusting your search or filters, or add a new customer.</p>
+      <button className="action-button primary" onClick={openAddCustomerModal}>
+        <UserPlus size={12} className="button-icon" />
+        Add Customer
+      </button>
+    </div>
   );
 
-  const handleModalClose = useCallback(() => {
-    setShowCustomerModal(false);
-    resetCustomerForm();
-  }, [resetCustomerForm]);
-
-  const Modal = useCallback(({ isOpen, onClose, children }) => {
-    if (!isOpen) return null;
-
+  const Modal = ({ children }) => {
     return ReactDOM.createPortal(
-      <div className="modal-backdrop-compact" onClick={onClose}>
-        <div className="modal-content-compact" onClick={(e) => e.stopPropagation()}>
-          {children}
-        </div>
+      <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowCustomerModal(false)}>
+        <div className="modal-content">{children}</div>
       </div>,
       document.body
     );
-  }, []);
+  };
 
-  const LoadingSkeleton = () => (
-    <div className="loading-container">
-      <div className="loading-content">
-        <div className="loading-spinner"></div>
-        <div className="loading-text">Loading customers...</div>
+  if (loading) {
+    return (
+      <div className="projects-container">
+        <div className="loading-container">
+          <div className="loading-spinner" />
+          <div className="loading-text">Loading customer portfolio…</div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  const EmptyState = () => (
-    <div className="empty-state">
-      <Building2 size={48} className="empty-icon" />
-      <h3 className="empty-title">No customers found</h3>
-      <p className="empty-description">
-        {searchTerm || activeFilters.length > 0
-          ? 'No customers match your current search or filters. Try adjusting your criteria.'
-          : 'Get started by adding your first customer to begin managing your portfolio.'}
-      </p>
-      {!searchTerm && activeFilters.length === 0 && (
-        <button onClick={() => setShowCustomerModal(true)} className="empty-action-button">
-          <UserPlus size={16} />
-          Add Your First Customer
-        </button>
-      )}
-    </div>
-  );
-
-  if (loading) return <LoadingSkeleton />;
+  if (error) {
+    return (
+      <div className="projects-container">
+        <div className="error-state">
+          <AlertTriangle size={18} />
+          <span>{error}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="projects-container">
-      {/* Toast Notification */}
+      {/* Toast */}
       {toast && (
-        <div className={`toast ${toast.type}`}>
-          {toast.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
+        <div className={`toast ${toast.type === 'error' ? 'toast-error' : ''}`}>
+          {toast.type === 'error' ? <AlertTriangle size={16} /> : <Check size={16} />}
           {toast.message}
         </div>
       )}
 
-      {/* Header */}
-      <header className="projects-header">
-        <div className="header-title-section">
-          <h2>Customer Portfolio</h2>
-          <p className="header-subtitle">
-            {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}
-            {portfolioStats && (
-              <>
-                {' • '}
-                {portfolioStats.uniqueCountries} countr{portfolioStats.uniqueCountries === 1 ? 'y' : 'ies'}
-              </>
-            )}
-          </p>
-        </div>
-
-        <div className="header-actions">
-          <button className="action-button primary" onClick={() => setShowCustomerModal(true)}>
-            <UserPlus size={12} className="button-icon" />
-            Add Customer
-          </button>
-        </div>
-      </header>
-
-      {/* Portfolio summary (with Active Deals card) */}
-      {portfolioStats && (
-        <section className="portfolio-summary-section">
-          <div className="portfolio-summary-grid">
-            <div className="summary-card">
-              <div className="summary-card-icon summary-card-icon-primary">
-                <Building2 size={18} />
-              </div>
-              <div className="summary-card-content">
-                <p className="summary-card-label">Total customers</p>
-                <p className="summary-card-value">{portfolioStats.total}</p>
-                <p className="summary-card-sub">
-                  {portfolioStats.existingCount} existing · {portfolioStats.newCount} new
-                </p>
-              </div>
-            </div>
-
-            <div className="summary-card">
-              <div className="summary-card-icon summary-card-icon-accent">
-                <Globe size={18} />
-              </div>
-              <div className="summary-card-content">
-                <p className="summary-card-label">Countries covered</p>
-                <p className="summary-card-value">{portfolioStats.uniqueCountries}</p>
-                <p className="summary-card-sub">APAC footprint overview</p>
-              </div>
-            </div>
-
-            {/* Active Deals card */}
-            <div className="summary-card">
-              <div className="summary-card-icon summary-card-icon-deals">
-                <Briefcase size={18} />
-              </div>
-              <div className="summary-card-content">
-                <p className="summary-card-label">Active deals</p>
-                <p className="summary-card-value">{dealsSummary.activeCount}</p>
-                <p className="summary-card-sub">
-                  {dealsSummary.activeCount > 0 ? (
-                    <>
-                      {(dealsSummary.byStage['RFP'] || 0)} RFP · {(dealsSummary.byStage['SoW'] || 0)} SoW ·{' '}
-                      {(dealsSummary.byStage['Contracting'] || 0)} Contracting
-                    </>
-                  ) : (
-                    'No active opportunities'
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="summary-card">
-              <div className="summary-card-icon summary-card-icon-neutral">
-                <User size={18} />
-              </div>
-              <div className="summary-card-content">
-                <p className="summary-card-label">Internal initiatives</p>
-                <p className="summary-card-value">{portfolioStats.internalCount}</p>
-                <p className="summary-card-sub">Non-client, internal work tracked</p>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Search and Filters */}
-      <section className="search-filters-section">
-        <div className="search-bar">
-          <Search size={16} className="search-icon" />
-          <input
-            type="text"
-            placeholder="Search customers, managers, or countries..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            className="search-input"
-          />
-        </div>
-
-        <div className="filters-row">
-          <div className="filter-group">
-            <label className="filter-label">Country</label>
-            <select value={filters.country} onChange={(e) => handleFilterChange('country', e.target.value)} className="filter-select">
-              <option value="">All Countries</option>
-              {filterOptions.countries.map((country) => (
-                <option key={country} value={country}>
-                  {country}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label className="filter-label">Account Manager</label>
-            <select
-              value={filters.account_manager}
-              onChange={(e) => handleFilterChange('account_manager', e.target.value)}
-              className="filter-select"
-            >
-              <option value="">All Managers</option>
-              {filterOptions.managers.map((manager) => (
-                <option key={manager} value={manager}>
-                  {manager}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label className="filter-label">Customer Type</label>
-            <select
-              value={filters.customer_type}
-              onChange={(e) => handleFilterChange('customer_type', e.target.value)}
-              className="filter-select"
-            >
-              <option value="">All Types</option>
-              {filterOptions.types.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label className="filter-label">Status</label>
-            <select
-              value={filters.status_id}
-              onChange={(e) => handleFilterChange('status_id', e.target.value)}
-              className="filter-select"
-              disabled={loadingStatuses || !statusOptions.length}
-            >
-              <option value="">{loadingStatuses ? 'Loading…' : 'All Statuses'}</option>
-              {statusOptions.map((status) => (
-                <option key={status.id} value={status.id}>
-                  {status.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {activeFilters.length > 0 && (
-          <div className="active-filters">
-            {activeFilters.map((filter) => (
-              <div key={filter.key} className="filter-chip">
-                <span>{filter.label}</span>
-                <button className="filter-chip-remove" onClick={() => removeFilter(filter.key)}>
-                  <X size={12} />
-                </button>
-              </div>
-            ))}
-            <button className="filter-chip" onClick={clearAllFilters} style={{ background: '#fee2e2', color: '#991b1b' }}>
-              Clear All
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* Customers Table */}
-      <section className="table-section">
-        <div className="table-wrapper">
-          {filteredCustomers.length === 0 ? (
-            <EmptyState />
-          ) : (
-            <div className="customers-table-scroll">
-              <table className="customers-table">
-                <thead>
-                  <tr>
-                    <th>Customer</th>
-                    <th>Location</th>
-                    <th>Account Manager</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th>Active Deal</th>
-                    <th style={{ width: '110px' }}>Attention</th>
-                    <th style={{ width: '80px' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCustomers.map((customer) => {
-                    const statusObj = getCustomerStatus(customer);
-                    const statusLabel = statusObj?.label || 'Not Set';
-                    const statusClass = getStatusBadgeClass(statusObj?.code || statusObj?.label);
-
-                    const dealKey = customer.id ? String(customer.id) : (customer.customer_name || '').toString().trim().toLowerCase();
-                    const dealInfo = customerDeals?.[dealKey];
-                    const primary = dealInfo?.primary;
-
-                    const activeDealNode = (() => {
-                      if (!primary) return <span className="deal-empty">—</span>;
-
-                      const stage = primary.sales_stage || 'Unspecified';
-                      const value = formatDealValue(primary.deal_value);
-                      const dealCount = dealInfo?.deals?.length || 0;
-
-                      return (
-                        <div className="deal-cell">
-                          <span className="deal-stage">{stage}</span>
-                          {value && <span className="deal-value">{value}</span>}
-                          {dealCount > 1 && <span className="deal-count">+{dealCount - 1}</span>}
-                        </div>
-                      );
-                    })();
-
-                    const attentionLevel = dealInfo?.attention || 'none';
-
-                    return (
-                      <tr key={customer.id} onClick={() => handleCustomerClick(customer.id)}>
-                        <td>
-                          <div className="customer-cell no-avatar">
-                            <div className="customer-info">
-                              <div className="customer-name">{customer.customer_name}</div>
-                              <div className="customer-email">
-                                {customer.customer_type === 'Internal Initiative' ? 'Internal' : 'External Client'}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td>
-                          <div className="location-cell">
-                            <Globe size={14} className="location-icon" />
-                            <span>{customer.country}</span>
-                          </div>
-                        </td>
-
-                        <td>
-                          <div className="manager-cell">
-                            <User size={14} className="manager-icon" />
-                            <span>{customer.account_manager}</span>
-                          </div>
-                        </td>
-
-                        <td className="status-cell">
-                          <span
-                            className={`status-badge ${
-                              customer.customer_type?.toLowerCase().replace(/\s+/g, '-') || 'new'
-                            }`}
-                          >
-                            {customer.customer_type || 'New'}
-                          </span>
-                        </td>
-
-                        <td className="status-cell">
-                          <span className={statusClass}>
-                            <span className="status-dot-pill" />
-                            {statusLabel}
-                          </span>
-                        </td>
-
-                        <td>{activeDealNode}</td>
-
-                        <td className="attention-cell">
-                          <span className={`attention-pill ${attentionLevel}`}>
-                            <span className="attention-dot" />
-                            {attentionLabel(attentionLevel)}
-                          </span>
-                        </td>
-
-                        <td className="actions-cell">
-                          <div className="table-actions">
-                            <button
-                              className="table-action-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditCustomer(customer);
-                              }}
-                              title="Edit customer (including status)"
-                            >
-                              <Edit3 size={14} />
-                            </button>
-                            <button
-                              className="table-action-btn delete"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteCustomer(customer.id);
-                              }}
-                              title="Delete customer"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Customer Modal */}
-      <Modal isOpen={showCustomerModal} onClose={handleModalClose}>
-        <div className="modal-header-compact">
-          <h3 className="modal-title-compact">
-            <UserPlus size={20} className="title-icon-compact" />
-            {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
-          </h3>
-          <button onClick={handleModalClose} className="modal-close-button-compact">
-            <X size={20} />
-          </button>
-        </div>
-
-        <form onSubmit={editingCustomer ? handleUpdateCustomer : handleAddCustomer} className="modal-form-compact">
-          <div className="quick-info-compact">
-            <p className="quick-info-text-compact">
-              Add essential customer details. Additional information can be updated later from the customer profile.
+      <div className="projects-inner">
+        {/* Header */}
+        <header className="projects-header">
+          <div className="header-title-section">
+            <h2>Customer Portfolio</h2>
+            <p className="header-subtitle">
+              {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}
+              {portfolioStats && (
+                <>
+                  {' • '}
+                  {portfolioStats.uniqueCountries} countr{portfolioStats.uniqueCountries === 1 ? 'y' : 'ies'}
+                </>
+              )}
             </p>
           </div>
 
-          <div className="form-section-compact">
-            <h4 className="section-title-compact">
-              <User size={14} className="section-icon-compact" />
-              Basic Information
-            </h4>
-
-            <div className="form-grid-compact">
-              <div className="form-row-compact">
-                <div className="form-group-compact">
-                  <label className="form-label-compact required">Customer Name</label>
-                  <input
-                    name="customer_name"
-                    value={newCustomer.customer_name}
-                    onChange={handleCustomerChange}
-                    required
-                    className="form-input-compact"
-                    placeholder="Acme Corporation"
-                    autoComplete="off"
-                  />
-                </div>
-
-                <div className="form-group-compact">
-                  <label className="form-label-compact required">Account Manager</label>
-                  {accountManagers.length > 0 ? (
-                    <select
-                      name="account_manager"
-                      value={newCustomer.account_manager}
-                      onChange={handleCustomerChange}
-                      className="form-select-compact"
-                      required
-                      disabled={loadingAccountManagers}
-                    >
-                      <option value="">{loadingAccountManagers ? 'Loading…' : 'Select Account Manager'}</option>
-                      {accountManagers.map((m) => (
-                        <option key={m.id} value={m.name}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      name="account_manager"
-                      value={newCustomer.account_manager}
-                      onChange={handleCustomerChange}
-                      required
-                      className="form-input-compact"
-                      placeholder="John Smith"
-                      autoComplete="off"
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="form-row-compact">
-                <div className="form-group-compact">
-                  <label className="form-label-compact">Primary Presales</label>
-                  {presalesOptions.length > 0 ? (
-                    <select
-                      name="primary_presales"
-                      value={newCustomer.primary_presales}
-                      onChange={handleCustomerChange}
-                      className="form-select-compact"
-                      disabled={loadingPresales}
-                    >
-                      <option value="">{loadingPresales ? 'Loading…' : 'Select Presales'}</option>
-                      {presalesOptions.map((p) => (
-                        <option key={p.id} value={p.name}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      name="primary_presales"
-                      value={newCustomer.primary_presales}
-                      onChange={handleCustomerChange}
-                      className="form-input-compact"
-                      placeholder="Presales owner (name)"
-                      autoComplete="off"
-                    />
-                  )}
-                </div>
-
-                <div className="form-group-compact">
-                  <label className="form-label-compact required">Country</label>
-                  <select name="country" value={newCustomer.country} onChange={handleCustomerChange} required className="form-select-compact">
-                    <option value="">Select Country</option>
-                    {asiaPacificCountries.map((country) => (
-                      <option key={country} value={country}>
-                        {country}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
+          <div className="header-actions">
+            <button className="action-button primary" onClick={openAddCustomerModal}>
+              <UserPlus size={12} className="button-icon" />
+              Add Customer
+            </button>
           </div>
+        </header>
 
-          <div className="form-section-compact">
-            <h4 className="section-title-compact">
-              <Building2 size={14} className="section-icon-compact" />
-              Customer Type & Status
-            </h4>
+        {/* Portfolio KPIs (same idea as Home KPI strip) */}
+        <section className="portfolio-kpi-strip">
+          <div className="portfolio-kpi-card">
+            <div className="portfolio-kpi-label">Lead</div>
+            <div className="portfolio-kpi-value">{kpiCounts.lead}</div>
+          </div>
+          <div className="portfolio-kpi-card">
+            <div className="portfolio-kpi-label">Opportunity</div>
+            <div className="portfolio-kpi-value">{kpiCounts.opportunity}</div>
+          </div>
+          <div className="portfolio-kpi-card">
+            <div className="portfolio-kpi-label">Proposal</div>
+            <div className="portfolio-kpi-value">{kpiCounts.proposal}</div>
+          </div>
+          <div className="portfolio-kpi-card">
+            <div className="portfolio-kpi-label">Contracting</div>
+            <div className="portfolio-kpi-value">{kpiCounts.contracting}</div>
+          </div>
+        </section>
 
-            <div className="type-pills-compact" style={{ marginBottom: '0.75rem' }}>
-              {['Existing', 'New', 'Internal Initiative'].map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  className={`type-pill-compact ${newCustomer.customer_type === type ? 'active' : ''}`}
-                  onClick={() => handleCustomerTypeChange(type)}
-                >
-                  {type === 'Internal Initiative' ? 'Internal' : type}
+        {/* Portfolio summary (with Active Deals card) */}
+        {portfolioStats && (
+          <section className="portfolio-summary-section">
+            <div className="portfolio-summary-grid">
+              <div className="summary-card">
+                <div className="summary-card-icon summary-card-icon-primary">
+                  <Building2 size={18} />
+                </div>
+                <div className="summary-card-content">
+                  <div className="summary-card-label">Total Customers</div>
+                  <div className="summary-card-value">{portfolioStats.totalCustomers}</div>
+                </div>
+              </div>
+
+              <div className="summary-card">
+                <div className="summary-card-icon summary-card-icon-secondary">
+                  <Globe size={18} />
+                </div>
+                <div className="summary-card-content">
+                  <div className="summary-card-label">Countries</div>
+                  <div className="summary-card-value">{portfolioStats.uniqueCountries}</div>
+                </div>
+              </div>
+
+              <div className="summary-card">
+                <div className="summary-card-icon summary-card-icon-tertiary">
+                  <User size={18} />
+                </div>
+                <div className="summary-card-content">
+                  <div className="summary-card-label">Account Managers</div>
+                  <div className="summary-card-value">{uniqueAccountManagers.length}</div>
+                </div>
+              </div>
+
+              <div className="summary-card">
+                <div className="summary-card-icon summary-card-icon-warning">
+                  <Briefcase size={18} />
+                </div>
+                <div className="summary-card-content">
+                  <div className="summary-card-label">Active Deals</div>
+                  <div className="summary-card-value">{dealsSummary.activeCount}</div>
+                  <div className="summary-card-sub">
+                    {Object.keys(dealsSummary.byStage).length > 0
+                      ? Object.entries(dealsSummary.byStage)
+                          .slice(0, 2)
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join(' • ')
+                      : '—'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Filters */}
+        <section className="filters-section">
+          <div className="filters-row">
+            <div className="search-wrapper">
+              <Search size={14} className="search-icon" />
+              <input
+                className="search-input"
+                placeholder="Search customers (name, AM, presales, country)…"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm ? (
+                <button className="icon-btn" onClick={() => setSearchTerm('')} title="Clear search">
+                  <X size={14} />
                 </button>
-              ))}
+              ) : null}
             </div>
 
-            <div className="form-group-compact">
-              <label className="form-label-compact">Customer Status</label>
+            <div className="filters-grid">
               <select
-                name="status_id"
-                value={newCustomer.status_id}
-                onChange={handleCustomerChange}
-                className="form-select-compact"
-                disabled={loadingStatuses}
+                className="filter-select"
+                value={filters.country}
+                onChange={(e) => setFilters((p) => ({ ...p, country: e.target.value }))}
               >
-                <option value="">{loadingStatuses ? 'Loading statuses…' : 'Select Status (default Active)'}</option>
-                {statusOptions.map((status) => (
-                  <option key={status.id} value={status.id}>
-                    {status.label}
+                <option value="">All Countries</option>
+                {uniqueCountries.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="filter-select"
+                value={filters.account_manager}
+                onChange={(e) => setFilters((p) => ({ ...p, account_manager: e.target.value }))}
+              >
+                <option value="">All Account Managers</option>
+                {uniqueAccountManagers.map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="filter-select"
+                value={filters.customer_type}
+                onChange={(e) => setFilters((p) => ({ ...p, customer_type: e.target.value }))}
+              >
+                <option value="">All Types</option>
+                <option value="New">New</option>
+                <option value="Existing">Existing</option>
+                <option value="Internal Initiative">Internal Initiative</option>
+              </select>
+
+              <select
+                className="filter-select"
+                value={filters.status_id}
+                onChange={(e) => setFilters((p) => ({ ...p, status_id: e.target.value }))}
+              >
+                <option value="">All Status</option>
+                {customerStatuses.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
                   </option>
                 ))}
               </select>
             </div>
           </div>
-        </form>
 
-        <div className="modal-actions-compact">
-          <button type="button" onClick={handleModalClose} className="button-cancel-compact">
-            Cancel
-          </button>
-          <button
-            type="submit"
-            onClick={editingCustomer ? handleUpdateCustomer : handleAddCustomer}
-            className="button-submit-compact"
-          >
-            {editingCustomer ? 'Update Customer' : 'Add Customer'}
-          </button>
-        </div>
-      </Modal>
+          {hasActiveFilters && (
+            <div className="filters-footer">
+              <button className="action-button secondary" onClick={clearFilters}>
+                <X size={12} className="button-icon" />
+                Clear All
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* Customers Table */}
+        <section className="table-section">
+          <div className="table-section-header">
+            <div className="table-section-header-left">
+              <h3 className="table-section-title">Customers</h3>
+              <p className="table-section-sub">{filteredCustomers.length} shown</p>
+            </div>
+
+            <button className="action-button primary" onClick={openAddCustomerModal}>
+              <UserPlus size={12} className="button-icon" />
+              Add Customer
+            </button>
+          </div>
+
+          <div className="table-wrapper">
+            {filteredCustomers.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <div className="customers-table-scroll">
+                <table className="customers-table">
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th>Country</th>
+                      <th>Primary Presales</th>
+                      <th>Account Manager</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Active Deal</th>
+                      <th style={{ width: '110px' }}>Attention</th>
+                      <th style={{ width: '80px' }}>Actions</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {filteredCustomers.map((customer) => {
+                      const statusObj = getCustomerStatus(customer);
+                      const statusLabel = statusObj?.label || 'Not Set';
+                      const statusClass = getStatusBadgeClass(statusObj?.code || statusObj?.label);
+
+                      const deals = customerDeals[String(customer.customer_name || '').trim()];
+                      const activeDeals = deals?.active || [];
+                      const completedDeals = deals?.completed || [];
+                      const activeTop = activeDeals
+                        .slice()
+                        .sort((a, b) => (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0))[0];
+
+                      const attentionText = activeDeals.length > 0 ? 'Active' : completedDeals.length > 0 ? 'Done' : '—';
+                      const attentionClass =
+                        activeDeals.length > 0 ? 'attention-pill attention-active' : 'attention-pill';
+
+                      return (
+                        <tr key={customer.id}>
+                          <td className="cell-customer">
+                            <button className="link-btn" onClick={() => openCustomer(customer)} title="Open customer">
+                              {customer.customer_name}
+                            </button>
+                          </td>
+
+                          <td>{customer.country || '—'}</td>
+                          <td>{customer.primary_presales || '—'}</td>
+                          <td>{customer.account_manager || '—'}</td>
+                          <td>{customer.customer_type || '—'}</td>
+
+                          <td>
+                            <span className={statusClass}>{statusLabel}</span>
+                          </td>
+
+                          <td className="cell-deal">
+                            {activeTop ? (
+                              <div className="deal-inline">
+                                <button
+                                  className="link-btn"
+                                  onClick={() => openProject(activeTop.id)}
+                                  title="Open project"
+                                >
+                                  {activeTop.project_name || 'Unnamed'}
+                                </button>
+                                <div className="deal-sub">
+                                  <span className="deal-stage">{activeTop.sales_stage || '—'}</span>
+                                  {activeTop.deal_value != null ? (
+                                    <span className="deal-value">
+                                      {Number(activeTop.deal_value).toLocaleString()}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="muted">—</span>
+                            )}
+                          </td>
+
+                          <td>
+                            <span className={attentionClass}>{attentionText}</span>
+                          </td>
+
+                          <td className="cell-actions">
+                            <button
+                              className="icon-btn"
+                              onClick={() => openEditCustomerModal(customer)}
+                              title="Edit"
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                            <button
+                              className="icon-btn danger"
+                              onClick={() => deleteCustomer(customer)}
+                              title="Archive"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Customer Modal */}
+        {showCustomerModal && (
+          <Modal>
+            <div className="modal-header">
+              <h3>{editingCustomer ? 'Edit Customer' : 'Add Customer'}</h3>
+              <button className="icon-btn" onClick={() => setShowCustomerModal(false)}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="modal-grid">
+                <div className="form-field">
+                  <label>Customer Name *</label>
+                  <input
+                    value={newCustomer.customer_name}
+                    onChange={(e) => setNewCustomer((p) => ({ ...p, customer_name: e.target.value }))}
+                    placeholder="e.g., Metrobank"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Country</label>
+                  <input
+                    value={newCustomer.country}
+                    onChange={(e) => setNewCustomer((p) => ({ ...p, country: e.target.value }))}
+                    placeholder="e.g., Philippines"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Account Manager</label>
+                  <input
+                    value={newCustomer.account_manager}
+                    onChange={(e) => setNewCustomer((p) => ({ ...p, account_manager: e.target.value }))}
+                    placeholder="e.g., Juan Dela Cruz"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Primary Presales</label>
+                  <input
+                    value={newCustomer.primary_presales}
+                    onChange={(e) => setNewCustomer((p) => ({ ...p, primary_presales: e.target.value }))}
+                    placeholder="e.g., Jonathan"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Customer Type</label>
+                  <select
+                    value={newCustomer.customer_type}
+                    onChange={(e) => setNewCustomer((p) => ({ ...p, customer_type: e.target.value }))}
+                  >
+                    <option value="New">New</option>
+                    <option value="Existing">Existing</option>
+                    <option value="Internal Initiative">Internal Initiative</option>
+                  </select>
+                </div>
+
+                <div className="form-field">
+                  <label>Status</label>
+                  <select
+                    value={newCustomer.status_id}
+                    onChange={(e) => setNewCustomer((p) => ({ ...p, status_id: e.target.value }))}
+                  >
+                    <option value="">Not Set</option>
+                    {customerStatuses.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-field full">
+                  <label>Notes</label>
+                  <textarea
+                    value={newCustomer.notes}
+                    onChange={(e) => setNewCustomer((p) => ({ ...p, notes: e.target.value }))}
+                    placeholder="Any useful context, stakeholders, next steps…"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="action-button secondary" onClick={() => setShowCustomerModal(false)}>
+                Cancel
+              </button>
+              <button className="action-button primary" onClick={handleSaveCustomer}>
+                <Check size={12} className="button-icon" />
+                Save
+              </button>
+            </div>
+          </Modal>
+        )}
+      </div>
     </div>
   );
 }
