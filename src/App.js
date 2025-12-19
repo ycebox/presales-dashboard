@@ -49,6 +49,7 @@ function AppHeader() {
 // ----------------- HOME DASHBOARD (main page) -----------------
 function HomeDashboard() {
   const [projects, setProjects] = useState([]);
+  const [customerIdMap, setCustomerIdMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [homeError, setHomeError] = useState(null);
 
@@ -58,14 +59,39 @@ function HomeDashboard() {
       setHomeError(null);
 
       try {
+        // ✅ UPDATED: include current_status + is_corporate
         const projRes = await supabase
           .from('projects')
-          .select('id, customer_name, project_name, sales_stage, deal_value')
+          .select('id, customer_name, project_name, sales_stage, deal_value, current_status, is_corporate')
           .order('customer_name', { ascending: true });
 
         if (projRes.error) throw projRes.error;
 
-        setProjects(projRes.data || []);
+        const projData = projRes.data || [];
+        setProjects(projData);
+
+        // ✅ Resolve customer IDs so "Customer" can link to /customer/:id
+        const uniqueNames = Array.from(
+          new Set(projData.map((p) => (p.customer_name || '').trim()).filter(Boolean))
+        );
+
+        if (uniqueNames.length === 0) {
+          setCustomerIdMap({});
+          return;
+        }
+
+        const custRes = await supabase
+          .from('customers')
+          .select('id, customer_name')
+          .in('customer_name', uniqueNames);
+
+        if (custRes.error) throw custRes.error;
+
+        const map = {};
+        (custRes.data || []).forEach((c) => {
+          map[(c.customer_name || '').trim()] = c.id;
+        });
+        setCustomerIdMap(map);
       } catch (err) {
         console.error('Error loading home dashboard data:', err);
         setHomeError('Failed to load dashboard summary.');
@@ -81,7 +107,7 @@ function HomeDashboard() {
   const openDeals = useMemo(() => {
     return (projects || []).filter((p) => {
       const stage = (p.sales_stage || '').toLowerCase();
-      return stage !== 'done' && !stage.startsWith('closed');
+      return stage !== 'done' && !stage.startsWith('closed') && !stage.includes('completed');
     });
   }, [projects]);
 
@@ -110,8 +136,9 @@ function HomeDashboard() {
   }, [openDeals]);
 
   const formatCurrency = (value) => {
-    if (!Number.isFinite(value)) return '-';
-    return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '-';
+    return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
   };
 
   if (loading) {
@@ -153,10 +180,12 @@ function HomeDashboard() {
             <div className="home-topdeals-wrap">
               <table className="home-topdeals-table home-topdeals-table-wide">
                 <colgroup>
-                  <col style={{ width: '32%' }} />
-                  <col style={{ width: '36%' }} />
-                  <col style={{ width: '18%' }} />
-                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '22%' }} />
+                  <col style={{ width: '24%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '24%' }} />
+                  <col style={{ width: '8%' }} />
                 </colgroup>
                 <thead>
                   <tr>
@@ -164,21 +193,50 @@ function HomeDashboard() {
                     <th>Project</th>
                     <th>Stage</th>
                     <th className="th-right">Value</th>
+                    <th>Current Status</th>
+                    <th>Corporate</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {topDeals.map((p) => (
-                    <tr key={p.id}>
-                      <td className="td-ellipsis" title={p.customer_name || ''}>
-                        {p.customer_name || 'Unknown'}
-                      </td>
-                      <td className="td-ellipsis" title={p.project_name || ''}>
-                        {p.project_name || '-'}
-                      </td>
-                      <td className="td-nowrap">{p.sales_stage || 'N/A'}</td>
-                      <td className="td-right td-nowrap">{formatCurrency(Number(p.deal_value) || 0)}</td>
-                    </tr>
-                  ))}
+                  {topDeals.map((p) => {
+                    const custName = (p.customer_name || '').trim();
+                    const custId = customerIdMap[custName];
+
+                    return (
+                      <tr key={p.id}>
+                        {/* Customer hyperlink */}
+                        <td className="td-ellipsis" title={p.customer_name || ''}>
+                          {custId ? (
+                            <Link to={`/customer/${custId}`} className="home-link">
+                              {p.customer_name || 'Unknown'}
+                            </Link>
+                          ) : (
+                            <span>{p.customer_name || 'Unknown'}</span>
+                          )}
+                        </td>
+
+                        {/* Project hyperlink */}
+                        <td className="td-ellipsis" title={p.project_name || ''}>
+                          <Link to={`/project/${p.id}`} className="home-link">
+                            {p.project_name || '-'}
+                          </Link>
+                        </td>
+
+                        <td className="td-nowrap">{p.sales_stage || 'N/A'}</td>
+                        <td className="td-right td-nowrap">{formatCurrency(p.deal_value)}</td>
+
+                        {/* NEW: current_status */}
+                        <td className="td-ellipsis" title={p.current_status || ''}>
+                          {p.current_status || '-'}
+                        </td>
+
+                        {/* NEW: is_corporate */}
+                        <td className="td-nowrap">
+                          {p.is_corporate ? 'Yes' : 'No'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
