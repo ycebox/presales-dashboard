@@ -1,368 +1,358 @@
-/* ===== TopDealsToWatch – PresalesOverview Light Theme ===== */
-/* Designed to work WITH PresalesOverview.css (taskmix-table styles).
-   Avoids overriding table visuals heavily; focuses on card + pills + states. */
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "./supabaseClient";
+import "./TopDealsToWatch.css";
 
-:root {
-  --td-bg: #ffffff;
-  --td-ink: #0b1220;       /* dark/black */
-  --td-ink-2: #111827;
-  --td-muted: #475569;     /* slate */
-  --td-muted-2: #64748b;
-  --td-border: rgba(148, 163, 184, 0.55);
-  --td-border-2: rgba(148, 163, 184, 0.35);
-  --td-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+const currency = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return n.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+};
 
-  --td-primary: #1d4ed8;   /* deep blue */
-  --td-primary-2: #1e40af;
-  --td-primary-soft: rgba(29, 78, 216, 0.12);
+const formatDate = (d) => {
+  if (!d) return "";
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return "";
+  return dt.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
+};
 
-  --td-success: #16a34a;
-  --td-success-soft: rgba(22, 163, 74, 0.12);
+const urgencyForDueDate = (dueDate) => {
+  if (!dueDate) return { label: "No due date", cls: "urgency-later" };
 
-  --td-warn: #d97706;
-  --td-warn-soft: rgba(217, 119, 6, 0.14);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  --td-danger: #dc2626;
-  --td-danger-soft: rgba(220, 38, 38, 0.12);
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
 
-  --td-radius: 16px;
-  --td-radius-sm: 12px;
-  --td-focus: rgba(29, 78, 216, 0.22);
-}
+  const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-/* OUTER CARD */
-.topdeals-card {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid var(--td-border);
-  box-shadow: var(--td-shadow);
-  border-radius: var(--td-radius);
-  padding: 14px 16px;
-  color: var(--td-ink);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "Segoe UI", sans-serif;
-  font-size: 13px;
-  position: relative;
-  overflow: hidden;
-}
+  if (diffDays < 0) return { label: "Overdue", cls: "urgency-overdue" };
+  if (diffDays === 0) return { label: "Due today", cls: "urgency-today" };
+  if (diffDays <= 7) return { label: `Due in ${diffDays}d`, cls: "urgency-soon" };
+  return { label: `Due in ${diffDays}d`, cls: "urgency-later" };
+};
 
-/* subtle warm accents inside the card */
-.topdeals-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 12% 8%, rgba(29, 78, 216, 0.10), transparent 46%),
-    radial-gradient(circle at 86% 16%, rgba(15, 118, 110, 0.07), transparent 50%),
-    radial-gradient(circle at 55% 92%, rgba(234, 179, 8, 0.06), transparent 55%);
-  opacity: 0.9;
-}
+const normalizeStage = (s) => String(s || "").trim();
 
-/* keep content above accents */
-.topdeals-card > * {
-  position: relative;
-  z-index: 1;
-}
+const isCompletedStage = (stage) => {
+  const s = normalizeStage(stage).toLowerCase();
+  if (!s) return false;
+  if (s === "done") return true;
+  if (s.includes("closed")) return true;
+  if (s.includes("completed")) return true;
+  return false;
+};
 
-/* HEADER */
-.topdeals-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 10px;
-}
+export default function TopDealsToWatch({
+  limit = 10,
+  hideCompleted = true,
+  title = "Top Deals to Watch",
+  subtitle = "Highest value opportunities with a quick read on status + corporate tag",
+}) {
+  const navigate = useNavigate();
 
-.topdeals-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+  const [view, setView] = useState("table"); // table | grid
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [deals, setDeals] = useState([]);
 
-.topdeals-title {
-  font-size: 14px; /* widget title (page title stays in the page header) */
-  font-weight: 750;
-  color: var(--td-ink);
-  letter-spacing: -0.01em;
-}
+  // customer_name -> customer_id map (for clickable customer link)
+  const [customerIdMap, setCustomerIdMap] = useState({});
 
-.topdeals-subtitle {
-  font-size: 12px;
-  color: var(--td-muted);
-  margin-top: 2px;
-  line-height: 1.35;
-}
+  const fetchDeals = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-.topdeals-icon {
-  width: 18px;
-  height: 18px;
-  color: var(--td-primary);
-}
+      // Fetch deals (projects)
+      const { data: projects, error: pErr } = await supabase
+        .from("projects")
+        .select(
+          "id, customer_name, project_name, sales_stage, deal_value, due_date, current_status, is_corporate"
+        )
+        .order("deal_value", { ascending: false })
+        .limit(limit * 3); // fetch more then filter
 
-/* VIEW TOGGLE */
-.topdeals-view-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px;
-  border-radius: 999px;
-  background: #ffffff;
-  border: 1px solid var(--td-border);
-  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06);
-}
+      if (pErr) throw pErr;
 
-.topdeals-toggle-btn {
-  border: 1px solid transparent;
-  background: transparent;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--td-muted);
-  cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
-}
+      let rows = projects || [];
 
-.topdeals-toggle-btn:hover {
-  background: rgba(148, 163, 184, 0.12);
-  color: var(--td-ink);
-}
+      if (hideCompleted) {
+        rows = rows.filter((p) => !isCompletedStage(p.sales_stage));
+      }
 
-.topdeals-toggle-btn.active {
-  background: var(--td-primary);
-  color: #ffffff;
-  border-color: transparent;
-}
+      // Trim to limit after filtering
+      rows = rows.slice(0, limit);
 
-/* CORPORATE BADGE */
-.topdeals-corp-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 750;
-  border: 1px solid rgba(29, 78, 216, 0.28);
-  background: var(--td-primary-soft);
-  color: var(--td-ink);
-  white-space: nowrap;
-}
+      setDeals(rows);
 
-.topdeals-corp-badge-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--td-primary);
-  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.18);
-}
+      // Resolve customer IDs for clickable customer links
+      const uniqueNames = Array.from(
+        new Set(rows.map((r) => String(r.customer_name || "").trim()).filter(Boolean))
+      );
 
-/* TABLE WRAPPER (table styles come from PresalesOverview/taskmix) */
-.topdeals-table-wrapper {
-  margin-top: 10px;
-  border-radius: var(--td-radius);
-  overflow: hidden;
-  border: 1px solid var(--td-border-2);
-  background: rgba(255, 255, 255, 0.92);
-}
+      if (uniqueNames.length === 0) {
+        setCustomerIdMap({});
+        return;
+      }
 
-/* keep your existing class in case it's used */
-.topdeals-table {
-  width: 100%;
-}
+      const { data: customers, error: cErr } = await supabase
+        .from("customers")
+        .select("id, customer_name")
+        .in("customer_name", uniqueNames);
 
-/* Pills inside table */
-.topdeals-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 750;
-  border: 1px solid var(--td-border);
-  background: #ffffff;
-  color: var(--td-ink);
-  white-space: nowrap;
-}
+      if (cErr) throw cErr;
 
-.topdeals-stage-pill {
-  border-color: rgba(29, 78, 216, 0.25);
-  background: rgba(29, 78, 216, 0.10);
-  color: #1e3a8a;
-}
+      const map = {};
+      (customers || []).forEach((c) => {
+        map[String(c.customer_name || "").trim()] = c.id;
+      });
+      setCustomerIdMap(map);
+    } catch (e) {
+      console.error("TopDealsToWatch fetch error:", e);
+      setError(e?.message || "Failed to load deals");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-.topdeals-urgency-pill {
-  border-color: var(--td-border);
-  background: #ffffff;
-  color: var(--td-ink);
-}
+  useEffect(() => {
+    fetchDeals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [limit, hideCompleted]);
 
-/* urgency variants (soft, readable) */
-.topdeals-urgency-pill.urgency-overdue {
-  border-color: rgba(220, 38, 38, 0.25);
-  background: var(--td-danger-soft);
-  color: #991b1b;
-}
+  const hasCorporate = useMemo(() => deals.some((d) => !!d.is_corporate), [deals]);
 
-.topdeals-urgency-pill.urgency-today {
-  border-color: rgba(217, 119, 6, 0.28);
-  background: var(--td-warn-soft);
-  color: #7c2d12;
-}
+  const goCustomer = (customerName) => {
+    const id = customerIdMap[String(customerName || "").trim()];
+    if (!id) return;
+    navigate(`/customer/${id}`);
+  };
 
-.topdeals-urgency-pill.urgency-soon {
-  border-color: rgba(29, 78, 216, 0.22);
-  background: rgba(29, 78, 216, 0.10);
-  color: #1e3a8a;
-}
+  const goProject = (projectId) => {
+    if (!projectId) return;
+    navigate(`/project/${projectId}`);
+  };
 
-.topdeals-urgency-pill.urgency-later {
-  border-color: rgba(148, 163, 184, 0.45);
-  background: rgba(148, 163, 184, 0.10);
-  color: var(--td-muted);
-}
+  return (
+    <div className="topdeals-card">
+      <div className="topdeals-header">
+        <div>
+          <div className="topdeals-title-row">
+            <div className="topdeals-title">{title}</div>
+          </div>
+          <div className="topdeals-subtitle">{subtitle}</div>
+        </div>
 
-/* Money/value styling */
-.topdeals-value {
-  font-weight: 750;
-  color: var(--td-ink);
-}
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          {hasCorporate ? (
+            <span className="topdeals-corp-badge" title="Corporate opportunity = global team involved">
+              <span className="topdeals-corp-badge-dot" />
+              Corporate tagged
+            </span>
+          ) : null}
 
-/* Text truncation helpers */
-.topdeals-ellipsis {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+          <div className="topdeals-view-toggle" role="tablist" aria-label="Top deals view toggle">
+            <button
+              type="button"
+              className={`topdeals-toggle-btn ${view === "table" ? "active" : ""}`}
+              onClick={() => setView("table")}
+            >
+              Table
+            </button>
+            <button
+              type="button"
+              className={`topdeals-toggle-btn ${view === "grid" ? "active" : ""}`}
+              onClick={() => setView("grid")}
+            >
+              Grid
+            </button>
+          </div>
+        </div>
+      </div>
 
-.topdeals-multiline-ellipsis {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+      {loading ? (
+        <div className="topdeals-loading">
+          <div className="topdeals-spinner" />
+          Loading deals...
+        </div>
+      ) : error ? (
+        <div className="topdeals-error">
+          {error}
+          <div style={{ marginTop: 10 }}>
+            <button className="topdeals-toggle-btn active" onClick={fetchDeals} type="button">
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : deals.length === 0 ? (
+        <div className="topdeals-empty">
+          <div className="topdeals-empty-title">No deals to show</div>
+          <div className="topdeals-empty-desc">
+            If you expect deals here, check your projects table values (sales_stage / deal_value) and filters.
+          </div>
+        </div>
+      ) : view === "grid" ? (
+        <div className="topdeals-grid">
+          {deals.map((d) => {
+            const stage = normalizeStage(d.sales_stage) || "—";
+            const urg = urgencyForDueDate(d.due_date);
 
-/* GRID MODE */
-.topdeals-grid {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
+            return (
+              <div key={d.id} className="topdeals-grid-card">
+                <div className="topdeals-grid-title topdeals-ellipsis">
+                  <button
+                    type="button"
+                    onClick={() => goProject(d.id)}
+                    style={{
+                      all: "unset",
+                      cursor: "pointer",
+                      color: "inherit",
+                      fontWeight: 800,
+                    }}
+                    title="Open project details"
+                  >
+                    {d.project_name || "(Unnamed Project)"}
+                  </button>
+                </div>
 
-.topdeals-grid-card {
-  border: 1px solid var(--td-border);
-  background: rgba(255, 255, 255, 0.94);
-  border-radius: var(--td-radius);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.07);
-  padding: 12px 12px;
-  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
-}
+                <div className="topdeals-subtitle topdeals-ellipsis">
+                  <button
+                    type="button"
+                    onClick={() => goCustomer(d.customer_name)}
+                    disabled={!customerIdMap[String(d.customer_name || "").trim()]}
+                    style={{
+                      all: "unset",
+                      cursor: customerIdMap[String(d.customer_name || "").trim()] ? "pointer" : "default",
+                      color: "inherit",
+                      textDecoration: customerIdMap[String(d.customer_name || "").trim()]
+                        ? "underline"
+                        : "none",
+                    }}
+                    title="Open customer details"
+                  >
+                    {d.customer_name || "—"}
+                  </button>
+                </div>
 
-.topdeals-grid-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.10);
-  border-color: rgba(29, 78, 216, 0.28);
-}
+                <div className="topdeals-grid-meta">
+                  <span className="topdeals-pill topdeals-stage-pill">{stage}</span>
+                  <span className={`topdeals-pill topdeals-urgency-pill ${urg.cls}`}>{urg.label}</span>
+                  {d.is_corporate ? (
+                    <span className="topdeals-pill" title="Corporate opportunity">
+                      Corporate
+                    </span>
+                  ) : null}
+                  <span className="topdeals-pill topdeals-value">{currency(d.deal_value)}</span>
+                </div>
 
-.topdeals-grid-title {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--td-ink);
-  margin-bottom: 4px;
-}
+                <div style={{ marginTop: 8 }} className="topdeals-multiline-ellipsis" title={d.current_status || ""}>
+                  <span style={{ color: "#475569", fontWeight: 700 }}>Status:</span>{" "}
+                  {d.current_status ? d.current_status : "—"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="topdeals-table-wrapper">
+          <table className="topdeals-table taskmix-table">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Project</th>
+                <th className="th-center">Stage</th>
+                <th className="th-center">Value</th>
+                <th>Current Status</th>
+                <th className="th-center">Corporate</th>
+              </tr>
+            </thead>
 
-.topdeals-grid-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
+            <tbody>
+              {deals.map((d) => {
+                const stage = normalizeStage(d.sales_stage) || "—";
+                const urg = urgencyForDueDate(d.due_date);
+                const customerKey = String(d.customer_name || "").trim();
+                const customerId = customerIdMap[customerKey];
 
-/* STATES */
-.topdeals-loading,
-.topdeals-error,
-.topdeals-empty {
-  padding: 18px 10px;
-  text-align: center;
-  color: var(--td-muted);
-}
+                return (
+                  <tr key={d.id}>
+                    <td className="topdeals-ellipsis">
+                      <button
+                        type="button"
+                        onClick={() => goCustomer(d.customer_name)}
+                        disabled={!customerId}
+                        style={{
+                          all: "unset",
+                          cursor: customerId ? "pointer" : "default",
+                          color: "#0b1220",
+                          textDecoration: customerId ? "underline" : "none",
+                          fontWeight: 750,
+                        }}
+                        title={customerId ? "Open customer details" : "Customer not found in customers table"}
+                      >
+                        {d.customer_name || "—"}
+                      </button>
+                    </td>
 
-.topdeals-error {
-  color: #991b1b;
-}
+                    <td className="topdeals-ellipsis">
+                      <button
+                        type="button"
+                        onClick={() => goProject(d.id)}
+                        style={{
+                          all: "unset",
+                          cursor: "pointer",
+                          color: "#0b1220",
+                          textDecoration: "underline",
+                          fontWeight: 750,
+                        }}
+                        title="Open project details"
+                      >
+                        {d.project_name || "(Unnamed Project)"}
+                      </button>
+                      <div style={{ marginTop: 4 }}>
+                        <span className={`topdeals-pill topdeals-urgency-pill ${urg.cls}`}>
+                          {urg.label}
+                          {d.due_date ? ` • ${formatDate(d.due_date)}` : ""}
+                        </span>
+                      </div>
+                    </td>
 
-.topdeals-empty-title {
-  font-size: 13px;
-  font-weight: 750;
-  color: var(--td-ink);
-  margin-bottom: 6px;
-}
+                    <td className="td-center">
+                      <span className="topdeals-pill topdeals-stage-pill">{stage}</span>
+                    </td>
 
-.topdeals-empty-desc {
-  font-size: 12px;
-  color: var(--td-muted);
-  max-width: 460px;
-  margin: 0 auto;
-  line-height: 1.45;
-}
+                    <td className="td-center">
+                      <span className="topdeals-value">{currency(d.deal_value)}</span>
+                    </td>
 
-/* Spinner */
-.topdeals-spinner {
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  border: 3px solid rgba(148, 163, 184, 0.45);
-  border-top-color: var(--td-primary);
-  animation: td-spin 1s linear infinite;
-  margin: 0 auto 10px;
-}
+                    <td className="topdeals-multiline-ellipsis" title={d.current_status || ""}>
+                      {d.current_status || "—"}
+                    </td>
 
-/* Accessibility */
-.topdeals-toggle-btn:focus-visible,
-.topdeals-grid-card:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 4px var(--td-focus);
-}
-
-/* Column helpers (kept, but don’t force colors) */
-.th-center {
-  text-align: center;
-}
-
-.td-center {
-  text-align: center;
-}
-
-/* RESPONSIVE */
-@media (max-width: 1100px) {
-  .topdeals-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .topdeals-card {
-    padding: 12px 12px;
-  }
-
-  .topdeals-header {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .topdeals-view-toggle {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .topdeals-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@keyframes td-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+                    <td className="td-center">
+                      {d.is_corporate ? (
+                        <span className="topdeals-pill" title="Corporate opportunity (global team involved)">
+                          Yes
+                        </span>
+                      ) : (
+                        <span className="topdeals-pill" style={{ opacity: 0.65 }}>
+                          No
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 }
