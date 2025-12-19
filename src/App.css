@@ -50,7 +50,7 @@
     "Segoe UI", Roboto, sans-serif;
 
   /* Sizing */
-  --fz-body: 13px;     /* 12–14px target */
+  --fz-body: 14px;     /* was 13px */
   --fz-title: 24px;    /* page title target */
   --fz-h3: 14px;
   --fz-small: 12px;    /* headers/labels */
@@ -292,7 +292,7 @@ a {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 13px;
+  font-size: 14px; /* was 13px */
   color: var(--ink-0);
 }
 
@@ -329,6 +329,27 @@ a {
 
 .td-nowrap {
   white-space: nowrap;
+}
+
+/* Top Deals links */
+.home-link {
+  color: inherit;
+  text-decoration: underline;
+  font-weight: 700;
+}
+.home-link:hover {
+  opacity: 0.85;
+}
+
+/* Top Deals – make customer stand out + nicer hover */
+.home-topdeals-table td:first-child a,
+.home-topdeals-table-wide td:first-child a {
+  font-weight: 800;
+}
+
+.home-topdeals-table tbody tr:hover,
+.home-topdeals-table-wide tbody tr:hover {
+  background: rgba(29, 78, 216, 0.06);
 }
 
 /* ========= Notes ========= */
@@ -399,7 +420,7 @@ a {
   white-space: pre-wrap;
   word-break: break-word;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px; /* was 13px */
   line-height: 1.55;
   color: var(--ink-0);
 }
@@ -413,7 +434,7 @@ a {
   border: 1px solid var(--border);
   background: #ffffff;
   color: var(--ink-0);
-  font-size: 13px;
+  font-size: 14px; /* was 13px */
   padding: 10px 10px;
   resize: vertical;
   outline: none;
@@ -456,7 +477,7 @@ a {
 }
 
 .loading-text {
-  font-size: 13px;
+  font-size: 14px; /* was 13px */
   color: var(--muted);
 }
 
