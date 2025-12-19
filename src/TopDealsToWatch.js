@@ -32,8 +32,6 @@ export default function TopDealsToWatch({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deals, setDeals] = useState([]);
-
-  // customer_name -> customer_id map for hyperlink
   const [customerIdMap, setCustomerIdMap] = useState({});
 
   const hasCorporate = useMemo(() => deals.some((d) => !!d.is_corporate), [deals]);
@@ -43,7 +41,7 @@ export default function TopDealsToWatch({
       setLoading(true);
       setError("");
 
-      // 1) Fetch projects (deals)
+      // 1) Fetch projects
       const { data: projects, error: pErr } = await supabase
         .from("projects")
         .select(
@@ -57,10 +55,9 @@ export default function TopDealsToWatch({
       let rows = projects || [];
       if (hideCompleted) rows = rows.filter((p) => !isCompletedStage(p.sales_stage));
       rows = rows.slice(0, limit);
-
       setDeals(rows);
 
-      // 2) Resolve customer ids (because projects only has customer_name)
+      // 2) Resolve customer ids (projects has only customer_name)
       const uniqueNames = Array.from(
         new Set(rows.map((r) => String(r.customer_name || "").trim()).filter(Boolean))
       );
@@ -81,10 +78,11 @@ export default function TopDealsToWatch({
       (customers || []).forEach((c) => {
         map[String(c.customer_name || "").trim()] = c.id;
       });
+
       setCustomerIdMap(map);
     } catch (e) {
       console.error("TopDealsToWatch fetch error:", e);
-      setError(e?.message || "Failed to load Top Deals");
+      setError(e?.message || "Failed to load deals");
     } finally {
       setLoading(false);
     }
@@ -106,6 +104,9 @@ export default function TopDealsToWatch({
             </span>
           ) : null}
         </div>
+        <p className="topdeals-subtitle">
+          Click customer or project to open details
+        </p>
       </div>
 
       {loading ? (
@@ -116,95 +117,88 @@ export default function TopDealsToWatch({
       ) : error ? (
         <div className="topdeals-error">
           {error}
-          <div style={{ marginTop: 10 }}>
-            <button className="topdeals-toggle-btn active" onClick={fetchDeals} type="button">
-              Retry
-            </button>
-          </div>
         </div>
       ) : deals.length === 0 ? (
         <div className="topdeals-empty">No deals to show.</div>
       ) : (
-        <div className="topdeals-table-wrapper">
-          <table className="topdeals-table">
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Project</th>
-                <th>Stage</th>
-                <th className="th-right">Value</th>
-                <th>Current Status</th>
-                <th>Corporate</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {deals.map((d) => {
-                const stage = normalizeStage(d.sales_stage) || "—";
-                const customerKey = String(d.customer_name || "").trim();
-                const customerId = customerIdMap[customerKey];
-
-                return (
-                  <tr key={d.id}>
-                    {/* CUSTOMER LINK */}
-                    <td className="topdeals-cell-ellipsis">
-                      {customerId ? (
-                        <Link
-                          to={`/customer/${customerId}`}
-                          className="topdeals-link"
-                          title="Open customer details"
-                        >
-                          {d.customer_name}
-                        </Link>
-                      ) : (
-                        <span title="No matching customer found in customers table">
-                          {d.customer_name || "—"}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* PROJECT LINK */}
-                    <td className="topdeals-cell-ellipsis">
-                      <Link
-                        to={`/project/${d.id}`}
-                        className="topdeals-link"
-                        title="Open project details"
-                      >
-                        {d.project_name || "(Unnamed Project)"}
-                      </Link>
-                    </td>
-
-                    <td>
-                      <span className="topdeals-stage-pill">{stage}</span>
-                    </td>
-
-                    <td className="td-right">
-                      <span className="topdeals-value-cell">{currency(d.deal_value)}</span>
-                    </td>
-
-                    <td className="topdeals-cell-ellipsis" title={d.current_status || ""}>
-                      {d.current_status || "—"}
-                    </td>
-
-                    <td>
-                      {d.is_corporate ? (
-                        <span className="topdeals-corp-badge">Yes</span>
-                      ) : (
-                        <span style={{ opacity: 0.7 }}>No</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {/* tiny helper if customer names don't map */}
-          <div style={{ marginTop: 10, fontSize: "0.85rem", opacity: 0.8 }}>
-            Note: customer links work only when <b>projects.customer_name</b> matches exactly the{" "}
-            <b>customers.customer_name</b>.
+        <>
+          {/* HEADERS (GRID) */}
+          <div className="topdeals-table-head">
+            <div>#</div>
+            <div>Customer</div>
+            <div>Project</div>
+            <div>Stage</div>
+            <div>Value</div>
+            <div>Current Status</div>
+            <div>Corporate</div>
           </div>
-        </div>
+
+          {/* ROWS (GRID) */}
+          <div className="topdeals-list">
+            {deals.map((d, idx) => {
+              const stage = normalizeStage(d.sales_stage) || "—";
+              const customerKey = String(d.customer_name || "").trim();
+              const customerId = customerIdMap[customerKey];
+
+              return (
+                <div key={d.id} className="topdeals-row">
+                  {/* Rank */}
+                  <div className="topdeals-rank">{idx + 1}</div>
+
+                  {/* Customer link */}
+                  <div className="topdeals-customer-cell">
+                    {customerId ? (
+                      <Link
+                        to={`/customer/${customerId}`}
+                        className="topdeals-link"
+                        title="Open customer details"
+                      >
+                        {d.customer_name || "—"}
+                      </Link>
+                    ) : (
+                      <span title="Customer not found in customers table">
+                        {d.customer_name || "—"}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Project link */}
+                  <div className="topdeals-project-cell">
+                    <Link
+                      to={`/project/${d.id}`}
+                      className="topdeals-link"
+                      title="Open project details"
+                    >
+                      {d.project_name || "(Unnamed Project)"}
+                    </Link>
+                  </div>
+
+                  {/* Stage */}
+                  <div>
+                    <span className="topdeals-stage-badge">{stage}</span>
+                  </div>
+
+                  {/* Value */}
+                  <div className="topdeals-value-cell">{currency(d.deal_value)}</div>
+
+                  {/* Current Status (NEW) */}
+                  <div className="topdeals-status-cell" title={d.current_status || ""}>
+                    {d.current_status || "—"}
+                  </div>
+
+                  {/* Corporate (NEW) */}
+                  <div className="topdeals-corp-cell">
+                    {d.is_corporate ? (
+                      <span className="topdeals-corp-pill">Yes</span>
+                    ) : (
+                      <span className="topdeals-corp-pill is-no">No</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
