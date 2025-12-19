@@ -56,34 +56,14 @@ function Projects() {
     status_id: ''
   });
 
-  // Deals summary (Active Deals card)
+  // Deals summary (for Active Deals card + KPI strip)
   const [dealsSummary, setDealsSummary] = useState({
     activeCount: 0,
     byStage: {}
   });
 
-  // Lightweight KPI counts from dealsSummary.byStage (keeps Projects aligned with Home KPI strip idea)
-  const kpiCounts = useMemo(() => {
-    const byStage = dealsSummary?.byStage || {};
-    const findCount = (label) => {
-      const target = String(label || '').toLowerCase();
-      const key = Object.keys(byStage).find((k) => String(k).toLowerCase() === target);
-      return key ? Number(byStage[key] || 0) : 0;
-    };
-
-    return {
-      lead: findCount('Lead'),
-      opportunity: findCount('Opportunity'),
-      proposal: findCount('Proposal'),
-      contracting: findCount('Contracting')
-    };
-  }, [dealsSummary]);
-
-  // Customer ↔ Deals rollup (for Active Deal + Attention columns)
+  // Customer ↔ Deals rollup (for Attention column)
   const [customerDeals, setCustomerDeals] = useState({});
-
-  // Toggle to show completed projects in opportunities list (if used elsewhere)
-  const [showCompletedProjects, setShowCompletedProjects] = useState(false);
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
@@ -97,7 +77,10 @@ function Projects() {
       setError(null);
 
       try {
-        const statusRes = await supabase.from('customer_statuses').select('*').order('id', { ascending: true });
+        const statusRes = await supabase
+          .from('customer_statuses')
+          .select('*')
+          .order('id', { ascending: true });
         if (statusRes.error) throw statusRes.error;
 
         setCustomerStatuses(statusRes.data || []);
@@ -139,7 +122,7 @@ function Projects() {
           return;
         }
 
-        // Active = anything not starting with "Closed"
+        // Active = not Done/Closed/Completed
         const activeProjects = data.filter((p) => {
           const stage = String(p.sales_stage || '').trim().toLowerCase();
           if (!stage) return true;
@@ -168,13 +151,13 @@ function Projects() {
     fetchDealsSummary();
   }, []);
 
-  // Fetch customer-deals rollup (Active Deal + Attention)
+  // Fetch customer-deals rollup (for Attention only)
   useEffect(() => {
     const fetchCustomerDeals = async () => {
       try {
         const { data, error } = await supabase
           .from('projects')
-          .select('id, customer_name, project_name, sales_stage, deal_value, due_date, current_status, is_corporate');
+          .select('id, customer_name, sales_stage');
 
         if (error) {
           console.error('Error fetching projects for customer rollup:', error);
@@ -187,29 +170,16 @@ function Projects() {
           const name = String(p.customer_name || '').trim();
           if (!name) return;
 
-          // determine "active" vs completed
           const stage = String(p.sales_stage || '').trim().toLowerCase();
-          const isCompleted = stage === 'done' || stage.startsWith('closed') || stage.includes('completed');
+          const isCompleted =
+            stage === 'done' || stage.startsWith('closed') || stage.includes('completed');
 
           if (!rollup[name]) {
-            rollup[name] = {
-              active: [],
-              completed: []
-            };
+            rollup[name] = { activeCount: 0, hasAnyCompleted: false };
           }
 
-          const item = {
-            id: p.id,
-            project_name: p.project_name,
-            sales_stage: p.sales_stage,
-            deal_value: p.deal_value,
-            due_date: p.due_date,
-            current_status: p.current_status,
-            is_corporate: p.is_corporate
-          };
-
-          if (isCompleted) rollup[name].completed.push(item);
-          else rollup[name].active.push(item);
+          if (isCompleted) rollup[name].hasAnyCompleted = true;
+          else rollup[name].activeCount += 1;
         });
 
         setCustomerDeals(rollup);
@@ -221,6 +191,22 @@ function Projects() {
 
     fetchCustomerDeals();
   }, []);
+
+  const kpiCounts = useMemo(() => {
+    const byStage = dealsSummary?.byStage || {};
+    const findCount = (label) => {
+      const target = String(label || '').toLowerCase();
+      const key = Object.keys(byStage).find((k) => String(k).toLowerCase() === target);
+      return key ? Number(byStage[key] || 0) : 0;
+    };
+
+    return {
+      lead: findCount('Lead'),
+      opportunity: findCount('Opportunity'),
+      proposal: findCount('Proposal'),
+      contracting: findCount('Contracting')
+    };
+  }, [dealsSummary]);
 
   const filteredCustomers = useMemo(() => {
     let list = [...customers];
@@ -270,7 +256,6 @@ function Projects() {
 
   const portfolioStats = useMemo(() => {
     if (!customers || customers.length === 0) return null;
-    const uniqueCountriesCount = uniqueCountries.length;
 
     const typesCount = customers.reduce(
       (acc, c) => {
@@ -283,7 +268,7 @@ function Projects() {
 
     return {
       totalCustomers: customers.length,
-      uniqueCountries: uniqueCountriesCount,
+      uniqueCountries: uniqueCountries.length,
       byType: typesCount
     };
   }, [customers, uniqueCountries]);
@@ -309,11 +294,6 @@ function Projects() {
     navigate(`/customer/${customer.id}`);
   };
 
-  const openProject = (projectId) => {
-    if (!projectId) return;
-    navigate(`/project/${projectId}`);
-  };
-
   const deleteCustomer = async (customer) => {
     if (!customer?.id) return;
 
@@ -321,7 +301,11 @@ function Projects() {
     if (!ok) return;
 
     try {
-      const { error } = await supabase.from('customers').update({ is_archived: true }).eq('id', customer.id);
+      const { error } = await supabase
+        .from('customers')
+        .update({ is_archived: true })
+        .eq('id', customer.id);
+
       if (error) throw error;
 
       setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
@@ -464,7 +448,10 @@ function Projects() {
 
   const Modal = ({ children }) => {
     return ReactDOM.createPortal(
-      <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowCustomerModal(false)}>
+      <div
+        className="modal-overlay"
+        onMouseDown={(e) => e.target === e.currentTarget && setShowCustomerModal(false)}
+      >
         <div className="modal-content">{children}</div>
       </div>,
       document.body
@@ -527,7 +514,7 @@ function Projects() {
           </div>
         </header>
 
-        {/* Portfolio KPIs (same idea as Home KPI strip) */}
+        {/* KPI strip */}
         <section className="portfolio-kpi-strip">
           <div className="portfolio-kpi-card">
             <div className="portfolio-kpi-label">Lead</div>
@@ -547,7 +534,7 @@ function Projects() {
           </div>
         </section>
 
-        {/* Portfolio summary (with Active Deals card) */}
+        {/* Portfolio summary */}
         {portfolioStats && (
           <section className="portfolio-summary-section">
             <div className="portfolio-summary-grid">
@@ -711,7 +698,6 @@ function Projects() {
                       <th>Account Manager</th>
                       <th>Type</th>
                       <th>Status</th>
-                      <th>Active Deal</th>
                       <th style={{ width: '110px' }}>Attention</th>
                       <th style={{ width: '80px' }}>Actions</th>
                     </tr>
@@ -723,21 +709,26 @@ function Projects() {
                       const statusLabel = statusObj?.label || 'Not Set';
                       const statusClass = getStatusBadgeClass(statusObj?.code || statusObj?.label);
 
-                      const deals = customerDeals[String(customer.customer_name || '').trim()];
-                      const activeDeals = deals?.active || [];
-                      const completedDeals = deals?.completed || [];
-                      const activeTop = activeDeals
-                        .slice()
-                        .sort((a, b) => (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0))[0];
+                      const key = String(customer.customer_name || '').trim();
+                      const dealRollup = customerDeals[key] || { activeCount: 0, hasAnyCompleted: false };
 
-                      const attentionText = activeDeals.length > 0 ? 'Active' : completedDeals.length > 0 ? 'Done' : '—';
+                      const activeCount = Number(dealRollup.activeCount || 0);
+
+                      // Attention: show multiple projects clearly
+                      const attentionText =
+                        activeCount > 0 ? `${activeCount} Active` : dealRollup.hasAnyCompleted ? 'Done' : '—';
+
                       const attentionClass =
-                        activeDeals.length > 0 ? 'attention-pill attention-active' : 'attention-pill';
+                        activeCount > 0 ? 'attention-pill attention-active' : 'attention-pill';
 
                       return (
                         <tr key={customer.id}>
                           <td className="cell-customer">
-                            <button className="link-btn" onClick={() => openCustomer(customer)} title="Open customer">
+                            <button
+                              className="link-btn"
+                              onClick={() => openCustomer(customer)}
+                              title="Open customer"
+                            >
                               {customer.customer_name}
                             </button>
                           </td>
@@ -749,30 +740,6 @@ function Projects() {
 
                           <td>
                             <span className={statusClass}>{statusLabel}</span>
-                          </td>
-
-                          <td className="cell-deal">
-                            {activeTop ? (
-                              <div className="deal-inline">
-                                <button
-                                  className="link-btn"
-                                  onClick={() => openProject(activeTop.id)}
-                                  title="Open project"
-                                >
-                                  {activeTop.project_name || 'Unnamed'}
-                                </button>
-                                <div className="deal-sub">
-                                  <span className="deal-stage">{activeTop.sales_stage || '—'}</span>
-                                  {activeTop.deal_value != null ? (
-                                    <span className="deal-value">
-                                      {Number(activeTop.deal_value).toLocaleString()}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="muted">—</span>
-                            )}
                           </td>
 
                           <td>
