@@ -75,6 +75,21 @@ const formatNumber = (value) => {
   return n.toLocaleString();
 };
 
+const formatCompact = (value) => {
+  if (value === null || value === undefined || value === '') return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+
+  if (abs >= 1_000_000_000) return `${sign}${(abs / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
+  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
+
+  return n.toLocaleString();
+};
+
 const StakeholdersModal = ({ isOpen, onClose, onSave, existingStakeholders }) => {
   const [rows, setRows] = useState([]);
 
@@ -561,7 +576,6 @@ const MetricsModal = ({ isOpen, onClose, onSave, initial }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // keep as string in UI; convert to int on save
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -726,14 +740,11 @@ const CustomerDetails = () => {
   const [showCompletedProjects, setShowCompletedProjects] = useState(false);
   const [deletingProjectId, setDeletingProjectId] = useState(null);
 
-  // project controls
-  const [projectSort, setProjectSort] = useState('stage'); // stage | value | due
+  const [projectSort, setProjectSort] = useState('stage');
 
-  // notes
   const [notesDraft, setNotesDraft] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
 
-  // metrics (from customer_metrics table)
   const [metrics, setMetrics] = useState(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [showMetricsModal, setShowMetricsModal] = useState(false);
@@ -891,7 +902,6 @@ const CustomerDetails = () => {
         .eq('customer_id', customerId)
         .maybeSingle();
 
-      // maybeSingle returns null when not found (that’s OK)
       if (mErr) throw mErr;
       setMetrics(data || null);
     } catch (err) {
@@ -1816,7 +1826,6 @@ const CustomerDetails = () => {
         </div>
 
         <aside className="customer-main-right">
-          {/* Snapshot (from customer_metrics table) */}
           <section className="section-card snapshot-section">
             <div className="section-header">
               <div className="section-title">
@@ -1839,36 +1848,51 @@ const CustomerDetails = () => {
               <div className="snapshot-grid">
                 <div className="snapshot-item">
                   <span className="snapshot-label">Number of ATMs</span>
-                  <span className="snapshot-value">{formatNumber(metrics?.atms)}</span>
+                  <span className="snapshot-value" title={formatNumber(metrics?.atms)}>
+                    {formatCompact(metrics?.atms)}
+                  </span>
                 </div>
                 <div className="snapshot-item">
                   <span className="snapshot-label">Debit cards</span>
-                  <span className="snapshot-value">{formatNumber(metrics?.debit_cards)}</span>
+                  <span className="snapshot-value" title={formatNumber(metrics?.debit_cards)}>
+                    {formatCompact(metrics?.debit_cards)}
+                  </span>
                 </div>
                 <div className="snapshot-item">
                   <span className="snapshot-label">Credit cards</span>
-                  <span className="snapshot-value">{formatNumber(metrics?.credit_cards)}</span>
+                  <span className="snapshot-value" title={formatNumber(metrics?.credit_cards)}>
+                    {formatCompact(metrics?.credit_cards)}
+                  </span>
                 </div>
                 <div className="snapshot-item">
                   <span className="snapshot-label">POS terminals</span>
-                  <span className="snapshot-value">{formatNumber(metrics?.pos_terminals)}</span>
+                  <span className="snapshot-value" title={formatNumber(metrics?.pos_terminals)}>
+                    {formatCompact(metrics?.pos_terminals)}
+                  </span>
                 </div>
                 <div className="snapshot-item">
                   <span className="snapshot-label">Merchants</span>
-                  <span className="snapshot-value">{formatNumber(metrics?.merchants)}</span>
+                  <span className="snapshot-value" title={formatNumber(metrics?.merchants)}>
+                    {formatCompact(metrics?.merchants)}
+                  </span>
                 </div>
                 <div className="snapshot-item">
                   <span className="snapshot-label">Transactions / day</span>
-                  <span className="snapshot-value">{formatNumber(metrics?.tx_per_day)}</span>
+                  <span className="snapshot-value" title={formatNumber(metrics?.tx_per_day)}>
+                    {formatCompact(metrics?.tx_per_day)}
+                  </span>
                 </div>
-
                 <div className="snapshot-item">
                   <span className="snapshot-label">Active cards</span>
-                  <span className="snapshot-value">{formatNumber(metrics?.active_cards)}</span>
+                  <span className="snapshot-value" title={formatNumber(metrics?.active_cards)}>
+                    {formatCompact(metrics?.active_cards)}
+                  </span>
                 </div>
                 <div className="snapshot-item">
                   <span className="snapshot-label">Digital users</span>
-                  <span className="snapshot-value">{formatNumber(metrics?.digital_users)}</span>
+                  <span className="snapshot-value" title={formatNumber(metrics?.digital_users)}>
+                    {formatCompact(metrics?.digital_users)}
+                  </span>
                 </div>
               </div>
             )}
