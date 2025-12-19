@@ -28,14 +28,15 @@
 /* ROOT CONTAINER */
 /* ROOT CONTAINER — let App.css control page padding/width */
 .projects-container {
-  padding: 0;            /* important: remove extra side padding */
+   border-radius: 16px;
+  padding: 12px 0; /* vertical breathing room */
   max-width: 100%;       /* important: remove 1600px constraint */
   margin: 0;             /* important: no auto-centering */
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "Segoe UI", sans-serif;
   color: var(--ink-0);
   min-height: auto;      /* avoid forcing full page height */
-  background: transparent; #f8fafc;
+   background: #f8fafc;
   font-size: 14px;       /* match your App.css base sizing */
 }
 /* Legacy class - keep it as "white panel" */
