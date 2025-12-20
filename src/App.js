@@ -50,6 +50,12 @@ function AppHeader() {
 function HomeDashboard() {
   const [projects, setProjects] = useState([]);
   const [customerIdMap, setCustomerIdMap] = useState({});
+  const [portfolioSummary, setPortfolioSummary] = useState({
+    totalCustomers: 0,
+    countries: 0,
+    accountManagers: 0
+  });
+
   const [loading, setLoading] = useState(true);
   const [homeError, setHomeError] = useState(null);
 
@@ -77,6 +83,29 @@ function HomeDashboard() {
 
         if (uniqueNames.length === 0) {
           setCustomerIdMap({});
+
+          // ✅ Still load portfolio summary even if there are no projects yet
+          const custSummaryRes = await supabase
+            .from('customers')
+            .select('id, country, account_manager')
+            .eq('is_archived', false);
+
+          if (custSummaryRes.error) throw custSummaryRes.error;
+
+          const custRows = custSummaryRes.data || [];
+          const countriesSet = new Set(
+            custRows.map((c) => (c.country || '').trim()).filter(Boolean)
+          );
+          const amSet = new Set(
+            custRows.map((c) => (c.account_manager || '').trim()).filter(Boolean)
+          );
+
+          setPortfolioSummary({
+            totalCustomers: custRows.length,
+            countries: countriesSet.size,
+            accountManagers: amSet.size
+          });
+
           return;
         }
 
@@ -92,6 +121,28 @@ function HomeDashboard() {
           map[(c.customer_name || '').trim()] = c.id;
         });
         setCustomerIdMap(map);
+
+        // ✅ Portfolio summary for KPI strip
+        const custSummaryRes = await supabase
+          .from('customers')
+          .select('id, country, account_manager')
+          .eq('is_archived', false);
+
+        if (custSummaryRes.error) throw custSummaryRes.error;
+
+        const custRows = custSummaryRes.data || [];
+        const countriesSet = new Set(
+          custRows.map((c) => (c.country || '').trim()).filter(Boolean)
+        );
+        const amSet = new Set(
+          custRows.map((c) => (c.account_manager || '').trim()).filter(Boolean)
+        );
+
+        setPortfolioSummary({
+          totalCustomers: custRows.length,
+          countries: countriesSet.size,
+          accountManagers: amSet.size
+        });
       } catch (err) {
         console.error('Error loading home dashboard data:', err);
         setHomeError('Failed to load dashboard summary.');
@@ -103,7 +154,7 @@ function HomeDashboard() {
     loadHomeData();
   }, []);
 
-  // ---------- Deal buckets (Home KPI strip) ----------
+  // ---------- Deal buckets ----------
   const openDeals = useMemo(() => {
     return (projects || []).filter((p) => {
       const stage = (p.sales_stage || '').toLowerCase();
@@ -111,20 +162,25 @@ function HomeDashboard() {
     });
   }, [projects]);
 
-  const earlyStageDeals = useMemo(() => {
-    return openDeals.filter((p) => {
-      const stage = (p.sales_stage || '').toLowerCase();
-      return stage === 'lead' || stage === 'opportunity';
-    });
-  }, [openDeals]);
+  const leadCount = useMemo(
+    () => openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'lead').length,
+    [openDeals]
+  );
 
-  const proposalDeals = useMemo(() => {
-    return openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'proposal');
-  }, [openDeals]);
+  const opportunityCount = useMemo(
+    () => openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'opportunity').length,
+    [openDeals]
+  );
 
-  const contractingDeals = useMemo(() => {
-    return openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'contracting');
-  }, [openDeals]);
+  const proposalCount = useMemo(
+    () => openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'proposal').length,
+    [openDeals]
+  );
+
+  const contractingCount = useMemo(
+    () => openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'contracting').length,
+    [openDeals]
+  );
 
   // ---------- Top deals to watch ----------
   const topDeals = useMemo(() => {
@@ -168,30 +224,62 @@ function HomeDashboard() {
 
   return (
     <div className="home-dashboard">
-      {/* ✅ VERY TOP: KPI strip */}
+      {/* ✅ ONE unified KPI strip (pipeline + portfolio). Projects will hide its own when embedded */}
       <section className="home-kpi-strip">
+        {/* Pipeline */}
         <div className="home-kpi-card">
-          <div className="home-kpi-label">Early-stage deals</div>
-          <div className="home-kpi-value">{earlyStageDeals.length}</div>
-          <div className="home-kpi-sub">Lead + Opportunity</div>
+          <div className="home-kpi-label">Lead</div>
+          <div className="home-kpi-value">{leadCount}</div>
+          <div className="home-kpi-sub">Early pipeline</div>
         </div>
 
         <div className="home-kpi-card">
-          <div className="home-kpi-label">RFPs / Proposal under preparation</div>
-          <div className="home-kpi-value">{proposalDeals.length}</div>
-          <div className="home-kpi-sub">Proposal stage</div>
+          <div className="home-kpi-label">Opportunity</div>
+          <div className="home-kpi-value">{opportunityCount}</div>
+          <div className="home-kpi-sub">Discovery ongoing</div>
         </div>
 
         <div className="home-kpi-card">
-          <div className="home-kpi-label">Deals close to signature</div>
-          <div className="home-kpi-value">{contractingDeals.length}</div>
-          <div className="home-kpi-sub">Contracting stage</div>
+          <div className="home-kpi-label">Proposal</div>
+          <div className="home-kpi-value">{proposalCount}</div>
+          <div className="home-kpi-sub">RFP / proposal</div>
+        </div>
+
+        <div className="home-kpi-card">
+          <div className="home-kpi-label">Contracting</div>
+          <div className="home-kpi-value">{contractingCount}</div>
+          <div className="home-kpi-sub">Close to signature</div>
         </div>
 
         <div className="home-kpi-card">
           <div className="home-kpi-label">Open deals</div>
           <div className="home-kpi-value">{openDeals.length}</div>
-          <div className="home-kpi-sub">Anything not Done / Closed</div>
+          <div className="home-kpi-sub">Not done / closed</div>
+        </div>
+
+        {/* Portfolio */}
+        <div className="home-kpi-card">
+          <div className="home-kpi-label">Customers</div>
+          <div className="home-kpi-value">{portfolioSummary.totalCustomers}</div>
+          <div className="home-kpi-sub">Active (not archived)</div>
+        </div>
+
+        <div className="home-kpi-card">
+          <div className="home-kpi-label">Countries</div>
+          <div className="home-kpi-value">{portfolioSummary.countries}</div>
+          <div className="home-kpi-sub">Coverage</div>
+        </div>
+
+        <div className="home-kpi-card">
+          <div className="home-kpi-label">Account managers</div>
+          <div className="home-kpi-value">{portfolioSummary.accountManagers}</div>
+          <div className="home-kpi-sub">Unique AMs</div>
+        </div>
+
+        <div className="home-kpi-card">
+          <div className="home-kpi-label">Active deals</div>
+          <div className="home-kpi-value">{openDeals.length}</div>
+          <div className="home-kpi-sub">Same as open deals</div>
         </div>
       </section>
 
@@ -265,9 +353,9 @@ function HomeDashboard() {
         </section>
       </div>
 
-      {/* MAIN: Customer portfolio */}
+      {/* MAIN: Customer portfolio (embedded mode hides KPIs/summaries inside Projects) */}
       <div className="home-main-column">
-        <Projects />
+        <Projects embedded />
       </div>
     </div>
   );
