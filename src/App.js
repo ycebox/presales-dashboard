@@ -226,60 +226,127 @@ function HomeDashboard() {
     <div className="home-dashboard">
       {/* ✅ ONE unified KPI strip (pipeline + portfolio). Projects will hide its own when embedded */}
       <section className="home-kpi-strip">
+        <div className="home-kpi-section-label">Pipeline</div>
+
         {/* Pipeline */}
-        <div className="home-kpi-card">
-          <div className="home-kpi-label">Lead</div>
+        <div className="home-kpi-card" data-tone="blue">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>
+              L
+            </div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Lead</div>
+              <div className="home-kpi-sub">Early pipeline</div>
+            </div>
+          </div>
           <div className="home-kpi-value">{leadCount}</div>
-          <div className="home-kpi-sub">Early pipeline</div>
         </div>
 
-        <div className="home-kpi-card">
-          <div className="home-kpi-label">Opportunity</div>
+        <div className="home-kpi-card" data-tone="teal">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>
+              O
+            </div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Opportunity</div>
+              <div className="home-kpi-sub">Discovery ongoing</div>
+            </div>
+          </div>
           <div className="home-kpi-value">{opportunityCount}</div>
-          <div className="home-kpi-sub">Discovery ongoing</div>
         </div>
 
-        <div className="home-kpi-card">
-          <div className="home-kpi-label">Proposal</div>
+        <div className="home-kpi-card" data-tone="amber">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>
+              P
+            </div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Proposal</div>
+              <div className="home-kpi-sub">RFP / proposal</div>
+            </div>
+          </div>
           <div className="home-kpi-value">{proposalCount}</div>
-          <div className="home-kpi-sub">RFP / proposal</div>
         </div>
 
-        <div className="home-kpi-card">
-          <div className="home-kpi-label">Contracting</div>
+        <div className="home-kpi-card" data-tone="indigo">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>
+              C
+            </div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Contracting</div>
+              <div className="home-kpi-sub">Close to signature</div>
+            </div>
+          </div>
           <div className="home-kpi-value">{contractingCount}</div>
-          <div className="home-kpi-sub">Close to signature</div>
         </div>
 
-        <div className="home-kpi-card">
-          <div className="home-kpi-label">Open deals</div>
+        <div className="home-kpi-card" data-tone="slate">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>
+              ✦
+            </div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Open deals</div>
+              <div className="home-kpi-sub">Not done / closed</div>
+            </div>
+          </div>
           <div className="home-kpi-value">{openDeals.length}</div>
-          <div className="home-kpi-sub">Not done / closed</div>
         </div>
+
+        <div className="home-kpi-section-label">Portfolio</div>
 
         {/* Portfolio */}
-        <div className="home-kpi-card">
-          <div className="home-kpi-label">Customers</div>
+        <div className="home-kpi-card" data-tone="blue">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>
+              C
+            </div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Customers</div>
+              <div className="home-kpi-sub">Active (not archived)</div>
+            </div>
+          </div>
           <div className="home-kpi-value">{portfolioSummary.totalCustomers}</div>
-          <div className="home-kpi-sub">Active (not archived)</div>
         </div>
 
-        <div className="home-kpi-card">
-          <div className="home-kpi-label">Countries</div>
+        <div className="home-kpi-card" data-tone="teal">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>
+              🌏
+            </div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Countries</div>
+              <div className="home-kpi-sub">Coverage</div>
+            </div>
+          </div>
           <div className="home-kpi-value">{portfolioSummary.countries}</div>
-          <div className="home-kpi-sub">Coverage</div>
         </div>
 
-        <div className="home-kpi-card">
-          <div className="home-kpi-label">Account managers</div>
+        <div className="home-kpi-card" data-tone="indigo">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>
+              AM
+            </div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Account managers</div>
+              <div className="home-kpi-sub">Unique AMs</div>
+            </div>
+          </div>
           <div className="home-kpi-value">{portfolioSummary.accountManagers}</div>
-          <div className="home-kpi-sub">Unique AMs</div>
         </div>
 
-        <div className="home-kpi-card">
-          <div className="home-kpi-label">Active deals</div>
+        <div className="home-kpi-card" data-tone="amber">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>
+              $
+            </div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Active deals</div>
+              <div className="home-kpi-sub">Same as open deals</div>
+            </div>
+          </div>
           <div className="home-kpi-value">{openDeals.length}</div>
-          <div className="home-kpi-sub">Same as open deals</div>
         </div>
       </section>
 
