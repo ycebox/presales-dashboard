@@ -22,10 +22,11 @@
 }
 
 .topdeals-title h2 {
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: 24px;      /* same as Customer Portfolio */
+  font-weight: 700;    /* optional: slightly stronger */
   color: #e5e7eb;
   margin: 0;
+  line-height: 1.2;
 }
 
 .topdeals-subtitle {
