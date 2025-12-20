@@ -244,16 +244,18 @@ a {
 /* ========= KPI Strip ========= */
 
 /* KPI is now at the very top, so give it a bit more space under */
+/* ... keep everything else the same ... */
+
 .home-kpi-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
 
-  /* key change: make it feel like a top summary bar */
   margin-top: 0;
-  margin-bottom: 12px; /* was 4px */
+  margin-bottom: 12px;
 }
 
+/* ... keep everything else the same ... */
 .home-kpi-card {
   background: rgba(255, 255, 255, 0.94);
   border-radius: var(--radius);
