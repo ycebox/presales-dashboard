@@ -1,3 +1,4 @@
+// src/Projects.js
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { supabase } from './supabaseClient';
@@ -17,7 +18,7 @@ import {
 } from 'lucide-react';
 import './Projects.css';
 
-function Projects() {
+function Projects({ embedded = false }) {
   const navigate = useNavigate();
 
   const [customers, setCustomers] = useState([]);
@@ -56,7 +57,7 @@ function Projects() {
     status_id: ''
   });
 
-  // Deals summary (for Active Deals card + KPI strip)
+  // Deals summary
   const [dealsSummary, setDealsSummary] = useState({
     activeCount: 0,
     byStage: {}
@@ -67,7 +68,6 @@ function Projects() {
     setTimeout(() => setToast(null), 3200);
   }, []);
 
-  // Fetch customers + statuses
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -102,7 +102,6 @@ function Projects() {
     fetchData();
   }, []);
 
-  // Fetch deals summary (Active deals by stage)
   useEffect(() => {
     const fetchDealsSummary = async () => {
       try {
@@ -119,7 +118,6 @@ function Projects() {
           return;
         }
 
-        // Active = not Done/Closed/Completed
         const activeProjects = data.filter((p) => {
           const stage = String(p.sales_stage || '').trim().toLowerCase();
           if (!stage) return true;
@@ -393,7 +391,6 @@ function Projects() {
     );
   }, [searchTerm, filters]);
 
-  // --------- UI Helpers ----------
   const EmptyState = () => (
     <div className="empty-state">
       <div className="empty-state-icon">
@@ -475,26 +472,28 @@ function Projects() {
           </div>
         </header>
 
-        <section className="portfolio-kpi-strip">
-          <div className="portfolio-kpi-card">
-            <div className="portfolio-kpi-label">Lead</div>
-            <div className="portfolio-kpi-value">{kpiCounts.lead}</div>
-          </div>
-          <div className="portfolio-kpi-card">
-            <div className="portfolio-kpi-label">Opportunity</div>
-            <div className="portfolio-kpi-value">{kpiCounts.opportunity}</div>
-          </div>
-          <div className="portfolio-kpi-card">
-            <div className="portfolio-kpi-label">Proposal</div>
-            <div className="portfolio-kpi-value">{kpiCounts.proposal}</div>
-          </div>
-          <div className="portfolio-kpi-card">
-            <div className="portfolio-kpi-label">Contracting</div>
-            <div className="portfolio-kpi-value">{kpiCounts.contracting}</div>
-          </div>
-        </section>
+        {!embedded && (
+          <section className="portfolio-kpi-strip">
+            <div className="portfolio-kpi-card">
+              <div className="portfolio-kpi-label">Lead</div>
+              <div className="portfolio-kpi-value">{kpiCounts.lead}</div>
+            </div>
+            <div className="portfolio-kpi-card">
+              <div className="portfolio-kpi-label">Opportunity</div>
+              <div className="portfolio-kpi-value">{kpiCounts.opportunity}</div>
+            </div>
+            <div className="portfolio-kpi-card">
+              <div className="portfolio-kpi-label">Proposal</div>
+              <div className="portfolio-kpi-value">{kpiCounts.proposal}</div>
+            </div>
+            <div className="portfolio-kpi-card">
+              <div className="portfolio-kpi-label">Contracting</div>
+              <div className="portfolio-kpi-value">{kpiCounts.contracting}</div>
+            </div>
+          </section>
+        )}
 
-        {portfolioStats && (
+        {!embedded && portfolioStats && (
           <section className="portfolio-summary-section">
             <div className="portfolio-summary-grid">
               <div className="summary-card">
@@ -745,7 +744,9 @@ function Projects() {
                   <label>Account Manager</label>
                   <input
                     value={newCustomer.account_manager}
-                    onChange={(e) => setNewCustomer((p) => ({ ...p, account_manager: e.target.value }))}
+                    onChange={(e) =>
+                      setNewCustomer((p) => ({ ...p, account_manager: e.target.value }))
+                    }
                     placeholder="e.g., Juan Dela Cruz"
                   />
                 </div>
@@ -754,7 +755,9 @@ function Projects() {
                   <label>Primary Presales</label>
                   <input
                     value={newCustomer.primary_presales}
-                    onChange={(e) => setNewCustomer((p) => ({ ...p, primary_presales: e.target.value }))}
+                    onChange={(e) =>
+                      setNewCustomer((p) => ({ ...p, primary_presales: e.target.value }))
+                    }
                     placeholder="e.g., Jonathan"
                   />
                 </div>
