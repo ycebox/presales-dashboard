@@ -19,8 +19,7 @@ import {
 import './Projects.css';
 
 /**
- * ✅ Modal OUTSIDE Projects()
- * Fixes input losing focus after 1 character.
+ * Modal OUTSIDE Projects() so inputs won't lose focus on re-render.
  */
 function Modal({ onClose, children }) {
   return ReactDOM.createPortal(
@@ -40,7 +39,7 @@ function Projects({ embedded = false }) {
   const [customers, setCustomers] = useState([]);
   const [customerStatuses, setCustomerStatuses] = useState([]);
   const [countries, setCountries] = useState([]);
-  const [accountManagers, setAccountManagers] = useState([]); // ✅ from reference table
+  const [accountManagers, setAccountManagers] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -57,18 +56,15 @@ function Projects({ embedded = false }) {
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // ✅ Modal fields (removed: primary_presales, industry_vertical, technical_complexity)
+  // ✅ Matches YOUR customers schema
   const [newCustomer, setNewCustomer] = useState({
     customer_name: '',
     account_manager: '',
     country: '',
     customer_type: 'New',
-    relationship_strength: 'Medium',
-    health_score: '',
     key_stakeholders: [],
-    competitors: [],
     notes: '',
-    status_id: ''
+    status_id: '' // keep as string in UI, convert to number on save
   });
 
   const [dealsSummary, setDealsSummary] = useState({
@@ -87,7 +83,7 @@ function Projects({ embedded = false }) {
       setError(null);
 
       try {
-        // Statuses
+        // 1) Statuses
         const statusRes = await supabase
           .from('customer_statuses')
           .select('*')
@@ -96,7 +92,7 @@ function Projects({ embedded = false }) {
         if (statusRes.error) throw statusRes.error;
         setCustomerStatuses(statusRes.data || []);
 
-        // ✅ Countries reference table
+        // 2) Countries reference table
         const countriesRes = await supabase
           .from('countries')
           .select('name')
@@ -105,7 +101,7 @@ function Projects({ embedded = false }) {
         if (countriesRes.error) throw countriesRes.error;
         setCountries((countriesRes.data || []).map((c) => c.name));
 
-        // ✅ Account Managers reference table
+        // 3) Account managers reference table
         const amRes = await supabase
           .from('account_managers')
           .select('name')
@@ -114,7 +110,7 @@ function Projects({ embedded = false }) {
         if (amRes.error) throw amRes.error;
         setAccountManagers((amRes.data || []).map((a) => a.name));
 
-        // Customers
+        // 4) Customers
         const customersRes = await supabase
           .from('customers')
           .select('*')
@@ -124,7 +120,7 @@ function Projects({ embedded = false }) {
         if (customersRes.error) throw customersRes.error;
         setCustomers(customersRes.data || []);
       } catch (err) {
-        console.error('Error fetching customers:', err);
+        console.error('Error fetching data:', err);
         setError('Failed to load customers.');
       } finally {
         setLoading(false);
@@ -134,17 +130,16 @@ function Projects({ embedded = false }) {
     fetchData();
   }, []);
 
+  // Deals summary (optional KPI)
   useEffect(() => {
     const fetchDealsSummary = async () => {
       try {
         const { data, error } = await supabase.from('projects').select('id, sales_stage');
-
         if (error) {
           console.error('Error fetching projects for deals summary:', error);
           setDealsSummary({ activeCount: 0, byStage: {} });
           return;
         }
-
         if (!data || data.length === 0) {
           setDealsSummary({ activeCount: 0, byStage: {} });
           return;
@@ -165,10 +160,7 @@ function Projects({ embedded = false }) {
           byStage[stage] = (byStage[stage] || 0) + 1;
         });
 
-        setDealsSummary({
-          activeCount: activeProjects.length,
-          byStage
-        });
+        setDealsSummary({ activeCount: activeProjects.length, byStage });
       } catch (err) {
         console.error('Unexpected error in deals summary:', err);
         setDealsSummary({ activeCount: 0, byStage: {} });
@@ -210,7 +202,7 @@ function Projects({ embedded = false }) {
       list = list.filter((c) => {
         const n = String(c.customer_name || '').toLowerCase();
         const a = String(c.account_manager || '').toLowerCase();
-        const p = String(c.primary_presales || '').toLowerCase(); // still searchable
+        const p = String(c.primary_presales || '').toLowerCase();
         const co = String(c.country || '').toLowerCase();
         return n.includes(t) || a.includes(t) || p.includes(t) || co.includes(t);
       });
@@ -293,13 +285,20 @@ function Projects({ embedded = false }) {
 
   const handleSaveCustomer = async () => {
     try {
+      // ✅ payload ONLY includes columns that exist in your customers table
       const payload = {
-        ...newCustomer,
-        status_id: newCustomer.status_id ? Number(newCustomer.status_id) : null,
-        health_score: newCustomer.health_score ? Number(newCustomer.health_score) : null
+        customer_name: (newCustomer.customer_name || '').trim(),
+        account_manager: newCustomer.account_manager || null,
+        country: newCustomer.country || null,
+        customer_type: newCustomer.customer_type || null,
+        notes: newCustomer.notes || null,
+        key_stakeholders: Array.isArray(newCustomer.key_stakeholders)
+          ? newCustomer.key_stakeholders
+          : [],
+        status_id: newCustomer.status_id ? Number(newCustomer.status_id) : null
       };
 
-      if (!payload.customer_name || !payload.customer_name.trim()) {
+      if (!payload.customer_name) {
         showToast('Customer name is required.', 'error');
         return;
       }
@@ -351,10 +350,7 @@ function Projects({ embedded = false }) {
       account_manager: '',
       country: '',
       customer_type: 'New',
-      relationship_strength: 'Medium',
-      health_score: '',
       key_stakeholders: [],
-      competitors: [],
       notes: '',
       status_id: ''
     });
@@ -374,10 +370,7 @@ function Projects({ embedded = false }) {
       account_manager: customer.account_manager || '',
       country: customer.country || '',
       customer_type: customer.customer_type || 'New',
-      relationship_strength: customer.relationship_strength || 'Medium',
-      health_score: customer.health_score ?? '',
       key_stakeholders: customer.key_stakeholders || [],
-      competitors: customer.competitors || [],
       notes: customer.notes || '',
       status_id: customer.status_id ?? ''
     });
@@ -455,8 +448,7 @@ function Projects({ embedded = false }) {
           <div className="header-title-section">
             <h2>Customer Portfolio</h2>
             <p className="header-subtitle">
-              {filteredCustomers.length} of {customers.length} customer
-              {customers.length !== 1 ? 's' : ''}
+              {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}
               {portfolioStats && (
                 <>
                   {' • '}
@@ -560,7 +552,6 @@ function Projects({ embedded = false }) {
             </div>
 
             <div className="filters-grid">
-              {/* ✅ Country filter from reference table */}
               <select
                 className="filter-select"
                 value={filters.country}
@@ -568,13 +559,10 @@ function Projects({ embedded = false }) {
               >
                 <option value="">All Countries</option>
                 {countries.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
 
-              {/* ✅ Account Manager filter from reference table */}
               <select
                 className="filter-select"
                 value={filters.account_manager}
@@ -582,9 +570,7 @@ function Projects({ embedded = false }) {
               >
                 <option value="">All Account Managers</option>
                 {accountManagers.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
+                  <option key={a} value={a}>{a}</option>
                 ))}
               </select>
 
@@ -606,9 +592,7 @@ function Projects({ embedded = false }) {
               >
                 <option value="">All Status</option>
                 {customerStatuses.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
+                  <option key={s.id} value={s.id}>{s.label}</option>
                 ))}
               </select>
             </div>
@@ -723,15 +707,12 @@ function Projects({ embedded = false }) {
                   <label>Customer Name *</label>
                   <input
                     value={newCustomer.customer_name}
-                    onChange={(e) =>
-                      setNewCustomer((p) => ({ ...p, customer_name: e.target.value }))
-                    }
+                    onChange={(e) => setNewCustomer((p) => ({ ...p, customer_name: e.target.value }))}
                     placeholder="e.g., Metrobank"
                     autoFocus
                   />
                 </div>
 
-                {/* ✅ Country dropdown from reference table */}
                 <div className="form-field">
                   <label>Country</label>
                   <select
@@ -740,14 +721,11 @@ function Projects({ embedded = false }) {
                   >
                     <option value="">Select country</option>
                     {countries.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
+                      <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
                 </div>
 
-                {/* ✅ Account manager dropdown from reference table */}
                 <div className="form-field">
                   <label>Account Manager</label>
                   <select
@@ -758,9 +736,7 @@ function Projects({ embedded = false }) {
                   >
                     <option value="">Select account manager</option>
                     {accountManagers.map((a) => (
-                      <option key={a} value={a}>
-                        {a}
-                      </option>
+                      <option key={a} value={a}>{a}</option>
                     ))}
                   </select>
                 </div>
@@ -769,9 +745,7 @@ function Projects({ embedded = false }) {
                   <label>Customer Type</label>
                   <select
                     value={newCustomer.customer_type}
-                    onChange={(e) =>
-                      setNewCustomer((p) => ({ ...p, customer_type: e.target.value }))
-                    }
+                    onChange={(e) => setNewCustomer((p) => ({ ...p, customer_type: e.target.value }))}
                   >
                     <option value="New">New</option>
                     <option value="Existing">Existing</option>
@@ -787,33 +761,17 @@ function Projects({ embedded = false }) {
                   >
                     <option value="">Not Set</option>
                     {customerStatuses.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.label}
-                      </option>
+                      <option key={s.id} value={s.id}>{s.label}</option>
                     ))}
                   </select>
                 </div>
 
-                <div className="form-field">
-                  <label>Relationship Strength</label>
-                  <select
-                    value={newCustomer.relationship_strength}
-                    onChange={(e) =>
-                      setNewCustomer((p) => ({ ...p, relationship_strength: e.target.value }))
-                    }
-                  >
-                    <option value="Weak">Weak</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Strong">Strong</option>
-                  </select>
-                </div>
-
                 <div className="form-field full">
-                  <label>Notes (first capture)</label>
+                  <label>Notes</label>
                   <textarea
                     value={newCustomer.notes}
                     onChange={(e) => setNewCustomer((p) => ({ ...p, notes: e.target.value }))}
-                    placeholder="Key context: what they want, stakeholders, next step…"
+                    placeholder="Quick context: what’s happening, next step, blockers…"
                   />
                 </div>
               </div>
