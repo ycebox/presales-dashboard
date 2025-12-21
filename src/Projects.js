@@ -40,6 +40,7 @@ function Projects({ embedded = false }) {
   const [customers, setCustomers] = useState([]);
   const [customerStatuses, setCustomerStatuses] = useState([]);
   const [countries, setCountries] = useState([]);
+  const [accountManagers, setAccountManagers] = useState([]); // ✅ from reference table
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -103,6 +104,15 @@ function Projects({ embedded = false }) {
 
         if (countriesRes.error) throw countriesRes.error;
         setCountries((countriesRes.data || []).map((c) => c.name));
+
+        // ✅ Account Managers reference table
+        const amRes = await supabase
+          .from('account_managers')
+          .select('name')
+          .order('name', { ascending: true });
+
+        if (amRes.error) throw amRes.error;
+        setAccountManagers((amRes.data || []).map((a) => a.name));
 
         // Customers
         const customersRes = await supabase
@@ -183,14 +193,6 @@ function Projects({ embedded = false }) {
       contracting: findCount('Contracting')
     };
   }, [dealsSummary]);
-
-  const uniqueAccountManagers = useMemo(() => {
-    const set = new Set();
-    customers.forEach((c) => {
-      if (c.account_manager) set.add(c.account_manager);
-    });
-    return Array.from(set).sort();
-  }, [customers]);
 
   const customerCountriesCount = useMemo(() => {
     const set = new Set();
@@ -453,7 +455,8 @@ function Projects({ embedded = false }) {
           <div className="header-title-section">
             <h2>Customer Portfolio</h2>
             <p className="header-subtitle">
-              {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}
+              {filteredCustomers.length} of {customers.length} customer
+              {customers.length !== 1 ? 's' : ''}
               {portfolioStats && (
                 <>
                   {' • '}
@@ -522,7 +525,7 @@ function Projects({ embedded = false }) {
                 </div>
                 <div className="summary-card-content">
                   <div className="summary-card-label">Account Managers</div>
-                  <div className="summary-card-value">{uniqueAccountManagers.length}</div>
+                  <div className="summary-card-value">{accountManagers.length}</div>
                 </div>
               </div>
 
@@ -571,13 +574,14 @@ function Projects({ embedded = false }) {
                 ))}
               </select>
 
+              {/* ✅ Account Manager filter from reference table */}
               <select
                 className="filter-select"
                 value={filters.account_manager}
                 onChange={(e) => setFilters((p) => ({ ...p, account_manager: e.target.value }))}
               >
                 <option value="">All Account Managers</option>
-                {uniqueAccountManagers.map((a) => (
+                {accountManagers.map((a) => (
                   <option key={a} value={a}>
                     {a}
                   </option>
@@ -743,22 +747,22 @@ function Projects({ embedded = false }) {
                   </select>
                 </div>
 
-                {/* ✅ Account manager dropdown (datalist from existing AM values) */}
+                {/* ✅ Account manager dropdown from reference table */}
                 <div className="form-field">
                   <label>Account Manager</label>
-                  <input
-                    list="am-options"
+                  <select
                     value={newCustomer.account_manager}
                     onChange={(e) =>
                       setNewCustomer((p) => ({ ...p, account_manager: e.target.value }))
                     }
-                    placeholder="Select or type…"
-                  />
-                  <datalist id="am-options">
-                    {uniqueAccountManagers.map((a) => (
-                      <option key={a} value={a} />
+                  >
+                    <option value="">Select account manager</option>
+                    {accountManagers.map((a) => (
+                      <option key={a} value={a}>
+                        {a}
+                      </option>
                     ))}
-                  </datalist>
+                  </select>
                 </div>
 
                 <div className="form-field">
