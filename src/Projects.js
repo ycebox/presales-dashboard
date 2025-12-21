@@ -56,7 +56,6 @@ function Projects({ embedded = false }) {
     status_id: ''
   });
 
-  // Deals summary
   const [dealsSummary, setDealsSummary] = useState({
     activeCount: 0,
     byStage: {}
@@ -644,7 +643,7 @@ function Projects({ embedded = false }) {
                 <table className="customers-table">
                   <thead>
                     <tr>
-                      <th>Customer</th>
+                      <th className="th-customer">Customer</th>
                       <th>Country</th>
                       <th>Account Manager</th>
                       <th>Type</th>
@@ -680,20 +679,22 @@ function Projects({ embedded = false }) {
                           </td>
 
                           <td className="cell-actions">
-                            <button
-                              className="icon-btn"
-                              onClick={() => openEditCustomerModal(customer)}
-                              title="Edit"
-                            >
-                              <Edit3 size={14} />
-                            </button>
-                            <button
-                              className="icon-btn danger"
-                              onClick={() => deleteCustomer(customer)}
-                              title="Archive"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            <div className="actions-wrap">
+                              <button
+                                className="icon-btn"
+                                onClick={() => openEditCustomerModal(customer)}
+                                title="Edit"
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                              <button
+                                className="icon-btn danger"
+                                onClick={() => deleteCustomer(customer)}
+                                title="Archive"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
