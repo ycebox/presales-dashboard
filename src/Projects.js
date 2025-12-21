@@ -39,6 +39,8 @@ function Projects({ embedded = false }) {
 
   const [customers, setCustomers] = useState([]);
   const [customerStatuses, setCustomerStatuses] = useState([]);
+  const [countries, setCountries] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -54,15 +56,12 @@ function Projects({ embedded = false }) {
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // ✅ Removed: industry_vertical, technical_complexity, primary_presales (from modal)
+  // ✅ Modal fields (removed: primary_presales, industry_vertical, technical_complexity)
   const [newCustomer, setNewCustomer] = useState({
     customer_name: '',
     account_manager: '',
     country: '',
     customer_type: 'New',
-    year_first_closed: '',
-    company_size: '',
-    annual_revenue: '',
     relationship_strength: 'Medium',
     health_score: '',
     key_stakeholders: [],
@@ -87,13 +86,25 @@ function Projects({ embedded = false }) {
       setError(null);
 
       try {
+        // Statuses
         const statusRes = await supabase
           .from('customer_statuses')
           .select('*')
           .order('id', { ascending: true });
+
         if (statusRes.error) throw statusRes.error;
         setCustomerStatuses(statusRes.data || []);
 
+        // ✅ Countries reference table
+        const countriesRes = await supabase
+          .from('countries')
+          .select('name')
+          .order('name', { ascending: true });
+
+        if (countriesRes.error) throw countriesRes.error;
+        setCountries((countriesRes.data || []).map((c) => c.name));
+
+        // Customers
         const customersRes = await supabase
           .from('customers')
           .select('*')
@@ -173,6 +184,22 @@ function Projects({ embedded = false }) {
     };
   }, [dealsSummary]);
 
+  const uniqueAccountManagers = useMemo(() => {
+    const set = new Set();
+    customers.forEach((c) => {
+      if (c.account_manager) set.add(c.account_manager);
+    });
+    return Array.from(set).sort();
+  }, [customers]);
+
+  const customerCountriesCount = useMemo(() => {
+    const set = new Set();
+    customers.forEach((c) => {
+      if (c.country) set.add(c.country);
+    });
+    return set.size;
+  }, [customers]);
+
   const filteredCustomers = useMemo(() => {
     let list = [...customers];
 
@@ -181,7 +208,7 @@ function Projects({ embedded = false }) {
       list = list.filter((c) => {
         const n = String(c.customer_name || '').toLowerCase();
         const a = String(c.account_manager || '').toLowerCase();
-        const p = String(c.primary_presales || '').toLowerCase(); // still searchable if present in DB
+        const p = String(c.primary_presales || '').toLowerCase(); // still searchable
         const co = String(c.country || '').toLowerCase();
         return n.includes(t) || a.includes(t) || p.includes(t) || co.includes(t);
       });
@@ -203,22 +230,6 @@ function Projects({ embedded = false }) {
     return list;
   }, [customers, searchTerm, filters]);
 
-  const uniqueCountries = useMemo(() => {
-    const set = new Set();
-    customers.forEach((c) => {
-      if (c.country) set.add(c.country);
-    });
-    return Array.from(set).sort();
-  }, [customers]);
-
-  const uniqueAccountManagers = useMemo(() => {
-    const set = new Set();
-    customers.forEach((c) => {
-      if (c.account_manager) set.add(c.account_manager);
-    });
-    return Array.from(set).sort();
-  }, [customers]);
-
   const portfolioStats = useMemo(() => {
     if (!customers || customers.length === 0) return null;
 
@@ -230,10 +241,10 @@ function Projects({ embedded = false }) {
 
     return {
       totalCustomers: customers.length,
-      uniqueCountries: uniqueCountries.length,
+      uniqueCountries: customerCountriesCount,
       byType: typesCount
     };
-  }, [customers, uniqueCountries]);
+  }, [customers, customerCountriesCount]);
 
   const getCustomerStatus = (customer) => {
     const id = customer?.status_id;
@@ -296,6 +307,7 @@ function Projects({ embedded = false }) {
           .from('customers')
           .update(payload)
           .eq('id', editingCustomer.id);
+
         if (error) throw error;
 
         setCustomers((prev) =>
@@ -309,6 +321,7 @@ function Projects({ embedded = false }) {
           .insert([payload])
           .select('*')
           .single();
+
         if (error) throw error;
 
         setCustomers((prev) => {
@@ -336,9 +349,6 @@ function Projects({ embedded = false }) {
       account_manager: '',
       country: '',
       customer_type: 'New',
-      year_first_closed: '',
-      company_size: '',
-      annual_revenue: '',
       relationship_strength: 'Medium',
       health_score: '',
       key_stakeholders: [],
@@ -362,9 +372,6 @@ function Projects({ embedded = false }) {
       account_manager: customer.account_manager || '',
       country: customer.country || '',
       customer_type: customer.customer_type || 'New',
-      year_first_closed: customer.year_first_closed || '',
-      company_size: customer.company_size || '',
-      annual_revenue: customer.annual_revenue || '',
       relationship_strength: customer.relationship_strength || 'Medium',
       health_score: customer.health_score ?? '',
       key_stakeholders: customer.key_stakeholders || [],
@@ -446,8 +453,7 @@ function Projects({ embedded = false }) {
           <div className="header-title-section">
             <h2>Customer Portfolio</h2>
             <p className="header-subtitle">
-              {filteredCustomers.length} of {customers.length} customer
-              {customers.length !== 1 ? 's' : ''}
+              {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}
               {portfolioStats && (
                 <>
                   {' • '}
@@ -551,13 +557,14 @@ function Projects({ embedded = false }) {
             </div>
 
             <div className="filters-grid">
+              {/* ✅ Country filter from reference table */}
               <select
                 className="filter-select"
                 value={filters.country}
                 onChange={(e) => setFilters((p) => ({ ...p, country: e.target.value }))}
               >
                 <option value="">All Countries</option>
-                {uniqueCountries.map((c) => (
+                {countries.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -712,27 +719,31 @@ function Projects({ embedded = false }) {
                   <label>Customer Name *</label>
                   <input
                     value={newCustomer.customer_name}
-                    onChange={(e) => setNewCustomer((p) => ({ ...p, customer_name: e.target.value }))}
+                    onChange={(e) =>
+                      setNewCustomer((p) => ({ ...p, customer_name: e.target.value }))
+                    }
                     placeholder="e.g., Metrobank"
                     autoFocus
                   />
                 </div>
 
+                {/* ✅ Country dropdown from reference table */}
                 <div className="form-field">
                   <label>Country</label>
-                  <input
-                    list="country-options"
+                  <select
                     value={newCustomer.country}
                     onChange={(e) => setNewCustomer((p) => ({ ...p, country: e.target.value }))}
-                    placeholder="Select or type…"
-                  />
-                  <datalist id="country-options">
-                    {uniqueCountries.map((c) => (
-                      <option key={c} value={c} />
+                  >
+                    <option value="">Select country</option>
+                    {countries.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
                     ))}
-                  </datalist>
+                  </select>
                 </div>
 
+                {/* ✅ Account manager dropdown (datalist from existing AM values) */}
                 <div className="form-field">
                   <label>Account Manager</label>
                   <input
@@ -754,7 +765,9 @@ function Projects({ embedded = false }) {
                   <label>Customer Type</label>
                   <select
                     value={newCustomer.customer_type}
-                    onChange={(e) => setNewCustomer((p) => ({ ...p, customer_type: e.target.value }))}
+                    onChange={(e) =>
+                      setNewCustomer((p) => ({ ...p, customer_type: e.target.value }))
+                    }
                   >
                     <option value="New">New</option>
                     <option value="Existing">Existing</option>
