@@ -18,6 +18,22 @@ import {
 } from 'lucide-react';
 import './Projects.css';
 
+/**
+ * ✅ Modal OUTSIDE Projects()
+ * Fixes input losing focus after 1 character.
+ */
+function Modal({ onClose, children }) {
+  return ReactDOM.createPortal(
+    <div
+      className="modal-overlay"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
+    >
+      <div className="modal-content">{children}</div>
+    </div>,
+    document.body
+  );
+}
+
 function Projects({ embedded = false }) {
   const navigate = useNavigate();
 
@@ -38,17 +54,15 @@ function Projects({ embedded = false }) {
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [toast, setToast] = useState(null);
 
+  // ✅ Removed: industry_vertical, technical_complexity, primary_presales (from modal)
   const [newCustomer, setNewCustomer] = useState({
     customer_name: '',
     account_manager: '',
-    primary_presales: '',
     country: '',
-    industry_vertical: '',
     customer_type: 'New',
     year_first_closed: '',
     company_size: '',
     annual_revenue: '',
-    technical_complexity: 'Medium',
     relationship_strength: 'Medium',
     health_score: '',
     key_stakeholders: [],
@@ -57,7 +71,6 @@ function Projects({ embedded = false }) {
     status_id: ''
   });
 
-  // Deals summary
   const [dealsSummary, setDealsSummary] = useState({
     activeCount: 0,
     byStage: {}
@@ -79,7 +92,6 @@ function Projects({ embedded = false }) {
           .select('*')
           .order('id', { ascending: true });
         if (statusRes.error) throw statusRes.error;
-
         setCustomerStatuses(statusRes.data || []);
 
         const customersRes = await supabase
@@ -89,7 +101,6 @@ function Projects({ embedded = false }) {
           .order('customer_name', { ascending: true });
 
         if (customersRes.error) throw customersRes.error;
-
         setCustomers(customersRes.data || []);
       } catch (err) {
         console.error('Error fetching customers:', err);
@@ -170,7 +181,7 @@ function Projects({ embedded = false }) {
       list = list.filter((c) => {
         const n = String(c.customer_name || '').toLowerCase();
         const a = String(c.account_manager || '').toLowerCase();
-        const p = String(c.primary_presales || '').toLowerCase();
+        const p = String(c.primary_presales || '').toLowerCase(); // still searchable if present in DB
         const co = String(c.country || '').toLowerCase();
         return n.includes(t) || a.includes(t) || p.includes(t) || co.includes(t);
       });
@@ -323,14 +334,11 @@ function Projects({ embedded = false }) {
     setNewCustomer({
       customer_name: '',
       account_manager: '',
-      primary_presales: '',
       country: '',
-      industry_vertical: '',
       customer_type: 'New',
       year_first_closed: '',
       company_size: '',
       annual_revenue: '',
-      technical_complexity: 'Medium',
       relationship_strength: 'Medium',
       health_score: '',
       key_stakeholders: [],
@@ -352,14 +360,11 @@ function Projects({ embedded = false }) {
     setNewCustomer({
       customer_name: customer.customer_name || '',
       account_manager: customer.account_manager || '',
-      primary_presales: customer.primary_presales || '',
       country: customer.country || '',
-      industry_vertical: customer.industry_vertical || '',
       customer_type: customer.customer_type || 'New',
       year_first_closed: customer.year_first_closed || '',
       company_size: customer.company_size || '',
       annual_revenue: customer.annual_revenue || '',
-      technical_complexity: customer.technical_complexity || 'Medium',
       relationship_strength: customer.relationship_strength || 'Medium',
       health_score: customer.health_score ?? '',
       key_stakeholders: customer.key_stakeholders || [],
@@ -404,17 +409,6 @@ function Projects({ embedded = false }) {
       </button>
     </div>
   );
-
-  const Modal = ({ children }) =>
-    ReactDOM.createPortal(
-      <div
-        className="modal-overlay"
-        onMouseDown={(e) => e.target === e.currentTarget && setShowCustomerModal(false)}
-      >
-        <div className="modal-content">{children}</div>
-      </div>,
-      document.body
-    );
 
   if (loading) {
     return (
@@ -533,14 +527,6 @@ function Projects({ embedded = false }) {
                 <div className="summary-card-content">
                   <div className="summary-card-label">Active Deals</div>
                   <div className="summary-card-value">{dealsSummary.activeCount}</div>
-                  <div className="summary-card-sub">
-                    {Object.keys(dealsSummary.byStage).length > 0
-                      ? Object.entries(dealsSummary.byStage)
-                          .slice(0, 2)
-                          .map(([k, v]) => `${k}: ${v}`)
-                          .join(' • ')
-                      : '—'}
-                  </div>
                 </div>
               </div>
             </div>
@@ -712,7 +698,7 @@ function Projects({ embedded = false }) {
         </section>
 
         {showCustomerModal && (
-          <Modal>
+          <Modal onClose={() => setShowCustomerModal(false)}>
             <div className="modal-header">
               <h3>{editingCustomer ? 'Edit Customer' : 'Add Customer'}</h3>
               <button className="icon-btn" onClick={() => setShowCustomerModal(false)}>
@@ -728,38 +714,40 @@ function Projects({ embedded = false }) {
                     value={newCustomer.customer_name}
                     onChange={(e) => setNewCustomer((p) => ({ ...p, customer_name: e.target.value }))}
                     placeholder="e.g., Metrobank"
+                    autoFocus
                   />
                 </div>
 
                 <div className="form-field">
                   <label>Country</label>
                   <input
+                    list="country-options"
                     value={newCustomer.country}
                     onChange={(e) => setNewCustomer((p) => ({ ...p, country: e.target.value }))}
-                    placeholder="e.g., Philippines"
+                    placeholder="Select or type…"
                   />
+                  <datalist id="country-options">
+                    {uniqueCountries.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div className="form-field">
                   <label>Account Manager</label>
                   <input
+                    list="am-options"
                     value={newCustomer.account_manager}
                     onChange={(e) =>
                       setNewCustomer((p) => ({ ...p, account_manager: e.target.value }))
                     }
-                    placeholder="e.g., Juan Dela Cruz"
+                    placeholder="Select or type…"
                   />
-                </div>
-
-                <div className="form-field">
-                  <label>Primary Presales</label>
-                  <input
-                    value={newCustomer.primary_presales}
-                    onChange={(e) =>
-                      setNewCustomer((p) => ({ ...p, primary_presales: e.target.value }))
-                    }
-                    placeholder="e.g., Jonathan"
-                  />
+                  <datalist id="am-options">
+                    {uniqueAccountManagers.map((a) => (
+                      <option key={a} value={a} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div className="form-field">
@@ -789,12 +777,26 @@ function Projects({ embedded = false }) {
                   </select>
                 </div>
 
+                <div className="form-field">
+                  <label>Relationship Strength</label>
+                  <select
+                    value={newCustomer.relationship_strength}
+                    onChange={(e) =>
+                      setNewCustomer((p) => ({ ...p, relationship_strength: e.target.value }))
+                    }
+                  >
+                    <option value="Weak">Weak</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Strong">Strong</option>
+                  </select>
+                </div>
+
                 <div className="form-field full">
-                  <label>Notes</label>
+                  <label>Notes (first capture)</label>
                   <textarea
                     value={newCustomer.notes}
                     onChange={(e) => setNewCustomer((p) => ({ ...p, notes: e.target.value }))}
-                    placeholder="Any useful context, stakeholders, next steps…"
+                    placeholder="Key context: what they want, stakeholders, next step…"
                   />
                 </div>
               </div>
