@@ -249,8 +249,12 @@ a {
 
 /* ========= KPI Strip ========= */
 
+
 .home-kpi-strip {
   width: 100%;
+  max-width: 1220px;          /* ✅ centers the whole strip */
+  margin: 0 auto 12px;
+
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -258,12 +262,10 @@ a {
   padding: 12px 12px;
 
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr)); /* ✅ 4 cards per row */
   gap: 12px;
-
-  margin-top: 0;
-  margin-bottom: 12px;
 }
+
 
 /* Section label inside KPI strip */
 .home-kpi-section-label {
@@ -289,6 +291,7 @@ a {
     rgba(148, 163, 184, 0.10)
   );
 }
+
 
 .home-kpi-card {
   min-height: 104px;
@@ -656,6 +659,7 @@ a {
   }
 }
 
+/* Responsive */
 @media (max-width: 980px) {
   .home-kpi-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
