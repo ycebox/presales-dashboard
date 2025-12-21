@@ -75,10 +75,6 @@ function HomeDashboard() {
         const projData = projRes.data || [];
         setProjects(projData);
 
-        const uniqueNames = Array.from(
-          new Set(projData.map(p => (p.customer_name || '').trim()).filter(Boolean))
-        );
-
         const custRes = await supabase
           .from('customers')
           .select('id, customer_name, country, account_manager')
@@ -87,16 +83,16 @@ function HomeDashboard() {
         if (custRes.error) throw custRes.error;
 
         const map = {};
-        custRes.data.forEach(c => {
+        (custRes.data || []).forEach((c) => {
           map[(c.customer_name || '').trim()] = c.id;
         });
         setCustomerIdMap(map);
 
-        const countries = new Set(custRes.data.map(c => c.country).filter(Boolean));
-        const ams = new Set(custRes.data.map(c => c.account_manager).filter(Boolean));
+        const countries = new Set((custRes.data || []).map((c) => c.country).filter(Boolean));
+        const ams = new Set((custRes.data || []).map((c) => c.account_manager).filter(Boolean));
 
         setPortfolioSummary({
-          totalCustomers: custRes.data.length,
+          totalCustomers: (custRes.data || []).length,
           countries: countries.size,
           accountManagers: ams.size
         });
@@ -112,11 +108,31 @@ function HomeDashboard() {
   }, []);
 
   const openDeals = useMemo(() => {
-    return projects.filter(p => {
+    return (projects || []).filter((p) => {
       const stage = (p.sales_stage || '').toLowerCase();
-      return stage !== 'done' && !stage.startsWith('closed');
+      return stage !== 'done' && !stage.startsWith('closed') && !stage.includes('completed');
     });
   }, [projects]);
+
+  const leadCount = useMemo(
+    () => openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'lead').length,
+    [openDeals]
+  );
+
+  const opportunityCount = useMemo(
+    () => openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'opportunity').length,
+    [openDeals]
+  );
+
+  const proposalCount = useMemo(
+    () => openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'proposal').length,
+    [openDeals]
+  );
+
+  const contractingCount = useMemo(
+    () => openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'contracting').length,
+    [openDeals]
+  );
 
   const topDeals = useMemo(() => {
     return [...openDeals]
@@ -137,16 +153,117 @@ function HomeDashboard() {
 
   return (
     <div className="home-dashboard">
-      {/* KPI STRIP stays unchanged */}
+      {/* ✅ RESTORED KPI STRIP */}
+      <section className="home-kpi-strip">
+        <div className="home-kpi-section-label">Pipeline</div>
 
+        <div className="home-kpi-card" data-tone="blue">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>L</div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Lead</div>
+              <div className="home-kpi-sub">Early pipeline</div>
+            </div>
+          </div>
+          <div className="home-kpi-value">{leadCount}</div>
+        </div>
+
+        <div className="home-kpi-card" data-tone="teal">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>O</div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Opportunity</div>
+              <div className="home-kpi-sub">Discovery ongoing</div>
+            </div>
+          </div>
+          <div className="home-kpi-value">{opportunityCount}</div>
+        </div>
+
+        <div className="home-kpi-card" data-tone="amber">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>P</div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Proposal</div>
+              <div className="home-kpi-sub">RFP / proposal</div>
+            </div>
+          </div>
+          <div className="home-kpi-value">{proposalCount}</div>
+        </div>
+
+        <div className="home-kpi-card" data-tone="indigo">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>C</div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Contracting</div>
+              <div className="home-kpi-sub">Close to signature</div>
+            </div>
+          </div>
+          <div className="home-kpi-value">{contractingCount}</div>
+        </div>
+
+        <div className="home-kpi-card" data-tone="slate">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>✦</div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Open deals</div>
+              <div className="home-kpi-sub">Not done / closed</div>
+            </div>
+          </div>
+          <div className="home-kpi-value">{openDeals.length}</div>
+        </div>
+
+        <div className="home-kpi-section-label">Portfolio</div>
+
+        <div className="home-kpi-card" data-tone="blue">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>C</div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Customers</div>
+              <div className="home-kpi-sub">Active (not archived)</div>
+            </div>
+          </div>
+          <div className="home-kpi-value">{portfolioSummary.totalCustomers}</div>
+        </div>
+
+        <div className="home-kpi-card" data-tone="teal">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>🌏</div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Countries</div>
+              <div className="home-kpi-sub">Coverage</div>
+            </div>
+          </div>
+          <div className="home-kpi-value">{portfolioSummary.countries}</div>
+        </div>
+
+        <div className="home-kpi-card" data-tone="indigo">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>AM</div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Account managers</div>
+              <div className="home-kpi-sub">Unique AMs</div>
+            </div>
+          </div>
+          <div className="home-kpi-value">{portfolioSummary.accountManagers}</div>
+        </div>
+
+        <div className="home-kpi-card" data-tone="amber">
+          <div className="home-kpi-top">
+            <div className="home-kpi-icon" aria-hidden>$</div>
+            <div className="home-kpi-top-text">
+              <div className="home-kpi-label">Active deals</div>
+              <div className="home-kpi-sub">Same as open deals</div>
+            </div>
+          </div>
+          <div className="home-kpi-value">{openDeals.length}</div>
+        </div>
+      </section>
+
+      {/* Top Deals */}
       <div className="home-top-row">
         <section className="home-card home-card-wide">
-          <h3 className="home-card-title home-topdeals-title">
-            Top deals to watch
-          </h3>
-          <p className="home-card-subtitle">
-            Highest-value active opportunities.
-          </p>
+          <h3 className="home-card-title home-topdeals-title">Top deals to watch</h3>
+          <p className="home-card-subtitle">Highest-value active opportunities.</p>
 
           {topDeals.length === 0 ? (
             <p className="small-muted">No active deals found.</p>
@@ -164,12 +281,12 @@ function HomeDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {topDeals.map(p => (
+                  {topDeals.map((p) => (
                     <tr key={p.id}>
                       <td>
-                        {customerIdMap[p.customer_name] ? (
+                        {customerIdMap[(p.customer_name || '').trim()] ? (
                           <Link
-                            to={`/customer/${customerIdMap[p.customer_name]}`}
+                            to={`/customer/${customerIdMap[(p.customer_name || '').trim()]}`}
                             className="home-link"
                           >
                             {p.customer_name}
