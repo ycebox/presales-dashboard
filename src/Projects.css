@@ -294,7 +294,6 @@
 
 .table-wrapper { width: 100%; }
 
-/* IMPORTANT: prevent horizontal scrollbar */
 .customers-table-scroll {
   max-height: 640px;
   overflow-y: auto;
@@ -306,29 +305,32 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
+
+  /* ✅ top + bottom border that spans full width */
+  border-top: 1px solid var(--border-2);
+  border-bottom: 1px solid var(--border-2);
 }
 
-/* Column widths tuned to fit without scrolling */
-/* Column widths tuned to fit without scrolling (6 columns) */
-.customers-table th:nth-child(1), .customers-table td:nth-child(1) { width: 28%; } /* Customer */
-.customers-table th:nth-child(2), .customers-table td:nth-child(2) { width: 12%; } /* Country */
-.customers-table th:nth-child(3), .customers-table td:nth-child(3) { width: 18%; } /* Account Manager */
-.customers-table th:nth-child(4), .customers-table td:nth-child(4) { width: 14%; } /* Type */
-.customers-table th:nth-child(5), .customers-table td:nth-child(5) { width: 18%; } /* Status */
-.customers-table th:nth-child(6), .customers-table td:nth-child(6) { width: 10%; } /* Actions */
+/* Column widths (6 columns) */
+.customers-table th:nth-child(1), .customers-table td:nth-child(1) { width: 28%; }
+.customers-table th:nth-child(2), .customers-table td:nth-child(2) { width: 12%; }
+.customers-table th:nth-child(3), .customers-table td:nth-child(3) { width: 18%; }
+.customers-table th:nth-child(4), .customers-table td:nth-child(4) { width: 14%; }
+.customers-table th:nth-child(5), .customers-table td:nth-child(5) { width: 18%; }
+.customers-table th:nth-child(6), .customers-table td:nth-child(6) { width: 10%; }
 
 .customers-table th,
 .customers-table td {
-  padding: 0.72rem 0.85rem; /* tighter = more fit */
+  padding: 0.72rem 0.85rem;
   border-bottom: 1px solid var(--border-2);
   font-size: 14px;
   color: var(--ink-0);
   vertical-align: middle;
-  overflow-wrap: anywhere;      /* wrap long names */
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
-.customers-table th {
+.customers-table thead th {
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
@@ -338,26 +340,41 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  text-align: center; /* header centered to match data */
+  text-align: center;
+
+  /* clean header separator */
+  border-bottom: 1px solid var(--border-2);
+}
+
+/* ✅ CUSTOMER header left aligned */
+.th-customer {
+  text-align: left !important;
 }
 
 /* Center all data by default */
 .td-center { text-align: center; }
 
-/* Customer column stays left for readability */
+/* Customer column stays left */
 .cell-customer { text-align: left; }
 
-/* Actions header + cell */
+/* ✅ Actions header centered */
 .th-actions { text-align: center; }
-.cell-actions {
+
+/* ✅ Actions cell stays table-cell; center with wrapper */
+.cell-actions { text-align: center; }
+.actions-wrap {
   display: inline-flex;
-  gap: 8px;
-  justify-content: center;
   align-items: center;
-  width: 100%;
+  justify-content: center;
+  gap: 10px;
 }
 
-/* Row hover: more obvious but still clean */
+/* ✅ let the table bottom border be the last line */
+.customers-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Row hover */
 .table-row {
   transition: background 0.16s ease, box-shadow 0.16s ease;
 }
@@ -374,7 +391,7 @@
   color: var(--primary-2);
 }
 
-/* Customer link button */
+/* Customer link */
 .link-btn {
   appearance: none;
   border: none;
@@ -393,21 +410,20 @@
   text-underline-offset: 2px;
 }
 
-/* ===== Status badge (tight + clearer) ===== */
+/* ===== Status badge ===== */
 
 .status-badge {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 0.18rem 0.52rem; /* tighter */
+  padding: 0.18rem 0.52rem;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 800;
   border: 1px solid var(--border);
   background: rgba(148, 163, 184, 0.08);
   color: var(--ink-0);
-  max-width: 100%;
   white-space: nowrap;
 }
 
@@ -447,7 +463,7 @@
 }
 .status-badge.status-hold::before { background: var(--warning); }
 
-/* ===== Modal / states / toast (unchanged) ===== */
+/* ===== Modal / states / toast ===== */
 
 .modal-overlay {
   position: fixed;
@@ -680,8 +696,6 @@
   .header-actions { justify-content: flex-start; }
   .modal-grid { grid-template-columns: 1fr; }
   .projects-inner { padding: 0 14px; }
-
-  /* on small screens, allow table to breathe */
   .customers-table th, .customers-table td { padding: 0.65rem 0.7rem; font-size: 13px; }
 }
 
