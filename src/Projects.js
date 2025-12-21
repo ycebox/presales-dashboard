@@ -767,11 +767,11 @@ function Projects({ embedded = false }) {
                 </div>
 
                 <div className="form-field full">
-                  <label>Notes</label>
+                  <label>Customer Profile</label>
                   <textarea
                     value={newCustomer.notes}
                     onChange={(e) => setNewCustomer((p) => ({ ...p, notes: e.target.value }))}
-                    placeholder="Quick context: what’s happening, next step, blockers…"
+                    placeholder="Quick context: company profile or background"
                   />
                 </div>
               </div>
