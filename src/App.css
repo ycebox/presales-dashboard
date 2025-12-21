@@ -229,6 +229,12 @@ a {
   color: var(--ink-0);
 }
 
+/* Make Top Deals title match Customer Portfolio */
+.home-topdeals-title {
+  font-size: var(--fz-title); /* 24px */
+  font-weight: 800;
+  margin-bottom: 4px;
+}
 .home-card-subtitle {
   margin: 0 0 10px;
   font-size: 12px;
