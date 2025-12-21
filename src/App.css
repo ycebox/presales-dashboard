@@ -671,3 +671,26 @@ a {
     grid-template-columns: 1fr;
   }
 }
+/* Reusable subtle table link (same as customer table) */
+.table-link-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 850;
+  color: var(--ink-0);
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+}
+
+.table-link-btn:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* When row is hovered, link becomes primary */
+.home-topdeals-table tbody tr:hover .table-link-btn {
+  color: var(--primary-2);
+}
