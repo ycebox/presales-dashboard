@@ -270,20 +270,25 @@ function HomeDashboard() {
                     <tr key={p.id}>
                       <td>
                         {customerIdMap[(p.customer_name || '').trim()] ? (
-                          <Link
-                            to={`/customer/${customerIdMap[(p.customer_name || '').trim()]}`}
-                            className="home-link"
-                          >
-                            {p.customer_name}
-                          </Link>
+                       <button
+  className="table-link-btn"
+  onClick={() =>
+    navigate(`/customer/${customerIdMap[(p.customer_name || '').trim()]}`)
+  }
+>
+  {p.customer_name}
+</button>
                         ) : (
                           p.customer_name
                         )}
                       </td>
                       <td>
-                        <Link to={`/project/${p.id}`} className="home-link">
-                          {p.project_name}
-                        </Link>
+                        <button
+  className="table-link-btn"
+  onClick={() => navigate(`/project/${p.id}`)}
+>
+  {p.project_name}
+</button>
                       </td>
                       <td>{p.sales_stage}</td>
                       <td className="td-right">{formatCurrency(p.deal_value)}</td>
