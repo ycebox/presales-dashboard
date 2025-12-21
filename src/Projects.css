@@ -181,14 +181,13 @@
   background: transparent;
 }
 
-/* Default grid (kept) */
 .filters-grid {
   display: grid;
   gap: 10px;
   min-width: 520px;
 }
 
-/* ✅ For your new requirement: country + AM + status */
+/* ✅ For country + AM + status */
 .filters-grid-3 {
   grid-template-columns: repeat(3, minmax(160px, 1fr));
 }
@@ -229,7 +228,6 @@
   width: 100%;
 }
 
-/* Scroll container */
 .customers-table-scroll {
   max-height: 640px;
   overflow-y: auto;
@@ -241,9 +239,12 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
+
+  /* ✅ extended outer border */
+  border: 1px solid var(--border);
 }
 
-/* ✅ IMPORTANT FIX: remove old 7-col widths and use 6-col widths only */
+/* ✅ 6 column widths ONLY */
 .customers-table.customers-table-6col th:nth-child(1),
 .customers-table.customers-table-6col td:nth-child(1) { width: 30%; }
 
@@ -265,12 +266,20 @@
 .customers-table th,
 .customers-table td {
   padding: 0.72rem 0.85rem;
-  border-bottom: 1px solid var(--border-2);
   font-size: 14px;
   color: var(--ink-0);
   vertical-align: middle;
   overflow-wrap: anywhere;
   word-break: break-word;
+
+  /* ✅ vertical column borders */
+  border-right: 1px solid var(--border-2);
+}
+
+/* remove last right border */
+.customers-table th:last-child,
+.customers-table td:last-child {
+  border-right: none;
 }
 
 .customers-table th {
@@ -283,6 +292,14 @@
   position: sticky;
   top: 0;
   z-index: 2;
+
+  /* ✅ stronger header separator */
+  border-bottom: 2px solid var(--border);
+}
+
+/* ✅ stronger row separators */
+.customers-table tbody tr td {
+  border-bottom: 1px solid var(--border);
 }
 
 .th-left { text-align: left; }
@@ -309,16 +326,7 @@
   color: var(--primary-2);
 }
 
-/* Actions cell */
-.cell-actions {
-  display: inline-flex;
-  gap: 8px;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-}
-
-/* Link-style button (Customer name) */
+/* Customer name link button */
 .link-btn {
   appearance: none;
   border: none;
@@ -335,6 +343,18 @@
 .link-btn:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* ✅ Actions column centering fix */
+.customers-table.customers-table-6col th.th-actions {
+  text-align: center;
+}
+
+.customers-table.customers-table-6col td.cell-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ===== STATES ===== */
