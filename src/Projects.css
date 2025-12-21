@@ -309,13 +309,13 @@
 }
 
 /* Column widths tuned to fit without scrolling */
-.customers-table th:nth-child(1), .customers-table td:nth-child(1) { width: 24%; }
-.customers-table th:nth-child(2), .customers-table td:nth-child(2) { width: 10%; }
-.customers-table th:nth-child(3), .customers-table td:nth-child(3) { width: 16%; }
-.customers-table th:nth-child(4), .customers-table td:nth-child(4) { width: 16%; }
-.customers-table th:nth-child(5), .customers-table td:nth-child(5) { width: 10%; }
-.customers-table th:nth-child(6), .customers-table td:nth-child(6) { width: 14%; }
-.customers-table th:nth-child(7), .customers-table td:nth-child(7) { width: 10%; }
+/* Column widths tuned to fit without scrolling (6 columns) */
+.customers-table th:nth-child(1), .customers-table td:nth-child(1) { width: 28%; } /* Customer */
+.customers-table th:nth-child(2), .customers-table td:nth-child(2) { width: 12%; } /* Country */
+.customers-table th:nth-child(3), .customers-table td:nth-child(3) { width: 18%; } /* Account Manager */
+.customers-table th:nth-child(4), .customers-table td:nth-child(4) { width: 14%; } /* Type */
+.customers-table th:nth-child(5), .customers-table td:nth-child(5) { width: 18%; } /* Status */
+.customers-table th:nth-child(6), .customers-table td:nth-child(6) { width: 10%; } /* Actions */
 
 .customers-table th,
 .customers-table td {
