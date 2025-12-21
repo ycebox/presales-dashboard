@@ -107,6 +107,7 @@ function HomeDashboard() {
     loadHomeData();
   }, []);
 
+  // "openDeals" = deals not Done/Closed/Completed
   const openDeals = useMemo(() => {
     return (projects || []).filter((p) => {
       const stage = (p.sales_stage || '').toLowerCase();
@@ -143,17 +144,12 @@ function HomeDashboard() {
   const formatCurrency = (v) =>
     Number.isFinite(Number(v)) ? Number(v).toLocaleString() : '-';
 
-  if (loading) {
-    return <div className="home-loading">Loading…</div>;
-  }
-
-  if (homeError) {
-    return <div className="presales-error">{homeError}</div>;
-  }
+  if (loading) return <div className="home-loading">Loading…</div>;
+  if (homeError) return <div className="presales-error">{homeError}</div>;
 
   return (
     <div className="home-dashboard">
-      {/* ✅ RESTORED KPI STRIP */}
+      {/* KPI STRIP */}
       <section className="home-kpi-strip">
         <div className="home-kpi-section-label">Pipeline</div>
 
@@ -201,17 +197,6 @@ function HomeDashboard() {
           <div className="home-kpi-value">{contractingCount}</div>
         </div>
 
-        <div className="home-kpi-card" data-tone="slate">
-          <div className="home-kpi-top">
-            <div className="home-kpi-icon" aria-hidden>✦</div>
-            <div className="home-kpi-top-text">
-              <div className="home-kpi-label">Open deals</div>
-              <div className="home-kpi-sub">Not done / closed</div>
-            </div>
-          </div>
-          <div className="home-kpi-value">{openDeals.length}</div>
-        </div>
-
         <div className="home-kpi-section-label">Portfolio</div>
 
         <div className="home-kpi-card" data-tone="blue">
@@ -252,7 +237,7 @@ function HomeDashboard() {
             <div className="home-kpi-icon" aria-hidden>$</div>
             <div className="home-kpi-top-text">
               <div className="home-kpi-label">Active deals</div>
-              <div className="home-kpi-sub">Same as open deals</div>
+              <div className="home-kpi-sub">Not done / closed</div>
             </div>
           </div>
           <div className="home-kpi-value">{openDeals.length}</div>
