@@ -41,7 +41,6 @@ function Projects({ embedded = false }) {
   const [newCustomer, setNewCustomer] = useState({
     customer_name: '',
     account_manager: '',
-    primary_presales: '',
     country: '',
     industry_vertical: '',
     customer_type: 'New',
@@ -170,9 +169,8 @@ function Projects({ embedded = false }) {
       list = list.filter((c) => {
         const n = String(c.customer_name || '').toLowerCase();
         const a = String(c.account_manager || '').toLowerCase();
-        const p = String(c.primary_presales || '').toLowerCase();
         const co = String(c.country || '').toLowerCase();
-        return n.includes(t) || a.includes(t) || p.includes(t) || co.includes(t);
+        return n.includes(t) || a.includes(t) || co.includes(t);
       });
     }
 
@@ -323,7 +321,6 @@ function Projects({ embedded = false }) {
     setNewCustomer({
       customer_name: '',
       account_manager: '',
-      primary_presales: '',
       country: '',
       industry_vertical: '',
       customer_type: 'New',
@@ -352,7 +349,6 @@ function Projects({ embedded = false }) {
     setNewCustomer({
       customer_name: customer.customer_name || '',
       account_manager: customer.account_manager || '',
-      primary_presales: customer.primary_presales || '',
       country: customer.country || '',
       industry_vertical: customer.industry_vertical || '',
       customer_type: customer.customer_type || 'New',
@@ -553,7 +549,7 @@ function Projects({ embedded = false }) {
               <Search size={14} className="search-icon" />
               <input
                 className="search-input"
-                placeholder="Search customers (name, AM, presales, country)…"
+                placeholder="Search customers (name, AM, country)…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -650,7 +646,6 @@ function Projects({ embedded = false }) {
                     <tr>
                       <th>Customer</th>
                       <th>Country</th>
-                      <th>Primary Presales</th>
                       <th>Account Manager</th>
                       <th>Type</th>
                       <th>Status</th>
@@ -677,7 +672,6 @@ function Projects({ embedded = false }) {
                           </td>
 
                           <td className="td-center">{customer.country || '—'}</td>
-                          <td className="td-center">{customer.primary_presales || '—'}</td>
                           <td className="td-center">{customer.account_manager || '—'}</td>
                           <td className="td-center">{customer.customer_type || '—'}</td>
 
@@ -748,17 +742,6 @@ function Projects({ embedded = false }) {
                       setNewCustomer((p) => ({ ...p, account_manager: e.target.value }))
                     }
                     placeholder="e.g., Juan Dela Cruz"
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>Primary Presales</label>
-                  <input
-                    value={newCustomer.primary_presales}
-                    onChange={(e) =>
-                      setNewCustomer((p) => ({ ...p, primary_presales: e.target.value }))
-                    }
-                    placeholder="e.g., Jonathan"
                   />
                 </div>
 
