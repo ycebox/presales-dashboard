@@ -23,6 +23,11 @@ function Projects({ embedded = false }) {
 
   const [customers, setCustomers] = useState([]);
   const [customerStatuses, setCustomerStatuses] = useState([]);
+
+  // ✅ master data from tables
+  const [countries, setCountries] = useState([]); // string[]
+  const [accountManagers, setAccountManagers] = useState([]); // { id, name, email, region }[]
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -66,31 +71,47 @@ function Projects({ embedded = false }) {
     setTimeout(() => setToast(null), 3200);
   }, []);
 
+  // ✅ Load master data + customers
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
+        // statuses
         const statusRes = await supabase
           .from('customer_statuses')
           .select('*')
           .order('id', { ascending: true });
         if (statusRes.error) throw statusRes.error;
-
         setCustomerStatuses(statusRes.data || []);
 
+        // ✅ countries from table public.countries
+        const countriesRes = await supabase
+          .from('countries')
+          .select('name')
+          .order('name', { ascending: true });
+        if (countriesRes.error) throw countriesRes.error;
+        setCountries((countriesRes.data || []).map((c) => c.name));
+
+        // ✅ account managers from table public.account_managers
+        const amRes = await supabase
+          .from('account_managers')
+          .select('id, name, email, region')
+          .order('name', { ascending: true });
+        if (amRes.error) throw amRes.error;
+        setAccountManagers(amRes.data || []);
+
+        // customers
         const customersRes = await supabase
           .from('customers')
           .select('*')
           .eq('is_archived', false)
           .order('customer_name', { ascending: true });
-
         if (customersRes.error) throw customersRes.error;
-
         setCustomers(customersRes.data || []);
       } catch (err) {
-        console.error('Error fetching customers:', err);
+        console.error('Error fetching data:', err);
         setError('Failed to load customers.');
       } finally {
         setLoading(false);
@@ -100,6 +121,7 @@ function Projects({ embedded = false }) {
     fetchData();
   }, []);
 
+  // deals summary
   useEffect(() => {
     const fetchDealsSummary = async () => {
       try {
@@ -131,10 +153,7 @@ function Projects({ embedded = false }) {
           byStage[stage] = (byStage[stage] || 0) + 1;
         });
 
-        setDealsSummary({
-          activeCount: activeProjects.length,
-          byStage
-        });
+        setDealsSummary({ activeCount: activeProjects.length, byStage });
       } catch (err) {
         console.error('Unexpected error in deals summary:', err);
         setDealsSummary({ activeCount: 0, byStage: {} });
@@ -177,7 +196,9 @@ function Projects({ embedded = false }) {
       list = list.filter((c) => String(c.country || '') === String(filters.country));
     }
     if (filters.account_manager) {
-      list = list.filter((c) => String(c.account_manager || '') === String(filters.account_manager));
+      list = list.filter(
+        (c) => String(c.account_manager || '') === String(filters.account_manager)
+      );
     }
     if (filters.customer_type) {
       list = list.filter((c) => String(c.customer_type || '') === String(filters.customer_type));
@@ -189,7 +210,8 @@ function Projects({ embedded = false }) {
     return list;
   }, [customers, searchTerm, filters]);
 
-  const uniqueCountries = useMemo(() => {
+  // For summary stats (based on actual customers, not master tables)
+  const uniqueCountriesInPortfolio = useMemo(() => {
     const set = new Set();
     customers.forEach((c) => {
       if (c.country) set.add(c.country);
@@ -197,7 +219,7 @@ function Projects({ embedded = false }) {
     return Array.from(set).sort();
   }, [customers]);
 
-  const uniqueAccountManagers = useMemo(() => {
+  const uniqueAccountManagersInPortfolio = useMemo(() => {
     const set = new Set();
     customers.forEach((c) => {
       if (c.account_manager) set.add(c.account_manager);
@@ -216,10 +238,10 @@ function Projects({ embedded = false }) {
 
     return {
       totalCustomers: customers.length,
-      uniqueCountries: uniqueCountries.length,
+      uniqueCountries: uniqueCountriesInPortfolio.length,
       byType: typesCount
     };
-  }, [customers, uniqueCountries]);
+  }, [customers, uniqueCountriesInPortfolio]);
 
   const getCustomerStatus = (customer) => {
     const id = customer?.status_id;
@@ -517,7 +539,7 @@ function Projects({ embedded = false }) {
                 </div>
                 <div className="summary-card-content">
                   <div className="summary-card-label">Account Managers</div>
-                  <div className="summary-card-value">{uniqueAccountManagers.length}</div>
+                  <div className="summary-card-value">{uniqueAccountManagersInPortfolio.length}</div>
                 </div>
               </div>
 
@@ -560,28 +582,30 @@ function Projects({ embedded = false }) {
             </div>
 
             <div className="filters-grid">
+              {/* ✅ countries table */}
               <select
                 className="filter-select"
                 value={filters.country}
                 onChange={(e) => setFilters((p) => ({ ...p, country: e.target.value }))}
               >
                 <option value="">All Countries</option>
-                {uniqueCountries.map((c) => (
+                {countries.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
                 ))}
               </select>
 
+              {/* ✅ account_managers table */}
               <select
                 className="filter-select"
                 value={filters.account_manager}
                 onChange={(e) => setFilters((p) => ({ ...p, account_manager: e.target.value }))}
               >
                 <option value="">All Account Managers</option>
-                {uniqueAccountManagers.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
+                {accountManagers.map((a) => (
+                  <option key={a.id} value={a.name}>
+                    {a.name}
                   </option>
                 ))}
               </select>
@@ -726,7 +750,7 @@ function Projects({ embedded = false }) {
                   />
                 </div>
 
-                {/* ✅ Country dropdown */}
+                {/* ✅ countries table */}
                 <div className="form-field">
                   <label>Country</label>
                   <select
@@ -734,7 +758,7 @@ function Projects({ embedded = false }) {
                     onChange={(e) => setNewCustomer((p) => ({ ...p, country: e.target.value }))}
                   >
                     <option value="">Select country</option>
-                    {uniqueCountries.map((c) => (
+                    {countries.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -742,7 +766,7 @@ function Projects({ embedded = false }) {
                   </select>
                 </div>
 
-                {/* ✅ Account Manager dropdown */}
+                {/* ✅ account_managers table */}
                 <div className="form-field">
                   <label>Account Manager</label>
                   <select
@@ -752,9 +776,9 @@ function Projects({ embedded = false }) {
                     }
                   >
                     <option value="">Select account manager</option>
-                    {uniqueAccountManagers.map((a) => (
-                      <option key={a} value={a}>
-                        {a}
+                    {accountManagers.map((a) => (
+                      <option key={a.id} value={a.name}>
+                        {a.name}
                       </option>
                     ))}
                   </select>
