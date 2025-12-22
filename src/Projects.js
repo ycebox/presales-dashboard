@@ -18,15 +18,34 @@ import {
 } from 'lucide-react';
 import './Projects.css';
 
+/**
+ * ✅ IMPORTANT: Modal must be outside Projects()
+ * Otherwise it remounts on every keystroke and inputs lose focus.
+ */
+function Modal({ onClose, children }) {
+  return ReactDOM.createPortal(
+    <div
+      className="modal-overlay"
+      onMouseDown={(e) => {
+        // close only when clicking the overlay background
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
+      <div className="modal-content">{children}</div>
+    </div>,
+    document.body
+  );
+}
+
 function Projects({ embedded = false }) {
   const navigate = useNavigate();
 
   const [customers, setCustomers] = useState([]);
   const [customerStatuses, setCustomerStatuses] = useState([]);
 
-  // ✅ master data from tables
+  // master data from tables
   const [countries, setCountries] = useState([]); // string[]
-  const [accountManagers, setAccountManagers] = useState([]); // { id, name, email, region }[]
+  const [accountManagers, setAccountManagers] = useState([]); // {id,name,email,region}[]
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -71,14 +90,13 @@ function Projects({ embedded = false }) {
     setTimeout(() => setToast(null), 3200);
   }, []);
 
-  // ✅ Load master data + customers
+  // load master data + customers
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // statuses
         const statusRes = await supabase
           .from('customer_statuses')
           .select('*')
@@ -86,7 +104,6 @@ function Projects({ embedded = false }) {
         if (statusRes.error) throw statusRes.error;
         setCustomerStatuses(statusRes.data || []);
 
-        // ✅ countries from table public.countries
         const countriesRes = await supabase
           .from('countries')
           .select('name')
@@ -94,7 +111,6 @@ function Projects({ embedded = false }) {
         if (countriesRes.error) throw countriesRes.error;
         setCountries((countriesRes.data || []).map((c) => c.name));
 
-        // ✅ account managers from table public.account_managers
         const amRes = await supabase
           .from('account_managers')
           .select('id, name, email, region')
@@ -102,7 +118,6 @@ function Projects({ embedded = false }) {
         if (amRes.error) throw amRes.error;
         setAccountManagers(amRes.data || []);
 
-        // customers
         const customersRes = await supabase
           .from('customers')
           .select('*')
@@ -121,7 +136,6 @@ function Projects({ embedded = false }) {
     fetchData();
   }, []);
 
-  // deals summary
   useEffect(() => {
     const fetchDealsSummary = async () => {
       try {
@@ -192,38 +206,25 @@ function Projects({ embedded = false }) {
       });
     }
 
-    if (filters.country) {
-      list = list.filter((c) => String(c.country || '') === String(filters.country));
-    }
-    if (filters.account_manager) {
-      list = list.filter(
-        (c) => String(c.account_manager || '') === String(filters.account_manager)
-      );
-    }
-    if (filters.customer_type) {
+    if (filters.country) list = list.filter((c) => String(c.country || '') === String(filters.country));
+    if (filters.account_manager)
+      list = list.filter((c) => String(c.account_manager || '') === String(filters.account_manager));
+    if (filters.customer_type)
       list = list.filter((c) => String(c.customer_type || '') === String(filters.customer_type));
-    }
-    if (filters.status_id) {
-      list = list.filter((c) => String(c.status_id || '') === String(filters.status_id));
-    }
+    if (filters.status_id) list = list.filter((c) => String(c.status_id || '') === String(filters.status_id));
 
     return list;
   }, [customers, searchTerm, filters]);
 
-  // For summary stats (based on actual customers, not master tables)
   const uniqueCountriesInPortfolio = useMemo(() => {
     const set = new Set();
-    customers.forEach((c) => {
-      if (c.country) set.add(c.country);
-    });
+    customers.forEach((c) => c.country && set.add(c.country));
     return Array.from(set).sort();
   }, [customers]);
 
   const uniqueAccountManagersInPortfolio = useMemo(() => {
     const set = new Set();
-    customers.forEach((c) => {
-      if (c.account_manager) set.add(c.account_manager);
-    });
+    customers.forEach((c) => c.account_manager && set.add(c.account_manager));
     return Array.from(set).sort();
   }, [customers]);
 
@@ -259,14 +260,10 @@ function Projects({ embedded = false }) {
     return 'status-badge';
   };
 
-  const openCustomer = (customer) => {
-    if (!customer?.id) return;
-    navigate(`/customer/${customer.id}`);
-  };
+  const openCustomer = (customer) => customer?.id && navigate(`/customer/${customer.id}`);
 
   const deleteCustomer = async (customer) => {
     if (!customer?.id) return;
-
     const ok = window.confirm(`Archive customer "${customer.customer_name}"?`);
     if (!ok) return;
 
@@ -300,30 +297,18 @@ function Projects({ embedded = false }) {
       }
 
       if (editingCustomer?.id) {
-        const { error } = await supabase
-          .from('customers')
-          .update(payload)
-          .eq('id', editingCustomer.id);
+        const { error } = await supabase.from('customers').update(payload).eq('id', editingCustomer.id);
         if (error) throw error;
 
-        setCustomers((prev) =>
-          prev.map((c) => (c.id === editingCustomer.id ? { ...c, ...payload } : c))
-        );
-
+        setCustomers((prev) => prev.map((c) => (c.id === editingCustomer.id ? { ...c, ...payload } : c)));
         showToast('Customer updated.');
       } else {
-        const { data, error } = await supabase
-          .from('customers')
-          .insert([payload])
-          .select('*')
-          .single();
+        const { data, error } = await supabase.from('customers').insert([payload]).select('*').single();
         if (error) throw error;
 
         setCustomers((prev) => {
           const next = [...prev, data];
-          next.sort((a, b) =>
-            String(a.customer_name || '').localeCompare(String(b.customer_name || ''))
-          );
+          next.sort((a, b) => String(a.customer_name || '').localeCompare(String(b.customer_name || '')));
           return next;
         });
 
@@ -366,7 +351,6 @@ function Projects({ embedded = false }) {
 
   const openEditCustomerModal = (customer) => {
     setEditingCustomer(customer);
-
     setNewCustomer({
       customer_name: customer.customer_name || '',
       account_manager: customer.account_manager || '',
@@ -384,17 +368,11 @@ function Projects({ embedded = false }) {
       notes: customer.notes || '',
       status_id: customer.status_id ?? ''
     });
-
     setShowCustomerModal(true);
   };
 
   const clearFilters = () => {
-    setFilters({
-      country: '',
-      account_manager: '',
-      customer_type: '',
-      status_id: ''
-    });
+    setFilters({ country: '', account_manager: '', customer_type: '', status_id: '' });
     setSearchTerm('');
   };
 
@@ -421,17 +399,6 @@ function Projects({ embedded = false }) {
       </button>
     </div>
   );
-
-  const Modal = ({ children }) =>
-    ReactDOM.createPortal(
-      <div
-        className="modal-overlay"
-        onMouseDown={(e) => e.target === e.currentTarget && setShowCustomerModal(false)}
-      >
-        <div className="modal-content">{children}</div>
-      </div>,
-      document.body
-    );
 
   if (loading) {
     return (
@@ -469,13 +436,11 @@ function Projects({ embedded = false }) {
           <div className="header-title-section">
             <h2>Customer Portfolio</h2>
             <p className="header-subtitle">
-              {filteredCustomers.length} of {customers.length} customer
-              {customers.length !== 1 ? 's' : ''}
+              {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}
               {portfolioStats && (
                 <>
                   {' • '}
-                  {portfolioStats.uniqueCountries} countr
-                  {portfolioStats.uniqueCountries === 1 ? 'y' : 'ies'}
+                  {portfolioStats.uniqueCountries} countr{portfolioStats.uniqueCountries === 1 ? 'y' : 'ies'}
                 </>
               )}
             </p>
@@ -582,7 +547,6 @@ function Projects({ embedded = false }) {
             </div>
 
             <div className="filters-grid">
-              {/* ✅ countries table */}
               <select
                 className="filter-select"
                 value={filters.country}
@@ -596,7 +560,6 @@ function Projects({ embedded = false }) {
                 ))}
               </select>
 
-              {/* ✅ account_managers table */}
               <select
                 className="filter-select"
                 value={filters.account_manager}
@@ -685,11 +648,7 @@ function Projects({ embedded = false }) {
                       return (
                         <tr key={customer.id} className="table-row">
                           <td className="cell-customer">
-                            <button
-                              className="link-btn"
-                              onClick={() => openCustomer(customer)}
-                              title="Open customer"
-                            >
+                            <button className="link-btn" onClick={() => openCustomer(customer)} title="Open customer">
                               {customer.customer_name}
                             </button>
                           </td>
@@ -704,18 +663,10 @@ function Projects({ embedded = false }) {
 
                           <td className="cell-actions">
                             <div className="actions-wrap">
-                              <button
-                                className="icon-btn"
-                                onClick={() => openEditCustomerModal(customer)}
-                                title="Edit"
-                              >
+                              <button className="icon-btn" onClick={() => openEditCustomerModal(customer)} title="Edit">
                                 <Edit3 size={14} />
                               </button>
-                              <button
-                                className="icon-btn danger"
-                                onClick={() => deleteCustomer(customer)}
-                                title="Archive"
-                              >
+                              <button className="icon-btn danger" onClick={() => deleteCustomer(customer)} title="Archive">
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -731,7 +682,7 @@ function Projects({ embedded = false }) {
         </section>
 
         {showCustomerModal && (
-          <Modal>
+          <Modal onClose={() => setShowCustomerModal(false)}>
             <div className="modal-header">
               <h3>{editingCustomer ? 'Edit Customer' : 'Add Customer'}</h3>
               <button className="icon-btn" onClick={() => setShowCustomerModal(false)}>
@@ -750,7 +701,6 @@ function Projects({ embedded = false }) {
                   />
                 </div>
 
-                {/* ✅ countries table */}
                 <div className="form-field">
                   <label>Country</label>
                   <select
@@ -766,14 +716,11 @@ function Projects({ embedded = false }) {
                   </select>
                 </div>
 
-                {/* ✅ account_managers table */}
                 <div className="form-field">
                   <label>Account Manager</label>
                   <select
                     value={newCustomer.account_manager || ''}
-                    onChange={(e) =>
-                      setNewCustomer((p) => ({ ...p, account_manager: e.target.value }))
-                    }
+                    onChange={(e) => setNewCustomer((p) => ({ ...p, account_manager: e.target.value }))}
                   >
                     <option value="">Select account manager</option>
                     {accountManagers.map((a) => (
