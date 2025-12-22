@@ -232,16 +232,20 @@ const CustomerDetails = () => {
   };
 
   // ✅ FIX: removed UUID gate that caused false "Invalid customer ID"
-  const fetchCustomer = async () => {
-    try {
-      setLoading(true);
-      setError('');
+const fetchCustomer = async () => {
+  if (!customerId) {
+    return; // 👈 prevent querying with undefined
+  }
 
-      const { data, error: fetchError } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', customerId)
-        .single();
+  try {
+    setLoading(true);
+    setError('');
+
+    const { data, error: fetchError } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', customerId)
+      .single();
 
       if (fetchError) throw fetchError;
 
