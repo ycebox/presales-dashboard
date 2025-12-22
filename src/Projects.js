@@ -18,16 +18,12 @@ import {
 } from 'lucide-react';
 import './Projects.css';
 
-/**
- * ✅ IMPORTANT: Modal must be outside Projects()
- * Otherwise it remounts on every keystroke and inputs lose focus.
- */
+// ✅ Modal outside Projects() so inputs don't lose focus
 function Modal({ onClose, children }) {
   return ReactDOM.createPortal(
     <div
       className="modal-overlay"
       onMouseDown={(e) => {
-        // close only when clicking the overlay background
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
@@ -43,7 +39,7 @@ function Projects({ embedded = false }) {
   const [customers, setCustomers] = useState([]);
   const [customerStatuses, setCustomerStatuses] = useState([]);
 
-  // master data from tables
+  // ✅ master dropdown data
   const [countries, setCountries] = useState([]); // string[]
   const [accountManagers, setAccountManagers] = useState([]); // {id,name,email,region}[]
 
@@ -62,22 +58,15 @@ function Projects({ embedded = false }) {
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const [newCustomer, setNewCustomer] = useState({
+  // ✅ Only DB-backed fields (and we exclude primary_presales from UI + payload)
+  const [formCustomer, setFormCustomer] = useState({
     customer_name: '',
     account_manager: '',
     country: '',
-    industry_vertical: '',
     customer_type: 'New',
-    year_first_closed: '',
-    company_size: '',
-    annual_revenue: '',
-    technical_complexity: 'Medium',
-    relationship_strength: 'Medium',
-    health_score: '',
-    key_stakeholders: [],
-    competitors: [],
-    notes: '',
-    status_id: ''
+    status_id: '',
+    key_stakeholders_text: '', // UI helper; stored as text[]
+    notes: ''
   });
 
   const [dealsSummary, setDealsSummary] = useState({
@@ -90,7 +79,23 @@ function Projects({ embedded = false }) {
     setTimeout(() => setToast(null), 3200);
   }, []);
 
-  // load master data + customers
+  // helpers
+  const parseStakeholders = (text) => {
+    // "Ana, Ben, , Chris" -> ["Ana","Ben","Chris"]
+    return (text || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  };
+
+  const stakeholdersToText = (arr) => (Array.isArray(arr) ? arr.join(', ') : '');
+
+  const closeModal = () => {
+    setShowCustomerModal(false);
+    setEditingCustomer(null);
+  };
+
+  // Load master data + customers
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -127,7 +132,7 @@ function Projects({ embedded = false }) {
         setCustomers(customersRes.data || []);
       } catch (err) {
         console.error('Error fetching data:', err);
-        setError('Failed to load customers.');
+        setError(err?.message || 'Failed to load customers.');
       } finally {
         setLoading(false);
       }
@@ -136,23 +141,18 @@ function Projects({ embedded = false }) {
     fetchData();
   }, []);
 
+  // Deals summary
   useEffect(() => {
     const fetchDealsSummary = async () => {
       try {
         const { data, error } = await supabase.from('projects').select('id, sales_stage');
-
         if (error) {
           console.error('Error fetching projects for deals summary:', error);
           setDealsSummary({ activeCount: 0, byStage: {} });
           return;
         }
 
-        if (!data || data.length === 0) {
-          setDealsSummary({ activeCount: 0, byStage: {} });
-          return;
-        }
-
-        const activeProjects = data.filter((p) => {
+        const activeProjects = (data || []).filter((p) => {
           const stage = String(p.sales_stage || '').trim().toLowerCase();
           if (!stage) return true;
           if (stage.startsWith('closed')) return false;
@@ -268,30 +268,37 @@ function Projects({ embedded = false }) {
     if (!ok) return;
 
     try {
-      const { error } = await supabase
-        .from('customers')
-        .update({ is_archived: true })
-        .eq('id', customer.id);
-
+      const { error } = await supabase.from('customers').update({ is_archived: true }).eq('id', customer.id);
       if (error) throw error;
 
       setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
       showToast('Customer archived.');
     } catch (err) {
       console.error('Error archiving customer:', err);
-      showToast('Failed to archive customer.', 'error');
+      showToast(err?.message || 'Failed to archive customer.', 'error');
     }
+  };
+
+  // ✅ payload matches your customers table columns
+  const buildCustomerPayload = () => {
+    return {
+      customer_name: (formCustomer.customer_name || '').trim(),
+      account_manager: formCustomer.account_manager || null,
+      country: formCustomer.country || null,
+      customer_type: formCustomer.customer_type || null,
+      status_id: formCustomer.status_id === '' || formCustomer.status_id == null ? null : Number(formCustomer.status_id),
+      key_stakeholders: parseStakeholders(formCustomer.key_stakeholders_text),
+      notes: formCustomer.notes || null
+      // NOT sending primary_presales (as requested)
+      // NOT sending any other non-existent columns
+    };
   };
 
   const handleSaveCustomer = async () => {
     try {
-      const payload = {
-        ...newCustomer,
-        status_id: newCustomer.status_id ? Number(newCustomer.status_id) : null,
-        health_score: newCustomer.health_score ? Number(newCustomer.health_score) : null
-      };
+      const payload = buildCustomerPayload();
 
-      if (!payload.customer_name || !payload.customer_name.trim()) {
+      if (!payload.customer_name) {
         showToast('Customer name is required.', 'error');
         return;
       }
@@ -315,58 +322,41 @@ function Projects({ embedded = false }) {
         showToast('Customer added.');
       }
 
-      setShowCustomerModal(false);
-      setEditingCustomer(null);
+      closeModal();
     } catch (err) {
       console.error('Error saving customer:', err);
-      showToast('Failed to save customer.', 'error');
+      showToast(err?.message || 'Failed to save customer.', 'error');
     }
   };
 
-  const resetCustomerForm = () => {
-    setNewCustomer({
+  const resetForm = () => {
+    setFormCustomer({
       customer_name: '',
       account_manager: '',
       country: '',
-      industry_vertical: '',
       customer_type: 'New',
-      year_first_closed: '',
-      company_size: '',
-      annual_revenue: '',
-      technical_complexity: 'Medium',
-      relationship_strength: 'Medium',
-      health_score: '',
-      key_stakeholders: [],
-      competitors: [],
-      notes: '',
-      status_id: ''
+      status_id: '',
+      key_stakeholders_text: '',
+      notes: ''
     });
   };
 
   const openAddCustomerModal = () => {
     setEditingCustomer(null);
-    resetCustomerForm();
+    resetForm();
     setShowCustomerModal(true);
   };
 
   const openEditCustomerModal = (customer) => {
     setEditingCustomer(customer);
-    setNewCustomer({
+    setFormCustomer({
       customer_name: customer.customer_name || '',
       account_manager: customer.account_manager || '',
       country: customer.country || '',
-      industry_vertical: customer.industry_vertical || '',
       customer_type: customer.customer_type || 'New',
-      year_first_closed: customer.year_first_closed || '',
-      company_size: customer.company_size || '',
-      annual_revenue: customer.annual_revenue || '',
-      technical_complexity: customer.technical_complexity || 'Medium',
-      relationship_strength: customer.relationship_strength || 'Medium',
-      health_score: customer.health_score ?? '',
-      key_stakeholders: customer.key_stakeholders || [],
-      competitors: customer.competitors || [],
-      notes: customer.notes || '',
-      status_id: customer.status_id ?? ''
+      status_id: customer.status_id ?? '',
+      key_stakeholders_text: stakeholdersToText(customer.key_stakeholders),
+      notes: customer.notes || ''
     });
     setShowCustomerModal(true);
   };
@@ -682,10 +672,10 @@ function Projects({ embedded = false }) {
         </section>
 
         {showCustomerModal && (
-          <Modal onClose={() => setShowCustomerModal(false)}>
+          <Modal onClose={closeModal}>
             <div className="modal-header">
               <h3>{editingCustomer ? 'Edit Customer' : 'Add Customer'}</h3>
-              <button className="icon-btn" onClick={() => setShowCustomerModal(false)}>
+              <button className="icon-btn" onClick={closeModal}>
                 <X size={16} />
               </button>
             </div>
@@ -695,8 +685,8 @@ function Projects({ embedded = false }) {
                 <div className="form-field">
                   <label>Customer Name *</label>
                   <input
-                    value={newCustomer.customer_name}
-                    onChange={(e) => setNewCustomer((p) => ({ ...p, customer_name: e.target.value }))}
+                    value={formCustomer.customer_name}
+                    onChange={(e) => setFormCustomer((p) => ({ ...p, customer_name: e.target.value }))}
                     placeholder="e.g., Metrobank"
                   />
                 </div>
@@ -704,8 +694,8 @@ function Projects({ embedded = false }) {
                 <div className="form-field">
                   <label>Country</label>
                   <select
-                    value={newCustomer.country || ''}
-                    onChange={(e) => setNewCustomer((p) => ({ ...p, country: e.target.value }))}
+                    value={formCustomer.country || ''}
+                    onChange={(e) => setFormCustomer((p) => ({ ...p, country: e.target.value }))}
                   >
                     <option value="">Select country</option>
                     {countries.map((c) => (
@@ -719,8 +709,8 @@ function Projects({ embedded = false }) {
                 <div className="form-field">
                   <label>Account Manager</label>
                   <select
-                    value={newCustomer.account_manager || ''}
-                    onChange={(e) => setNewCustomer((p) => ({ ...p, account_manager: e.target.value }))}
+                    value={formCustomer.account_manager || ''}
+                    onChange={(e) => setFormCustomer((p) => ({ ...p, account_manager: e.target.value }))}
                   >
                     <option value="">Select account manager</option>
                     {accountManagers.map((a) => (
@@ -734,8 +724,8 @@ function Projects({ embedded = false }) {
                 <div className="form-field">
                   <label>Customer Type</label>
                   <select
-                    value={newCustomer.customer_type}
-                    onChange={(e) => setNewCustomer((p) => ({ ...p, customer_type: e.target.value }))}
+                    value={formCustomer.customer_type || 'New'}
+                    onChange={(e) => setFormCustomer((p) => ({ ...p, customer_type: e.target.value }))}
                   >
                     <option value="New">New</option>
                     <option value="Existing">Existing</option>
@@ -746,8 +736,8 @@ function Projects({ embedded = false }) {
                 <div className="form-field">
                   <label>Status</label>
                   <select
-                    value={newCustomer.status_id}
-                    onChange={(e) => setNewCustomer((p) => ({ ...p, status_id: e.target.value }))}
+                    value={formCustomer.status_id}
+                    onChange={(e) => setFormCustomer((p) => ({ ...p, status_id: e.target.value }))}
                   >
                     <option value="">Not Set</option>
                     {customerStatuses.map((s) => (
@@ -759,18 +749,27 @@ function Projects({ embedded = false }) {
                 </div>
 
                 <div className="form-field full">
+                  <label>Key Stakeholders</label>
+                  <input
+                    value={formCustomer.key_stakeholders_text}
+                    onChange={(e) => setFormCustomer((p) => ({ ...p, key_stakeholders_text: e.target.value }))}
+                    placeholder="Comma separated (e.g., Ana Cruz, Ben Lim)"
+                  />
+                </div>
+
+                <div className="form-field full">
                   <label>Notes</label>
                   <textarea
-                    value={newCustomer.notes}
-                    onChange={(e) => setNewCustomer((p) => ({ ...p, notes: e.target.value }))}
-                    placeholder="Any useful context, stakeholders, next steps…"
+                    value={formCustomer.notes}
+                    onChange={(e) => setFormCustomer((p) => ({ ...p, notes: e.target.value }))}
+                    placeholder="Any useful context, next steps, risks…"
                   />
                 </div>
               </div>
             </div>
 
             <div className="modal-footer">
-              <button className="action-button secondary" onClick={() => setShowCustomerModal(false)}>
+              <button className="action-button secondary" onClick={closeModal}>
                 Cancel
               </button>
               <button className="action-button primary" onClick={handleSaveCustomer}>
