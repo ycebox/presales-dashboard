@@ -1,6 +1,6 @@
 // src/CustomerDetails.js
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { supabase } from './supabaseClient';
 import './CustomerDetails.css';
@@ -30,8 +30,6 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 
 const todayISODate = () => new Date().toISOString();
-const isValidUUID = (id) =>
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id || ''));
 
 const safeStr = (v) => (v == null ? '' : String(v));
 const safeLower = (v) => safeStr(v).toLowerCase();
@@ -106,8 +104,6 @@ const buildStakeholderEntry = ({ name, role, email, phone }) => {
 const CustomerDetails = () => {
   const { id: customerId } = useParams();
   const navigate = useNavigate();
-
-  const isValidCustomerId = useMemo(() => isValidUUID(customerId), [customerId]);
 
   const [customer, setCustomer] = useState(null);
   const [editCustomer, setEditCustomer] = useState(null);
@@ -235,19 +231,11 @@ const CustomerDetails = () => {
     }
   };
 
+  // ✅ FIX: removed UUID gate that caused false "Invalid customer ID"
   const fetchCustomer = async () => {
     try {
       setLoading(true);
       setError('');
-
-      if (!isValidCustomerId) {
-        setCustomer(null);
-        setEditCustomer(null);
-        setProjects([]);
-        setTasks([]);
-        setError('Invalid customer ID.');
-        return;
-      }
 
       const { data, error: fetchError } = await supabase
         .from('customers')
@@ -274,12 +262,10 @@ const CustomerDetails = () => {
     fetchStatusOptions();
     fetchMasterData();
     fetchCustomer();
- 
   }, [customerId]);
 
   useEffect(() => {
     fetchTasks(projects);
-    
   }, [projects]);
 
   // Hotkeys
@@ -328,7 +314,9 @@ const CustomerDetails = () => {
     }).length;
 
     const taskTotal = tasks.length;
-    const overdue = tasks.filter((t) => t.due_date && new Date(t.due_date) < new Date() && safeLower(t.status) !== 'completed').length;
+    const overdue = tasks.filter(
+      (t) => t.due_date && new Date(t.due_date) < new Date() && safeLower(t.status) !== 'completed'
+    ).length;
 
     const next7 = tasks.filter((t) => {
       if (!t.due_date) return false;
@@ -899,7 +887,7 @@ const CustomerDetails = () => {
                 )}
               </div>
 
-              {/* ✅ Notes added in Customer Information (Primary Presales removed) */}
+              {/* Notes (Primary Presales removed) */}
               <div className="info-item" style={{ gridColumn: '1 / -1' }}>
                 <label>Notes</label>
                 {isEditing ? (
