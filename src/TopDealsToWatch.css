@@ -243,3 +243,7 @@
     display: none;
   }
 }
+/* Project name should NOT be bold */
+.topdeals-project-cell .topdeals-link {
+  font-weight: 400;
+}
