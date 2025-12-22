@@ -726,24 +726,38 @@ function Projects({ embedded = false }) {
                   />
                 </div>
 
+                {/* ✅ Country dropdown */}
                 <div className="form-field">
                   <label>Country</label>
-                  <input
-                    value={newCustomer.country}
+                  <select
+                    value={newCustomer.country || ''}
                     onChange={(e) => setNewCustomer((p) => ({ ...p, country: e.target.value }))}
-                    placeholder="e.g., Philippines"
-                  />
+                  >
+                    <option value="">Select country</option>
+                    {uniqueCountries.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
+                {/* ✅ Account Manager dropdown */}
                 <div className="form-field">
                   <label>Account Manager</label>
-                  <input
-                    value={newCustomer.account_manager}
+                  <select
+                    value={newCustomer.account_manager || ''}
                     onChange={(e) =>
                       setNewCustomer((p) => ({ ...p, account_manager: e.target.value }))
                     }
-                    placeholder="e.g., Juan Dela Cruz"
-                  />
+                  >
+                    <option value="">Select account manager</option>
+                    {uniqueAccountManagers.map((a) => (
+                      <option key={a} value={a}>
+                        {a}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="form-field">
