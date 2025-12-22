@@ -833,12 +833,11 @@
 }
 
 .snapshot-value {
-  /* CHANGED: smaller + tighter */
-  font-size: 16px;
-  line-height: 1.15;
-  font-weight: 850;
+  font-size: 15px;        /* slightly smaller */
+  line-height: 1.25;     /* more breathing room */
+  font-weight: 800;      /* a bit less heavy */
   color: var(--ink-0);
-  margin-top: 0.18rem;
+  margin-top: 0.3rem;    /* more space from label */
 }
 
 /* --- Recent activity enhancement --- */
