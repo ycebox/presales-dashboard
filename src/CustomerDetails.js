@@ -274,12 +274,12 @@ const CustomerDetails = () => {
     fetchStatusOptions();
     fetchMasterData();
     fetchCustomer();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+ 
   }, [customerId]);
 
   useEffect(() => {
     fetchTasks(projects);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [projects]);
 
   // Hotkeys
