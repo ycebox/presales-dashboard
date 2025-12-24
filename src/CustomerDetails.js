@@ -1762,41 +1762,35 @@ const CustomerDetails = () => {
                             {s.role ? <span className="stakeholder-role">{s.role}</span> : null}
                           </div>
 
-                          <div className="stakeholder-contact">
-                            {s.email ? (
-                              <button
-                                type="button"
-                                className="stakeholder-contact-btn"
-                                title="Click to copy email"
-                                onClick={async () => {
-                                  const ok = await copyToClipboard(s.email);
-                                  if (ok) alert('Email copied');
-                                }}
-                              >
-                                <FaEnvelope />
-                                <span>{s.email}</span>
-                              </button>
-                            ) : (
-                              <span className="muted">No email</span>
-                            )}
+                     <div className="stakeholder-contact-icons">
+  {s.email && (
+    <button
+      type="button"
+      className="stakeholder-icon-btn"
+      title={`Copy email: ${s.email}`}
+      onClick={async () => {
+        const ok = await copyToClipboard(s.email);
+        if (ok) alert('Email copied');
+      }}
+    >
+      <FaEnvelope />
+    </button>
+  )}
 
-                            {s.phone ? (
-                              <button
-                                type="button"
-                                className="stakeholder-contact-btn"
-                                title="Click to copy phone"
-                                onClick={async () => {
-                                  const ok = await copyToClipboard(s.phone);
-                                  if (ok) alert('Phone copied');
-                                }}
-                              >
-                                <FaPhoneAlt />
-                                <span>{s.phone}</span>
-                              </button>
-                            ) : (
-                              <span className="muted">No phone</span>
-                            )}
-                          </div>
+  {s.phone && (
+    <button
+      type="button"
+      className="stakeholder-icon-btn"
+      title={`Copy phone: ${s.phone}`}
+      onClick={async () => {
+        const ok = await copyToClipboard(s.phone);
+        if (ok) alert('Phone copied');
+      }}
+    >
+      <FaPhoneAlt />
+    </button>
+  )}
+</div>
                         </div>
                       </div>
                       <div className="stakeholder-actions" />
