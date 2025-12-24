@@ -1055,3 +1055,151 @@
     grid-template-columns: 1fr;
   }
 }
+/* ================================
+   Key Stakeholders – Modern classy UI
+   (Overrides existing stakeholder styles)
+   ================================ */
+
+.stakeholders-section .section-header {
+  margin-bottom: 12px;
+}
+
+.stakeholder-list {
+  gap: 10px;
+}
+
+.stakeholder-item {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+  border-radius: 18px;
+  padding: 12px 12px;
+  transition: transform 0.10s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.stakeholder-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(29, 78, 216, 0.28);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.09);
+}
+
+.stakeholder-main {
+  align-items: center;
+  gap: 12px;
+}
+
+.stakeholder-avatar {
+  width: 38px;
+  height: 38px;
+  font-size: 13px;
+  font-weight: 900;
+  color: #0b1220;
+  border: 1px solid rgba(29, 78, 216, 0.22);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(29, 78, 216, 0.18), rgba(29, 78, 216, 0.05) 55%),
+    rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 18px rgba(29, 78, 216, 0.10);
+}
+
+.stakeholder-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.stakeholder-name-row {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.stakeholder-name-row h3 {
+  font-size: 13.5px;
+  font-weight: 900;
+  letter-spacing: -0.15px;
+  margin: 0;
+  color: #0b1220;
+  line-height: 1.2;
+}
+
+.stakeholder-role {
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.82);
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.stakeholder-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Compact icon row on the right */
+.stakeholder-contact-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0; /* keep on same row feel */
+}
+
+/* Icon buttons = premium chip buttons */
+.stakeholder-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.30);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.62);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.10s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.stakeholder-icon-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(29, 78, 216, 0.28);
+  background: rgba(29, 78, 216, 0.06);
+  color: rgba(29, 78, 216, 0.95);
+}
+
+.stakeholder-icon-btn:active {
+  transform: scale(0.98);
+}
+
+/* Make layout feel more “CRM-like”: name left, actions right */
+.stakeholder-item {
+  align-items: center;
+}
+
+.stakeholder-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.stakeholder-actions {
+  flex: 0 0 auto;
+}
+
+/* Optional: tighten spacing on very small screens */
+@media (max-width: 520px) {
+  .stakeholder-item {
+    padding: 10px 10px;
+  }
+
+  .stakeholder-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .stakeholder-icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 11px;
+  }
+}
