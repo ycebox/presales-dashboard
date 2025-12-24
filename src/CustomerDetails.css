@@ -45,7 +45,6 @@
   min-height: calc(100vh - 64px);
   box-sizing: border-box;
 
-  /* slightly wider */
   max-width: 1720px;
   margin: 0 auto;
 
@@ -66,7 +65,6 @@
   min-width: 0;
 }
 
-/* sticky right column on wide screens */
 @media (min-width: 1200px) {
   .customer-main-right {
     position: sticky;
@@ -74,7 +72,6 @@
   }
 }
 
-/* On smaller screens, stack the columns */
 @media (max-width: 960px) {
   .customer-details-container {
     padding: 20px 16px 32px;
@@ -104,7 +101,6 @@
   gap: 0.75rem;
 }
 
-/* avatar removed in JS; keep class safe */
 .customer-avatar {
   display: none;
 }
@@ -160,7 +156,6 @@
   padding-top: 2px;
 }
 
-/* NEW: At-a-glance chips under customer name */
 .customer-chips-row {
   margin-top: 0.35rem;
   display: flex;
@@ -242,7 +237,6 @@
   box-shadow: 0 12px 22px rgba(15, 23, 42, 0.09);
 }
 
-/* Smaller icon-only buttons */
 .icon-btn {
   border-radius: 999px;
   padding: 0.35rem 0.45rem;
@@ -264,7 +258,6 @@
   background: rgba(29, 78, 216, 0.06);
 }
 
-/* Button disabled state */
 .btn-primary:disabled,
 .btn-secondary:disabled,
 .icon-btn:disabled {
@@ -385,7 +378,6 @@
   min-height: 80px;
 }
 
-/* Status pill inside info panel */
 .status-pill span {
   display: inline-flex;
   align-items: center;
@@ -523,7 +515,6 @@
   color: var(--muted-2);
 }
 
-/* NEW: clickable contact (copy-to-clipboard) */
 .stakeholder-contact-btn {
   display: inline-flex;
   align-items: center;
@@ -579,6 +570,13 @@
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.10);
 }
 
+/* ✅ JS applies "project-primary" for the highlighted deal */
+.project-item.project-primary {
+  border-color: rgba(29, 78, 216, 0.55);
+  background: rgba(29, 78, 216, 0.07);
+  box-shadow: 0 16px 34px rgba(29, 78, 216, 0.10);
+}
+
 .project-main {
   min-width: 0;
 }
@@ -618,7 +616,6 @@
   white-space: nowrap;
 }
 
-/* NEW: mini row with badges */
 .project-mini-row {
   margin-top: 0.45rem;
   display: flex;
@@ -658,7 +655,6 @@
   color: var(--muted-2);
 }
 
-/* right side of project row */
 .project-details {
   display: flex;
   align-items: flex-start;
@@ -676,7 +672,6 @@
   white-space: nowrap;
 }
 
-/* delete icon button used inside project rows */
 .btn-icon {
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -704,7 +699,6 @@
   box-shadow: none;
 }
 
-/* NEW: project controls row (sort + checkbox) */
 .project-controls-row {
   margin: 0.25rem 0 0.75rem;
   display: flex;
@@ -801,7 +795,6 @@
   align-self: stretch;
 }
 
-/* --- Snapshot enhancement --- */
 .snapshot-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -833,14 +826,13 @@
 }
 
 .snapshot-value {
-  font-size: 15px;        /* slightly smaller */
-  line-height: 1.25;     /* more breathing room */
-  font-weight: 800;      /* a bit less heavy */
+  font-size: 15px;
+  line-height: 1.25;
+  font-weight: 800;
   color: var(--ink-0);
-  margin-top: 0.3rem;    /* more space from label */
+  margin-top: 0.3rem;
 }
 
-/* --- Recent activity enhancement --- */
 .recent-activity-list {
   display: flex;
   flex-direction: column;
@@ -893,7 +885,6 @@
   gap: 0.75rem;
 }
 
-/* each group */
 .task-group {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-2);
@@ -918,7 +909,6 @@
   color: var(--muted);
 }
 
-/* reuse badge */
 .task-count-badge {
   font-size: 12px;
   padding: 0.12rem 0.45rem;
@@ -929,7 +919,6 @@
   font-weight: 750;
 }
 
-/* task list inside grouped card */
 .project-task-list {
   list-style: none;
   margin: 0;
@@ -973,7 +962,6 @@
   align-items: center;
 }
 
-/* NEW: "Go to project" link button */
 .task-project-link {
   display: inline-flex;
   align-items: center;
@@ -1017,7 +1005,6 @@
   font-weight: 750;
 }
 
-/* right side meta badges */
 .task-meta {
   display: flex;
   flex-direction: column;
@@ -1038,46 +1025,6 @@
   white-space: nowrap;
 }
 
-/* Status colors */
-.task-status-badge.status-not-started {
-  background: rgba(148, 163, 184, 0.12);
-  border-color: rgba(148, 163, 184, 0.35);
-  color: #0f172a;
-}
-
-.task-status-badge.status-in-progress {
-  background: rgba(29, 78, 216, 0.10);
-  border-color: rgba(29, 78, 216, 0.28);
-  color: #1e3a8a;
-}
-
-.task-status-badge.status-on-hold,
-.task-status-badge.status-onhold {
-  background: rgba(217, 119, 6, 0.12);
-  border-color: rgba(217, 119, 6, 0.30);
-  color: #7c2d12;
-}
-
-/* Priority colors */
-.task-priority-badge.priority-high {
-  background: rgba(220, 38, 38, 0.10);
-  border-color: rgba(220, 38, 38, 0.28);
-  color: #7f1d1d;
-}
-
-.task-priority-badge.priority-low {
-  background: rgba(22, 163, 74, 0.10);
-  border-color: rgba(22, 163, 74, 0.28);
-  color: #14532d;
-}
-
-.task-priority-badge.priority-normal {
-  background: rgba(148, 163, 184, 0.10);
-  border-color: rgba(148, 163, 184, 0.30);
-  color: #0f172a;
-}
-
-/* Due date indicators */
 .task-item.due-overdue {
   border-left: 3px solid rgba(220, 38, 38, 0.75);
   padding-left: 0.7rem;
@@ -1226,6 +1173,75 @@
   color: #991b1b;
 }
 
+/* ✅ Added: used by your JS modals */
+.modal-form {
+  margin-top: 0.6rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem 0.9rem;
+}
+
+@media (max-width: 680px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 750;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.form-icon {
+  font-size: 12px;
+  color: var(--muted-2);
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: #ffffff;
+  padding: 0.6rem 0.75rem;
+  font-size: 13px;
+  color: var(--ink-0);
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  border-color: rgba(29, 78, 216, 0.55);
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 84px;
+}
+
 .modal-actions {
   margin-top: 0.8rem;
   display: flex;
@@ -1258,6 +1274,23 @@
   border-color: transparent;
   color: #ffffff;
   box-shadow: 0 10px 18px rgba(29, 78, 216, 0.18);
+}
+
+.button-submit:hover {
+  background: var(--primary-2);
+  box-shadow: 0 14px 26px rgba(29, 78, 216, 0.22);
+}
+
+.button-cancel:hover {
+  border-color: rgba(148, 163, 184, 0.75);
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.09);
+}
+
+.button-cancel:disabled,
+.button-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 @keyframes spin {
@@ -1366,7 +1399,6 @@
   line-height: 1.2;
 }
 
-/* ===== Old health strip (removed in JS) – keep it harmless ===== */
 .health-strip,
 .health-grid,
 .health-item,
@@ -1384,20 +1416,11 @@
   .customer-title { font-size: 24px; }
   .recent-activity-row { grid-template-columns: 1fr; gap: 0.2rem; }
   .customer-chip { font-size: 11px; }
-
-  /* NEW: even smaller snapshot value on small screens */
   .snapshot-value { font-size: 15px; }
 }
 
-/* ===== Right column rhythm polish ===== */
-
-.snapshot-section {
-  min-height: 220px;
-}
-
-.recent-activity-section {
-  min-height: 180px;
-}
+.snapshot-section { min-height: 220px; }
+.recent-activity-section { min-height: 180px; }
 
 .tasks-section {
   min-height: 260px;
