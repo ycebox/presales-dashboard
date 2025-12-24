@@ -809,16 +809,6 @@ const CustomerDetails = () => {
     return due >= start && due <= soon;
   };
 
-  const daysUntil = (dueDate) => {
-    if (!dueDate) return null;
-    const d = new Date(dueDate);
-    if (Number.isNaN(d.getTime())) return null;
-    const start = todayStart().getTime();
-    d.setHours(0, 0, 0, 0);
-    const diff = d.getTime() - start;
-    return Math.round(diff / (1000 * 60 * 60 * 24));
-  };
-
   const getProjectStage = (p) => String(p?.sales_stage || p?.current_status || '').trim();
 
   const isProjectCompleted = (stage) => {
@@ -1215,13 +1205,6 @@ const CustomerDetails = () => {
         return;
       }
 
-      // Validate customer_type to avoid DB constraint errors
-      const nextType = editCustomer?.customer_type ? String(editCustomer.customer_type).trim() : '';
-      if (nextType && !customerTypes.includes(nextType)) {
-        alert('Invalid Customer Type selected.');
-        return;
-      }
-
       const oldName = customer?.customer_name || '';
 
       const { error: updateError } = await supabase
@@ -1230,7 +1213,7 @@ const CustomerDetails = () => {
           customer_name: newName,
           account_manager: editCustomer.account_manager || null,
           country: editCustomer.country || null,
-          customer_type: nextType || null, // ✅ Customer Type saved here
+          customer_type: editCustomer.customer_type || null,
           status_id:
             editCustomer.status_id === '' || editCustomer.status_id == null
               ? null
@@ -1260,7 +1243,7 @@ const CustomerDetails = () => {
         customer_name: newName,
         account_manager: editCustomer.account_manager || null,
         country: editCustomer.country || null,
-        customer_type: nextType || null, // ✅ also reflected in UI state
+        customer_type: editCustomer.customer_type || null,
         status_id:
           editCustomer.status_id === '' || editCustomer.status_id == null
             ? null
@@ -1455,6 +1438,41 @@ const CustomerDetails = () => {
 
   const lastUpdatedDisplay = formatDate(customer.updated_at || customer.created_at);
 
+  const customerSnapshotItems = [
+    {
+      label: 'Total Pipeline',
+      value: formatCurrency(summary.totalPipeline),
+    },
+    {
+      label: 'Active Projects',
+      value: formatNumber(summary.activeProjects),
+    },
+    {
+      label: 'Open Tasks',
+      value: formatNumber(summary.openTasksCount),
+    },
+    {
+      label: 'Overdue Tasks',
+      value: formatNumber(summary.overdueCount),
+    },
+    {
+      label: 'ATMs',
+      value: metricsLoading ? '…' : formatCompact(metrics?.atms),
+    },
+    {
+      label: 'Active Cards',
+      value: metricsLoading ? '…' : formatCompact(metrics?.active_cards),
+    },
+    {
+      label: 'Tx / Day',
+      value: metricsLoading ? '…' : formatCompact(metrics?.tx_per_day),
+    },
+    {
+      label: 'Digital Users',
+      value: metricsLoading ? '…' : formatCompact(metrics?.digital_users),
+    },
+  ];
+
   return (
     <div className="customer-details-container">
       <header className="customer-header">
@@ -1467,18 +1485,21 @@ const CustomerDetails = () => {
                 <FaBuilding />
                 {customer.customer_type || 'Customer'}
               </span>
+
               {customer.country && (
                 <span className="customer-subtitle">
                   <FaGlobeAsia />
                   {customer.country}
                 </span>
               )}
+
               {customer.account_manager && (
                 <span className="customer-subtitle">
                   <FaUserTie />
                   AM: {customer.account_manager}
                 </span>
               )}
+
               {dealInsight.primary && (
                 <span className={`customer-subtitle attention-subtitle ${dealInsight.attention}`}>
                   <FaExclamationTriangle />
@@ -1551,7 +1572,9 @@ const CustomerDetails = () => {
       </header>
 
       <main className="customer-main-layout">
+        {/* LEFT COLUMN */}
         <div className="customer-main-left">
+          {/* CUSTOMER INFORMATION */}
           <section className="section-card customer-info-section">
             <div className="section-header">
               <div className="section-title">
@@ -1576,7 +1599,6 @@ const CustomerDetails = () => {
                 )}
               </div>
 
-              {/* ✅ Customer Type field (added + validated + saved) */}
               <div className="info-item">
                 <label>Customer type</label>
                 {isEditing ? (
@@ -1694,6 +1716,7 @@ const CustomerDetails = () => {
             </div>
           </section>
 
+          {/* KEY STAKEHOLDERS */}
           <section className="section-card stakeholders-section">
             <div className="section-header">
               <div className="section-title">
@@ -1753,12 +1776,339 @@ const CustomerDetails = () => {
             )}
           </section>
 
-          {/* The rest of your file stays the same (Projects, Notes, Snapshot, Tasks, Modals). */}
-          {/* Keeping everything unchanged to avoid breaking your current UI/logic. */}
+          {/* PROJECTS / OPPORTUNITIES */}
+          <section className="section-card projects-section">
+            <div className="section-header">
+              <div className="section-title">
+                <FaProjectDiagram />
+                <h2>Projects / Opportunities</h2>
+              </div>
 
-          {/* --- Projects / Opportunities + Notes + Right Sidebar sections + Modals ---
-              (No changes needed for customer type)
-          */}
+              <div className="section-actions">
+                <button className="btn-secondary" onClick={() => setShowProjectModal(true)}>
+                  <FaPlus />
+                  Add Project
+                </button>
+              </div>
+            </div>
+
+            <div className="project-controls-row">
+              <div className="project-controls-left">
+                <label className="control-label">
+                  Sort
+                  <select
+                    className="control-select"
+                    value={projectSort}
+                    onChange={(e) => setProjectSort(e.target.value)}
+                  >
+                    <option value="stage">Stage</option>
+                    <option value="value">Deal value</option>
+                    <option value="due">Due date</option>
+                  </select>
+                </label>
+
+                <label className="control-toggle">
+                  <input
+                    type="checkbox"
+                    checked={showCompletedProjects}
+                    onChange={(e) => setShowCompletedProjects(e.target.checked)}
+                  />
+                  Show completed
+                </label>
+              </div>
+            </div>
+
+            {visibleProjects.length === 0 ? (
+              <div className="empty-state small">
+                <p>No projects found for this customer yet.</p>
+              </div>
+            ) : (
+              <div className="project-list">
+                {visibleProjects.map((p) => {
+                  const stage = getProjectStage(p);
+                  const due = p.due_date ? formatDate(p.due_date) : '';
+                  const openCount = projectOpenTaskCount[String(p.id)] || 0;
+                  const isPrimary = dealInsight.primary && String(dealInsight.primary.id) === String(p.id);
+
+                  return (
+                    <div
+                      key={p.id}
+                      className={`project-item ${isPrimary ? 'project-primary' : ''}`}
+                      onClick={() => {
+                        // optional: navigate to ProjectDetails page if you have it
+                        // navigate(`/project/${p.id}`)
+                      }}
+                    >
+                      <div className="project-main">
+                        <h3>
+                          <span>{p.project_name || '(Unnamed Project)'}</span>
+                          {isPrimary ? <span className="project-primary-badge">Primary</span> : null}
+                        </h3>
+
+                        {p.scope ? <p className="project-scope">{p.scope}</p> : null}
+
+                        <div className="project-mini-row">
+                          {stage ? <span className="project-stage-badge">{stage}</span> : null}
+                          <span className="project-taskcount-badge">
+                            <FaTasks /> {openCount} open
+                          </span>
+                          {due ? (
+                            <span className="project-due-badge">
+                              <FaCalendarAlt /> {due}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="project-details">
+                        <div className="project-value">
+                          <FaMoneyBillWave />
+                          {formatCurrency(p.deal_value)}
+                        </div>
+
+                        <button
+                          className="btn-icon"
+                          title="Delete project"
+                          disabled={deletingProjectId === p.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteProject(p);
+                          }}
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* NOTES */}
+          <section className="section-card notes-section">
+            <div className="section-header">
+              <div className="section-title">
+                <FaRegStickyNote />
+                <h2>My Notes</h2>
+              </div>
+              <div className="section-actions">
+                <button
+                  className="btn-primary"
+                  onClick={handleSaveCompanyProfile}
+                  disabled={savingCompanyProfile}
+                >
+                  <FaSave />
+                  {savingCompanyProfile ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+
+            <textarea
+              className="notes-textarea"
+              value={companyProfileDraft}
+              onChange={(e) => setCompanyProfileDraft(e.target.value)}
+              placeholder="Write notes about the customer, meetings, next steps, risks..."
+            />
+          </section>
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div className="customer-main-right">
+          {/* SNAPSHOT */}
+          <section className="section-card snapshot-section">
+            <div className="section-header">
+              <div className="section-title">
+                <FaChartLine />
+                <h2>Customer Snapshot</h2>
+              </div>
+              <div className="section-actions">
+                <button className="btn-secondary" onClick={() => setShowMetricsModal(true)}>
+                  <FaEdit />
+                  Edit metrics
+                </button>
+              </div>
+            </div>
+
+            <div className="snapshot-grid">
+              {customerSnapshotItems.map((it) => (
+                <div className="snapshot-item" key={it.label}>
+                  <div className="snapshot-label">{it.label}</div>
+                  <div className="snapshot-value">{it.value}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* RECENT ACTIVITY */}
+          <section className="section-card recent-activity-section">
+            <div className="section-header">
+              <div className="section-title">
+                <FaCalendarAlt />
+                <h2>Recent Activity</h2>
+              </div>
+            </div>
+
+            <div className="recent-activity-list">
+              <div className="recent-activity-row">
+                <div className="recent-activity-label">Last updated</div>
+                <div className="recent-activity-value">{lastUpdatedDisplay || '—'}</div>
+              </div>
+
+              <div className="recent-activity-row">
+                <div className="recent-activity-label">Latest project</div>
+                <div className="recent-activity-value">
+                  {recentActivity.lastProject?.project_name || '—'}
+                </div>
+              </div>
+
+              <div className="recent-activity-row">
+                <div className="recent-activity-label">Latest task</div>
+                <div className="recent-activity-value">
+                  {recentActivity.lastTask?.description || recentActivity.lastTask?.title || '—'}
+                </div>
+              </div>
+            </div>
+
+            <div className="recent-activity-hint">
+              Tip: Use <span className="kbd">E</span> to edit, <span className="kbd">T</span> to add a task, <span className="kbd">A</span> to add stakeholder.
+            </div>
+          </section>
+
+          {/* TASKS */}
+          <section className="section-card tasks-section">
+            <div className="section-header">
+              <div className="section-title">
+                <FaTasks />
+                <h2>Open Tasks</h2>
+              </div>
+              <div className="section-actions">
+                <button className="btn-secondary" onClick={() => setShowTaskModal(true)}>
+                  <FaPlus />
+                  Add Task
+                </button>
+              </div>
+            </div>
+
+            {visibleTasks.length === 0 ? (
+              <div className="empty-state small">
+                <p>No open tasks found for this customer.</p>
+              </div>
+            ) : (
+              <div className="tasks-grouped">
+                {tasksGrouped.overdue.length > 0 && (
+                  <div className="task-group">
+                    <div className="task-group-header">
+                      <h3>Overdue</h3>
+                      <span className="task-count-badge">{tasksGrouped.overdue.length}</span>
+                    </div>
+                    <ul className="project-task-list">
+                      {tasksGrouped.overdue.map((t) => (
+                        <li key={t.id} className="task-item due-overdue">
+                          <div className="task-main">
+                            <div className="task-desc">{t.description || t.title}</div>
+                            <div className="task-subrow">
+                              <button
+                                className="task-project-link"
+                                onClick={() => {
+                                  // optional: navigate to the project
+                                }}
+                              >
+                                <FaProjectDiagram />
+                                {projects.find((p) => String(p.id) === String(t.project_id))
+                                  ?.project_name || 'Project'}
+                              </button>
+                              {t.due_date ? (
+                                <div className="task-due">
+                                  <FaCalendarAlt />
+                                  {formatDate(t.due_date)}
+                                  <span className="task-due-mini">(Overdue)</span>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="task-meta">
+                            <span className="task-status-badge">{t.status || '—'}</span>
+                            <span className="task-priority-badge">{t.priority || 'Normal'}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {tasksGrouped.dueSoon.length > 0 && (
+                  <div className="task-group">
+                    <div className="task-group-header">
+                      <h3>Due Soon</h3>
+                      <span className="task-count-badge">{tasksGrouped.dueSoon.length}</span>
+                    </div>
+                    <ul className="project-task-list">
+                      {tasksGrouped.dueSoon.map((t) => (
+                        <li key={t.id} className="task-item due-soon">
+                          <div className="task-main">
+                            <div className="task-desc">{t.description || t.title}</div>
+                            <div className="task-subrow">
+                              <button className="task-project-link">
+                                <FaProjectDiagram />
+                                {projects.find((p) => String(p.id) === String(t.project_id))
+                                  ?.project_name || 'Project'}
+                              </button>
+                              {t.due_date ? (
+                                <div className="task-due">
+                                  <FaCalendarAlt />
+                                  {formatDate(t.due_date)}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="task-meta">
+                            <span className="task-status-badge">{t.status || '—'}</span>
+                            <span className="task-priority-badge">{t.priority || 'Normal'}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {tasksGrouped.later.length > 0 && (
+                  <div className="task-group">
+                    <div className="task-group-header">
+                      <h3>Later</h3>
+                      <span className="task-count-badge">{tasksGrouped.later.length}</span>
+                    </div>
+                    <ul className="project-task-list">
+                      {tasksGrouped.later.map((t) => (
+                        <li key={t.id} className="task-item">
+                          <div className="task-main">
+                            <div className="task-desc">{t.description || t.title}</div>
+                            <div className="task-subrow">
+                              <button className="task-project-link">
+                                <FaProjectDiagram />
+                                {projects.find((p) => String(p.id) === String(t.project_id))
+                                  ?.project_name || 'Project'}
+                              </button>
+                              {t.due_date ? (
+                                <div className="task-due">
+                                  <FaCalendarAlt />
+                                  {formatDate(t.due_date)}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="task-meta">
+                            <span className="task-status-badge">{t.status || '—'}</span>
+                            <span className="task-priority-badge">{t.priority || 'Normal'}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
         </div>
       </main>
 
