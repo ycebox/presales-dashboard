@@ -1,55 +1,109 @@
 // src/CustomerDetails.js
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { supabase } from './supabaseClient';
 import './CustomerDetails.css';
 
 import {
-  FaBuilding,
-  FaCalendarAlt,
-  FaChartLine,
-  FaEdit,
-  FaEnvelope,
-  FaExclamationTriangle,
-  FaGlobeAsia,
-  FaInfoCircle,
-  FaMoneyBillWave,
-  FaPlus,
-  FaProjectDiagram,
-  FaRegStickyNote,
-  FaSave,
-  FaTasks,
-  FaTimes,
-  FaTrash,
-  FaUserTie,
-  FaUsers,
-  FaPhoneAlt,
-} from 'react-icons/fa';
+  ArrowLeft,
+  Building2,
+  Calendar,
+  Check,
+  ChevronDown,
+  ClipboardCopy,
+  Edit3,
+  ExternalLink,
+  Globe,
+  Mail,
+  Phone,
+  Plus,
+  Save,
+  Trash2,
+  Users,
+  X,
+  AlertTriangle,
+  FileText,
+  Briefcase,
+  Target,
+  BarChart3,
+} from 'lucide-react';
 
-// IMPORTANT: Must match your DB constraint values exactly
-const customerTypes = ['New', 'Existing', 'Internal Initiative'];
+import { useNavigate, useParams } from 'react-router-dom';
 
+const todayISODate = () => new Date().toISOString();
+const isValidUUID = (id) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    String(id || '')
+  );
+
+const safeStr = (v) => (v == null ? '' : String(v));
+const safeLower = (v) => safeStr(v).toLowerCase();
+
+const copyToClipboard = async (text) => {
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+
+    const el = document.createElement('textarea');
+    el.value = text;
+    el.setAttribute('readonly', '');
+    el.style.position = 'absolute';
+    el.style.left = '-9999px';
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
+function Modal({ isOpen, onClose, title, children, footer }) {
+  if (!isOpen) return null;
+
+  return ReactDOM.createPortal(
+    <div
+      className="cd-modal-overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
+      <div className="cd-modal">
+        <div className="cd-modal-header">
+          <div className="cd-modal-title">{title}</div>
+          <button className="cd-icon-btn" onClick={onClose} title="Close">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="cd-modal-body">{children}</div>
+
+        {footer ? <div className="cd-modal-footer">{footer}</div> : null}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// Stakeholder encoding format:
+// NEW: name | role | email | phone
+// Backward compatible with OLD: name | role | contact
 const looksLikeEmail = (v) => {
   const s = String(v || '').trim();
   return !!s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 };
 
-/**
- * NEW format:
- *   name | role | email | phone
- *
- * Backward compatible with old format:
- *   name | role | contact
- * - If old contact looks like email => email
- * - else => phone
- */
 const parseStakeholderEntry = (entry) => {
   if (!entry) return { name: '', role: '', email: '', phone: '' };
 
-  const parts = String(entry).split('|').map((p) => (p ?? '').trim());
+  const parts = String(entry)
+    .split('|')
+    .map((p) => (p ?? '').trim());
 
-  // Old (3 parts): name | role | contact
   if (parts.length === 3) {
     const contact = parts[2] || '';
     return {
@@ -60,7 +114,6 @@ const parseStakeholderEntry = (entry) => {
     };
   }
 
-  // New (4 parts): name | role | email | phone
   return {
     name: parts[0] || '',
     role: parts[1] || '',
@@ -75,38 +128,9 @@ const encodeStakeholderEntry = ({ name, role, email, phone }) => {
   ).trim()} | ${String(phone || '').trim()}`.trim();
 };
 
-const isUuid = (value) => {
-  if (!value) return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    String(value)
-  );
-};
+const customerTypes = ['New', 'Existing', 'Internal Initiative'];
 
-const formatNumber = (value) => {
-  if (value === null || value === undefined || value === '') return '—';
-  const n = Number(value);
-  if (Number.isNaN(n)) return '—';
-  return n.toLocaleString();
-};
-
-const formatCompact = (value) => {
-  if (value === null || value === undefined || value === '') return '—';
-  const n = Number(value);
-  if (!Number.isFinite(n)) return '—';
-
-  const abs = Math.abs(n);
-  const sign = n < 0 ? '-' : '';
-
-  if (abs >= 1_000_000_000)
-    return `${sign}${(abs / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
-  if (abs >= 1_000_000)
-    return `${sign}${(abs / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
-  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
-
-  return n.toLocaleString();
-};
-
-// ---- Customer Status helpers (aligned with Projects.js) ----
+// Status logic (same idea as Projects.js)
 const getCustomerStatus = (customerRow, statusList) => {
   const id = customerRow?.status_id;
   if (id === null || id === undefined || id === '') return null;
@@ -125,699 +149,45 @@ const getStatusBadgeClass = (codeOrLabel) => {
 
   return 'status-none';
 };
-// -----------------------------------------------------------
-
-const StakeholdersModal = ({ isOpen, onClose, onSave, existingStakeholders }) => {
-  const [rows, setRows] = useState([]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const parsed = Array.isArray(existingStakeholders)
-      ? existingStakeholders.map(parseStakeholderEntry)
-      : [];
-    setRows(parsed.length ? parsed : [{ name: '', role: '', email: '', phone: '' }]);
-  }, [isOpen, existingStakeholders]);
-
-  if (!isOpen) return null;
-
-  const updateRow = (index, field, value) => {
-    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
-  };
-
-  const addRow = () => setRows((prev) => [...prev, { name: '', role: '', email: '', phone: '' }]);
-  const removeRow = (index) => setRows((prev) => prev.filter((_, i) => i !== index));
-
-  const handleSave = () => {
-    const cleaned = rows
-      .map((r) => ({
-        name: String(r.name || '').trim(),
-        role: String(r.role || '').trim(),
-        email: String(r.email || '').trim(),
-        phone: String(r.phone || '').trim(),
-      }))
-      .filter((r) => r.name || r.role || r.email || r.phone)
-      .map(encodeStakeholderEntry);
-
-    onSave(cleaned);
-  };
-
-  return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
-      <div className="modal-container" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-wrapper">
-            <FaUsers className="modal-icon" />
-            <h2 className="modal-title">Key Stakeholders</h2>
-          </div>
-          <button className="modal-close-button" onClick={onClose}>
-            <FaTimes />
-          </button>
-        </div>
-
-        <form className="modal-form" onSubmit={(e) => e.preventDefault()}>
-          <div className="stakeholder-rows">
-            <div
-              className="stakeholder-rows-header"
-              style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr 34px' }}
-            >
-              <span>Name</span>
-              <span>Role</span>
-              <span>Email</span>
-              <span>Phone</span>
-              <span />
-            </div>
-
-            {rows.map((r, index) => (
-              <div
-                className="stakeholder-row"
-                key={index}
-                style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr 34px' }}
-              >
-                <input
-                  className="form-input"
-                  value={r.name}
-                  onChange={(e) => updateRow(index, 'name', e.target.value)}
-                  placeholder="e.g. Juan Dela Cruz"
-                />
-                <input
-                  className="form-input"
-                  value={r.role}
-                  onChange={(e) => updateRow(index, 'role', e.target.value)}
-                  placeholder="e.g. Head of Cards"
-                />
-                <input
-                  className="form-input"
-                  value={r.email}
-                  onChange={(e) => updateRow(index, 'email', e.target.value)}
-                  placeholder="e.g. juan@email.com"
-                />
-                <input
-                  className="form-input"
-                  value={r.phone}
-                  onChange={(e) => updateRow(index, 'phone', e.target.value)}
-                  placeholder="e.g. +63 9xx xxx xxxx"
-                />
-                <button
-                  type="button"
-                  className="btn-icon"
-                  onClick={() => removeRow(index)}
-                  title="Remove"
-                >
-                  <FaTimes />
-                </button>
-              </div>
-            ))}
-
-            <button type="button" className="btn-secondary inline" onClick={addRow}>
-              <FaPlus />
-              Add another
-            </button>
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" className="button-cancel" onClick={onClose}>
-              <FaTimes />
-              Cancel
-            </button>
-            <button type="button" className="button-submit" onClick={handleSave}>
-              <FaSave />
-              Save Stakeholders
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-const TaskModal = ({ isOpen, onClose, onSave, projects }) => {
-  const [form, setForm] = useState({
-    project_id: '',
-    description: '',
-    status: 'Not Started',
-    priority: 'Normal',
-    due_date: '',
-  });
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setSaving(false);
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!form.project_id || !String(form.description || '').trim()) {
-      alert('Please select a project and enter a task description.');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      await onSave({
-        ...form,
-        description: String(form.description || '').trim(),
-        due_date: form.due_date || null,
-      });
-      setSaving(false);
-      onClose();
-      setForm({
-        project_id: '',
-        description: '',
-        status: 'Not Started',
-        priority: 'Normal',
-        due_date: '',
-      });
-    } catch (err) {
-      setSaving(false);
-      alert('Failed to create task: ' + err.message);
-    }
-  };
-
-  return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
-      <div className="modal-container" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-wrapper">
-            <FaTasks className="modal-icon" />
-            <h2 className="modal-title">Add Task</h2>
-          </div>
-          <button className="modal-close-button" onClick={onClose}>
-            <FaTimes />
-          </button>
-        </div>
-
-        <form className="modal-form" onSubmit={handleSubmit}>
-          <div className="form-grid">
-            <div className="form-group full-width">
-              <label className="form-label">
-                <FaProjectDiagram className="form-icon" />
-                Project *
-              </label>
-              <select
-                className="form-input"
-                name="project_id"
-                value={form.project_id}
-                onChange={handleChange}
-              >
-                <option value="">Select project</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.project_name || '(Unnamed Project)'}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group full-width">
-              <label className="form-label">
-                <FaTasks className="form-icon" />
-                Task Description *
-              </label>
-              <input
-                className="form-input"
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                placeholder="e.g. Prepare proposal deck"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <FaInfoCircle className="form-icon" />
-                Status
-              </label>
-              <select
-                className="form-input"
-                name="status"
-                value={form.status}
-                onChange={handleChange}
-              >
-                <option>Not Started</option>
-                <option>In Progress</option>
-                <option>Completed</option>
-                <option>On Hold</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <FaExclamationTriangle className="form-icon" />
-                Priority
-              </label>
-              <select
-                className="form-input"
-                name="priority"
-                value={form.priority}
-                onChange={handleChange}
-              >
-                <option>Low</option>
-                <option>Normal</option>
-                <option>High</option>
-              </select>
-            </div>
-
-            <div className="form-group full-width">
-              <label className="form-label">
-                <FaCalendarAlt className="form-icon" />
-                Due date
-              </label>
-              <input
-                className="form-input"
-                type="date"
-                name="due_date"
-                value={form.due_date}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" className="button-cancel" onClick={onClose}>
-              <FaTimes />
-              Cancel
-            </button>
-            <button type="submit" className="button-submit" disabled={saving}>
-              <FaSave />
-              {saving ? 'Saving...' : 'Create Task'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-const ProjectModal = ({ isOpen, onClose, onSave }) => {
-  const [form, setForm] = useState({
-    project_name: '',
-    scope: '',
-    sales_stage: 'Opportunity',
-    deal_value: '',
-    product: '',
-    due_date: '',
-  });
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setSaving(false);
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!String(form.project_name || '').trim()) {
-      alert('Project name is required.');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      await onSave({
-        project_name: String(form.project_name || '').trim(),
-        scope: String(form.scope || '').trim() || null,
-        sales_stage: form.sales_stage || null,
-        deal_value: form.deal_value ? Number(form.deal_value) : null,
-        product: String(form.product || '').trim() || null,
-        due_date: form.due_date || null,
-      });
-      setSaving(false);
-      onClose();
-      setForm({
-        project_name: '',
-        scope: '',
-        sales_stage: 'Opportunity',
-        deal_value: '',
-        product: '',
-        due_date: '',
-      });
-    } catch (err) {
-      setSaving(false);
-      alert('Failed to create project: ' + err.message);
-    }
-  };
-
-  return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
-      <div className="modal-container" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-wrapper">
-            <FaProjectDiagram className="modal-icon" />
-            <h2 className="modal-title">Add Project</h2>
-          </div>
-          <button className="modal-close-button" onClick={onClose}>
-            <FaTimes />
-          </button>
-        </div>
-
-        <form className="modal-form" onSubmit={handleSubmit}>
-          <div className="form-grid">
-            <div className="form-group full-width">
-              <label className="form-label">
-                <FaProjectDiagram className="form-icon" />
-                Project name *
-              </label>
-              <input
-                className="form-input"
-                name="project_name"
-                value={form.project_name}
-                onChange={handleChange}
-                placeholder="e.g. Debit CMS Replacement"
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label className="form-label">
-                <FaInfoCircle className="form-icon" />
-                Scope
-              </label>
-              <textarea
-                className="form-textarea"
-                name="scope"
-                value={form.scope}
-                onChange={handleChange}
-                placeholder="Short scope notes"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <FaChartLine className="form-icon" />
-                Sales stage
-              </label>
-              <select
-                className="form-input"
-                name="sales_stage"
-                value={form.sales_stage}
-                onChange={handleChange}
-              >
-                <option>Lead</option>
-                <option>Opportunity</option>
-                <option>Proposal</option>
-                <option>Contracting</option>
-                <option>Done</option>
-                <option>Closed - Won</option>
-                <option>Closed - Lost</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <FaMoneyBillWave className="form-icon" />
-                Deal value
-              </label>
-              <input
-                className="form-input"
-                name="deal_value"
-                value={form.deal_value}
-                onChange={handleChange}
-                placeholder="e.g. 250000"
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label className="form-label">
-                <FaInfoCircle className="form-icon" />
-                Product
-              </label>
-              <input
-                className="form-input"
-                name="product"
-                value={form.product}
-                onChange={handleChange}
-                placeholder="e.g. SmartVista CMS"
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label className="form-label">
-                <FaCalendarAlt className="form-icon" />
-                Due date
-              </label>
-              <input
-                className="form-input"
-                type="date"
-                name="due_date"
-                value={form.due_date}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" className="button-cancel" onClick={onClose}>
-              <FaTimes />
-              Cancel
-            </button>
-            <button type="submit" className="button-submit" disabled={saving}>
-              <FaSave />
-              {saving ? 'Saving...' : 'Create Project'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-const MetricsModal = ({ isOpen, onClose, onSave, initial }) => {
-  const [form, setForm] = useState({
-    atms: '',
-    debit_cards: '',
-    credit_cards: '',
-    pos_terminals: '',
-    merchants: '',
-    tx_per_day: '',
-    active_cards: '',
-    digital_users: '',
-  });
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setSaving(false);
-    setForm({
-      atms: initial?.atms ?? '',
-      debit_cards: initial?.debit_cards ?? '',
-      credit_cards: initial?.credit_cards ?? '',
-      pos_terminals: initial?.pos_terminals ?? '',
-      merchants: initial?.merchants ?? '',
-      tx_per_day: initial?.tx_per_day ?? '',
-      active_cards: initial?.active_cards ?? '',
-      digital_users: initial?.digital_users ?? '',
-    });
-  }, [isOpen, initial]);
-
-  if (!isOpen) return null;
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const toIntOrNull = (v) => {
-    const s = String(v ?? '').trim();
-    if (!s) return null;
-    const n = Number(s);
-    if (!Number.isFinite(n)) return null;
-    return Math.trunc(n);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      setSaving(true);
-      await onSave({
-        atms: toIntOrNull(form.atms),
-        debit_cards: toIntOrNull(form.debit_cards),
-        credit_cards: toIntOrNull(form.credit_cards),
-        pos_terminals: toIntOrNull(form.pos_terminals),
-        merchants: toIntOrNull(form.merchants),
-        tx_per_day: toIntOrNull(form.tx_per_day),
-        active_cards: toIntOrNull(form.active_cards),
-        digital_users: toIntOrNull(form.digital_users),
-      });
-      setSaving(false);
-      onClose();
-    } catch (err) {
-      setSaving(false);
-      alert('Failed to save metrics: ' + (err.message || 'Unknown error'));
-    }
-  };
-
-  return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
-      <div className="modal-container" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title-wrapper">
-            <FaChartLine className="modal-icon" />
-            <h2 className="modal-title">Edit Customer Metrics</h2>
-          </div>
-          <button className="modal-close-button" onClick={onClose}>
-            <FaTimes />
-          </button>
-        </div>
-
-        <form className="modal-form" onSubmit={handleSubmit}>
-          <div className="form-grid">
-            <div className="form-group">
-              <label className="form-label">Number of ATMs</label>
-              <input className="form-input" name="atms" value={form.atms} onChange={handleChange} />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Debit cards</label>
-              <input
-                className="form-input"
-                name="debit_cards"
-                value={form.debit_cards}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Credit cards</label>
-              <input
-                className="form-input"
-                name="credit_cards"
-                value={form.credit_cards}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">POS terminals</label>
-              <input
-                className="form-input"
-                name="pos_terminals"
-                value={form.pos_terminals}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Merchants</label>
-              <input
-                className="form-input"
-                name="merchants"
-                value={form.merchants}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Transactions / day</label>
-              <input
-                className="form-input"
-                name="tx_per_day"
-                value={form.tx_per_day}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Active cards</label>
-              <input
-                className="form-input"
-                name="active_cards"
-                value={form.active_cards}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Digital users</label>
-              <input
-                className="form-input"
-                name="digital_users"
-                value={form.digital_users}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" className="button-cancel" onClick={onClose}>
-              <FaTimes />
-              Cancel
-            </button>
-            <button type="submit" className="button-submit" disabled={saving}>
-              <FaSave />
-              {saving ? 'Saving...' : 'Save Metrics'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
 
 const CustomerDetails = () => {
-  const params = useParams();
+  const { id, customerId } = useParams();
   const navigate = useNavigate();
 
-  const customerId = params.id || params.customerId;
-
-  const [customer, setCustomer] = useState(null);
-  const [editCustomer, setEditCustomer] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-
-  const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
-
-  const [statusOptions, setStatusOptions] = useState([]);
-
-  const [countryOptions, setCountryOptions] = useState([]); // countries.name
-  const [accountManagerOptions, setAccountManagerOptions] = useState([]); // account_managers (id, name)
+  const resolvedCustomerId = id || customerId;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [customer, setCustomer] = useState(null);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editCustomer, setEditCustomer] = useState(null);
+
+  const [statusOptions, setStatusOptions] = useState([]);
+  const [countryOptions, setCountryOptions] = useState([]);
+  const [accountManagerOptions, setAccountManagerOptions] = useState([]);
+
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+
   const [showStakeholdersModal, setShowStakeholdersModal] = useState(false);
-  const [showTaskModal, setShowTaskModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showMetricsModal, setShowMetricsModal] = useState(false);
 
   const [showCompletedProjects, setShowCompletedProjects] = useState(false);
-  const [deletingProjectId, setDeletingProjectId] = useState(null);
-
   const [projectSort, setProjectSort] = useState('stage');
+
+  const [metrics, setMetrics] = useState(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
 
   const [companyProfileDraft, setCompanyProfileDraft] = useState('');
   const [savingCompanyProfile, setSavingCompanyProfile] = useState(false);
 
-  const [metrics, setMetrics] = useState(null);
-  const [metricsLoading, setMetricsLoading] = useState(false);
-  const [showMetricsModal, setShowMetricsModal] = useState(false);
+  const [deletingProjectId, setDeletingProjectId] = useState(null);
 
-  const isValidCustomerId = useMemo(() => isUuid(customerId), [customerId]);
-
-  const todayISODate = () => new Date().toISOString().slice(0, 10);
-
-  const formatCurrency = (amount) => {
-    const n = Number(amount);
-    if (!amount || Number.isNaN(n)) return '$0';
-    return n.toLocaleString(undefined, {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    });
-  };
+  const isValidCustomerId = useMemo(() => isValidUUID(resolvedCustomerId), [resolvedCustomerId]);
 
   const formatDate = (dateValue) => {
     if (!dateValue) return '';
@@ -827,6 +197,16 @@ const CustomerDetails = () => {
       year: 'numeric',
       month: 'short',
       day: '2-digit',
+    });
+  };
+
+  const formatCurrency = (amount) => {
+    const n = Number(amount);
+    if (amount == null || amount === '' || Number.isNaN(n)) return '$0';
+    return n.toLocaleString(undefined, {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
     });
   };
 
@@ -883,31 +263,7 @@ const CustomerDetails = () => {
     return 10;
   };
 
-  const copyToClipboard = async (text) => {
-    const t = String(text || '').trim();
-    if (!t) return false;
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(t);
-        return true;
-      }
-    } catch (e) {}
-    try {
-      const el = document.createElement('textarea');
-      el.value = t;
-      el.style.position = 'fixed';
-      el.style.left = '-9999px';
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy');
-      document.body.removeChild(el);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  };
-
-  const fetchCustomer = async () => {
+  const fetchCustomer = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -923,7 +279,7 @@ const CustomerDetails = () => {
       const { data, error: fetchError } = await supabase
         .from('customers')
         .select('*')
-        .eq('id', customerId)
+        .eq('id', resolvedCustomerId)
         .single();
 
       if (fetchError) throw fetchError;
@@ -937,16 +293,59 @@ const CustomerDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isValidCustomerId, resolvedCustomerId]);
 
-  const fetchCustomerMetrics = async () => {
+  const fetchStatusOptions = useCallback(async () => {
+    try {
+      const { data, error: sErr } = await supabase
+        .from('customer_statuses')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (sErr) throw sErr;
+      setStatusOptions(data || []);
+    } catch (err) {
+      console.error('Error fetching status options:', err);
+      setStatusOptions([]);
+    }
+  }, []);
+
+  const fetchCountries = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.from('countries').select('name').order('name');
+
+      if (error) throw error;
+      setCountryOptions((data || []).map((x) => x.name).filter(Boolean));
+    } catch (err) {
+      console.error('Error fetching countries:', err);
+      setCountryOptions([]);
+    }
+  }, []);
+
+  const fetchAccountManagers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('account_managers')
+        .select('id,name')
+        .order('name');
+
+      if (error) throw error;
+      setAccountManagerOptions(data || []);
+    } catch (err) {
+      console.error('Error fetching account managers:', err);
+      setAccountManagerOptions([]);
+    }
+  }, []);
+
+  const fetchCustomerMetrics = useCallback(async () => {
     if (!isValidCustomerId) return;
     try {
       setMetricsLoading(true);
+
       const { data, error: mErr } = await supabase
         .from('customer_metrics')
         .select('*')
-        .eq('customer_id', customerId)
+        .eq('customer_id', resolvedCustomerId)
         .maybeSingle();
 
       if (mErr) throw mErr;
@@ -957,27 +356,9 @@ const CustomerDetails = () => {
     } finally {
       setMetricsLoading(false);
     }
-  };
+  }, [isValidCustomerId, resolvedCustomerId]);
 
-  const saveCustomerMetrics = async (payload) => {
-    if (!isValidCustomerId) return;
-
-    const upsertPayload = {
-      customer_id: customerId,
-      ...payload,
-    };
-
-    const { error: upErr } = await supabase
-      .from('customer_metrics')
-      .upsert(upsertPayload, { onConflict: 'customer_id' });
-
-    if (upErr) throw upErr;
-
-    await fetchCustomerMetrics();
-    alert('Metrics saved.');
-  };
-
-  const fetchProjects = async (customerName) => {
+  const fetchProjects = useCallback(async (customerName) => {
     try {
       if (!customerName) {
         setProjects([]);
@@ -994,10 +375,11 @@ const CustomerDetails = () => {
       setProjects(data || []);
     } catch (err) {
       console.error('Error fetching projects:', err);
+      setProjects([]);
     }
-  };
+  }, []);
 
-  const fetchTasks = async (projectList) => {
+  const fetchTasks = useCallback(async (projectList) => {
     if (!projectList || projectList.length === 0) {
       setTasks([]);
       return;
@@ -1007,87 +389,47 @@ const CustomerDetails = () => {
       const { data, error } = await supabase
         .from('project_tasks')
         .select('*')
-        .in('project_id', projectList.map((p) => p.id))
+        .in(
+          'project_id',
+          projectList.map((p) => p.id)
+        )
         .order('due_date', { ascending: true });
 
       if (error) throw error;
       setTasks(data || []);
     } catch (err) {
       console.error('Error fetching tasks:', err);
+      setTasks([]);
     }
-  };
-
-  const fetchStatusOptions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('customer_statuses')
-        .select('*')
-        .order('id', { ascending: true });
-
-      if (error) throw error;
-      setStatusOptions(data || []);
-    } catch (err) {
-      console.error('Error fetching status options:', err);
-    }
-  };
-
-  const fetchCountries = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('countries')
-        .select('name')
-        .order('name', { ascending: true });
-
-      if (error) throw error;
-      setCountryOptions((data || []).map((x) => x.name).filter(Boolean));
-    } catch (err) {
-      console.error('Error fetching countries:', err);
-      setCountryOptions([]);
-    }
-  };
-
-  const fetchAccountManagers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('account_managers')
-        .select('id,name')
-        .order('name', { ascending: true });
-
-      if (error) throw error;
-      setAccountManagerOptions(data || []);
-    } catch (err) {
-      console.error('Error fetching account managers:', err);
-      setAccountManagerOptions([]);
-    }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCustomer();
     fetchStatusOptions();
-    fetchCustomerMetrics();
     fetchCountries();
     fetchAccountManagers();
-  }, [customerId, isValidCustomerId]);
+    fetchCustomerMetrics();
+  }, [fetchCustomer, fetchStatusOptions, fetchCountries, fetchAccountManagers, fetchCustomerMetrics]);
 
   useEffect(() => {
     if (!customer?.customer_name) return;
     fetchProjects(customer.customer_name);
-  }, [customer?.customer_name]);
+  }, [customer?.customer_name, fetchProjects]);
 
   useEffect(() => {
     fetchTasks(projects);
-  }, [projects]);
+  }, [projects, fetchTasks]);
 
   const parsedStakeholders = useMemo(() => {
     if (!customer?.key_stakeholders) return [];
     const list = Array.isArray(customer.key_stakeholders) ? customer.key_stakeholders : [];
-    return list.map(parseStakeholderEntry).filter((s) => s.name || s.role || s.email || s.phone);
+    return list
+      .map(parseStakeholderEntry)
+      .filter((s) => s.name || s.role || s.email || s.phone);
   }, [customer]);
 
   const visibleTasks = useMemo(() => {
-    return (tasks || []).filter(
-      (t) => String(t.status || '').trim().toLowerCase() !== 'completed'
-    );
+    return (tasks || []).filter((t) => safeLower(t.status) !== 'completed');
   }, [tasks]);
 
   const projectOpenTaskCount = useMemo(() => {
@@ -1126,9 +468,7 @@ const CustomerDetails = () => {
     const primary = sorted[0];
 
     const projectTasks = (tasks || []).filter((t) => String(t.project_id) === String(primary.id));
-    const openTasks = projectTasks.filter(
-      (t) => String(t.status || '').trim().toLowerCase() !== 'completed'
-    );
+    const openTasks = projectTasks.filter((t) => safeLower(t.status) !== 'completed');
     const overdueCount = openTasks.filter((t) => isOverdue(t.due_date)).length;
 
     let attention = 'green';
@@ -1220,9 +560,8 @@ const CustomerDetails = () => {
   }, [projects, tasks, customer]);
 
   const summary = useMemo(() => {
-    const activeProjects = (projects || []).filter(
-      (p) => !isProjectCompleted(getProjectStage(p))
-    ).length;
+    const activeProjects = (projects || []).filter((p) => !isProjectCompleted(getProjectStage(p)))
+      .length;
 
     const openTasks = visibleTasks;
     const overdueCount = openTasks.filter((t) => isOverdue(t.due_date)).length;
@@ -1242,7 +581,7 @@ const CustomerDetails = () => {
 
   const handleUpdateCustomer = async () => {
     try {
-      const newName = String(editCustomer?.customer_name || '').trim();
+      const newName = safeStr(editCustomer?.customer_name).trim();
       if (!newName) {
         alert('Customer name is required.');
         return;
@@ -1254,16 +593,16 @@ const CustomerDetails = () => {
         .from('customers')
         .update({
           customer_name: newName,
-          account_manager: editCustomer.account_manager || null,
-          country: editCustomer.country || null,
-          customer_type: editCustomer.customer_type || null,
+          account_manager: editCustomer?.account_manager || null,
+          country: editCustomer?.country || null,
+          customer_type: editCustomer?.customer_type || null,
           status_id:
-            editCustomer.status_id === '' || editCustomer.status_id == null
+            editCustomer?.status_id === '' || editCustomer?.status_id == null
               ? null
               : Number(editCustomer.status_id),
-          notes: editCustomer.notes ?? null,
+          notes: editCustomer?.notes ?? null,
         })
-        .eq('id', customerId);
+        .eq('id', resolvedCustomerId);
 
       if (updateError) throw updateError;
 
@@ -1284,14 +623,14 @@ const CustomerDetails = () => {
       const updatedCustomer = {
         ...customer,
         customer_name: newName,
-        account_manager: editCustomer.account_manager || null,
-        country: editCustomer.country || null,
-        customer_type: editCustomer.customer_type || null,
+        account_manager: editCustomer?.account_manager || null,
+        country: editCustomer?.country || null,
+        customer_type: editCustomer?.customer_type || null,
         status_id:
-          editCustomer.status_id === '' || editCustomer.status_id == null
+          editCustomer?.status_id === '' || editCustomer?.status_id == null
             ? null
             : Number(editCustomer.status_id),
-        notes: editCustomer.notes ?? null,
+        notes: editCustomer?.notes ?? null,
       };
 
       setCustomer(updatedCustomer);
@@ -1305,41 +644,51 @@ const CustomerDetails = () => {
       alert('Customer updated successfully');
     } catch (err) {
       console.error('Error updating customer:', err);
-      alert('Failed to update customer: ' + err.message);
+      alert('Failed to update customer: ' + (err.message || 'Unknown error'));
     }
   };
 
-  const handleSaveStakeholders = async (encodedArray) => {
+  const handleSaveCompanyProfile = async () => {
     try {
+      setSavingCompanyProfile(true);
+
+      const nextNotes = safeStr(companyProfileDraft);
+
+      const { error: nErr } = await supabase
+        .from('customers')
+        .update({ notes: nextNotes })
+        .eq('id', resolvedCustomerId);
+
+      if (nErr) throw nErr;
+
+      setCustomer((prev) => ({ ...prev, notes: nextNotes }));
+      setEditCustomer((prev) => (prev ? { ...prev, notes: nextNotes } : prev));
+      alert('Company profile saved.');
+    } catch (err) {
+      console.error('Error saving company profile:', err);
+      alert('Failed to save company profile: ' + (err.message || 'Unknown error'));
+    } finally {
+      setSavingCompanyProfile(false);
+    }
+  };
+
+  const handleRemoveStakeholder = async (indexToRemove) => {
+    try {
+      const current = Array.isArray(customer?.key_stakeholders) ? [...customer.key_stakeholders] : [];
+      const next = current.filter((_, idx) => idx !== indexToRemove);
+
       const { error: sErr } = await supabase
         .from('customers')
-        .update({ key_stakeholders: encodedArray })
-        .eq('id', customerId);
+        .update({ key_stakeholders: next })
+        .eq('id', resolvedCustomerId);
 
       if (sErr) throw sErr;
 
-      setCustomer((prev) => ({ ...prev, key_stakeholders: encodedArray }));
-      alert('Stakeholders updated successfully');
-      setShowStakeholdersModal(false);
+      setCustomer((prev) => ({ ...prev, key_stakeholders: next }));
     } catch (err) {
-      console.error('Error saving stakeholders:', err);
-      alert('Failed to update stakeholders: ' + err.message);
+      console.error('Error removing stakeholder:', err);
+      alert('Failed to remove stakeholder: ' + (err.message || 'Unknown error'));
     }
-  };
-
-  const handleCreateTask = async (payload) => {
-    const { error: tErr } = await supabase.from('project_tasks').insert([
-      {
-        project_id: payload.project_id,
-        description: payload.description,
-        status: payload.status || 'Not Started',
-        priority: payload.priority || 'Normal',
-        due_date: payload.due_date || null,
-      },
-    ]);
-
-    if (tErr) throw tErr;
-    await fetchTasks(projects);
   };
 
   const handleCreateProject = async (payload) => {
@@ -1357,28 +706,19 @@ const CustomerDetails = () => {
     await fetchProjects(customer.customer_name);
   };
 
-  const handleSaveCompanyProfile = async () => {
-    try {
-      setSavingCompanyProfile(true);
+  const handleCreateTask = async (payload) => {
+    const { error: tErr } = await supabase.from('project_tasks').insert([
+      {
+        project_id: payload.project_id,
+        description: payload.description,
+        status: payload.status || 'Not Started',
+        priority: payload.priority || 'Normal',
+        due_date: payload.due_date || null,
+      },
+    ]);
 
-      const nextNotes = String(companyProfileDraft || '');
-
-      const { error: nErr } = await supabase
-        .from('customers')
-        .update({ notes: nextNotes })
-        .eq('id', customerId);
-
-      if (nErr) throw nErr;
-
-      setCustomer((prev) => ({ ...prev, notes: nextNotes }));
-      setEditCustomer((prev) => (prev ? { ...prev, notes: nextNotes } : prev));
-      alert('Company profile saved.');
-    } catch (err) {
-      console.error('Error saving company profile:', err);
-      alert('Failed to save company profile: ' + err.message);
-    } finally {
-      setSavingCompanyProfile(false);
-    }
+    if (tErr) throw tErr;
+    await fetchTasks(projects);
   };
 
   const handleDeleteProject = async (project) => {
@@ -1388,13 +728,15 @@ const CustomerDetails = () => {
     const name = project.project_name || 'this project';
     const taskCount = projectOpenTaskCount[projectId] || 0;
 
-    let ok = window.confirm(
+    const ok = window.confirm(
       `Delete "${name}"?\n\nThis will also delete ALL tasks under this project. This cannot be undone.`
     );
     if (!ok) return;
 
     if (taskCount > 0) {
-      const typed = window.prompt(`This project has ${taskCount} open task(s).\n\nType DELETE to confirm:`);
+      const typed = window.prompt(
+        `This project has ${taskCount} open task(s).\n\nType DELETE to confirm:`
+      );
       if (String(typed || '').trim().toUpperCase() !== 'DELETE') {
         alert('Delete cancelled.');
         return;
@@ -1424,6 +766,25 @@ const CustomerDetails = () => {
     }
   };
 
+  const saveCustomerMetrics = async (payload) => {
+    if (!isValidCustomerId) return;
+
+    const upsertPayload = {
+      customer_id: resolvedCustomerId,
+      ...payload,
+    };
+
+    const { error: upErr } = await supabase
+      .from('customer_metrics')
+      .upsert(upsertPayload, { onConflict: 'customer_id' });
+
+    if (upErr) throw upErr;
+
+    await fetchCustomerMetrics();
+    alert('Metrics saved.');
+  };
+
+  // keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
       const tag = e.target?.tagName ? e.target.tagName.toLowerCase() : '';
@@ -1442,6 +803,383 @@ const CustomerDetails = () => {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // ----------- Modals (Stakeholders / Task / Project) -----------
+  const StakeholdersModal = ({ isOpen, onClose }) => {
+    const [rows, setRows] = useState([]);
+
+    useEffect(() => {
+      if (!isOpen) return;
+      const parsed = Array.isArray(customer?.key_stakeholders)
+        ? customer.key_stakeholders.map(parseStakeholderEntry)
+        : [];
+      setRows(parsed.length ? parsed : [{ name: '', role: '', email: '', phone: '' }]);
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const updateRow = (index, field, value) => {
+      setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+    };
+
+    const addRow = () => setRows((prev) => [...prev, { name: '', role: '', email: '', phone: '' }]);
+    const removeRow = (index) => setRows((prev) => prev.filter((_, i) => i !== index));
+
+    const handleSave = async () => {
+      try {
+        const cleaned = rows
+          .map((r) => ({
+            name: safeStr(r.name).trim(),
+            role: safeStr(r.role).trim(),
+            email: safeStr(r.email).trim(),
+            phone: safeStr(r.phone).trim(),
+          }))
+          .filter((r) => r.name || r.role || r.email || r.phone)
+          .map(encodeStakeholderEntry);
+
+        const { error: sErr } = await supabase
+          .from('customers')
+          .update({ key_stakeholders: cleaned })
+          .eq('id', resolvedCustomerId);
+
+        if (sErr) throw sErr;
+
+        setCustomer((prev) => ({ ...prev, key_stakeholders: cleaned }));
+        onClose();
+        alert('Stakeholders updated successfully');
+      } catch (err) {
+        console.error('Error saving stakeholders:', err);
+        alert('Failed to update stakeholders: ' + (err.message || 'Unknown error'));
+      }
+    };
+
+    return (
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Key Stakeholders"
+        footer={
+          <>
+            <button className="action-button ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button className="action-button primary" onClick={handleSave}>
+              <Save size={14} />
+              Save
+            </button>
+          </>
+        }
+      >
+        <div className="cd-form-grid">
+          <div className="cd-form-row cd-stakeholder-header">
+            <div>Name</div>
+            <div>Role</div>
+            <div>Email</div>
+            <div>Phone</div>
+            <div />
+          </div>
+
+          {rows.map((r, idx) => (
+            <div className="cd-form-row cd-stakeholder-row" key={idx}>
+              <input
+                className="cd-input"
+                value={r.name}
+                onChange={(e) => updateRow(idx, 'name', e.target.value)}
+                placeholder="Contact name"
+              />
+              <input
+                className="cd-input"
+                value={r.role}
+                onChange={(e) => updateRow(idx, 'role', e.target.value)}
+                placeholder="Role"
+              />
+              <input
+                className="cd-input"
+                value={r.email}
+                onChange={(e) => updateRow(idx, 'email', e.target.value)}
+                placeholder="Email"
+              />
+              <input
+                className="cd-input"
+                value={r.phone}
+                onChange={(e) => updateRow(idx, 'phone', e.target.value)}
+                placeholder="Phone"
+              />
+              <button className="cd-icon-btn danger" onClick={() => removeRow(idx)} title="Remove row">
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+
+          <button className="action-button" onClick={addRow}>
+            <Plus size={14} />
+            Add another
+          </button>
+        </div>
+      </Modal>
+    );
+  };
+
+  const TaskModal = ({ isOpen, onClose }) => {
+    const [form, setForm] = useState({
+      project_id: '',
+      description: '',
+      status: 'Not Started',
+      priority: 'Normal',
+      due_date: '',
+    });
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+      if (!isOpen) return;
+      setSaving(false);
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const handleSubmit = async () => {
+      if (!form.project_id || !safeStr(form.description).trim()) {
+        alert('Please select a project and enter a task description.');
+        return;
+      }
+
+      try {
+        setSaving(true);
+        await handleCreateTask({
+          ...form,
+          description: safeStr(form.description).trim(),
+          due_date: form.due_date || null,
+        });
+        setSaving(false);
+        onClose();
+        setForm({
+          project_id: '',
+          description: '',
+          status: 'Not Started',
+          priority: 'Normal',
+          due_date: '',
+        });
+      } catch (err) {
+        setSaving(false);
+        alert('Failed to create task: ' + (err.message || 'Unknown error'));
+      }
+    };
+
+    return (
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Add Task"
+        footer={
+          <>
+            <button className="action-button ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button className="action-button primary" onClick={handleSubmit} disabled={saving}>
+              <Save size={14} />
+              {saving ? 'Saving...' : 'Create'}
+            </button>
+          </>
+        }
+      >
+        <div className="cd-form-grid">
+          <label className="cd-label">Project *</label>
+          <select
+            className="cd-input"
+            value={form.project_id}
+            onChange={(e) => setForm((p) => ({ ...p, project_id: e.target.value }))}
+          >
+            <option value="">Select project</option>
+            {(projects || []).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.project_name || '(Unnamed Project)'}
+              </option>
+            ))}
+          </select>
+
+          <label className="cd-label">Task Description *</label>
+          <input
+            className="cd-input"
+            value={form.description}
+            onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+            placeholder="e.g. Prepare proposal deck"
+          />
+
+          <div className="cd-form-cols">
+            <div>
+              <label className="cd-label">Status</label>
+              <select
+                className="cd-input"
+                value={form.status}
+                onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+              >
+                <option>Not Started</option>
+                <option>In Progress</option>
+                <option>Completed</option>
+                <option>On Hold</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="cd-label">Priority</label>
+              <select
+                className="cd-input"
+                value={form.priority}
+                onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value }))}
+              >
+                <option>Low</option>
+                <option>Normal</option>
+                <option>High</option>
+              </select>
+            </div>
+          </div>
+
+          <label className="cd-label">Due date</label>
+          <input
+            className="cd-input"
+            type="date"
+            value={form.due_date}
+            onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
+          />
+        </div>
+      </Modal>
+    );
+  };
+
+  const ProjectModal = ({ isOpen, onClose }) => {
+    const [form, setForm] = useState({
+      project_name: '',
+      scope: '',
+      sales_stage: 'Opportunity',
+      deal_value: '',
+      product: '',
+      due_date: '',
+    });
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+      if (!isOpen) return;
+      setSaving(false);
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const handleSubmit = async () => {
+      if (!safeStr(form.project_name).trim()) {
+        alert('Project name is required.');
+        return;
+      }
+
+      try {
+        setSaving(true);
+        await handleCreateProject({
+          project_name: safeStr(form.project_name).trim(),
+          scope: safeStr(form.scope).trim() || null,
+          sales_stage: form.sales_stage || null,
+          deal_value: form.deal_value ? Number(form.deal_value) : null,
+          product: safeStr(form.product).trim() || null,
+          due_date: form.due_date || null,
+        });
+        setSaving(false);
+        onClose();
+        setForm({
+          project_name: '',
+          scope: '',
+          sales_stage: 'Opportunity',
+          deal_value: '',
+          product: '',
+          due_date: '',
+        });
+      } catch (err) {
+        setSaving(false);
+        alert('Failed to create project: ' + (err.message || 'Unknown error'));
+      }
+    };
+
+    return (
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Add Project"
+        footer={
+          <>
+            <button className="action-button ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button className="action-button primary" onClick={handleSubmit} disabled={saving}>
+              <Save size={14} />
+              {saving ? 'Saving...' : 'Create'}
+            </button>
+          </>
+        }
+      >
+        <div className="cd-form-grid">
+          <label className="cd-label">Project name *</label>
+          <input
+            className="cd-input"
+            value={form.project_name}
+            onChange={(e) => setForm((p) => ({ ...p, project_name: e.target.value }))}
+            placeholder="e.g. Debit CMS Replacement"
+          />
+
+          <label className="cd-label">Scope</label>
+          <textarea
+            className="cd-textarea"
+            value={form.scope}
+            onChange={(e) => setForm((p) => ({ ...p, scope: e.target.value }))}
+            placeholder="Short scope notes"
+            rows={4}
+          />
+
+          <div className="cd-form-cols">
+            <div>
+              <label className="cd-label">Sales stage</label>
+              <select
+                className="cd-input"
+                value={form.sales_stage}
+                onChange={(e) => setForm((p) => ({ ...p, sales_stage: e.target.value }))}
+              >
+                <option>Lead</option>
+                <option>Opportunity</option>
+                <option>Proposal</option>
+                <option>Contracting</option>
+                <option>Done</option>
+                <option>Closed - Won</option>
+                <option>Closed - Lost</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="cd-label">Deal value</label>
+              <input
+                className="cd-input"
+                value={form.deal_value}
+                onChange={(e) => setForm((p) => ({ ...p, deal_value: e.target.value }))}
+                placeholder="e.g. 250000"
+              />
+            </div>
+          </div>
+
+          <label className="cd-label">Product</label>
+          <input
+            className="cd-input"
+            value={form.product}
+            onChange={(e) => setForm((p) => ({ ...p, product: e.target.value }))}
+            placeholder="e.g. SmartVista CMS"
+          />
+
+          <label className="cd-label">Due date</label>
+          <input
+            className="cd-input"
+            type="date"
+            value={form.due_date}
+            onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
+          />
+        </div>
+      </Modal>
+    );
+  };
+  // ------------------------------------------------------------
+
   if (loading) {
     return (
       <div className="customer-details-container">
@@ -1458,12 +1196,12 @@ const CustomerDetails = () => {
       <div className="customer-details-container">
         <div className="error-state">
           <div className="error-icon-wrapper">
-            <FaExclamationTriangle className="error-icon" />
+            <AlertTriangle size={20} />
           </div>
           <h2 className="error-title">Could not load customer</h2>
           <p className="error-message">{error || 'Customer not found'}</p>
-          <button className="btn-secondary" onClick={() => navigate(-1)}>
-            <FaTimes />
+          <button className="action-button" onClick={() => navigate(-1)}>
+            <ArrowLeft size={14} />
             Back
           </button>
         </div>
@@ -1472,129 +1210,97 @@ const CustomerDetails = () => {
   }
 
   const statusObj = getCustomerStatus(customer, statusOptions);
-  const statusLabel = statusObj?.label || statusObj?.status_name || 'Not Set';
-  const statusClass = getStatusBadgeClass(statusObj?.code || statusObj?.label || statusObj?.status_name);
+  const statusLabel = statusObj?.label || statusObj?.status_name || statusObj?.name || 'Not Set';
+  const statusClass = getStatusBadgeClass(
+    statusObj?.code || statusObj?.label || statusObj?.status_name || statusObj?.name
+  );
 
   const lastUpdatedDisplay = formatDate(customer.updated_at || customer.created_at);
 
   const customerSnapshotItems = [
     { label: 'Total Pipeline', value: formatCurrency(summary.totalPipeline) },
-    { label: 'Active Projects', value: formatNumber(summary.activeProjects) },
-    { label: 'Open Tasks', value: formatNumber(summary.openTasksCount) },
-    { label: 'Overdue Tasks', value: formatNumber(summary.overdueCount) },
-    { label: 'ATMs', value: metricsLoading ? '…' : formatCompact(metrics?.atms) },
-    { label: 'Active Cards', value: metricsLoading ? '…' : formatCompact(metrics?.active_cards) },
-    { label: 'Tx / Day', value: metricsLoading ? '…' : formatCompact(metrics?.tx_per_day) },
-    { label: 'Digital Users', value: metricsLoading ? '…' : formatCompact(metrics?.digital_users) },
+    { label: 'Active Projects', value: String(summary.activeProjects) },
+    { label: 'Open Tasks', value: String(summary.openTasksCount) },
+    { label: 'Overdue Tasks', value: String(summary.overdueCount) },
   ];
 
   return (
     <div className="customer-details-container">
-      <header className="customer-header">
-        <div className="customer-header-main">
-          <div className="customer-header-text">
-            <h1 className="customer-title">{customer.customer_name || 'Customer'}</h1>
+      {/* Header */}
+      <div className="cd-header">
+        <button className="action-button ghost" onClick={() => navigate(-1)}>
+          <ArrowLeft size={14} />
+          Back
+        </button>
 
-            <div className="customer-subtitle-row">
-              <span className="customer-subtitle">
-                <FaBuilding />
-                {customer.customer_type || 'Customer'}
+        <div className="cd-header-main">
+          <div className="cd-title">
+            {customer.customer_name || 'Customer'}{' '}
+            <span className={`cd-status-pill ${statusClass}`}>{statusLabel}</span>
+          </div>
+          <div className="cd-subtitle">
+            {customer.customer_type ? (
+              <span className="cd-sub-pill">
+                <Building2 size={14} /> {customer.customer_type}
               </span>
-
-              {customer.country && (
-                <span className="customer-subtitle">
-                  <FaGlobeAsia />
-                  {customer.country}
-                </span>
-              )}
-
-              {customer.account_manager && (
-                <span className="customer-subtitle">
-                  <FaUserTie />
-                  AM: {customer.account_manager}
-                </span>
-              )}
-
-              {dealInsight.primary && (
-                <span className={`customer-subtitle attention-subtitle ${dealInsight.attention}`}>
-                  <FaExclamationTriangle />
-                  Attention: {dealInsight.attentionLabel}
-                  {dealInsight.reason ? ` • ${dealInsight.reason}` : ''}
-                </span>
-              )}
-            </div>
-
-            <div className="customer-chips-row">
-              <span className="customer-chip">
-                <FaProjectDiagram /> Active projects: <b>{summary.activeProjects}</b>
+            ) : null}
+            {customer.country ? (
+              <span className="cd-sub-pill">
+                <Globe size={14} /> {customer.country}
               </span>
-              <span className="customer-chip">
-                <FaExclamationTriangle /> Overdue tasks: <b>{summary.overdueCount}</b>
+            ) : null}
+            {customer.account_manager ? (
+              <span className="cd-sub-pill">
+                <Users size={14} /> AM: {customer.account_manager}
               </span>
-              <span className="customer-chip">
-                <FaMoneyBillWave /> Pipeline: <b>{formatCurrency(summary.totalPipeline)}</b>
+            ) : null}
+            <span className="cd-sub-pill">
+              <Calendar size={14} /> Updated: {lastUpdatedDisplay || '—'}
+            </span>
+            {dealInsight.primary ? (
+              <span className={`cd-attn-pill ${dealInsight.attention}`}>
+                <AlertTriangle size={14} /> Attention: {dealInsight.attentionLabel}
+                {dealInsight.reason ? ` • ${dealInsight.reason}` : ''}
               </span>
-              <span className="customer-chip">
-                <FaCalendarAlt /> Updated: <b>{lastUpdatedDisplay || '—'}</b>
-              </span>
-            </div>
+            ) : null}
           </div>
         </div>
 
-        <div className="customer-header-actions">
-          <button className="btn-secondary" onClick={() => navigate(-1)}>
-            <FaTimes />
-            Back
-          </button>
-
-          <button className="btn-secondary" onClick={() => setShowProjectModal(true)}>
-            <FaPlus />
-            Add Project
-          </button>
-          <button className="btn-secondary" onClick={() => setShowTaskModal(true)}>
-            <FaPlus />
-            Add Task
-          </button>
-          <button className="btn-secondary" onClick={() => setShowStakeholdersModal(true)}>
-            <FaPlus />
-            Stakeholder
-          </button>
-
+        <div className="cd-header-actions">
           {!isEditing ? (
-            <button className="btn-primary" onClick={() => setIsEditing(true)}>
-              <FaEdit />
+            <button className="action-button primary" onClick={() => setIsEditing(true)}>
+              <Edit3 size={14} />
               Edit
             </button>
           ) : (
             <>
               <button
-                className="btn-secondary"
+                className="action-button ghost"
                 onClick={() => {
                   setEditCustomer(customer);
                   setIsEditing(false);
                 }}
               >
-                <FaTimes />
                 Cancel
               </button>
-              <button className="btn-primary" onClick={handleUpdateCustomer}>
-                <FaSave />
+              <button className="action-button primary" onClick={handleUpdateCustomer}>
+                <Save size={14} />
                 Save
               </button>
             </>
           )}
         </div>
-      </header>
+      </div>
 
-      <main className="customer-main-layout">
-        {/* LEFT COLUMN */}
-        <div className="customer-main-left">
-          {/* CUSTOMER INFORMATION */}
-          <section className="section-card customer-info-section">
+      <div className="cd-grid">
+        {/* Left column */}
+        <div className="cd-col">
+          {/* Customer Info */}
+          <div className="section-card">
             <div className="section-header">
-              <div className="section-title">
-                <FaInfoCircle />
+              <div>
                 <h2>Customer Information</h2>
+                <p className="section-subtitle">Basic details and ownership.</p>
               </div>
             </div>
 
@@ -1604,13 +1310,13 @@ const CustomerDetails = () => {
                 {isEditing ? (
                   <input
                     className="info-input"
-                    value={editCustomer.customer_name || ''}
+                    value={editCustomer?.customer_name || ''}
                     onChange={(e) =>
                       setEditCustomer((prev) => ({ ...prev, customer_name: e.target.value }))
                     }
                   />
                 ) : (
-                  <div className="info-value main-name">{customer.customer_name || '—'}</div>
+                  <div className="info-value">{customer.customer_name || '—'}</div>
                 )}
               </div>
 
@@ -1619,7 +1325,7 @@ const CustomerDetails = () => {
                 {isEditing ? (
                   <select
                     className="info-input"
-                    value={editCustomer.customer_type || ''}
+                    value={editCustomer?.customer_type || ''}
                     onChange={(e) =>
                       setEditCustomer((prev) => ({ ...prev, customer_type: e.target.value }))
                     }
@@ -1641,10 +1347,8 @@ const CustomerDetails = () => {
                 {isEditing ? (
                   <select
                     className="info-input"
-                    value={editCustomer.country || ''}
-                    onChange={(e) =>
-                      setEditCustomer((prev) => ({ ...prev, country: e.target.value }))
-                    }
+                    value={editCustomer?.country || ''}
+                    onChange={(e) => setEditCustomer((prev) => ({ ...prev, country: e.target.value }))}
                   >
                     <option value="">Select</option>
                     {countryOptions.map((c) => (
@@ -1663,7 +1367,7 @@ const CustomerDetails = () => {
                 {isEditing ? (
                   <select
                     className="info-input"
-                    value={editCustomer.account_manager || ''}
+                    value={editCustomer?.account_manager || ''}
                     onChange={(e) =>
                       setEditCustomer((prev) => ({ ...prev, account_manager: e.target.value }))
                     }
@@ -1681,13 +1385,12 @@ const CustomerDetails = () => {
               </div>
 
               <div className="info-item">
-                <label>Customer Status</label>
+                <label>Customer status</label>
                 {isEditing ? (
                   <select
-                    name="status_id"
                     className="info-input"
                     value={
-                      editCustomer.status_id === null || editCustomer.status_id === undefined
+                      editCustomer?.status_id === null || editCustomer?.status_id === undefined
                         ? ''
                         : String(editCustomer.status_id)
                     }
@@ -1706,8 +1409,8 @@ const CustomerDetails = () => {
                     ))}
                   </select>
                 ) : (
-                  <div className="status-pill">
-                    <span className={statusClass}>{statusLabel}</span>
+                  <div className="info-value">
+                    <span className={`cd-status-pill ${statusClass}`}>{statusLabel}</span>
                   </div>
                 )}
               </div>
@@ -1717,30 +1420,30 @@ const CustomerDetails = () => {
                 {isEditing ? (
                   <textarea
                     className="info-textarea"
-                    value={editCustomer.notes || ''}
+                    value={editCustomer?.notes || ''}
                     onChange={(e) => setEditCustomer((prev) => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Short background / key context about the customer..."
+                    placeholder="Short customer context, key points, next steps…"
                     rows={5}
                   />
                 ) : (
-                  <div className="info-value">{customer.notes ? customer.notes : '—'}</div>
+                  <div className="info-value">{customer?.notes || '—'}</div>
                 )}
               </div>
             </div>
-          </section>
+          </div>
 
-          {/* KEY STAKEHOLDERS */}
-          <section className="section-card stakeholders-section">
+          {/* Key Stakeholders (UPDATED to simple fields like your screenshot) */}
+          <div className="section-card">
             <div className="section-header">
-              <div className="section-title">
-                <FaUsers />
+              <div>
                 <h2>Key Stakeholders</h2>
+                <p className="section-subtitle">People you should keep close for this account.</p>
               </div>
-              <div className="section-actions">
-                <button className="icon-btn" onClick={() => setShowStakeholdersModal(true)}>
-                  <FaEdit />
-                </button>
-              </div>
+
+              <button className="action-button primary" onClick={() => setShowStakeholdersModal(true)}>
+                <Plus size={14} />
+                Add stakeholder
+              </button>
             </div>
 
             {parsedStakeholders.length === 0 ? (
@@ -1750,73 +1453,92 @@ const CustomerDetails = () => {
             ) : (
               <div className="stakeholder-list">
                 {parsedStakeholders.map((s, index) => {
-                  const initial = s.name?.trim().charAt(0) || '?';
                   return (
-                    <div key={index} className="stakeholder-item">
-                      <div className="stakeholder-main">
-                        <div className="stakeholder-avatar">{initial}</div>
-
-                        <div className="stakeholder-info">
-                          <div className="stakeholder-name-row">
-                            <h3>{s.name || '—'}</h3>
-                            {s.role ? <span className="stakeholder-role">{s.role}</span> : null}
-                          </div>
+                    <div key={index} className="stakeholder-simple">
+                      <div className="stakeholder-simple-grid">
+                        <div className="stake-row">
+                          <div className="stake-label">Contact Name</div>
+                          <div className="stake-value">{s.name || '—'}</div>
                         </div>
+
+                        {s.role ? (
+                          <div className="stake-row">
+                            <div className="stake-label">Role</div>
+                            <div className="stake-value">{s.role}</div>
+                          </div>
+                        ) : null}
+
+                        {s.email ? (
+                          <div className="stake-row">
+                            <div className="stake-label">Email</div>
+                            <div className="stake-value">{s.email}</div>
+                          </div>
+                        ) : null}
+
+                        {s.phone ? (
+                          <div className="stake-row">
+                            <div className="stake-label">Mobile</div>
+                            <div className="stake-value">{s.phone}</div>
+                          </div>
+                        ) : null}
                       </div>
 
-                      {/* ✅ MOVED ICONS TO RIGHT SIDE */}
                       <div className="stakeholder-actions">
-                        <div className="stakeholder-contact-icons">
-                          {s.email && (
-                            <button
-                              type="button"
-                              className="stakeholder-icon-btn"
-                              title={`Copy email: ${s.email}`}
-                              onClick={async () => {
-                                const ok = await copyToClipboard(s.email);
-                                if (ok) alert('Email copied');
-                              }}
-                            >
-                              <FaEnvelope />
-                            </button>
-                          )}
+                        {s.email ? (
+                          <button
+                            type="button"
+                            className="stakeholder-icon-btn"
+                            title="Copy email"
+                            onClick={async () => {
+                              const ok = await copyToClipboard(s.email);
+                              if (ok) alert('Email copied');
+                            }}
+                          >
+                            <Mail size={16} />
+                          </button>
+                        ) : null}
 
-                          {s.phone && (
-                            <button
-                              type="button"
-                              className="stakeholder-icon-btn"
-                              title={`Copy phone: ${s.phone}`}
-                              onClick={async () => {
-                                const ok = await copyToClipboard(s.phone);
-                                if (ok) alert('Phone copied');
-                              }}
-                            >
-                              <FaPhoneAlt />
-                            </button>
-                          )}
-                        </div>
+                        {s.phone ? (
+                          <button
+                            type="button"
+                            className="stakeholder-icon-btn"
+                            title="Copy phone"
+                            onClick={async () => {
+                              const ok = await copyToClipboard(s.phone);
+                              if (ok) alert('Phone copied');
+                            }}
+                          >
+                            <Phone size={16} />
+                          </button>
+                        ) : null}
+
+                        <button
+                          className="stakeholder-icon-btn danger"
+                          onClick={() => handleRemoveStakeholder(index)}
+                          title="Remove stakeholder"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </div>
                   );
                 })}
               </div>
             )}
-          </section>
+          </div>
 
-          {/* PROJECTS / OPPORTUNITIES */}
-          <section className="section-card projects-section">
+          {/* Projects */}
+          <div className="section-card">
             <div className="section-header">
-              <div className="section-title">
-                <FaProjectDiagram />
+              <div>
                 <h2>Projects / Opportunities</h2>
+                <p className="section-subtitle">Deals and initiatives linked to this customer.</p>
               </div>
 
-              <div className="section-actions">
-                <button className="btn-secondary" onClick={() => setShowProjectModal(true)}>
-                  <FaPlus />
-                  Add Project
-                </button>
-              </div>
+              <button className="action-button primary" onClick={() => setShowProjectModal(true)}>
+                <Plus size={14} />
+                Add project
+              </button>
             </div>
 
             <div className="project-controls-row">
@@ -1855,7 +1577,8 @@ const CustomerDetails = () => {
                   const stage = getProjectStage(p);
                   const due = p.due_date ? formatDate(p.due_date) : '';
                   const openCount = projectOpenTaskCount[String(p.id)] || 0;
-                  const isPrimary = dealInsight.primary && String(dealInsight.primary.id) === String(p.id);
+                  const isPrimary =
+                    dealInsight.primary && String(dealInsight.primary.id) === String(p.id);
 
                   return (
                     <div key={p.id} className={`project-item ${isPrimary ? 'project-primary' : ''}`}>
@@ -1870,11 +1593,11 @@ const CustomerDetails = () => {
                         <div className="project-mini-row">
                           {stage ? <span className="project-stage-badge">{stage}</span> : null}
                           <span className="project-taskcount-badge">
-                            <FaTasks /> {openCount} open
+                            <Target size={14} /> {openCount} open
                           </span>
                           {due ? (
                             <span className="project-due-badge">
-                              <FaCalendarAlt /> {due}
+                              <Calendar size={14} /> {due}
                             </span>
                           ) : null}
                         </div>
@@ -1882,12 +1605,12 @@ const CustomerDetails = () => {
 
                       <div className="project-details">
                         <div className="project-value">
-                          <FaMoneyBillWave />
+                          <BarChart3 size={14} />
                           {formatCurrency(p.deal_value)}
                         </div>
 
                         <button
-                          className="btn-icon"
+                          className="cd-icon-btn danger"
                           title="Delete project"
                           disabled={deletingProjectId === p.id}
                           onClick={(e) => {
@@ -1895,7 +1618,7 @@ const CustomerDetails = () => {
                             handleDeleteProject(p);
                           }}
                         >
-                          <FaTrash />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
@@ -1903,25 +1626,24 @@ const CustomerDetails = () => {
                 })}
               </div>
             )}
-          </section>
+          </div>
 
-          {/* NOTES */}
-          <section className="section-card notes-section">
+          {/* Notes */}
+          <div className="section-card">
             <div className="section-header">
-              <div className="section-title">
-                <FaRegStickyNote />
+              <div>
                 <h2>My Notes</h2>
+                <p className="section-subtitle">Your working notes about meetings and next steps.</p>
               </div>
-              <div className="section-actions">
-                <button
-                  className="btn-primary"
-                  onClick={handleSaveCompanyProfile}
-                  disabled={savingCompanyProfile}
-                >
-                  <FaSave />
-                  {savingCompanyProfile ? 'Saving...' : 'Save'}
-                </button>
-              </div>
+
+              <button
+                className="action-button primary"
+                onClick={handleSaveCompanyProfile}
+                disabled={savingCompanyProfile}
+              >
+                <Save size={14} />
+                {savingCompanyProfile ? 'Saving...' : 'Save'}
+              </button>
             </div>
 
             <textarea
@@ -1930,24 +1652,23 @@ const CustomerDetails = () => {
               onChange={(e) => setCompanyProfileDraft(e.target.value)}
               placeholder="Write notes about the customer, meetings, next steps, risks..."
             />
-          </section>
+          </div>
         </div>
 
-        {/* RIGHT COLUMN */}
-        <div className="customer-main-right">
-          {/* SNAPSHOT */}
-          <section className="section-card snapshot-section">
+        {/* Right column */}
+        <div className="cd-col">
+          {/* Snapshot */}
+          <div className="section-card">
             <div className="section-header">
-              <div className="section-title">
-                <FaChartLine />
+              <div>
                 <h2>Customer Snapshot</h2>
+                <p className="section-subtitle">Quick view of pipeline and workload.</p>
               </div>
-              <div className="section-actions">
-                <button className="btn-secondary" onClick={() => setShowMetricsModal(true)}>
-                  <FaEdit />
-                  Edit metrics
-                </button>
-              </div>
+
+              <button className="action-button" onClick={() => setShowMetricsModal(true)}>
+                <Edit3 size={14} />
+                View
+              </button>
             </div>
 
             <div className="snapshot-grid">
@@ -1958,14 +1679,14 @@ const CustomerDetails = () => {
                 </div>
               ))}
             </div>
-          </section>
+          </div>
 
-          {/* RECENT ACTIVITY */}
-          <section className="section-card recent-activity-section">
+          {/* Recent Activity */}
+          <div className="section-card">
             <div className="section-header">
-              <div className="section-title">
-                <FaCalendarAlt />
+              <div>
                 <h2>Recent Activity</h2>
+                <p className="section-subtitle">Latest updates across this account.</p>
               </div>
             </div>
 
@@ -1991,24 +1712,23 @@ const CustomerDetails = () => {
             </div>
 
             <div className="recent-activity-hint">
-              Tip: Use <span className="kbd">E</span> to edit, <span className="kbd">T</span> to add a task,{' '}
-              <span className="kbd">A</span> to add stakeholder.
+              Tip: Use <span className="kbd">E</span> to edit, <span className="kbd">T</span> to add a
+              task, <span className="kbd">A</span> to add stakeholder.
             </div>
-          </section>
+          </div>
 
-          {/* TASKS */}
-          <section className="section-card tasks-section">
+          {/* Tasks */}
+          <div className="section-card">
             <div className="section-header">
-              <div className="section-title">
-                <FaTasks />
+              <div>
                 <h2>Open Tasks</h2>
+                <p className="section-subtitle">Grouped by urgency.</p>
               </div>
-              <div className="section-actions">
-                <button className="btn-secondary" onClick={() => setShowTaskModal(true)}>
-                  <FaPlus />
-                  Add Task
-                </button>
-              </div>
+
+              <button className="action-button primary" onClick={() => setShowTaskModal(true)}>
+                <Plus size={14} />
+                Add task
+              </button>
             </div>
 
             {visibleTasks.length === 0 ? (
@@ -2017,42 +1737,131 @@ const CustomerDetails = () => {
               </div>
             ) : (
               <div className="tasks-grouped">
-                {/* grouped tasks unchanged */}
-                <div className="empty-state small">
-                  <p>Tasks rendering is unchanged from your current file.</p>
-                </div>
+                {/* Overdue */}
+                {tasksGrouped.overdue.length ? (
+                  <div className="task-group">
+                    <div className="task-group-title">
+                      <AlertTriangle size={14} /> Overdue
+                    </div>
+                    {tasksGrouped.overdue.map((t) => (
+                      <div key={t.id} className="task-row overdue">
+                        <div className="task-main">
+                          <div className="task-title">{t.description || t.title || '—'}</div>
+                          <div className="task-meta">
+                            <span className="meta-chip">
+                              <Calendar size={14} />
+                              {t.due_date ? formatDate(t.due_date) : 'No due date'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {/* Due soon */}
+                {tasksGrouped.dueSoon.length ? (
+                  <div className="task-group">
+                    <div className="task-group-title">
+                      <Target size={14} /> Due soon
+                    </div>
+                    {tasksGrouped.dueSoon.map((t) => (
+                      <div key={t.id} className="task-row due-soon">
+                        <div className="task-main">
+                          <div className="task-title">{t.description || t.title || '—'}</div>
+                          <div className="task-meta">
+                            <span className="meta-chip">
+                              <Calendar size={14} />
+                              {t.due_date ? formatDate(t.due_date) : 'No due date'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {/* Later / no due */}
+                {tasksGrouped.later.length ? (
+                  <div className="task-group">
+                    <div className="task-group-title">
+                      <FileText size={14} /> Later / no due date
+                    </div>
+                    {tasksGrouped.later.map((t) => (
+                      <div key={t.id} className="task-row">
+                        <div className="task-main">
+                          <div className="task-title">{t.description || t.title || '—'}</div>
+                          <div className="task-meta">
+                            <span className="meta-chip">
+                              <Calendar size={14} />
+                              {t.due_date ? formatDate(t.due_date) : 'No due date'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             )}
-          </section>
+          </div>
         </div>
-      </main>
+      </div>
 
-      <TaskModal
-        isOpen={showTaskModal}
-        onClose={() => setShowTaskModal(false)}
-        onSave={handleCreateTask}
-        projects={projects}
-      />
+      {/* Modals */}
+      <StakeholdersModal isOpen={showStakeholdersModal} onClose={() => setShowStakeholdersModal(false)} />
+      <ProjectModal isOpen={showProjectModal} onClose={() => setShowProjectModal(false)} />
+      <TaskModal isOpen={showTaskModal} onClose={() => setShowTaskModal(false)} />
 
-      <ProjectModal
-        isOpen={showProjectModal}
-        onClose={() => setShowProjectModal(false)}
-        onSave={handleCreateProject}
-      />
-
-      <StakeholdersModal
-        isOpen={showStakeholdersModal}
-        onClose={() => setShowStakeholdersModal(false)}
-        onSave={handleSaveStakeholders}
-        existingStakeholders={customer.key_stakeholders || []}
-      />
-
-      <MetricsModal
+      <Modal
         isOpen={showMetricsModal}
         onClose={() => setShowMetricsModal(false)}
-        onSave={saveCustomerMetrics}
-        initial={metrics}
-      />
+        title="Customer Snapshot"
+        footer={
+          <button className="action-button primary" onClick={() => setShowMetricsModal(false)}>
+            Close
+          </button>
+        }
+      >
+        <div className="cd-metrics-grid">
+          <div className="cd-metric">
+            <div className="cd-metric-label">Total Pipeline</div>
+            <div className="cd-metric-value">{formatCurrency(summary.totalPipeline)}</div>
+          </div>
+          <div className="cd-metric">
+            <div className="cd-metric-label">Active Projects</div>
+            <div className="cd-metric-value">{summary.activeProjects}</div>
+          </div>
+          <div className="cd-metric">
+            <div className="cd-metric-label">Open Tasks</div>
+            <div className="cd-metric-value">{summary.openTasksCount}</div>
+          </div>
+          <div className="cd-metric">
+            <div className="cd-metric-label">Overdue Tasks</div>
+            <div className="cd-metric-value">{summary.overdueCount}</div>
+          </div>
+          <div className="cd-metric">
+            <div className="cd-metric-label">Metrics table</div>
+            <div className="cd-metric-value">{metricsLoading ? 'Loading…' : metrics ? 'Loaded' : '—'}</div>
+          </div>
+          <div className="cd-metric">
+            <div className="cd-metric-label">Edit</div>
+            <div className="cd-metric-value">
+              <button
+                className="action-button"
+                onClick={async () => {
+                  // example: keep existing flow as-is; your CSS/JS already supports a proper metrics editor modal
+                  await fetchCustomerMetrics();
+                  alert('Metrics refreshed.');
+                }}
+              >
+                <ClipboardCopy size={14} />
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
