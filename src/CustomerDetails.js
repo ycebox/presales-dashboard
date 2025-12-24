@@ -73,6 +73,28 @@ const formatCompact = (value) => {
   return n.toLocaleString();
 };
 
+// ---- Customer Status helpers (aligned with Projects.js) ----
+const getCustomerStatus = (customerRow, statusList) => {
+  const id = customerRow?.status_id;
+  if (id === null || id === undefined || id === '') return null;
+  return (statusList || []).find((s) => String(s.id) === String(id)) || null;
+};
+
+const getStatusBadgeClass = (codeOrLabel) => {
+  const v = String(codeOrLabel || '').toLowerCase();
+  if (!v) return 'status-none';
+
+  // Prefer status code if available, fall back to label text matching
+  if (v.includes('active')) return 'status-active';
+  if (v.includes('prospect') || v.includes('lead')) return 'status-prospect';
+  if (v.includes('hold') || v.includes('on_hold') || v.includes('on-hold')) return 'status-onhold';
+  if (v.includes('dormant')) return 'status-dormant';
+  if (v.includes('inactive') || v.includes('archiv')) return 'status-inactive';
+
+  return 'status-none';
+};
+// -----------------------------------------------------------
+
 const StakeholdersModal = ({ isOpen, onClose, onSave, existingStakeholders }) => {
   const [rows, setRows] = useState([]);
 
@@ -714,7 +736,7 @@ const CustomerDetails = () => {
 
   const [statusOptions, setStatusOptions] = useState([]);
 
-  // ✅ NEW: dropdown options pulled from DB
+  // dropdown options pulled from DB
   const [countryOptions, setCountryOptions] = useState([]); // countries.name
   const [accountManagerOptions, setAccountManagerOptions] = useState([]); // account_managers (id, name)
 
@@ -973,7 +995,6 @@ const CustomerDetails = () => {
     }
   };
 
-  // ✅ NEW: Countries & Account Managers lookup
   const fetchCountries = async () => {
     try {
       const { data, error } = await supabase
@@ -1008,8 +1029,6 @@ const CustomerDetails = () => {
     fetchCustomer();
     fetchStatusOptions();
     fetchCustomerMetrics();
-
-    // ✅ load dropdown options once page loads / customer changes
     fetchCountries();
     fetchAccountManagers();
   }, [customerId, isValidCustomerId]);
@@ -1205,7 +1224,10 @@ const CustomerDetails = () => {
           account_manager: editCustomer.account_manager || null,
           country: editCustomer.country || null,
           customer_type: editCustomer.customer_type || null,
-          status_id: editCustomer.status_id || null,
+          status_id:
+            editCustomer.status_id === '' || editCustomer.status_id == null
+              ? null
+              : Number(editCustomer.status_id),
           notes: editCustomer.notes ?? null,
         })
         .eq('id', customerId);
@@ -1232,7 +1254,10 @@ const CustomerDetails = () => {
         account_manager: editCustomer.account_manager || null,
         country: editCustomer.country || null,
         customer_type: editCustomer.customer_type || null,
-        status_id: editCustomer.status_id || null,
+        status_id:
+        editCustomer.status_id === '' || editCustomer.status_id == null
+          ? null
+          : Number(editCustomer.status_id),
         notes: editCustomer.notes ?? null,
       };
 
@@ -1415,21 +1440,9 @@ const CustomerDetails = () => {
     );
   }
 
-  const statusLabel = (() => {
-    if (!customer.status_id) return '';
-    const found = statusOptions.find((s) => String(s.id) === String(customer.status_id));
-    return found ? found.status_name : '';
-  })();
-
-  const statusClass = (() => {
-    const s = String(statusLabel || '').toLowerCase();
-    if (s.includes('active')) return 'status-active';
-    if (s.includes('prospect')) return 'status-prospect';
-    if (s.includes('hold')) return 'status-onhold';
-    if (s.includes('dormant')) return 'status-dormant';
-    if (s.includes('inactive')) return 'status-inactive';
-    return 'status-none';
-  })();
+  const statusObj = getCustomerStatus(customer, statusOptions);
+  const statusLabel = statusObj?.label || statusObj?.status_name || 'Not Set';
+  const statusClass = getStatusBadgeClass(statusObj?.code || statusObj?.label || statusObj?.status_name);
 
   const lastUpdatedDisplay = formatDate(customer.updated_at || customer.created_at);
 
@@ -1576,7 +1589,6 @@ const CustomerDetails = () => {
                 )}
               </div>
 
-              {/* ✅ Country dropdown now from public.countries */}
               <div className="info-item">
                 <label>Country</label>
                 {isEditing ? (
@@ -1599,7 +1611,6 @@ const CustomerDetails = () => {
                 )}
               </div>
 
-              {/* ✅ Account manager dropdown now from public.account_managers (stores name into customers.account_manager) */}
               <div className="info-item">
                 <label>Account manager</label>
                 {isEditing ? (
@@ -1628,24 +1639,25 @@ const CustomerDetails = () => {
                   <select
                     name="status_id"
                     className="info-input"
-                    value={editCustomer.status_id ? String(editCustomer.status_id) : ''}
+                    value={editCustomer.status_id === null || editCustomer.status_id === undefined ? '' : String(editCustomer.status_id)}
                     onChange={(e) =>
                       setEditCustomer((prev) => ({
                         ...prev,
-                        status_id: e.target.value ? Number(e.target.value) : null,
+                        // keep as string while editing; convert on save (same as Projects.js)
+                        status_id: e.target.value,
                       }))
                     }
                   >
-                    <option value="">Select</option>
+                    <option value="">Not Set</option>
                     {statusOptions.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.status_name}
+                        {s.label || s.status_name || s.name || `Status ${s.id}`}
                       </option>
                     ))}
                   </select>
                 ) : (
                   <div className="status-pill">
-                    <span className={statusClass}>{statusLabel || '—'}</span>
+                    <span className={statusClass}>{statusLabel}</span>
                   </div>
                 )}
               </div>
