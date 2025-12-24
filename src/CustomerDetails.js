@@ -26,23 +26,6 @@ import {
   FaUsers,
 } from 'react-icons/fa';
 
-const asiaPacificCountries = [
-  'Singapore',
-  'Philippines',
-  'Thailand',
-  'Vietnam',
-  'Malaysia',
-  'Indonesia',
-  'India',
-  'Australia',
-  'New Zealand',
-  'Hong Kong',
-  'Taiwan',
-  'Japan',
-  'South Korea',
-  'China',
-];
-
 const customerTypes = ['Existing', 'New', 'Internal Initiative'];
 
 const parseStakeholderEntry = (entry) => {
@@ -730,6 +713,11 @@ const CustomerDetails = () => {
   const [tasks, setTasks] = useState([]);
 
   const [statusOptions, setStatusOptions] = useState([]);
+
+  // ✅ NEW: dropdown options pulled from DB
+  const [countryOptions, setCountryOptions] = useState([]); // countries.name
+  const [accountManagerOptions, setAccountManagerOptions] = useState([]); // account_managers (id, name)
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -976,7 +964,6 @@ const CustomerDetails = () => {
       const { data, error } = await supabase
         .from('customer_statuses')
         .select('*')
-        // ✅ FIX: your error was "sort_order does not exist"
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -986,10 +973,45 @@ const CustomerDetails = () => {
     }
   };
 
+  // ✅ NEW: Countries & Account Managers lookup
+  const fetchCountries = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('countries')
+        .select('name')
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setCountryOptions((data || []).map((x) => x.name).filter(Boolean));
+    } catch (err) {
+      console.error('Error fetching countries:', err);
+      setCountryOptions([]);
+    }
+  };
+
+  const fetchAccountManagers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('account_managers')
+        .select('id,name')
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setAccountManagerOptions(data || []);
+    } catch (err) {
+      console.error('Error fetching account managers:', err);
+      setAccountManagerOptions([]);
+    }
+  };
+
   useEffect(() => {
     fetchCustomer();
     fetchStatusOptions();
     fetchCustomerMetrics();
+
+    // ✅ load dropdown options once page loads / customer changes
+    fetchCountries();
+    fetchAccountManagers();
   }, [customerId, isValidCustomerId]);
 
   useEffect(() => {
@@ -1184,7 +1206,6 @@ const CustomerDetails = () => {
           country: editCustomer.country || null,
           customer_type: editCustomer.customer_type || null,
           status_id: editCustomer.status_id || null,
-          // ✅ removed primary_presales
           notes: editCustomer.notes ?? null,
         })
         .eq('id', customerId);
@@ -1212,7 +1233,6 @@ const CustomerDetails = () => {
         country: editCustomer.country || null,
         customer_type: editCustomer.customer_type || null,
         status_id: editCustomer.status_id || null,
-        // ✅ removed primary_presales
         notes: editCustomer.notes ?? null,
       };
 
@@ -1270,7 +1290,6 @@ const CustomerDetails = () => {
       customer_name: customer.customer_name,
       account_manager: customer.account_manager || null,
       country: customer.country || null,
-      // ✅ removed primary_presales from project insert
       created_at: todayISODate(),
     };
 
@@ -1557,6 +1576,7 @@ const CustomerDetails = () => {
                 )}
               </div>
 
+              {/* ✅ Country dropdown now from public.countries */}
               <div className="info-item">
                 <label>Country</label>
                 {isEditing ? (
@@ -1568,7 +1588,7 @@ const CustomerDetails = () => {
                     }
                   >
                     <option value="">Select</option>
-                    {asiaPacificCountries.map((c) => (
+                    {countryOptions.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -1579,22 +1599,28 @@ const CustomerDetails = () => {
                 )}
               </div>
 
+              {/* ✅ Account manager dropdown now from public.account_managers (stores name into customers.account_manager) */}
               <div className="info-item">
                 <label>Account manager</label>
                 {isEditing ? (
-                  <input
+                  <select
                     className="info-input"
                     value={editCustomer.account_manager || ''}
                     onChange={(e) =>
                       setEditCustomer((prev) => ({ ...prev, account_manager: e.target.value }))
                     }
-                  />
+                  >
+                    <option value="">Select</option>
+                    {accountManagerOptions.map((am) => (
+                      <option key={am.id} value={am.name}>
+                        {am.name}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
                   <div className="info-value">{customer.account_manager || '—'}</div>
                 )}
               </div>
-
-              {/* ✅ Primary presales removed */}
 
               <div className="info-item">
                 <label>Customer Status</label>
@@ -1624,7 +1650,6 @@ const CustomerDetails = () => {
                 )}
               </div>
 
-              {/* ✅ Company Profile field (notes) */}
               <div className="info-item" style={{ gridColumn: '1 / -1' }}>
                 <label>Company Profile</label>
                 {isEditing ? (
@@ -1812,7 +1837,6 @@ const CustomerDetails = () => {
             )}
           </section>
 
-          {/* ✅ Company Profile section (single source of truth for customers.notes) */}
           <section className="section-card notes-section">
             <div className="section-header">
               <div className="section-title">
