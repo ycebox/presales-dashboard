@@ -97,8 +97,10 @@ const formatCompact = (value) => {
   const abs = Math.abs(n);
   const sign = n < 0 ? '-' : '';
 
-  if (abs >= 1_000_000_000) return `${sign}${(abs / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
-  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (abs >= 1_000_000_000)
+    return `${sign}${(abs / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
+  if (abs >= 1_000_000)
+    return `${sign}${(abs / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
   if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
 
   return n.toLocaleString();
@@ -174,7 +176,10 @@ const StakeholdersModal = ({ isOpen, onClose, onSave, existingStakeholders }) =>
 
         <form className="modal-form" onSubmit={(e) => e.preventDefault()}>
           <div className="stakeholder-rows">
-            <div className="stakeholder-rows-header" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr 34px' }}>
+            <div
+              className="stakeholder-rows-header"
+              style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr 34px' }}
+            >
               <span>Name</span>
               <span>Role</span>
               <span>Email</span>
@@ -1389,9 +1394,7 @@ const CustomerDetails = () => {
     if (!ok) return;
 
     if (taskCount > 0) {
-      const typed = window.prompt(
-        `This project has ${taskCount} open task(s).\n\nType DELETE to confirm:`
-      );
+      const typed = window.prompt(`This project has ${taskCount} open task(s).\n\nType DELETE to confirm:`);
       if (String(typed || '').trim().toUpperCase() !== 'DELETE') {
         alert('Delete cancelled.');
         return;
@@ -1470,9 +1473,7 @@ const CustomerDetails = () => {
 
   const statusObj = getCustomerStatus(customer, statusOptions);
   const statusLabel = statusObj?.label || statusObj?.status_name || 'Not Set';
-  const statusClass = getStatusBadgeClass(
-    statusObj?.code || statusObj?.label || statusObj?.status_name
-  );
+  const statusClass = getStatusBadgeClass(statusObj?.code || statusObj?.label || statusObj?.status_name);
 
   const lastUpdatedDisplay = formatDate(customer.updated_at || customer.created_at);
 
@@ -1717,9 +1718,7 @@ const CustomerDetails = () => {
                   <textarea
                     className="info-textarea"
                     value={editCustomer.notes || ''}
-                    onChange={(e) =>
-                      setEditCustomer((prev) => ({ ...prev, notes: e.target.value }))
-                    }
+                    onChange={(e) => setEditCustomer((prev) => ({ ...prev, notes: e.target.value }))}
                     placeholder="Short background / key context about the customer..."
                     rows={5}
                   />
@@ -1756,44 +1755,47 @@ const CustomerDetails = () => {
                     <div key={index} className="stakeholder-item">
                       <div className="stakeholder-main">
                         <div className="stakeholder-avatar">{initial}</div>
+
                         <div className="stakeholder-info">
                           <div className="stakeholder-name-row">
                             <h3>{s.name || '—'}</h3>
                             {s.role ? <span className="stakeholder-role">{s.role}</span> : null}
                           </div>
-
-                     <div className="stakeholder-contact-icons">
-  {s.email && (
-    <button
-      type="button"
-      className="stakeholder-icon-btn"
-      title={`Copy email: ${s.email}`}
-      onClick={async () => {
-        const ok = await copyToClipboard(s.email);
-        if (ok) alert('Email copied');
-      }}
-    >
-      <FaEnvelope />
-    </button>
-  )}
-
-  {s.phone && (
-    <button
-      type="button"
-      className="stakeholder-icon-btn"
-      title={`Copy phone: ${s.phone}`}
-      onClick={async () => {
-        const ok = await copyToClipboard(s.phone);
-        if (ok) alert('Phone copied');
-      }}
-    >
-      <FaPhoneAlt />
-    </button>
-  )}
-</div>
                         </div>
                       </div>
-                      <div className="stakeholder-actions" />
+
+                      {/* ✅ MOVED ICONS TO RIGHT SIDE */}
+                      <div className="stakeholder-actions">
+                        <div className="stakeholder-contact-icons">
+                          {s.email && (
+                            <button
+                              type="button"
+                              className="stakeholder-icon-btn"
+                              title={`Copy email: ${s.email}`}
+                              onClick={async () => {
+                                const ok = await copyToClipboard(s.email);
+                                if (ok) alert('Email copied');
+                              }}
+                            >
+                              <FaEnvelope />
+                            </button>
+                          )}
+
+                          {s.phone && (
+                            <button
+                              type="button"
+                              className="stakeholder-icon-btn"
+                              title={`Copy phone: ${s.phone}`}
+                              onClick={async () => {
+                                const ok = await copyToClipboard(s.phone);
+                                if (ok) alert('Phone copied');
+                              }}
+                            >
+                              <FaPhoneAlt />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -1853,14 +1855,10 @@ const CustomerDetails = () => {
                   const stage = getProjectStage(p);
                   const due = p.due_date ? formatDate(p.due_date) : '';
                   const openCount = projectOpenTaskCount[String(p.id)] || 0;
-                  const isPrimary =
-                    dealInsight.primary && String(dealInsight.primary.id) === String(p.id);
+                  const isPrimary = dealInsight.primary && String(dealInsight.primary.id) === String(p.id);
 
                   return (
-                    <div
-                      key={p.id}
-                      className={`project-item ${isPrimary ? 'project-primary' : ''}`}
-                    >
+                    <div key={p.id} className={`project-item ${isPrimary ? 'project-primary' : ''}`}>
                       <div className="project-main">
                         <h3>
                           <span>{p.project_name || '(Unnamed Project)'}</span>
@@ -1993,8 +1991,8 @@ const CustomerDetails = () => {
             </div>
 
             <div className="recent-activity-hint">
-              Tip: Use <span className="kbd">E</span> to edit, <span className="kbd">T</span> to add a
-              task, <span className="kbd">A</span> to add stakeholder.
+              Tip: Use <span className="kbd">E</span> to edit, <span className="kbd">T</span> to add a task,{' '}
+              <span className="kbd">A</span> to add stakeholder.
             </div>
           </section>
 
@@ -2020,8 +2018,6 @@ const CustomerDetails = () => {
             ) : (
               <div className="tasks-grouped">
                 {/* grouped tasks unchanged */}
-                {/* ... keep your tasks rendering as-is (same as your current file) */}
-                {/* I’m leaving it unchanged to avoid breaking your layout */}
                 <div className="empty-state small">
                   <p>Tasks rendering is unchanged from your current file.</p>
                 </div>
