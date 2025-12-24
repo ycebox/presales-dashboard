@@ -742,8 +742,8 @@ const CustomerDetails = () => {
 
   const [projectSort, setProjectSort] = useState('stage');
 
-  const [notesDraft, setNotesDraft] = useState('');
-  const [savingNotes, setSavingNotes] = useState(false);
+  const [companyProfileDraft, setCompanyProfileDraft] = useState('');
+  const [savingCompanyProfile, setSavingCompanyProfile] = useState(false);
 
   const [metrics, setMetrics] = useState(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
@@ -869,6 +869,7 @@ const CustomerDetails = () => {
       if (!isValidCustomerId) {
         setCustomer(null);
         setEditCustomer(null);
+        setCompanyProfileDraft('');
         setError('Invalid or missing customer ID in the URL.');
         return;
       }
@@ -883,7 +884,7 @@ const CustomerDetails = () => {
 
       setCustomer(data);
       setEditCustomer(data);
-      setNotesDraft(data?.notes || '');
+      setCompanyProfileDraft(data?.notes || '');
     } catch (err) {
       console.error('Error fetching customer:', err);
       setError(err.message || 'Failed to load customer');
@@ -975,7 +976,8 @@ const CustomerDetails = () => {
       const { data, error } = await supabase
         .from('customer_statuses')
         .select('*')
-        .order('sort_order', { ascending: true });
+        // ✅ FIX: your error was "sort_order does not exist"
+        .order('id', { ascending: true });
 
       if (error) throw error;
       setStatusOptions(data || []);
@@ -1182,7 +1184,8 @@ const CustomerDetails = () => {
           country: editCustomer.country || null,
           customer_type: editCustomer.customer_type || null,
           status_id: editCustomer.status_id || null,
-          primary_presales: editCustomer.primary_presales || null,
+          // ✅ removed primary_presales
+          notes: editCustomer.notes ?? null,
         })
         .eq('id', customerId);
 
@@ -1209,12 +1212,15 @@ const CustomerDetails = () => {
         country: editCustomer.country || null,
         customer_type: editCustomer.customer_type || null,
         status_id: editCustomer.status_id || null,
-        primary_presales: editCustomer.primary_presales || null,
+        // ✅ removed primary_presales
+        notes: editCustomer.notes ?? null,
       };
 
       setCustomer(updatedCustomer);
       setEditCustomer(updatedCustomer);
       setIsEditing(false);
+
+      setCompanyProfileDraft(updatedCustomer.notes || '');
 
       await fetchProjects(newName);
 
@@ -1264,7 +1270,7 @@ const CustomerDetails = () => {
       customer_name: customer.customer_name,
       account_manager: customer.account_manager || null,
       country: customer.country || null,
-      primary_presales: customer.primary_presales || null,
+      // ✅ removed primary_presales from project insert
       created_at: todayISODate(),
     };
 
@@ -1274,23 +1280,27 @@ const CustomerDetails = () => {
     await fetchProjects(customer.customer_name);
   };
 
-  const handleSaveNotes = async () => {
+  const handleSaveCompanyProfile = async () => {
     try {
-      setSavingNotes(true);
+      setSavingCompanyProfile(true);
+
+      const nextNotes = String(companyProfileDraft || '');
+
       const { error: nErr } = await supabase
         .from('customers')
-        .update({ notes: String(notesDraft || '') })
+        .update({ notes: nextNotes })
         .eq('id', customerId);
 
       if (nErr) throw nErr;
 
-      setCustomer((prev) => ({ ...prev, notes: String(notesDraft || '') }));
-      alert('Notes saved.');
+      setCustomer((prev) => ({ ...prev, notes: nextNotes }));
+      setEditCustomer((prev) => (prev ? { ...prev, notes: nextNotes } : prev));
+      alert('Company profile saved.');
     } catch (err) {
-      console.error('Error saving notes:', err);
-      alert('Failed to save notes: ' + err.message);
+      console.error('Error saving company profile:', err);
+      alert('Failed to save company profile: ' + err.message);
     } finally {
-      setSavingNotes(false);
+      setSavingCompanyProfile(false);
     }
   };
 
@@ -1584,21 +1594,7 @@ const CustomerDetails = () => {
                 )}
               </div>
 
-              <div className="info-item">
-                <label>Primary presales</label>
-                {isEditing ? (
-                  <input
-                    className="info-input"
-                    value={editCustomer.primary_presales || ''}
-                    onChange={(e) =>
-                      setEditCustomer((prev) => ({ ...prev, primary_presales: e.target.value }))
-                    }
-                    placeholder="e.g. Jonathan"
-                  />
-                ) : (
-                  <div className="info-value">{customer.primary_presales || '—'}</div>
-                )}
-              </div>
+              {/* ✅ Primary presales removed */}
 
               <div className="info-item">
                 <label>Customer Status</label>
@@ -1625,6 +1621,24 @@ const CustomerDetails = () => {
                   <div className="status-pill">
                     <span className={statusClass}>{statusLabel || '—'}</span>
                   </div>
+                )}
+              </div>
+
+              {/* ✅ Company Profile field (notes) */}
+              <div className="info-item" style={{ gridColumn: '1 / -1' }}>
+                <label>Company Profile</label>
+                {isEditing ? (
+                  <textarea
+                    className="info-textarea"
+                    value={editCustomer.notes || ''}
+                    onChange={(e) =>
+                      setEditCustomer((prev) => ({ ...prev, notes: e.target.value }))
+                    }
+                    placeholder="Short background / key context about the customer..."
+                    rows={5}
+                  />
+                ) : (
+                  <div className="info-value">{customer.notes ? customer.notes : '—'}</div>
                 )}
               </div>
             </div>
@@ -1798,28 +1812,35 @@ const CustomerDetails = () => {
             )}
           </section>
 
+          {/* ✅ Company Profile section (single source of truth for customers.notes) */}
           <section className="section-card notes-section">
             <div className="section-header">
               <div className="section-title">
                 <FaRegStickyNote />
-                <h2>Notes / Next steps</h2>
+                <h2>Company Profile</h2>
               </div>
               <div className="section-actions">
-                <button className="btn-secondary" onClick={handleSaveNotes} disabled={savingNotes}>
+                <button
+                  className="btn-secondary"
+                  onClick={handleSaveCompanyProfile}
+                  disabled={savingCompanyProfile}
+                >
                   <FaSave />
-                  {savingNotes ? 'Saving…' : 'Save'}
+                  {savingCompanyProfile ? 'Saving…' : 'Save'}
                 </button>
               </div>
             </div>
 
             <textarea
               className="notes-textarea"
-              value={notesDraft}
-              onChange={(e) => setNotesDraft(e.target.value)}
+              value={companyProfileDraft}
+              onChange={(e) => setCompanyProfileDraft(e.target.value)}
               placeholder={`Suggested format:
-- Next meeting:
-- Key risks:
-- Next action:`}
+- Background:
+- Business focus:
+- Current vendors / stack:
+- Key priorities:
+- Notes:`}
               rows={8}
             />
           </section>
