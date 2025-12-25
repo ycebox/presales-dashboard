@@ -940,10 +940,9 @@ const CustomerDetails = () => {
         </button>
 
         <div className="cd-header-main">
-          <div className="cd-title">
-            {customer.customer_name || 'Customer'}{' '}
-            <span className={`cd-status-pill ${statusClass}`}>{statusLabel}</span>
-          </div>
+         <div className="cd-title">
+  {customer.customer_name || 'Customer'}
+</div>
 
           {/* ✅ UPDATED: remove customer type / country / account manager pills */}
           <div className="cd-subtitle">
