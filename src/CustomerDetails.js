@@ -9,22 +9,17 @@ import {
   ArrowLeft,
   Building2,
   Calendar,
-  Check,
-  ChevronDown,
   ClipboardCopy,
   Edit3,
-  ExternalLink,
   Globe,
   Mail,
   Phone,
   Plus,
   Save,
   Trash2,
-  Users,
   X,
   AlertTriangle,
   FileText,
-  Briefcase,
   Target,
   BarChart3,
 } from 'lucide-react';
@@ -210,6 +205,18 @@ const CustomerDetails = () => {
     });
   };
 
+  const formatNumber = (value) => {
+    const n = Number(value);
+    if (value === null || value === undefined || value === '' || Number.isNaN(n)) return '—';
+    return n.toLocaleString();
+  };
+
+  const formatCompact = (value) => {
+    const n = Number(value);
+    if (value === null || value === undefined || value === '' || Number.isNaN(n)) return '—';
+    return n.toLocaleString(undefined, { notation: 'compact', maximumFractionDigits: 1 });
+  };
+
   const todayStart = () => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -313,7 +320,6 @@ const CustomerDetails = () => {
   const fetchCountries = useCallback(async () => {
     try {
       const { data, error } = await supabase.from('countries').select('name').order('name');
-
       if (error) throw error;
       setCountryOptions((data || []).map((x) => x.name).filter(Boolean));
     } catch (err) {
@@ -542,23 +548,6 @@ const CustomerDetails = () => {
     return { overdue, dueSoon, later };
   }, [visibleTasks]);
 
-  const recentActivity = useMemo(() => {
-    const lastProject = [...(projects || [])]
-      .filter((p) => p.created_at)
-      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
-
-    const lastTask = [...(tasks || [])]
-      .filter((t) => t.updated_at || t.created_at)
-      .sort(
-        (a, b) =>
-          new Date(b.updated_at || b.created_at || 0) -
-          new Date(a.updated_at || a.created_at || 0)
-      )[0];
-
-    const lastCustomer = customer?.updated_at || customer?.created_at ? customer : null;
-    return { lastProject, lastTask, lastCustomer };
-  }, [projects, tasks, customer]);
-
   const summary = useMemo(() => {
     const activeProjects = (projects || []).filter((p) => !isProjectCompleted(getProjectStage(p)))
       .length;
@@ -764,24 +753,6 @@ const CustomerDetails = () => {
     } finally {
       setDeletingProjectId(null);
     }
-  };
-
-  const saveCustomerMetrics = async (payload) => {
-    if (!isValidCustomerId) return;
-
-    const upsertPayload = {
-      customer_id: resolvedCustomerId,
-      ...payload,
-    };
-
-    const { error: upErr } = await supabase
-      .from('customer_metrics')
-      .upsert(upsertPayload, { onConflict: 'customer_id' });
-
-    if (upErr) throw upErr;
-
-    await fetchCustomerMetrics();
-    alert('Metrics saved.');
   };
 
   // keyboard shortcuts
@@ -1217,11 +1188,17 @@ const CustomerDetails = () => {
 
   const lastUpdatedDisplay = formatDate(customer.updated_at || customer.created_at);
 
+  // ✅ UPDATED snapshot items (Step #1)
   const customerSnapshotItems = [
     { label: 'Total Pipeline', value: formatCurrency(summary.totalPipeline) },
     { label: 'Active Projects', value: String(summary.activeProjects) },
-    { label: 'Open Tasks', value: String(summary.openTasksCount) },
-    { label: 'Overdue Tasks', value: String(summary.overdueCount) },
+
+    { label: 'Number of ATMs', value: formatCompact(metrics?.atms) },
+    { label: 'Debit Cards', value: formatCompact(metrics?.debit_cards) },
+    { label: 'Credit Cards', value: formatCompact(metrics?.credit_cards) },
+    { label: 'POS Terminals', value: formatCompact(metrics?.pos_terminals) },
+    { label: 'Merchants', value: formatCompact(metrics?.merchants) },
+    { label: 'Txn per Day', value: formatCompact(metrics?.tx_per_day) },
   ];
 
   return (
@@ -1251,7 +1228,7 @@ const CustomerDetails = () => {
             ) : null}
             {customer.account_manager ? (
               <span className="cd-sub-pill">
-                <Users size={14} /> AM: {customer.account_manager}
+                <Target size={14} /> AM: {customer.account_manager}
               </span>
             ) : null}
             <span className="cd-sub-pill">
@@ -1432,7 +1409,7 @@ const CustomerDetails = () => {
             </div>
           </div>
 
-          {/* Key Stakeholders (UPDATED to simple fields like your screenshot) */}
+          {/* Key Stakeholders */}
           <div className="section-card">
             <div className="section-header">
               <div>
@@ -1525,6 +1502,59 @@ const CustomerDetails = () => {
                 })}
               </div>
             )}
+          </div>
+
+          {/* Notes */}
+          <div className="section-card">
+            <div className="section-header">
+              <div>
+                <h2>My Notes</h2>
+                <p className="section-subtitle">Your working notes about meetings and next steps.</p>
+              </div>
+
+              <button
+                className="action-button primary"
+                onClick={handleSaveCompanyProfile}
+                disabled={savingCompanyProfile}
+              >
+                <Save size={14} />
+                {savingCompanyProfile ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+
+            <textarea
+              className="notes-textarea"
+              value={companyProfileDraft}
+              onChange={(e) => setCompanyProfileDraft(e.target.value)}
+              placeholder="Write notes about the customer, meetings, next steps, risks..."
+            />
+          </div>
+        </div>
+
+        {/* Right column */}
+        <div className="cd-col">
+          {/* Snapshot */}
+          <div className="section-card">
+            <div className="section-header">
+              <div>
+                <h2>Customer Snapshot</h2>
+                <p className="section-subtitle">Quick view of pipeline and footprint.</p>
+              </div>
+
+              <button className="action-button" onClick={() => setShowMetricsModal(true)}>
+                <Edit3 size={14} />
+                View
+              </button>
+            </div>
+
+            <div className="snapshot-grid">
+              {customerSnapshotItems.map((it) => (
+                <div className="snapshot-item" key={it.label}>
+                  <div className="snapshot-label">{it.label}</div>
+                  <div className="snapshot-value">{it.value}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Projects */}
@@ -1628,144 +1658,7 @@ const CustomerDetails = () => {
             )}
           </div>
 
-          {/* Notes */}
-          <div className="section-card">
-            <div className="section-header">
-              <div>
-                <h2>My Notes</h2>
-                <p className="section-subtitle">Your working notes about meetings and next steps.</p>
-              </div>
-
-              <button
-                className="action-button primary"
-                onClick={handleSaveCompanyProfile}
-                disabled={savingCompanyProfile}
-              >
-                <Save size={14} />
-                {savingCompanyProfile ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-
-            <textarea
-              className="notes-textarea"
-              value={companyProfileDraft}
-              onChange={(e) => setCompanyProfileDraft(e.target.value)}
-              placeholder="Write notes about the customer, meetings, next steps, risks..."
-            />
-          </div>
-        </div>
-
-        {/* Right column */}
-        <div className="cd-col">
-          {/* Snapshot */}
-          <div className="section-card">
-            <div className="section-header">
-              <div>
-                <h2>Customer Snapshot</h2>
-                <p className="section-subtitle">Quick view of pipeline and workload.</p>
-              </div>
-
-              <button className="action-button" onClick={() => setShowMetricsModal(true)}>
-                <Edit3 size={14} />
-                View
-              </button>
-            </div>
-
-          <div className="snapshot-grid">
-  <div className="snapshot-item">
-    <span className="snapshot-label">Total pipeline</span>
-    <span className="snapshot-value" title={formatCurrency(summary.totalPipeline)}>
-      {formatCurrency(summary.totalPipeline)}
-    </span>
-  </div>
-
-  <div className="snapshot-item">
-    <span className="snapshot-label">Active projects</span>
-    <span className="snapshot-value" title={String(summary.activeProjects)}>
-      {summary.activeProjects}
-    </span>
-  </div>
-
-  <div className="snapshot-item">
-    <span className="snapshot-label">Number of ATMs</span>
-    <span className="snapshot-value" title={formatNumber(metrics?.atms)}>
-      {formatCompact(metrics?.atms)}
-    </span>
-  </div>
-
-  <div className="snapshot-item">
-    <span className="snapshot-label">Debit cards</span>
-    <span className="snapshot-value" title={formatNumber(metrics?.debit_cards)}>
-      {formatCompact(metrics?.debit_cards)}
-    </span>
-  </div>
-
-  <div className="snapshot-item">
-    <span className="snapshot-label">Credit cards</span>
-    <span className="snapshot-value" title={formatNumber(metrics?.credit_cards)}>
-      {formatCompact(metrics?.credit_cards)}
-    </span>
-  </div>
-
-  <div className="snapshot-item">
-    <span className="snapshot-label">POS terminals</span>
-    <span className="snapshot-value" title={formatNumber(metrics?.pos_terminals)}>
-      {formatCompact(metrics?.pos_terminals)}
-    </span>
-  </div>
-
-  <div className="snapshot-item">
-    <span className="snapshot-label">Merchants</span>
-    <span className="snapshot-value" title={formatNumber(metrics?.merchants)}>
-      {formatCompact(metrics?.merchants)}
-    </span>
-  </div>
-
-  <div className="snapshot-item">
-    <span className="snapshot-label">Transactions / day</span>
-    <span className="snapshot-value" title={formatNumber(metrics?.tx_per_day)}>
-      {formatCompact(metrics?.tx_per_day)}
-    </span>
-  </div>
-</div>
-
-          {/* Recent Activity */}
-          <div className="section-card">
-            <div className="section-header">
-              <div>
-                <h2>Recent Activity</h2>
-                <p className="section-subtitle">Latest updates across this account.</p>
-              </div>
-            </div>
-
-            <div className="recent-activity-list">
-              <div className="recent-activity-row">
-                <div className="recent-activity-label">Last updated</div>
-                <div className="recent-activity-value">{lastUpdatedDisplay || '—'}</div>
-              </div>
-
-              <div className="recent-activity-row">
-                <div className="recent-activity-label">Latest project</div>
-                <div className="recent-activity-value">
-                  {recentActivity.lastProject?.project_name || '—'}
-                </div>
-              </div>
-
-              <div className="recent-activity-row">
-                <div className="recent-activity-label">Latest task</div>
-                <div className="recent-activity-value">
-                  {recentActivity.lastTask?.description || recentActivity.lastTask?.title || '—'}
-                </div>
-              </div>
-            </div>
-
-            <div className="recent-activity-hint">
-              Tip: Use <span className="kbd">E</span> to edit, <span className="kbd">T</span> to add a
-              task, <span className="kbd">A</span> to add stakeholder.
-            </div>
-          </div>
-
-          {/* Tasks */}
+          {/* Tasks panel still present in this step-by-step version */}
           <div className="section-card">
             <div className="section-header">
               <div>
@@ -1785,7 +1678,6 @@ const CustomerDetails = () => {
               </div>
             ) : (
               <div className="tasks-grouped">
-                {/* Overdue */}
                 {tasksGrouped.overdue.length ? (
                   <div className="task-group">
                     <div className="task-group-title">
@@ -1807,7 +1699,6 @@ const CustomerDetails = () => {
                   </div>
                 ) : null}
 
-                {/* Due soon */}
                 {tasksGrouped.dueSoon.length ? (
                   <div className="task-group">
                     <div className="task-group-title">
@@ -1829,7 +1720,6 @@ const CustomerDetails = () => {
                   </div>
                 ) : null}
 
-                {/* Later / no due */}
                 {tasksGrouped.later.length ? (
                   <div className="task-group">
                     <div className="task-group-title">
@@ -1880,25 +1770,42 @@ const CustomerDetails = () => {
             <div className="cd-metric-label">Active Projects</div>
             <div className="cd-metric-value">{summary.activeProjects}</div>
           </div>
+
           <div className="cd-metric">
-            <div className="cd-metric-label">Open Tasks</div>
-            <div className="cd-metric-value">{summary.openTasksCount}</div>
+            <div className="cd-metric-label">ATMs</div>
+            <div className="cd-metric-value">{formatNumber(metrics?.atms)}</div>
           </div>
           <div className="cd-metric">
-            <div className="cd-metric-label">Overdue Tasks</div>
-            <div className="cd-metric-value">{summary.overdueCount}</div>
+            <div className="cd-metric-label">Debit Cards</div>
+            <div className="cd-metric-value">{formatNumber(metrics?.debit_cards)}</div>
           </div>
           <div className="cd-metric">
-            <div className="cd-metric-label">Metrics table</div>
+            <div className="cd-metric-label">Credit Cards</div>
+            <div className="cd-metric-value">{formatNumber(metrics?.credit_cards)}</div>
+          </div>
+          <div className="cd-metric">
+            <div className="cd-metric-label">POS Terminals</div>
+            <div className="cd-metric-value">{formatNumber(metrics?.pos_terminals)}</div>
+          </div>
+          <div className="cd-metric">
+            <div className="cd-metric-label">Merchants</div>
+            <div className="cd-metric-value">{formatNumber(metrics?.merchants)}</div>
+          </div>
+          <div className="cd-metric">
+            <div className="cd-metric-label">Txn / Day</div>
+            <div className="cd-metric-value">{formatNumber(metrics?.tx_per_day)}</div>
+          </div>
+
+          <div className="cd-metric">
+            <div className="cd-metric-label">Metrics record</div>
             <div className="cd-metric-value">{metricsLoading ? 'Loading…' : metrics ? 'Loaded' : '—'}</div>
           </div>
           <div className="cd-metric">
-            <div className="cd-metric-label">Edit</div>
+            <div className="cd-metric-label">Refresh</div>
             <div className="cd-metric-value">
               <button
                 className="action-button"
                 onClick={async () => {
-                  // example: keep existing flow as-is; your CSS/JS already supports a proper metrics editor modal
                   await fetchCustomerMetrics();
                   alert('Metrics refreshed.');
                 }}
