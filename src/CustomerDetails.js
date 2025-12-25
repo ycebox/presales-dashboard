@@ -6,7 +6,6 @@ import { supabase } from './supabaseClient';
 import './CustomerDetails.css';
 
 import {
-  ArrowLeft,
   Calendar,
   ClipboardCopy,
   Edit3,
@@ -176,6 +175,12 @@ const CustomerDetails = () => {
   const [deletingProjectId, setDeletingProjectId] = useState(null);
 
   const isValidCustomerId = useMemo(() => isValidUUID(resolvedCustomerId), [resolvedCustomerId]);
+
+  const goToProjectDetails = (projectId) => {
+    if (!projectId) return;
+    // Adjust this route if your app uses a different path
+    navigate(`/projectdetails/${projectId}`);
+  };
 
   const formatDate = (dateValue) => {
     if (!dateValue) return '';
@@ -900,10 +905,6 @@ const CustomerDetails = () => {
           </div>
           <h2 className="error-title">Could not load customer</h2>
           <p className="error-message">{error || 'Customer not found'}</p>
-          <button className="action-button" onClick={() => navigate(-1)}>
-            <ArrowLeft size={14} />
-            Back
-          </button>
         </div>
       </div>
     );
@@ -917,49 +918,46 @@ const CustomerDetails = () => {
 
   const lastUpdatedDisplay = formatDate(customer.updated_at || customer.created_at);
 
-  // Snapshot items (Step #1)
-  const customerSnapshotItems = [
-    { label: 'Total Pipeline', value: formatCurrency(summary.totalPipeline) },
-    { label: 'Active Projects', value: String(summary.activeProjects) },
-
-    { label: 'Number of ATMs', value: formatCompact(metrics?.atms) },
-    { label: 'Debit Cards', value: formatCompact(metrics?.debit_cards) },
-    { label: 'Credit Cards', value: formatCompact(metrics?.credit_cards) },
-    { label: 'POS Terminals', value: formatCompact(metrics?.pos_terminals) },
-    { label: 'Merchants', value: formatCompact(metrics?.merchants) },
-    { label: 'Txn per Day', value: formatCompact(metrics?.tx_per_day) },
-  ];
-
   return (
     <div className="customer-details-container">
       {/* Header */}
       <div className="cd-header">
-        <button className="action-button ghost" onClick={() => navigate(-1)}>
-          <ArrowLeft size={14} />
-          Back
-        </button>
-
         <div className="cd-header-main">
-         <div className="cd-title">
-  {customer.customer_name || 'Customer'}
-</div>
+          {/* ✅ Removed status pill beside name */}
+          <div className="cd-title">{customer.customer_name || 'Customer'}</div>
 
-          {/* ✅ UPDATED: remove customer type / country / account manager pills */}
+          {/* ✅ Subtitle kept minimal */}
           <div className="cd-subtitle">
             <span className="cd-sub-pill">
               <Calendar size={14} /> Updated: {lastUpdatedDisplay || '—'}
             </span>
 
-            {dealInsight.primary ? (
-              <span className={`cd-attn-pill ${dealInsight.attention}`}>
-                <AlertTriangle size={14} /> Attention: {dealInsight.attentionLabel}
-                {dealInsight.reason ? ` • ${dealInsight.reason}` : ''}
-              </span>
-            ) : null}
+            {(() => {
+              const active = (projects || []).filter((p) => !isProjectCompleted(getProjectStage(p)));
+              if (!active.length) return null;
+
+              const sorted = [...active].sort((a, b) => {
+                const sr = getStageRank(getProjectStage(b)) - getStageRank(getProjectStage(a));
+                if (sr !== 0) return sr;
+                const vr = (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0);
+                if (vr !== 0) return vr;
+                return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+              });
+              const primary = sorted[0];
+              const rank = getStageRank(getProjectStage(primary));
+              const attention = rank >= 55 ? 'red' : rank >= 40 ? 'amber' : 'green';
+              const attentionLabel = attention === 'red' ? 'High' : attention === 'amber' ? 'Medium' : 'Low';
+              const reason = rank >= 55 ? 'late-stage deal' : rank >= 40 ? 'active opportunity' : '';
+
+              return (
+                <span className={`cd-attn-pill ${attention}`}>
+                  <AlertTriangle size={14} /> Attention: {attentionLabel}
+                  {reason ? ` • ${reason}` : ''}
+                </span>
+              );
+            })()}
           </div>
         </div>
-
-        {/* ✅ REMOVED: cd-header-actions (edit moved into Customer Information section) */}
       </div>
 
       <div className="cd-grid">
@@ -973,7 +971,7 @@ const CustomerDetails = () => {
                 <p className="section-subtitle">Basic details and ownership.</p>
               </div>
 
-              {/* ✅ MOVED: edit/save/cancel buttons here */}
+              {/* ✅ Edit/Save/Cancel moved here */}
               <div className="section-actions">
                 {!isEditing ? (
                   <button className="action-button primary" onClick={() => setIsEditing(true)}>
@@ -991,7 +989,74 @@ const CustomerDetails = () => {
                     >
                       Cancel
                     </button>
-                    <button className="action-button primary" onClick={handleUpdateCustomer}>
+                    <button className="action-button primary" onClick={async () => {
+                      try {
+                        const newName = safeStr(editCustomer?.customer_name).trim();
+                        if (!newName) {
+                          alert('Customer name is required.');
+                          return;
+                        }
+
+                        const oldName = customer?.customer_name || '';
+
+                        const { error: updateError } = await supabase
+                          .from('customers')
+                          .update({
+                            customer_name: newName,
+                            account_manager: editCustomer?.account_manager || null,
+                            country: editCustomer?.country || null,
+                            customer_type: editCustomer?.customer_type || null,
+                            status_id:
+                              editCustomer?.status_id === '' || editCustomer?.status_id == null
+                                ? null
+                                : Number(editCustomer.status_id),
+                            notes: editCustomer?.notes ?? null,
+                          })
+                          .eq('id', resolvedCustomerId);
+
+                        if (updateError) throw updateError;
+
+                        if (oldName && newName && oldName !== newName) {
+                          const { error: projErr } = await supabase
+                            .from('projects')
+                            .update({ customer_name: newName })
+                            .eq('customer_name', oldName);
+
+                          if (projErr) {
+                            console.error('Failed to update projects customer_name:', projErr);
+                            alert(
+                              'Customer updated, but project links were not updated. Please rename projects.customer_name manually in Supabase.'
+                            );
+                          }
+                        }
+
+                        const updatedCustomer = {
+                          ...customer,
+                          customer_name: newName,
+                          account_manager: editCustomer?.account_manager || null,
+                          country: editCustomer?.country || null,
+                          customer_type: editCustomer?.customer_type || null,
+                          status_id:
+                            editCustomer?.status_id === '' || editCustomer?.status_id == null
+                              ? null
+                              : Number(editCustomer.status_id),
+                          notes: editCustomer?.notes ?? null,
+                        };
+
+                        setCustomer(updatedCustomer);
+                        setEditCustomer(updatedCustomer);
+                        setIsEditing(false);
+
+                        setCompanyProfileDraft(updatedCustomer.notes || '');
+
+                        await fetchProjects(newName);
+
+                        alert('Customer updated successfully');
+                      } catch (err) {
+                        console.error('Error updating customer:', err);
+                        alert('Failed to update customer: ' + (err.message || 'Unknown error'));
+                      }
+                    }}>
                       <Save size={14} />
                       Save
                     </button>
@@ -1332,14 +1397,21 @@ const CustomerDetails = () => {
                 {visibleProjects.map((p) => {
                   const stage = getProjectStage(p);
                   const due = p.due_date ? formatDate(p.due_date) : '';
-                  const isPrimary =
-                    dealInsight.primary && String(dealInsight.primary.id) === String(p.id);
+                  const isPrimary = false; // primary badge optional now; keep simple
 
                   return (
-                    <div key={p.id} className={`project-item ${isPrimary ? 'project-primary' : ''}`}>
+                    <div key={p.id} className="project-item">
                       <div className="project-main">
                         <h3>
-                          <span>{p.project_name || '(Unnamed Project)'}</span>
+                          <button
+                            type="button"
+                            className="cd-link-btn"
+                            onClick={() => goToProjectDetails(p.id)}
+                            title="Open project details"
+                          >
+                            {p.project_name || '(Unnamed Project)'}
+                          </button>
+
                           {isPrimary ? <span className="project-primary-badge">Primary</span> : null}
                         </h3>
 
@@ -1402,7 +1474,9 @@ const CustomerDetails = () => {
         <div className="cd-metrics-grid">
           <div className="cd-metric">
             <div className="cd-metric-label">Total Pipeline</div>
-            <div className="cd-metric-value">{formatCurrency(summary.totalPipeline)}</div>
+            <div className="cd-metric-value">
+              {projects && projects.length ? formatCurrency(summary.totalPipeline) : '$0'}
+            </div>
           </div>
           <div className="cd-metric">
             <div className="cd-metric-label">Active Projects</div>
