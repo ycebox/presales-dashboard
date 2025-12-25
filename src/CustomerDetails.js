@@ -19,7 +19,6 @@ import {
   Trash2,
   X,
   AlertTriangle,
-  FileText,
   Target,
   BarChart3,
 } from 'lucide-react';
@@ -33,7 +32,6 @@ const isValidUUID = (id) =>
   );
 
 const safeStr = (v) => (v == null ? '' : String(v));
-const safeLower = (v) => safeStr(v).toLowerCase();
 
 const copyToClipboard = async (text) => {
   try {
@@ -164,11 +162,9 @@ const CustomerDetails = () => {
   const [accountManagerOptions, setAccountManagerOptions] = useState([]);
 
   const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
 
   const [showStakeholdersModal, setShowStakeholdersModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
-  const [showTaskModal, setShowTaskModal] = useState(false);
   const [showMetricsModal, setShowMetricsModal] = useState(false);
 
   const [showCompletedProjects, setShowCompletedProjects] = useState(false);
@@ -215,31 +211,6 @@ const CustomerDetails = () => {
     const n = Number(value);
     if (value === null || value === undefined || value === '' || Number.isNaN(n)) return '—';
     return n.toLocaleString(undefined, { notation: 'compact', maximumFractionDigits: 1 });
-  };
-
-  const todayStart = () => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  };
-
-  const isOverdue = (dueDate) => {
-    if (!dueDate) return false;
-    const due = new Date(dueDate);
-    if (Number.isNaN(due.getTime())) return false;
-    due.setHours(0, 0, 0, 0);
-    return due < todayStart();
-  };
-
-  const isDueSoon = (dueDate, days = 7) => {
-    if (!dueDate) return false;
-    const due = new Date(dueDate);
-    if (Number.isNaN(due.getTime())) return false;
-    due.setHours(0, 0, 0, 0);
-    const start = todayStart();
-    const soon = new Date(start);
-    soon.setDate(soon.getDate() + days);
-    return due >= start && due <= soon;
   };
 
   const getProjectStage = (p) => String(p?.sales_stage || p?.current_status || '').trim();
@@ -385,30 +356,6 @@ const CustomerDetails = () => {
     }
   }, []);
 
-  const fetchTasks = useCallback(async (projectList) => {
-    if (!projectList || projectList.length === 0) {
-      setTasks([]);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('project_tasks')
-        .select('*')
-        .in(
-          'project_id',
-          projectList.map((p) => p.id)
-        )
-        .order('due_date', { ascending: true });
-
-      if (error) throw error;
-      setTasks(data || []);
-    } catch (err) {
-      console.error('Error fetching tasks:', err);
-      setTasks([]);
-    }
-  }, []);
-
   useEffect(() => {
     fetchCustomer();
     fetchStatusOptions();
@@ -422,10 +369,6 @@ const CustomerDetails = () => {
     fetchProjects(customer.customer_name);
   }, [customer?.customer_name, fetchProjects]);
 
-  useEffect(() => {
-    fetchTasks(projects);
-  }, [projects, fetchTasks]);
-
   const parsedStakeholders = useMemo(() => {
     if (!customer?.key_stakeholders) return [];
     const list = Array.isArray(customer.key_stakeholders) ? customer.key_stakeholders : [];
@@ -433,20 +376,6 @@ const CustomerDetails = () => {
       .map(parseStakeholderEntry)
       .filter((s) => s.name || s.role || s.email || s.phone);
   }, [customer]);
-
-  const visibleTasks = useMemo(() => {
-    return (tasks || []).filter((t) => safeLower(t.status) !== 'completed');
-  }, [tasks]);
-
-  const projectOpenTaskCount = useMemo(() => {
-    const map = {};
-    for (const t of visibleTasks) {
-      const pid = String(t.project_id || '');
-      if (!pid) continue;
-      map[pid] = (map[pid] || 0) + 1;
-    }
-    return map;
-  }, [visibleTasks]);
 
   const dealInsight = useMemo(() => {
     const active = (projects || []).filter((p) => !isProjectCompleted(getProjectStage(p)));
@@ -456,7 +385,6 @@ const CustomerDetails = () => {
         primary: null,
         attention: 'none',
         attentionLabel: '—',
-        overdueCount: 0,
         reason: '',
       };
     }
@@ -473,15 +401,10 @@ const CustomerDetails = () => {
 
     const primary = sorted[0];
 
-    const projectTasks = (tasks || []).filter((t) => String(t.project_id) === String(primary.id));
-    const openTasks = projectTasks.filter((t) => safeLower(t.status) !== 'completed');
-    const overdueCount = openTasks.filter((t) => isOverdue(t.due_date)).length;
-
     let attention = 'green';
     const rank = getStageRank(getProjectStage(primary));
 
-    if (overdueCount > 0) attention = 'red';
-    else if (rank >= 55) attention = 'red';
+    if (rank >= 55) attention = 'red';
     else if (rank >= 40) attention = 'amber';
     else attention = 'green';
 
@@ -489,12 +412,11 @@ const CustomerDetails = () => {
       attention === 'red' ? 'High' : attention === 'amber' ? 'Medium' : 'Low';
 
     let reason = '';
-    if (overdueCount > 0) reason = `${overdueCount} overdue task${overdueCount > 1 ? 's' : ''}`;
-    else if (rank >= 55) reason = 'late-stage deal';
+    if (rank >= 55) reason = 'late-stage deal';
     else if (rank >= 40) reason = 'active opportunity';
 
-    return { primary, attention, attentionLabel, overdueCount, reason };
-  }, [projects, tasks]);
+    return { primary, attention, attentionLabel, reason };
+  }, [projects]);
 
   const visibleProjects = useMemo(() => {
     let list = projects || [];
@@ -524,36 +446,9 @@ const CustomerDetails = () => {
     return withSort;
   }, [projects, showCompletedProjects, projectSort]);
 
-  const tasksGrouped = useMemo(() => {
-    const overdue = [];
-    const dueSoon = [];
-    const later = [];
-
-    for (const t of visibleTasks) {
-      if (t.due_date && isOverdue(t.due_date)) overdue.push(t);
-      else if (t.due_date && isDueSoon(t.due_date, 7)) dueSoon.push(t);
-      else later.push(t);
-    }
-
-    const sortByDue = (a, b) => {
-      const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
-      const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
-      return ad - bd;
-    };
-
-    overdue.sort(sortByDue);
-    dueSoon.sort(sortByDue);
-    later.sort(sortByDue);
-
-    return { overdue, dueSoon, later };
-  }, [visibleTasks]);
-
   const summary = useMemo(() => {
     const activeProjects = (projects || []).filter((p) => !isProjectCompleted(getProjectStage(p)))
       .length;
-
-    const openTasks = visibleTasks;
-    const overdueCount = openTasks.filter((t) => isOverdue(t.due_date)).length;
 
     const totalPipeline = (projects || []).reduce((sum, p) => {
       if (!p.deal_value) return sum;
@@ -562,11 +457,9 @@ const CustomerDetails = () => {
 
     return {
       activeProjects,
-      openTasksCount: openTasks.length,
-      overdueCount,
       totalPipeline,
     };
-  }, [projects, visibleTasks]);
+  }, [projects]);
 
   const handleUpdateCustomer = async () => {
     try {
@@ -695,52 +588,18 @@ const CustomerDetails = () => {
     await fetchProjects(customer.customer_name);
   };
 
-  const handleCreateTask = async (payload) => {
-    const { error: tErr } = await supabase.from('project_tasks').insert([
-      {
-        project_id: payload.project_id,
-        description: payload.description,
-        status: payload.status || 'Not Started',
-        priority: payload.priority || 'Normal',
-        due_date: payload.due_date || null,
-      },
-    ]);
-
-    if (tErr) throw tErr;
-    await fetchTasks(projects);
-  };
-
   const handleDeleteProject = async (project) => {
     if (!project?.id) return;
 
-    const projectId = String(project.id);
     const name = project.project_name || 'this project';
-    const taskCount = projectOpenTaskCount[projectId] || 0;
 
     const ok = window.confirm(
-      `Delete "${name}"?\n\nThis will also delete ALL tasks under this project. This cannot be undone.`
+      `Delete "${name}"?\n\nThis will delete the project record. This cannot be undone.`
     );
     if (!ok) return;
 
-    if (taskCount > 0) {
-      const typed = window.prompt(
-        `This project has ${taskCount} open task(s).\n\nType DELETE to confirm:`
-      );
-      if (String(typed || '').trim().toUpperCase() !== 'DELETE') {
-        alert('Delete cancelled.');
-        return;
-      }
-    }
-
     try {
       setDeletingProjectId(project.id);
-
-      const { error: taskDelErr } = await supabase
-        .from('project_tasks')
-        .delete()
-        .eq('project_id', project.id);
-
-      if (taskDelErr) throw taskDelErr;
 
       const { error: projDelErr } = await supabase.from('projects').delete().eq('id', project.id);
       if (projDelErr) throw projDelErr;
@@ -755,7 +614,7 @@ const CustomerDetails = () => {
     }
   };
 
-  // keyboard shortcuts
+  // keyboard shortcuts (removed task shortcut)
   useEffect(() => {
     const handler = (e) => {
       const tag = e.target?.tagName ? e.target.tagName.toLowerCase() : '';
@@ -767,14 +626,13 @@ const CustomerDetails = () => {
       const k = String(e.key || '').toLowerCase();
       if (k === 'e') setIsEditing(true);
       if (k === 'a') setShowStakeholdersModal(true);
-      if (k === 't') setShowTaskModal(true);
     };
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // ----------- Modals (Stakeholders / Task / Project) -----------
+  // ----------- Modals (Stakeholders / Project) -----------
   const StakeholdersModal = ({ isOpen, onClose }) => {
     const [rows, setRows] = useState([]);
 
@@ -885,132 +743,6 @@ const CustomerDetails = () => {
             <Plus size={14} />
             Add another
           </button>
-        </div>
-      </Modal>
-    );
-  };
-
-  const TaskModal = ({ isOpen, onClose }) => {
-    const [form, setForm] = useState({
-      project_id: '',
-      description: '',
-      status: 'Not Started',
-      priority: 'Normal',
-      due_date: '',
-    });
-    const [saving, setSaving] = useState(false);
-
-    useEffect(() => {
-      if (!isOpen) return;
-      setSaving(false);
-    }, [isOpen]);
-
-    if (!isOpen) return null;
-
-    const handleSubmit = async () => {
-      if (!form.project_id || !safeStr(form.description).trim()) {
-        alert('Please select a project and enter a task description.');
-        return;
-      }
-
-      try {
-        setSaving(true);
-        await handleCreateTask({
-          ...form,
-          description: safeStr(form.description).trim(),
-          due_date: form.due_date || null,
-        });
-        setSaving(false);
-        onClose();
-        setForm({
-          project_id: '',
-          description: '',
-          status: 'Not Started',
-          priority: 'Normal',
-          due_date: '',
-        });
-      } catch (err) {
-        setSaving(false);
-        alert('Failed to create task: ' + (err.message || 'Unknown error'));
-      }
-    };
-
-    return (
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        title="Add Task"
-        footer={
-          <>
-            <button className="action-button ghost" onClick={onClose}>
-              Cancel
-            </button>
-            <button className="action-button primary" onClick={handleSubmit} disabled={saving}>
-              <Save size={14} />
-              {saving ? 'Saving...' : 'Create'}
-            </button>
-          </>
-        }
-      >
-        <div className="cd-form-grid">
-          <label className="cd-label">Project *</label>
-          <select
-            className="cd-input"
-            value={form.project_id}
-            onChange={(e) => setForm((p) => ({ ...p, project_id: e.target.value }))}
-          >
-            <option value="">Select project</option>
-            {(projects || []).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.project_name || '(Unnamed Project)'}
-              </option>
-            ))}
-          </select>
-
-          <label className="cd-label">Task Description *</label>
-          <input
-            className="cd-input"
-            value={form.description}
-            onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-            placeholder="e.g. Prepare proposal deck"
-          />
-
-          <div className="cd-form-cols">
-            <div>
-              <label className="cd-label">Status</label>
-              <select
-                className="cd-input"
-                value={form.status}
-                onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-              >
-                <option>Not Started</option>
-                <option>In Progress</option>
-                <option>Completed</option>
-                <option>On Hold</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="cd-label">Priority</label>
-              <select
-                className="cd-input"
-                value={form.priority}
-                onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value }))}
-              >
-                <option>Low</option>
-                <option>Normal</option>
-                <option>High</option>
-              </select>
-            </div>
-          </div>
-
-          <label className="cd-label">Due date</label>
-          <input
-            className="cd-input"
-            type="date"
-            value={form.due_date}
-            onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
-          />
         </div>
       </Modal>
     );
@@ -1188,7 +920,7 @@ const CustomerDetails = () => {
 
   const lastUpdatedDisplay = formatDate(customer.updated_at || customer.created_at);
 
-  // ✅ UPDATED snapshot items (Step #1)
+  // Snapshot items (Step #1)
   const customerSnapshotItems = [
     { label: 'Total Pipeline', value: formatCurrency(summary.totalPipeline) },
     { label: 'Active Projects', value: String(summary.activeProjects) },
@@ -1606,7 +1338,6 @@ const CustomerDetails = () => {
                 {visibleProjects.map((p) => {
                   const stage = getProjectStage(p);
                   const due = p.due_date ? formatDate(p.due_date) : '';
-                  const openCount = projectOpenTaskCount[String(p.id)] || 0;
                   const isPrimary =
                     dealInsight.primary && String(dealInsight.primary.id) === String(p.id);
 
@@ -1622,9 +1353,6 @@ const CustomerDetails = () => {
 
                         <div className="project-mini-row">
                           {stage ? <span className="project-stage-badge">{stage}</span> : null}
-                          <span className="project-taskcount-badge">
-                            <Target size={14} /> {openCount} open
-                          </span>
                           {due ? (
                             <span className="project-due-badge">
                               <Calendar size={14} /> {due}
@@ -1657,99 +1385,15 @@ const CustomerDetails = () => {
               </div>
             )}
           </div>
-
-          {/* Tasks panel still present in this step-by-step version */}
-          <div className="section-card">
-            <div className="section-header">
-              <div>
-                <h2>Open Tasks</h2>
-                <p className="section-subtitle">Grouped by urgency.</p>
-              </div>
-
-              <button className="action-button primary" onClick={() => setShowTaskModal(true)}>
-                <Plus size={14} />
-                Add task
-              </button>
-            </div>
-
-            {visibleTasks.length === 0 ? (
-              <div className="empty-state small">
-                <p>No open tasks found for this customer.</p>
-              </div>
-            ) : (
-              <div className="tasks-grouped">
-                {tasksGrouped.overdue.length ? (
-                  <div className="task-group">
-                    <div className="task-group-title">
-                      <AlertTriangle size={14} /> Overdue
-                    </div>
-                    {tasksGrouped.overdue.map((t) => (
-                      <div key={t.id} className="task-row overdue">
-                        <div className="task-main">
-                          <div className="task-title">{t.description || t.title || '—'}</div>
-                          <div className="task-meta">
-                            <span className="meta-chip">
-                              <Calendar size={14} />
-                              {t.due_date ? formatDate(t.due_date) : 'No due date'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-
-                {tasksGrouped.dueSoon.length ? (
-                  <div className="task-group">
-                    <div className="task-group-title">
-                      <Target size={14} /> Due soon
-                    </div>
-                    {tasksGrouped.dueSoon.map((t) => (
-                      <div key={t.id} className="task-row due-soon">
-                        <div className="task-main">
-                          <div className="task-title">{t.description || t.title || '—'}</div>
-                          <div className="task-meta">
-                            <span className="meta-chip">
-                              <Calendar size={14} />
-                              {t.due_date ? formatDate(t.due_date) : 'No due date'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-
-                {tasksGrouped.later.length ? (
-                  <div className="task-group">
-                    <div className="task-group-title">
-                      <FileText size={14} /> Later / no due date
-                    </div>
-                    {tasksGrouped.later.map((t) => (
-                      <div key={t.id} className="task-row">
-                        <div className="task-main">
-                          <div className="task-title">{t.description || t.title || '—'}</div>
-                          <div className="task-meta">
-                            <span className="meta-chip">
-                              <Calendar size={14} />
-                              {t.due_date ? formatDate(t.due_date) : 'No due date'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
       {/* Modals */}
-      <StakeholdersModal isOpen={showStakeholdersModal} onClose={() => setShowStakeholdersModal(false)} />
+      <StakeholdersModal
+        isOpen={showStakeholdersModal}
+        onClose={() => setShowStakeholdersModal(false)}
+      />
       <ProjectModal isOpen={showProjectModal} onClose={() => setShowProjectModal(false)} />
-      <TaskModal isOpen={showTaskModal} onClose={() => setShowTaskModal(false)} />
 
       <Modal
         isOpen={showMetricsModal}
@@ -1798,7 +1442,9 @@ const CustomerDetails = () => {
 
           <div className="cd-metric">
             <div className="cd-metric-label">Metrics record</div>
-            <div className="cd-metric-value">{metricsLoading ? 'Loading…' : metrics ? 'Loaded' : '—'}</div>
+            <div className="cd-metric-value">
+              {metricsLoading ? 'Loading…' : metrics ? 'Loaded' : '—'}
+            </div>
           </div>
           <div className="cd-metric">
             <div className="cd-metric-label">Refresh</div>
