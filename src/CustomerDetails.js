@@ -7,11 +7,9 @@ import './CustomerDetails.css';
 
 import {
   ArrowLeft,
-  Building2,
   Calendar,
   ClipboardCopy,
   Edit3,
-  Globe,
   Mail,
   Phone,
   Plus,
@@ -19,7 +17,6 @@ import {
   Trash2,
   X,
   AlertTriangle,
-  Target,
   BarChart3,
 } from 'lucide-react';
 
@@ -614,7 +611,7 @@ const CustomerDetails = () => {
     }
   };
 
-  // keyboard shortcuts (removed task shortcut)
+  // keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
       const tag = e.target?.tagName ? e.target.tagName.toLowerCase() : '';
@@ -947,25 +944,13 @@ const CustomerDetails = () => {
             {customer.customer_name || 'Customer'}{' '}
             <span className={`cd-status-pill ${statusClass}`}>{statusLabel}</span>
           </div>
+
+          {/* ✅ UPDATED: remove customer type / country / account manager pills */}
           <div className="cd-subtitle">
-            {customer.customer_type ? (
-              <span className="cd-sub-pill">
-                <Building2 size={14} /> {customer.customer_type}
-              </span>
-            ) : null}
-            {customer.country ? (
-              <span className="cd-sub-pill">
-                <Globe size={14} /> {customer.country}
-              </span>
-            ) : null}
-            {customer.account_manager ? (
-              <span className="cd-sub-pill">
-                <Target size={14} /> AM: {customer.account_manager}
-              </span>
-            ) : null}
             <span className="cd-sub-pill">
               <Calendar size={14} /> Updated: {lastUpdatedDisplay || '—'}
             </span>
+
             {dealInsight.primary ? (
               <span className={`cd-attn-pill ${dealInsight.attention}`}>
                 <AlertTriangle size={14} /> Attention: {dealInsight.attentionLabel}
@@ -975,30 +960,7 @@ const CustomerDetails = () => {
           </div>
         </div>
 
-        <div className="cd-header-actions">
-          {!isEditing ? (
-            <button className="action-button primary" onClick={() => setIsEditing(true)}>
-              <Edit3 size={14} />
-              Edit
-            </button>
-          ) : (
-            <>
-              <button
-                className="action-button ghost"
-                onClick={() => {
-                  setEditCustomer(customer);
-                  setIsEditing(false);
-                }}
-              >
-                Cancel
-              </button>
-              <button className="action-button primary" onClick={handleUpdateCustomer}>
-                <Save size={14} />
-                Save
-              </button>
-            </>
-          )}
-        </div>
+        {/* ✅ REMOVED: cd-header-actions (edit moved into Customer Information section) */}
       </div>
 
       <div className="cd-grid">
@@ -1010,6 +972,32 @@ const CustomerDetails = () => {
               <div>
                 <h2>Customer Information</h2>
                 <p className="section-subtitle">Basic details and ownership.</p>
+              </div>
+
+              {/* ✅ MOVED: edit/save/cancel buttons here */}
+              <div className="section-actions">
+                {!isEditing ? (
+                  <button className="action-button primary" onClick={() => setIsEditing(true)}>
+                    <Edit3 size={14} />
+                    Edit
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      className="action-button ghost"
+                      onClick={() => {
+                        setEditCustomer(customer);
+                        setIsEditing(false);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button className="action-button primary" onClick={handleUpdateCustomer}>
+                      <Save size={14} />
+                      Save
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1161,77 +1149,75 @@ const CustomerDetails = () => {
               </div>
             ) : (
               <div className="stakeholder-list">
-                {parsedStakeholders.map((s, index) => {
-                  return (
-                    <div key={index} className="stakeholder-simple">
-                      <div className="stakeholder-simple-grid">
+                {parsedStakeholders.map((s, index) => (
+                  <div key={index} className="stakeholder-simple">
+                    <div className="stakeholder-simple-grid">
+                      <div className="stake-row">
+                        <div className="stake-label">Contact Name</div>
+                        <div className="stake-value">{s.name || '—'}</div>
+                      </div>
+
+                      {s.role ? (
                         <div className="stake-row">
-                          <div className="stake-label">Contact Name</div>
-                          <div className="stake-value">{s.name || '—'}</div>
+                          <div className="stake-label">Role</div>
+                          <div className="stake-value">{s.role}</div>
                         </div>
+                      ) : null}
 
-                        {s.role ? (
-                          <div className="stake-row">
-                            <div className="stake-label">Role</div>
-                            <div className="stake-value">{s.role}</div>
-                          </div>
-                        ) : null}
+                      {s.email ? (
+                        <div className="stake-row">
+                          <div className="stake-label">Email</div>
+                          <div className="stake-value">{s.email}</div>
+                        </div>
+                      ) : null}
 
-                        {s.email ? (
-                          <div className="stake-row">
-                            <div className="stake-label">Email</div>
-                            <div className="stake-value">{s.email}</div>
-                          </div>
-                        ) : null}
-
-                        {s.phone ? (
-                          <div className="stake-row">
-                            <div className="stake-label">Mobile</div>
-                            <div className="stake-value">{s.phone}</div>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div className="stakeholder-actions">
-                        {s.email ? (
-                          <button
-                            type="button"
-                            className="stakeholder-icon-btn"
-                            title="Copy email"
-                            onClick={async () => {
-                              const ok = await copyToClipboard(s.email);
-                              if (ok) alert('Email copied');
-                            }}
-                          >
-                            <Mail size={16} />
-                          </button>
-                        ) : null}
-
-                        {s.phone ? (
-                          <button
-                            type="button"
-                            className="stakeholder-icon-btn"
-                            title="Copy phone"
-                            onClick={async () => {
-                              const ok = await copyToClipboard(s.phone);
-                              if (ok) alert('Phone copied');
-                            }}
-                          >
-                            <Phone size={16} />
-                          </button>
-                        ) : null}
-
-                        <button
-                          className="stakeholder-icon-btn danger"
-                          onClick={() => handleRemoveStakeholder(index)}
-                          title="Remove stakeholder"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                      {s.phone ? (
+                        <div className="stake-row">
+                          <div className="stake-label">Mobile</div>
+                          <div className="stake-value">{s.phone}</div>
+                        </div>
+                      ) : null}
                     </div>
-                  );
-                })}
+
+                    <div className="stakeholder-actions">
+                      {s.email ? (
+                        <button
+                          type="button"
+                          className="stakeholder-icon-btn"
+                          title="Copy email"
+                          onClick={async () => {
+                            const ok = await copyToClipboard(s.email);
+                            if (ok) alert('Email copied');
+                          }}
+                        >
+                          <Mail size={16} />
+                        </button>
+                      ) : null}
+
+                      {s.phone ? (
+                        <button
+                          type="button"
+                          className="stakeholder-icon-btn"
+                          title="Copy phone"
+                          onClick={async () => {
+                            const ok = await copyToClipboard(s.phone);
+                            if (ok) alert('Phone copied');
+                          }}
+                        >
+                          <Phone size={16} />
+                        </button>
+                      ) : null}
+
+                      <button
+                        className="stakeholder-icon-btn danger"
+                        onClick={() => handleRemoveStakeholder(index)}
+                        title="Remove stakeholder"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -1280,7 +1266,16 @@ const CustomerDetails = () => {
             </div>
 
             <div className="snapshot-grid">
-              {customerSnapshotItems.map((it) => (
+              {[
+                { label: 'Total Pipeline', value: formatCurrency(summary.totalPipeline) },
+                { label: 'Active Projects', value: String(summary.activeProjects) },
+                { label: 'Number of ATMs', value: formatCompact(metrics?.atms) },
+                { label: 'Debit Cards', value: formatCompact(metrics?.debit_cards) },
+                { label: 'Credit Cards', value: formatCompact(metrics?.credit_cards) },
+                { label: 'POS Terminals', value: formatCompact(metrics?.pos_terminals) },
+                { label: 'Merchants', value: formatCompact(metrics?.merchants) },
+                { label: 'Txn per Day', value: formatCompact(metrics?.tx_per_day) },
+              ].map((it) => (
                 <div className="snapshot-item" key={it.label}>
                   <div className="snapshot-label">{it.label}</div>
                   <div className="snapshot-value">{it.value}</div>
