@@ -1671,15 +1671,63 @@ const CustomerDetails = () => {
               </button>
             </div>
 
-            <div className="snapshot-grid">
-              {customerSnapshotItems.map((it) => (
-                <div className="snapshot-item" key={it.label}>
-                  <div className="snapshot-label">{it.label}</div>
-                  <div className="snapshot-value">{it.value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <div className="snapshot-grid">
+  <div className="snapshot-item">
+    <span className="snapshot-label">Total pipeline</span>
+    <span className="snapshot-value" title={formatCurrency(summary.totalPipeline)}>
+      {formatCurrency(summary.totalPipeline)}
+    </span>
+  </div>
+
+  <div className="snapshot-item">
+    <span className="snapshot-label">Active projects</span>
+    <span className="snapshot-value" title={String(summary.activeProjects)}>
+      {summary.activeProjects}
+    </span>
+  </div>
+
+  <div className="snapshot-item">
+    <span className="snapshot-label">Number of ATMs</span>
+    <span className="snapshot-value" title={formatNumber(metrics?.atms)}>
+      {formatCompact(metrics?.atms)}
+    </span>
+  </div>
+
+  <div className="snapshot-item">
+    <span className="snapshot-label">Debit cards</span>
+    <span className="snapshot-value" title={formatNumber(metrics?.debit_cards)}>
+      {formatCompact(metrics?.debit_cards)}
+    </span>
+  </div>
+
+  <div className="snapshot-item">
+    <span className="snapshot-label">Credit cards</span>
+    <span className="snapshot-value" title={formatNumber(metrics?.credit_cards)}>
+      {formatCompact(metrics?.credit_cards)}
+    </span>
+  </div>
+
+  <div className="snapshot-item">
+    <span className="snapshot-label">POS terminals</span>
+    <span className="snapshot-value" title={formatNumber(metrics?.pos_terminals)}>
+      {formatCompact(metrics?.pos_terminals)}
+    </span>
+  </div>
+
+  <div className="snapshot-item">
+    <span className="snapshot-label">Merchants</span>
+    <span className="snapshot-value" title={formatNumber(metrics?.merchants)}>
+      {formatCompact(metrics?.merchants)}
+    </span>
+  </div>
+
+  <div className="snapshot-item">
+    <span className="snapshot-label">Transactions / day</span>
+    <span className="snapshot-value" title={formatNumber(metrics?.tx_per_day)}>
+      {formatCompact(metrics?.tx_per_day)}
+    </span>
+  </div>
+</div>
 
           {/* Recent Activity */}
           <div className="section-card">
