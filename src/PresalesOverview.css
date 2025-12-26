@@ -4,11 +4,10 @@
   min-height: 100vh;
   padding: 24px 32px 40px;
 
-  /* light background (slightly warmer) so panels pop */
   background:
-    radial-gradient(circle at 12% 10%, rgba(59, 130, 246, 0.10), transparent 55%),   /* pale blue */
-    radial-gradient(circle at 88% 18%, rgba(34, 197, 94, 0.08), transparent 55%),    /* soft green */
-    radial-gradient(circle at 20% 95%, rgba(245, 158, 11, 0.08), transparent 60%),   /* beige/taupe warmth */
+    radial-gradient(circle at 12% 10%, rgba(59, 130, 246, 0.10), transparent 55%),
+    radial-gradient(circle at 88% 18%, rgba(34, 197, 94, 0.08), transparent 55%),
+    radial-gradient(circle at 20% 95%, rgba(245, 158, 11, 0.08), transparent 60%),
     #f6f7fb;
 
   color: #0f172a;
@@ -16,7 +15,6 @@
     "Segoe UI", sans-serif;
 }
 
-/* Section wrapper used in JS */
 .presales-crunch-section {
   margin: 14px 0;
 }
@@ -51,7 +49,7 @@
   color: #475569;
 }
 
-/* ===== LOADING / ERROR / EMPTY (JS uses these) ===== */
+/* ===== LOADING / ERROR / EMPTY ===== */
 
 .presales-loading,
 .presales-error {
@@ -101,7 +99,6 @@
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
 }
 
-/* JS uses presales-panel-large */
 .presales-panel-large {
   width: 100%;
 }
@@ -170,7 +167,6 @@
   background: rgba(15, 23, 42, 0.04);
 }
 
-/* icon buttons used in schedule list */
 .icon-btn {
   border: 1px solid rgba(15, 23, 42, 0.12);
   background: rgba(255, 255, 255, 0.95);
@@ -195,7 +191,7 @@
   background: rgba(220, 38, 38, 0.08);
 }
 
-/* ===== FORMS (your modals use plain input/select without .input class) ===== */
+/* ===== FORMS ===== */
 
 .schedule-form label,
 .assignment-field label {
@@ -240,7 +236,7 @@
   font-size: 12px;
 }
 
-/* ===== PRESALES ACTIVITIES (JS classnames) ===== */
+/* ===== PRESALES ACTIVITIES ===== */
 
 .activities-kanban {
   display: grid;
@@ -481,7 +477,7 @@
   font-weight: 700;
 }
 
-/* ===== ASSIGNMENT HELPER (JS classnames) ===== */
+/* ===== ASSIGNMENT HELPER ===== */
 
 .assignment-content {
   margin-top: 10px;
@@ -561,19 +557,19 @@
   color: rgba(15, 23, 42, 0.90);
 }
 
-/* ===== PRESALES AVAILABILITY (JS grid-based heatmap) ===== */
+/* ===== PRESALES AVAILABILITY ===== */
 
 .schedule-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .schedule-view-toggle {
   display: inline-flex;
 }
 
-/* Toggle (14 / 30 days) – light style */
 .toggle-wrap {
   display: inline-flex;
   border-radius: 12px;
@@ -600,6 +596,37 @@
   color: rgba(30, 64, 175, 0.95);
 }
 
+/* ✅ Legend */
+.availability-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.78);
+  white-space: nowrap;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  display: inline-block;
+}
+
+/* ===== Heatmap container ===== */
+
 .heatmap-table {
   overflow: auto;
   border-radius: 14px;
@@ -607,22 +634,22 @@
   background: rgba(255, 255, 255, 0.98);
 }
 
+/* We use flex to avoid header overlap issues */
 .heatmap-header,
 .heatmap-row {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 64px;
+  display: flex;
   align-items: center;
 }
 
+/* Fixed left column */
 .heatmap-presales-name {
+  flex: 0 0 180px;
+  width: 180px;
+  min-width: 180px;
   position: sticky;
   left: 0;
-  z-index: 3;
+  z-index: 5;
   background: rgba(255, 255, 255, 0.98);
-  min-width: 180px;
-  width: 180px;
-  grid-auto-columns: unset;
   padding: 8px 10px;
   border-right: 1px solid rgba(15, 23, 42, 0.06);
   font-weight: 650;
@@ -631,7 +658,7 @@
 .heatmap-header-cell {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 4;
   background: #f1f5f9;
   font-weight: 600;
   color: rgba(15, 23, 42, 0.72);
@@ -640,9 +667,11 @@
   text-align: center;
 }
 
+/* Base cell look */
 .heatmap-day-col {
-  padding: 8px 10px;
+  padding: 8px 6px;
   text-align: center;
+  user-select: none;
 }
 
 .heatmap-row {
@@ -650,13 +679,13 @@
 }
 
 .heatmap-cell {
-  width: 56px;
   height: 34px;
   border: 1px solid rgba(15, 23, 42, 0.06);
   border-top: none;
   border-bottom: none;
   cursor: pointer;
-  background: rgba(34, 197, 94, 0.14);
+  border-radius: 8px;
+  margin: 2px 3px;
 }
 
 .heatmap-cell:hover {
@@ -664,14 +693,38 @@
   outline-offset: -2px;
 }
 
-/* Map JS statuses -> your palette */
-.heatmap-cell.status-free { background: rgba(34, 197, 94, 0.14); }
-.heatmap-cell.status-busy { background: rgba(59, 130, 246, 0.12); }     /* pale blue */
-.heatmap-cell.status-leave { background: rgba(220, 38, 38, 0.14); }
-.heatmap-cell.status-travel { background: rgba(220, 38, 38, 0.10); }
-.heatmap-cell.status-training { background: rgba(220, 38, 38, 0.08); }
-.heatmap-cell.status-internal { background: rgba(220, 38, 38, 0.06); }
-.heatmap-cell.status-other { background: rgba(220, 38, 38, 0.05); }
+/* ✅ OPTION A SIZING
+   - 14 days: stretch columns to fill width (fluid)
+   - 30 days: compact fixed width (scroll if needed)
+*/
+.heatmap-table.heatmap-view-14 .heatmap-day-col,
+.heatmap-table.heatmap-view-14 .heatmap-cell {
+  flex: 1 1 0;
+  min-width: 42px;
+}
+
+.heatmap-table.heatmap-view-30 .heatmap-day-col,
+.heatmap-table.heatmap-view-30 .heatmap-cell {
+  flex: 0 0 46px;
+}
+
+/* ✅ NEW COLOR PALETTE (more distinct) */
+.heatmap-cell.status-free { background: rgba(34, 197, 94, 0.18); }     /* green */
+.heatmap-cell.status-busy { background: rgba(59, 130, 246, 0.18); }    /* blue */
+.heatmap-cell.status-leave { background: rgba(148, 163, 184, 0.35); }  /* gray */
+.heatmap-cell.status-travel { background: rgba(249, 115, 22, 0.22); }  /* orange */
+.heatmap-cell.status-training { background: rgba(168, 85, 247, 0.20); }/* purple */
+.heatmap-cell.status-internal { background: rgba(20, 184, 166, 0.20); }/* teal */
+.heatmap-cell.status-other { background: rgba(234, 179, 8, 0.22); }    /* yellow */
+
+/* Legend swatches must match */
+.sw-free { background: rgba(34, 197, 94, 0.60); }
+.sw-busy { background: rgba(59, 130, 246, 0.60); }
+.sw-leave { background: rgba(148, 163, 184, 0.85); }
+.sw-travel { background: rgba(249, 115, 22, 0.75); }
+.sw-training { background: rgba(168, 85, 247, 0.70); }
+.sw-internal { background: rgba(20, 184, 166, 0.70); }
+.sw-other { background: rgba(234, 179, 8, 0.80); }
 
 /* ===== SCHEDULE LIST ===== */
 
@@ -836,46 +889,20 @@
   }
 
   .heatmap-presales-name {
-    min-width: 140px;
+    flex: 0 0 140px;
     width: 140px;
+    min-width: 140px;
   }
 
-  .heatmap-header,
-  .heatmap-row {
-    grid-auto-columns: 54px;
+  .heatmap-table.heatmap-view-14 .heatmap-day-col,
+  .heatmap-table.heatmap-view-14 .heatmap-cell {
+    min-width: 36px;
   }
 
-  .heatmap-cell {
-    width: 48px;
-    height: 32px;
+  .heatmap-table.heatmap-view-30 .heatmap-day-col,
+  .heatmap-table.heatmap-view-30 .heatmap-cell {
+    flex: 0 0 40px;
   }
-}
-/* ===== FIX: PRESALES AVAILABILITY HEADER OVERLAP (use flex instead of grid) ===== */
-.heatmap-header,
-.heatmap-row {
-  display: flex;              /* override grid */
-  align-items: center;
-}
-
-.heatmap-presales-name {
-  flex: 0 0 180px;            /* fixed name column */
-  width: 180px;
-  min-width: 180px;
-  position: sticky;
-  left: 0;
-  z-index: 5;                 /* make sure name always sits on top */
-  background: rgba(255, 255, 255, 0.98);
-}
-
-.heatmap-day-col,
-.heatmap-cell {
-  flex: 0 0 64px;             /* fixed day column width */
-}
-
-.heatmap-header-cell {
-  position: sticky;
-  top: 0;
-  z-index: 4;
 }
 
 /* ===== READABILITY: MAKE ALL TEXT BLACK (keep primary button text white) ===== */
@@ -897,13 +924,11 @@
   color: #0b0b0b !important;
 }
 
-/* Keep primary button text white */
 .btn-primary,
 .btn-primary * {
   color: #ffffff !important;
 }
 
-/* Keep danger text red where needed */
 .overdue {
   color: #b91c1c !important;
 }
