@@ -1,8 +1,7 @@
 // src/CustomerDetails.js
-// Updated: Add Project modal now supports Primary/Backup Presales (dropdown from presales_resources)
-// and Corporate checkbox (stores to projects.is_corporate)
+// Patch: prevent repeated presales_resources fetch (fix ERR_INSUFFICIENT_RESOURCES / Failed to fetch)
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { supabase } from './supabaseClient';
 import './CustomerDetails.css';
@@ -197,6 +196,9 @@ const CustomerDetails = () => {
   const [presalesOptions, setPresalesOptions] = useState([]);
   const [presalesLoading, setPresalesLoading] = useState(false);
 
+  // ✅ Guard so we don’t repeatedly fetch presales_resources
+  const presalesFetchedRef = useRef(false);
+
   const isValidCustomerId = useMemo(() => isValidUUID(resolvedCustomerId), [resolvedCustomerId]);
 
   const goToProjectDetails = (projectId) => {
@@ -353,20 +355,27 @@ const CustomerDetails = () => {
     }
   }, []);
 
-  // ✅ Presales resources (dropdown)
-  const fetchPresalesResources = useCallback(async () => {
+  // ✅ Presales resources (dropdown) - fetch ONCE only (unless forced)
+  const fetchPresalesResources = useCallback(async (force = false) => {
+    if (!force && presalesFetchedRef.current) return;
+
     try {
+      presalesFetchedRef.current = true;
       setPresalesLoading(true);
+
       const { data, error: prErr } = await supabase
         .from('presales_resources')
         .select('id,name,is_active')
         .eq('is_active', true)
-        .order('name');
+        .order('name', { ascending: true });
 
       if (prErr) throw prErr;
+
       setPresalesOptions(data || []);
     } catch (err) {
       console.error('Error fetching presales resources:', err);
+      // allow retry later if it failed
+      presalesFetchedRef.current = false;
       setPresalesOptions([]);
     } finally {
       setPresalesLoading(false);
@@ -424,7 +433,7 @@ const CustomerDetails = () => {
     fetchCountries();
     fetchAccountManagers();
     fetchCustomerMetrics();
-    fetchPresalesResources();
+    fetchPresalesResources(); // ✅ will now fetch once only
   }, [
     fetchCustomer,
     fetchStatusOptions,
@@ -810,12 +819,11 @@ const CustomerDetails = () => {
     });
     const [saving, setSaving] = useState(false);
 
+    // ✅ IMPORTANT: do NOT fetch presales here (prevents repeated requests)
     useEffect(() => {
       if (!isOpen) return;
       setSaving(false);
-      // Load dropdown options on open too (just in case)
-      fetchPresalesResources();
-    }, [isOpen, fetchPresalesResources]);
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -836,11 +844,9 @@ const CustomerDetails = () => {
           product: safeStr(form.product).trim() || null,
           due_date: form.due_date || null,
 
-          // ✅ new fields
           primary_presales: form.primary_presales ? form.primary_presales : null,
           backup_presales: form.backup_presales ? form.backup_presales : null,
 
-          // ✅ IMPORTANT: column name is is_corporate in your projects table
           is_corporate: !!form.is_corporate,
         });
 
@@ -944,7 +950,6 @@ const CustomerDetails = () => {
             onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
           />
 
-          {/* ✅ NEW: Primary/Backup presales */}
           <div className="cd-form-cols">
             <div>
               <label className="cd-label">Primary Presales</label>
@@ -961,6 +966,18 @@ const CustomerDetails = () => {
                   </option>
                 ))}
               </select>
+
+              {/* optional retry button if list is empty */}
+              {!presalesLoading && presalesOptions.length === 0 ? (
+                <button
+                  type="button"
+                  className="action-button ghost"
+                  style={{ marginTop: 8 }}
+                  onClick={() => fetchPresalesResources(true)}
+                >
+                  Retry loading presales list
+                </button>
+              ) : null}
             </div>
 
             <div>
@@ -981,7 +998,6 @@ const CustomerDetails = () => {
             </div>
           </div>
 
-          {/* ✅ NEW: corporate flag */}
           <label className="control-toggle" style={{ marginTop: 6 }}>
             <input
               type="checkbox"
@@ -1431,7 +1447,6 @@ const CustomerDetails = () => {
                           ) : null}
                         </div>
 
-                        {/* Optional: show presales + corporate in a compact line */}
                         {(p.primary_presales || p.backup_presales || p.is_corporate) && (
                           <div className="project-mini-row">
                             {p.primary_presales ? (
@@ -1440,9 +1455,7 @@ const CustomerDetails = () => {
                             {p.backup_presales ? (
                               <span className="project-mini-pill">Backup: {p.backup_presales}</span>
                             ) : null}
-                            {p.is_corporate ? (
-                              <span className="project-mini-pill">Corporate</span>
-                            ) : null}
+                            {p.is_corporate ? <span className="project-mini-pill">Corporate</span> : null}
                           </div>
                         )}
                       </div>
@@ -1509,6 +1522,7 @@ const CustomerDetails = () => {
               {projects && projects.length ? formatCurrency(summary.totalPipeline) : '$0'}
             </div>
           </div>
+
           <div className="cd-metric">
             <div className="cd-metric-label">Active Projects</div>
             <div className="cd-metric-value">{summary.activeProjects}</div>
