@@ -732,52 +732,78 @@
 .heatmap-table.heatmap-view-30 .heatmap-cell {
   flex: 0 0 46px;
 }
+/* --- 30-day header: keep dates on ONE line --- */
+.heatmap-table.heatmap-view-30 .heatmap-day-col.heatmap-header-cell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+  height: 34px;            /* match cell height vibe */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;              /* remove padding that causes wrapping */
+  font-size: 11px;         /* slightly smaller so it fits */
+}
+/* ===== FINAL HEATMAP COLORS (forced override) ===== */
 
-/* ✅ NEW COLOR PALETTE (more distinct) */
-/* ✅ UPDATED COLOR PALETTE (more distinct + requested changes) */
-.heatmap-cell.status-free { background: rgba(34, 197, 94, 0.18); }       /* green */
-.heatmap-cell.status-busy { background: rgba(59, 130, 246, 0.18); }      /* blue */
-.heatmap-cell.status-leave { background: rgba(239, 68, 68, 0.20); }      /* red */
-.heatmap-cell.status-travel { background: rgba(249, 115, 22, 0.22); }    /* orange */
-.heatmap-cell.status-training { background: rgba(168, 85, 247, 0.20); }  /* purple */
-.heatmap-cell.status-internal { background: rgba(30, 64, 175, 0.18); }   /* indigo/navy */
-.heatmap-cell.status-other { background: rgba(234, 179, 8, 0.22); }      /* yellow */
+.heatmap-cell.status-free {
+  background: rgba(34, 197, 94, 0.18) !important;        /* green */
+}
 
-/* Internal: base tint + subtle diagonal pattern */
 .heatmap-cell.status-busy {
+  background: rgba(59, 130, 246, 0.18) !important;       /* blue */
+}
+
+.heatmap-cell.status-leave {
+  background: rgba(239, 68, 68, 0.22) !important;        /* red */
+}
+
+.heatmap-cell.status-travel {
+  background: rgba(249, 115, 22, 0.22) !important;       /* orange */
+}
+
+.heatmap-cell.status-training {
+  background: rgba(168, 85, 247, 0.22) !important;       /* purple */
+}
+
+.heatmap-cell.status-other {
+  background: rgba(234, 179, 8, 0.22) !important;        /* yellow */
+}
+
+/* Internal: indigo + diagonal pattern */
+.heatmap-cell.status-internal {
   background:
     repeating-linear-gradient(
       45deg,
-      rgba(30, 64, 175, 0.18) 0px,
-      rgba(30, 64, 175, 0.18) 8px,
-      rgba(30, 64, 175, 0.08) 8px,
-      rgba(30, 64, 175, 0.08) 16px
-    );
+      rgba(30, 64, 175, 0.22),
+      rgba(30, 64, 175, 0.22) 8px,
+      rgba(30, 64, 175, 0.10) 8px,
+      rgba(30, 64, 175, 0.10) 16px
+    ) !important;
 }
 
 .heatmap-cell.status-internal {
   box-shadow: inset 0 0 0 1px rgba(30, 64, 175, 0.10);
 }
-/* Legend swatches must match */
-/* ✅ Legend swatches (match heatmap hues, slightly stronger opacity for clarity) */
-.sw-free { background: rgba(34, 197, 94, 0.45); }
-.sw-busy { background: rgba(59, 130, 246, 0.45); }
-.sw-leave { background: rgba(239, 68, 68, 0.48); }
-.sw-travel { background: rgba(249, 115, 22, 0.48); }
-.sw-training { background: rgba(168, 85, 247, 0.45); }
-.sw-internal { background: rgba(30, 64, 175, 0.45); }
-.sw-other { background: rgba(234, 179, 8, 0.48); }
+/* ===== LEGEND (match grid exactly) ===== */
 
-/* Legend swatch pattern for Internal (so it matches the table) */
-.legend-swatch.sw-busy  {
+.sw-free { background: rgba(34, 197, 94, 0.55) !important; }
+.sw-busy { background: rgba(59, 130, 246, 0.55) !important; }
+.sw-leave { background: rgba(239, 68, 68, 0.60) !important; }
+.sw-travel { background: rgba(249, 115, 22, 0.60) !important; }
+.sw-training { background: rgba(168, 85, 247, 0.55) !important; }
+.sw-other { background: rgba(234, 179, 8, 0.60) !important; }
+
+.legend-swatch.sw-internal {
   background:
     repeating-linear-gradient(
       45deg,
-      rgba(30, 64, 175, 0.45) 0px,
-      rgba(30, 64, 175, 0.45) 6px,
-      rgba(30, 64, 175, 0.22) 6px,
-      rgba(30, 64, 175, 0.22) 12px
-    );
+      rgba(30, 64, 175, 0.60),
+      rgba(30, 64, 175, 0.60) 6px,
+      rgba(30, 64, 175, 0.30) 6px,
+      rgba(30, 64, 175, 0.30) 12px
+    ) !important;
 }
 /* ===== SCHEDULE LIST ===== */
 
