@@ -179,7 +179,7 @@ const CustomerDetails = () => {
   const goToProjectDetails = (projectId) => {
     if (!projectId) return;
     // Adjust this route if your app uses a different path
-    navigate(`/projectdetails/${projectId}`);
+    navigate(`/project/${projectId}`);
   };
 
   const formatDate = (dateValue) => {
