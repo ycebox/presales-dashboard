@@ -852,6 +852,25 @@ function PresalesOverview() {
       return { dailyCapacity, maxTasksPerDay };
     };
 
+    const pickPrimaryScheduleType = (typesLower) => {
+      if (!typesLower || typesLower.length === 0) return null;
+      if (typesLower.includes('leave')) return 'leave';
+      if (typesLower.includes('travel')) return 'travel';
+      if (typesLower.includes('training')) return 'training';
+      if (typesLower.includes('internal')) return 'internal';
+      return 'other';
+    };
+
+    const formatTypeLabel = (t) => {
+      if (!t) return 'Scheduled';
+      if (t === 'leave') return 'Leave';
+      if (t === 'travel') return 'Travel';
+      if (t === 'training') return 'Training';
+      if (t === 'internal') return 'Internal';
+      if (t === 'other') return 'Other';
+      return 'Scheduled';
+    };
+
     const rows = (presalesResources || []).map((res) => {
       const name = res.name || res.email || 'Unknown';
       const { dailyCapacity, maxTasksPerDay } = getCapacityFor(name);
@@ -874,38 +893,37 @@ function PresalesOverview() {
         const utilization =
           effectiveCapacity > 0 ? Math.round((totalHours / effectiveCapacity) * 100) : totalHours > 0 ? 999 : 0;
 
+        const typesLower = daySchedules.map((s) => (s.type || '').toLowerCase().trim()).filter(Boolean);
+        const primaryScheduleType = pickPrimaryScheduleType(typesLower);
+
         let status = 'free';
         let label = 'Free';
 
         if (daySchedules.length > 0) {
-          const types = daySchedules.map((s) => (s.type || '').toLowerCase());
           const fullBlocked = isFullDayBlocked(blockedHours, dailyCapacity);
 
           if (fullBlocked) {
-            if (types.includes('leave')) {
-              status = 'leave';
-              label = 'On leave';
-            } else if (types.includes('travel')) {
-              status = 'travel';
-              label = 'Travel';
-            } else if (types.includes('training')) {
-              status = 'training';
-              label = 'Training';
-            } else if (types.includes('internal')) {
-              status = 'internal';
-              label = 'Internal';
-            } else {
-              status = 'other';
-              label = 'Other';
-            }
+            // Full-day blocked: show actual schedule type color
+            status = primaryScheduleType || 'other';
+            label = `${formatTypeLabel(status)} (full day)`;
           } else {
-            status = 'busy';
-            label = blockedHours > 0 ? `Scheduled (${blockedHours.toFixed(1)}h)` : 'Scheduled';
+            // Partial-day blocked:
+            // If NO tasks, show schedule type color (so legend matches)
+            if (taskCount === 0 && primaryScheduleType) {
+              status = primaryScheduleType;
+              label = `${formatTypeLabel(primaryScheduleType)} · Blocked ${blockedHours.toFixed(1)}h · Left ${effectiveCapacity.toFixed(1)}h`;
+            } else {
+              // If tasks exist, keep it Busy but we’ll add a left marker based on schedule type
+              status = 'busy';
+              label = blockedHours > 0 ? `Scheduled · Blocked ${blockedHours.toFixed(1)}h` : 'Scheduled';
+            }
           }
         }
 
+        // Tasks override label and generally make the day "busy"
         if (taskCount > 0) {
-          if (status === 'free') status = 'busy';
+          // If it was marked as full-day schedule but tasks exist, treat it as busy (data inconsistency but better UX)
+          if (status !== 'busy') status = 'busy';
 
           const baseLabel = `${taskCount} task${taskCount > 1 ? 's' : ''}`;
           const capText = ` · Tasks ${totalHours.toFixed(1)}h · Blocked ${blockedHours.toFixed(1)}h · Left ${effectiveCapacity.toFixed(1)}h`;
@@ -928,6 +946,8 @@ function PresalesOverview() {
           blockedHours,
           effectiveCapacity,
           taskHours: totalHours,
+          // ✅ used for left-border markers on Busy days
+          markerType: status === 'busy' && primaryScheduleType ? primaryScheduleType : null,
         };
       });
 
@@ -1341,7 +1361,6 @@ function PresalesOverview() {
                 </button>
               </div>
 
-              {/* ✅ New legend */}
               <div className="availability-legend" aria-label="Availability legend">
                 <div className="legend-item"><span className="legend-swatch sw-free" /> Free</div>
                 <div className="legend-item"><span className="legend-swatch sw-busy" /> Busy</div>
@@ -1358,7 +1377,6 @@ function PresalesOverview() {
             </div>
           </div>
 
-          {/* ✅ View class drives sizing behavior (Option A) */}
           <div className={`heatmap-table ${calendarView === '14' ? 'heatmap-view-14' : 'heatmap-view-30'}`}>
             <div className="heatmap-header">
               <div className="heatmap-presales-name heatmap-header-cell">Presales</div>
@@ -1377,7 +1395,7 @@ function PresalesOverview() {
                   <button
                     key={`${row.assignee}-${cell.date.toISOString()}`}
                     type="button"
-                    className={`heatmap-cell status-${cell.status}`}
+                    className={`heatmap-cell status-${cell.status} ${cell.markerType ? `marker-${cell.markerType}` : ''}`}
                     title={cell.label}
                     onClick={() => openDayDetail(row.assignee, cell.date)}
                   />
