@@ -703,6 +703,31 @@
   min-width: 42px;
 }
 
+/* --- 30-day view alignment fix --- */
+.heatmap-table.heatmap-view-30 .heatmap-header,
+.heatmap-table.heatmap-view-30 .heatmap-row {
+  flex-wrap: nowrap;   /* safety */
+  gap: 6px;            /* consistent spacing for header + body */
+}
+
+/* Remove margins in 30-day view (they were causing header/body width mismatch) */
+.heatmap-table.heatmap-view-30 .heatmap-cell {
+  margin: 0;
+}
+
+/* Keep 30-day columns compact and consistent */
+.heatmap-table.heatmap-view-30 .heatmap-day-col,
+.heatmap-table.heatmap-view-30 .heatmap-cell {
+  flex: 0 0 46px;
+  min-width: 46px;
+  max-width: 46px;
+}
+
+/* Make header date text fit better in narrow columns */
+.heatmap-table.heatmap-view-30 .heatmap-day-col.heatmap-header-cell {
+  padding: 8px 0;
+}
+
 .heatmap-table.heatmap-view-30 .heatmap-day-col,
 .heatmap-table.heatmap-view-30 .heatmap-cell {
   flex: 0 0 46px;
@@ -719,7 +744,7 @@
 .heatmap-cell.status-other { background: rgba(234, 179, 8, 0.22); }      /* yellow */
 
 /* Internal: base tint + subtle diagonal pattern */
-.heatmap-cell.status-internal {
+.heatmap-cell.status-busy {
   background:
     repeating-linear-gradient(
       45deg,
@@ -744,7 +769,7 @@
 .sw-other { background: rgba(234, 179, 8, 0.48); }
 
 /* Legend swatch pattern for Internal (so it matches the table) */
-.legend-swatch.sw-internal {
+.legend-swatch.sw-busy  {
   background:
     repeating-linear-gradient(
       45deg,
