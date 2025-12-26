@@ -76,18 +76,14 @@ const getSalesStageClass = (stage) => {
   return "stage-active";
 };
 
+// smartvista_modules is VARCHAR in your table, so we treat it as a single string (comma-separated)
 const toModulesArray = (value) => {
   if (!value) return [];
-  if (Array.isArray(value)) return value.filter(Boolean).map((x) => String(x).trim()).filter(Boolean);
-
-  // allow string formats: "SVBO, SVIP; SVFE"
   return String(value)
     .split(/[,\n;]+/g)
     .map((x) => x.trim())
     .filter(Boolean);
 };
-
-const modulesArrayToString = (arr) => (Array.isArray(arr) ? arr.join(", ") : "");
 
 // ---------- Task Modal ----------
 const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResources = [], taskTypes = [] }) => {
@@ -146,7 +142,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
       onClose();
     } catch (err) {
       console.error("Task save error:", err);
-      alert("Failed to save task. Please try again.");
+      alert(`Failed to save task: ${err?.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }
@@ -171,12 +167,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
           <div className="form-grid">
             <div className="form-group">
               <label className="form-label">Description</label>
-              <input
-                className="form-input"
-                value={taskData.description}
-                onChange={(e) => handleChange("description", e.target.value)}
-                placeholder="Enter task description"
-              />
+              <input className="form-input" value={taskData.description} onChange={(e) => handleChange("description", e.target.value)} placeholder="Enter task description" />
             </div>
 
             <div className="form-group">
@@ -273,7 +264,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
       onClose();
     } catch (err) {
       console.error("Log save error:", err);
-      alert("Failed to save log. Please try again.");
+      alert(`Failed to save log: ${err?.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }
@@ -353,12 +344,7 @@ const useProjectData = (projectId) => {
 
   const fetchTasks = async () => {
     try {
-      const { data, error } = await supabase
-        .from("project_tasks")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false });
-
+      const { data, error } = await supabase.from("project_tasks").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
       if (error) throw error;
       setTasks(data || []);
     } catch (err) {
@@ -368,12 +354,7 @@ const useProjectData = (projectId) => {
 
   const fetchLogs = async () => {
     try {
-      const { data, error } = await supabase
-        .from("project_logs")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false });
-
+      const { data, error } = await supabase.from("project_logs").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
       if (error) throw error;
       setLogs(data || []);
     } catch (err) {
@@ -421,7 +402,6 @@ function ProjectDetails() {
   const [editingLog, setEditingLog] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
 
-  // NEW: Next Key Activity + Modules drafts (so we can edit/save cleanly)
   const [isEditingBackground, setIsEditingBackground] = useState(false);
   const [backgroundDraft, setBackgroundDraft] = useState("");
   const [savingBackground, setSavingBackground] = useState(false);
@@ -430,10 +410,9 @@ function ProjectDetails() {
   const [nextActivityDraft, setNextActivityDraft] = useState("");
   const [savingNextActivity, setSavingNextActivity] = useState(false);
 
-  // For SmartVista Modules: we store in DB as array OR string, but we edit as string input
+  // modules saved as VARCHAR
   const [modulesDraft, setModulesDraft] = useState("");
 
-  // ---------- Monitoring: health + counters ----------
   const projectMonitor = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -491,59 +470,17 @@ function ProjectDetails() {
     if (isProjectOverdue || overdueCount > 0) health = "RED";
     else if (isProjectDueSoon || dueNext7Count > 0 || (daysSinceLastLog !== null && daysSinceLastLog > 14)) health = "AMBER";
 
-    return {
-      overdueCount,
-      dueNext7Count,
-      unassignedCount,
-      lastLogDate,
-      daysSinceLastLog,
-      health,
-    };
+    return { overdueCount, dueNext7Count, unassignedCount, lastLogDate, daysSinceLastLog, health };
   }, [project, tasks, logs]);
-
-  const [presalesResources, setPresalesResources] = useState([]);
-  const [taskTypes, setTaskTypes] = useState([]);
 
   useEffect(() => {
     if (project) {
       setEditProject(project);
-
-      // drafts
       setBackgroundDraft(project.remarks || "");
       setNextActivityDraft(project.next_key_activity || "");
-
-      // modules draft as a simple comma-separated string
-      const modulesArr = toModulesArray(project.smartvista_modules);
-      setModulesDraft(modulesArr.length ? modulesArrayToString(modulesArr) : "");
+      setModulesDraft(project.smartvista_modules || "");
     }
   }, [project]);
-
-  useEffect(() => {
-    const fetchPresalesResources = async () => {
-      try {
-        const { data, error } = await supabase.from("presales_resources").select("name").order("name");
-        if (error) throw error;
-        setPresalesResources((data || []).map((d) => d.name).filter(Boolean));
-      } catch (err) {
-        console.warn("Failed to fetch presales resources:", err);
-        setPresalesResources([]);
-      }
-    };
-
-    const fetchTaskTypes = async () => {
-      try {
-        const { data, error } = await supabase.from("task_types").select("name").order("name");
-        if (error) throw error;
-        setTaskTypes((data || []).map((d) => d.name).filter(Boolean));
-      } catch (err) {
-        console.warn("Failed to fetch task types:", err);
-        setTaskTypes([]);
-      }
-    };
-
-    fetchPresalesResources();
-    fetchTaskTypes();
-  }, []);
 
   const handleBack = () => navigate(-1);
 
@@ -559,13 +496,10 @@ function ProjectDetails() {
     return { label: "Healthy", className: "health-green", Icon: FaCheckCircle };
   }, [projectMonitor.health]);
 
-  // ---- Edit project now lives in Project Details header ----
   const handleEditToggle = () => {
     if (isEditing) {
       setEditProject(project);
-      // reset modules draft based on saved value
-      const modulesArr = toModulesArray(project?.smartvista_modules);
-      setModulesDraft(modulesArr.length ? modulesArrayToString(modulesArr) : "");
+      setModulesDraft(project?.smartvista_modules || "");
       setIsEditing(false);
     } else {
       setIsEditing(true);
@@ -580,11 +514,7 @@ function ProjectDetails() {
   const saveProjectEdits = async () => {
     if (!project?.id) return;
     setSaving(true);
-
     try {
-      // smartvista_modules: try to save as text[] (Supabase will accept JS array if column is text[])
-      const modulesArr = toModulesArray(modulesDraft);
-
       const payload = {
         project_name: editProject.project_name || "",
         customer_name: editProject.customer_name || "",
@@ -595,8 +525,8 @@ function ProjectDetails() {
         sales_stage: editProject.sales_stage || "",
         due_date: editProject.due_date || null,
 
-        // NEW
-        smartvista_modules: modulesArr.length ? modulesArr : null,
+        // VARCHAR in your schema
+        smartvista_modules: (modulesDraft || "").trim() || null,
       };
 
       const { error } = await supabase.from("projects").update(payload).eq("id", project.id);
@@ -606,7 +536,7 @@ function ProjectDetails() {
       setIsEditing(false);
     } catch (err) {
       console.error("Error saving project:", err);
-      alert("Failed to save project changes.");
+      alert(`Failed to save project changes: ${err?.message || "Unknown error"}`);
     } finally {
       setSaving(false);
     }
@@ -622,8 +552,8 @@ function ProjectDetails() {
       setProject((prev) => ({ ...prev, remarks: backgroundDraft || "" }));
       setIsEditingBackground(false);
     } catch (err) {
-      console.error("Error saving background:", err);
-      alert("Failed to save project background.");
+      console.error("Error saving project background:", err);
+      alert(`Failed to save project background: ${err?.message || "Unknown error"}`);
     } finally {
       setSavingBackground(false);
     }
@@ -640,7 +570,7 @@ function ProjectDetails() {
       setIsEditingNextActivity(false);
     } catch (err) {
       console.error("Error saving next key activity:", err);
-      alert("Failed to save next key activity.");
+      alert(`Failed to save next key activity: ${err?.message || "Unknown error"}`);
     } finally {
       setSavingNextActivity(false);
     }
@@ -656,20 +586,6 @@ function ProjectDetails() {
     setShowTaskModal(true);
   };
 
-  const saveTask = async (taskData) => {
-    if (!project?.id) return;
-
-    if (editingTask?.id) {
-      const { error } = await supabase.from("project_tasks").update(taskData).eq("id", editingTask.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from("project_tasks").insert({ ...taskData, project_id: project.id });
-      if (error) throw error;
-    }
-
-    await fetchTasks();
-  };
-
   const deleteTask = async (taskId) => {
     if (!window.confirm("Delete this task?")) return;
     try {
@@ -678,7 +594,7 @@ function ProjectDetails() {
       await fetchTasks();
     } catch (err) {
       console.error("Delete task error:", err);
-      alert("Failed to delete task.");
+      alert(`Failed to delete task: ${err?.message || "Unknown error"}`);
     }
   };
 
@@ -692,20 +608,6 @@ function ProjectDetails() {
     setShowLogModal(true);
   };
 
-  const saveLog = async (notes) => {
-    if (!project?.id) return;
-
-    if (editingLog?.id) {
-      const { error } = await supabase.from("project_logs").update({ notes }).eq("id", editingLog.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from("project_logs").insert({ project_id: project.id, notes });
-      if (error) throw error;
-    }
-
-    await fetchLogs();
-  };
-
   const deleteLog = async (logId) => {
     if (!window.confirm("Delete this log entry?")) return;
     try {
@@ -714,7 +616,7 @@ function ProjectDetails() {
       await fetchLogs();
     } catch (err) {
       console.error("Delete log error:", err);
-      alert("Failed to delete log.");
+      alert(`Failed to delete log: ${err?.message || "Unknown error"}`);
     }
   };
 
@@ -849,7 +751,6 @@ function ProjectDetails() {
                   <span className="detail-value">{formatCurrency(project.deal_value)}</span>
                 </div>
 
-                {/* NEW: SmartVista Modules */}
                 <div className="detail-item detail-item-full">
                   <span className="detail-label">SmartVista Modules</span>
                   {modulesDisplay.length ? (
@@ -922,7 +823,6 @@ function ProjectDetails() {
                   <input type="date" name="due_date" value={editProject.due_date || ""} onChange={handleEditChange} className="form-input" />
                 </div>
 
-                {/* NEW: SmartVista Modules (editable) */}
                 <div className="form-group form-group-full">
                   <label className="form-label">SmartVista Modules</label>
                   <input
@@ -943,7 +843,7 @@ function ProjectDetails() {
             )}
           </section>
 
-          {/* NEW: Next Key Activity */}
+          {/* Next Key Activity */}
           <section className="content-card">
             <div className="card-header">
               <div className="card-title">
@@ -980,11 +880,7 @@ function ProjectDetails() {
 
             {!isEditingNextActivity ? (
               <div className="notes-box">
-                {project.next_key_activity ? (
-                  <p className="notes-text">{project.next_key_activity}</p>
-                ) : (
-                  <p className="muted">No next activity yet.</p>
-                )}
+                {project.next_key_activity ? <p className="notes-text">{project.next_key_activity}</p> : <p className="muted">No next activity yet.</p>}
               </div>
             ) : (
               <textarea
@@ -996,7 +892,7 @@ function ProjectDetails() {
             )}
           </section>
 
-          {/* Project Background (was Customer Background) */}
+          {/* Project Background (same DB field: remarks) */}
           <section className="content-card">
             <div className="card-header">
               <div className="card-title">
@@ -1171,8 +1067,8 @@ function ProjectDetails() {
           await fetchTasks();
         }}
         editingTask={editingTask}
-        presalesResources={presalesResources}
-        taskTypes={taskTypes}
+        presalesResources={[]}
+        taskTypes={[]}
       />
 
       <LogModal
