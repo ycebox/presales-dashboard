@@ -570,7 +570,7 @@ function ProjectDetails() {
     if (project) {
       setEditProject({
         ...project,
-        corporate_project: !!project.corporate_project,
+        is_corporate: !!project.is_corporate,
       });
       setModulesDraft(project.smartvista_modules || "");
     }
@@ -592,7 +592,7 @@ function ProjectDetails() {
     if (isEditing) {
       setEditProject({
         ...project,
-        corporate_project: !!project?.corporate_project,
+        is_corporate: !!project?.is_corporate,
       });
       setModulesDraft(project?.smartvista_modules || "");
       setIsEditing(false);
@@ -635,10 +635,9 @@ function ProjectDetails() {
         next_key_activity: editProject.next_key_activity || "",
         remarks: editProject.remarks || "",
 
-        // ✅ NEW fields
         primary_presales: (editProject.primary_presales || "").trim() || null,
         backup_presales: (editProject.backup_presales || "").trim() || null,
-        corporate_project: !!editProject.corporate_project,
+        is_corporate: !!editProject.is_corporate,
       };
 
       const { error } = await supabase.from("projects").update(payload).eq("id", project.id);
@@ -738,7 +737,7 @@ function ProjectDetails() {
                           <span>{healthMeta.label}</span>
                         </span>
 
-                        {project.corporate_project ? (
+                        {project.is_corporate ? (
                           <span className="metric-badge metric-muted">
                             <FaUsers />
                             <span>Corporate</span>
@@ -836,7 +835,6 @@ function ProjectDetails() {
                   <span className="detail-value">{formatCurrency(project.deal_value)}</span>
                 </div>
 
-                {/* ✅ NEW display fields */}
                 <div className="detail-item">
                   <span className="detail-label">Primary Presales</span>
                   <span className="detail-value">{project.primary_presales || "-"}</span>
@@ -848,8 +846,8 @@ function ProjectDetails() {
                 </div>
 
                 <div className="detail-item">
-                  <span className="detail-label">Corporate Project</span>
-                  <span className="detail-value">{project.corporate_project ? "Yes" : "No"}</span>
+                  <span className="detail-label">Corporate</span>
+                  <span className="detail-value">{project.is_corporate ? "Yes" : "No"}</span>
                 </div>
 
                 <div className="detail-item detail-item-full">
@@ -889,13 +887,7 @@ function ProjectDetails() {
                     <FaBullseye className="form-icon" />
                     Project Name
                   </label>
-                  <input
-                    type="text"
-                    name="project_name"
-                    value={editProject.project_name || ""}
-                    onChange={handleEditChange}
-                    className="form-input"
-                  />
+                  <input type="text" name="project_name" value={editProject.project_name || ""} onChange={handleEditChange} className="form-input" />
                 </div>
 
                 <div className="form-group">
@@ -903,24 +895,12 @@ function ProjectDetails() {
                     <FaUsers className="form-icon" />
                     Customer
                   </label>
-                  <input
-                    type="text"
-                    name="customer_name"
-                    value={editProject.customer_name || ""}
-                    onChange={handleEditChange}
-                    className="form-input"
-                  />
+                  <input type="text" name="customer_name" value={editProject.customer_name || ""} onChange={handleEditChange} className="form-input" />
                 </div>
 
                 <div className="form-group">
                   <label className="form-label">Account Manager</label>
-                  <input
-                    type="text"
-                    name="account_manager"
-                    value={editProject.account_manager || ""}
-                    onChange={handleEditChange}
-                    className="form-input"
-                  />
+                  <input type="text" name="account_manager" value={editProject.account_manager || ""} onChange={handleEditChange} className="form-input" />
                 </div>
 
                 <div className="form-group">
@@ -928,15 +908,9 @@ function ProjectDetails() {
                   <input type="text" name="country" value={editProject.country || ""} onChange={handleEditChange} className="form-input" />
                 </div>
 
-                {/* ✅ NEW: Primary Presales */}
                 <div className="form-group">
                   <label className="form-label">Primary Presales</label>
-                  <select
-                    className="form-input"
-                    name="primary_presales"
-                    value={editProject.primary_presales || ""}
-                    onChange={handleEditChange}
-                  >
+                  <select className="form-input" name="primary_presales" value={editProject.primary_presales || ""} onChange={handleEditChange}>
                     <option value="">-</option>
                     {presalesResources.map((p) => (
                       <option key={`pp-${p}`} value={p}>
@@ -946,15 +920,9 @@ function ProjectDetails() {
                   </select>
                 </div>
 
-                {/* ✅ NEW: Backup Presales */}
                 <div className="form-group">
                   <label className="form-label">Backup Presales</label>
-                  <select
-                    className="form-input"
-                    name="backup_presales"
-                    value={editProject.backup_presales || ""}
-                    onChange={handleEditChange}
-                  >
+                  <select className="form-input" name="backup_presales" value={editProject.backup_presales || ""} onChange={handleEditChange}>
                     <option value="">-</option>
                     {presalesResources.map((p) => (
                       <option key={`bp-${p}`} value={p}>
@@ -964,19 +932,13 @@ function ProjectDetails() {
                   </select>
                 </div>
 
-                {/* ✅ NEW: Corporate Project checkbox */}
                 <div className="form-group form-group-full">
                   <label className="form-label" style={{ marginBottom: 8 }}>
-                    Corporate Project
+                    Corporate
                   </label>
                   <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                    <input
-                      type="checkbox"
-                      name="corporate_project"
-                      checked={!!editProject.corporate_project}
-                      onChange={handleEditChange}
-                    />
-                    Mark this as a corporate/internal project
+                    <input type="checkbox" name="is_corporate" checked={!!editProject.is_corporate} onChange={handleEditChange} />
+                    Corporate project
                   </label>
                 </div>
 
