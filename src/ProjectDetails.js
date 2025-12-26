@@ -87,14 +87,7 @@ const toModulesArray = (value) => {
 };
 
 // ---------- Task Modal ----------
-const TaskModal = ({
-  isOpen,
-  onClose,
-  onSave,
-  editingTask = null,
-  presalesResources = [],
-  taskTypes = [],
-}) => {
+const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResources = [], taskTypes = [] }) => {
   const [taskData, setTaskData] = useState({
     description: "",
     status: "Not Started",
@@ -155,7 +148,6 @@ const TaskModal = ({
 
     setLoading(true);
     try {
-      // Normalize estimated_hours
       const normalized = {
         ...taskData,
         estimated_hours:
@@ -211,11 +203,7 @@ const TaskModal = ({
 
             <div className="form-group">
               <label className="form-label">Status</label>
-              <select
-                className="form-input"
-                value={taskData.status}
-                onChange={(e) => handleChange("status", e.target.value)}
-              >
+              <select className="form-input" value={taskData.status} onChange={(e) => handleChange("status", e.target.value)}>
                 {TASK_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -224,14 +212,9 @@ const TaskModal = ({
               </select>
             </div>
 
-            {/* ✅ NEW: Priority */}
             <div className="form-group">
               <label className="form-label">Priority</label>
-              <select
-                className="form-input"
-                value={taskData.priority}
-                onChange={(e) => handleChange("priority", e.target.value)}
-              >
+              <select className="form-input" value={taskData.priority} onChange={(e) => handleChange("priority", e.target.value)}>
                 {TASK_PRIORITIES.map((p) => (
                   <option key={p} value={p}>
                     {p}
@@ -240,7 +223,6 @@ const TaskModal = ({
               </select>
             </div>
 
-            {/* ✅ NEW: Estimated Hours */}
             <div className="form-group">
               <label className="form-label">Estimated Hours</label>
               <input
@@ -256,11 +238,7 @@ const TaskModal = ({
 
             <div className="form-group">
               <label className="form-label">Assignee</label>
-              <select
-                className="form-input"
-                value={taskData.assignee}
-                onChange={(e) => handleChange("assignee", e.target.value)}
-              >
+              <select className="form-input" value={taskData.assignee} onChange={(e) => handleChange("assignee", e.target.value)}>
                 <option value="">Unassigned</option>
                 {(presalesResources || []).map((p) => (
                   <option key={p} value={p}>
@@ -272,11 +250,7 @@ const TaskModal = ({
 
             <div className="form-group">
               <label className="form-label">Task Type</label>
-              <select
-                className="form-input"
-                value={taskData.task_type}
-                onChange={(e) => handleChange("task_type", e.target.value)}
-              >
+              <select className="form-input" value={taskData.task_type} onChange={(e) => handleChange("task_type", e.target.value)}>
                 <option value="">Select type</option>
                 {(taskTypes || []).map((t) => (
                   <option key={t} value={t}>
@@ -288,32 +262,17 @@ const TaskModal = ({
 
             <div className="form-group">
               <label className="form-label">Start Date</label>
-              <input
-                type="date"
-                className="form-input"
-                value={taskData.start_date || ""}
-                onChange={(e) => handleChange("start_date", e.target.value)}
-              />
+              <input type="date" className="form-input" value={taskData.start_date || ""} onChange={(e) => handleChange("start_date", e.target.value)} />
             </div>
 
             <div className="form-group">
               <label className="form-label">End Date</label>
-              <input
-                type="date"
-                className="form-input"
-                value={taskData.end_date || ""}
-                onChange={(e) => handleChange("end_date", e.target.value)}
-              />
+              <input type="date" className="form-input" value={taskData.end_date || ""} onChange={(e) => handleChange("end_date", e.target.value)} />
             </div>
 
             <div className="form-group">
               <label className="form-label">Due Date</label>
-              <input
-                type="date"
-                className="form-input"
-                value={taskData.due_date || ""}
-                onChange={(e) => handleChange("due_date", e.target.value)}
-              />
+              <input type="date" className="form-input" value={taskData.due_date || ""} onChange={(e) => handleChange("due_date", e.target.value)} />
             </div>
 
             <div className="form-group form-group-full">
@@ -497,7 +456,6 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
-
   }, [projectId]);
 
   return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
@@ -610,7 +568,10 @@ function ProjectDetails() {
 
   useEffect(() => {
     if (project) {
-      setEditProject(project);
+      setEditProject({
+        ...project,
+        corporate_project: !!project.corporate_project,
+      });
       setModulesDraft(project.smartvista_modules || "");
     }
   }, [project]);
@@ -629,7 +590,10 @@ function ProjectDetails() {
 
   const handleEditToggle = () => {
     if (isEditing) {
-      setEditProject(project);
+      setEditProject({
+        ...project,
+        corporate_project: !!project?.corporate_project,
+      });
       setModulesDraft(project?.smartvista_modules || "");
       setIsEditing(false);
     } else {
@@ -638,8 +602,17 @@ function ProjectDetails() {
   };
 
   const handleEditChange = (e) => {
-    const { name, value, type } = e.target;
-    setEditProject((prev) => ({ ...prev, [name]: type === "number" ? Number(value) : value }));
+    const { name, value, type, checked } = e.target;
+
+    if (type === "checkbox") {
+      setEditProject((prev) => ({ ...prev, [name]: !!checked }));
+      return;
+    }
+
+    setEditProject((prev) => ({
+      ...prev,
+      [name]: type === "number" ? (value === "" ? "" : Number(value)) : value,
+    }));
   };
 
   const saveProjectEdits = async () => {
@@ -661,6 +634,11 @@ function ProjectDetails() {
 
         next_key_activity: editProject.next_key_activity || "",
         remarks: editProject.remarks || "",
+
+        // ✅ NEW fields
+        primary_presales: (editProject.primary_presales || "").trim() || null,
+        backup_presales: (editProject.backup_presales || "").trim() || null,
+        corporate_project: !!editProject.corporate_project,
       };
 
       const { error } = await supabase.from("projects").update(payload).eq("id", project.id);
@@ -760,6 +738,13 @@ function ProjectDetails() {
                           <span>{healthMeta.label}</span>
                         </span>
 
+                        {project.corporate_project ? (
+                          <span className="metric-badge metric-muted">
+                            <FaUsers />
+                            <span>Corporate</span>
+                          </span>
+                        ) : null}
+
                         <span className={`metric-badge ${projectMonitor.overdueCount > 0 ? "metric-danger" : "metric-muted"}`}>
                           <FaExclamationTriangle />
                           <span>Overdue: {projectMonitor.overdueCount}</span>
@@ -851,6 +836,22 @@ function ProjectDetails() {
                   <span className="detail-value">{formatCurrency(project.deal_value)}</span>
                 </div>
 
+                {/* ✅ NEW display fields */}
+                <div className="detail-item">
+                  <span className="detail-label">Primary Presales</span>
+                  <span className="detail-value">{project.primary_presales || "-"}</span>
+                </div>
+
+                <div className="detail-item">
+                  <span className="detail-label">Backup Presales</span>
+                  <span className="detail-value">{project.backup_presales || "-"}</span>
+                </div>
+
+                <div className="detail-item">
+                  <span className="detail-label">Corporate Project</span>
+                  <span className="detail-value">{project.corporate_project ? "Yes" : "No"}</span>
+                </div>
+
                 <div className="detail-item detail-item-full">
                   <span className="detail-label">SmartVista Modules</span>
                   {modulesDisplay.length ? (
@@ -888,7 +889,13 @@ function ProjectDetails() {
                     <FaBullseye className="form-icon" />
                     Project Name
                   </label>
-                  <input type="text" name="project_name" value={editProject.project_name || ""} onChange={handleEditChange} className="form-input" />
+                  <input
+                    type="text"
+                    name="project_name"
+                    value={editProject.project_name || ""}
+                    onChange={handleEditChange}
+                    className="form-input"
+                  />
                 </div>
 
                 <div className="form-group">
@@ -896,17 +903,81 @@ function ProjectDetails() {
                     <FaUsers className="form-icon" />
                     Customer
                   </label>
-                  <input type="text" name="customer_name" value={editProject.customer_name || ""} onChange={handleEditChange} className="form-input" />
+                  <input
+                    type="text"
+                    name="customer_name"
+                    value={editProject.customer_name || ""}
+                    onChange={handleEditChange}
+                    className="form-input"
+                  />
                 </div>
 
                 <div className="form-group">
                   <label className="form-label">Account Manager</label>
-                  <input type="text" name="account_manager" value={editProject.account_manager || ""} onChange={handleEditChange} className="form-input" />
+                  <input
+                    type="text"
+                    name="account_manager"
+                    value={editProject.account_manager || ""}
+                    onChange={handleEditChange}
+                    className="form-input"
+                  />
                 </div>
 
                 <div className="form-group">
                   <label className="form-label">Country</label>
                   <input type="text" name="country" value={editProject.country || ""} onChange={handleEditChange} className="form-input" />
+                </div>
+
+                {/* ✅ NEW: Primary Presales */}
+                <div className="form-group">
+                  <label className="form-label">Primary Presales</label>
+                  <select
+                    className="form-input"
+                    name="primary_presales"
+                    value={editProject.primary_presales || ""}
+                    onChange={handleEditChange}
+                  >
+                    <option value="">-</option>
+                    {presalesResources.map((p) => (
+                      <option key={`pp-${p}`} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* ✅ NEW: Backup Presales */}
+                <div className="form-group">
+                  <label className="form-label">Backup Presales</label>
+                  <select
+                    className="form-input"
+                    name="backup_presales"
+                    value={editProject.backup_presales || ""}
+                    onChange={handleEditChange}
+                  >
+                    <option value="">-</option>
+                    {presalesResources.map((p) => (
+                      <option key={`bp-${p}`} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* ✅ NEW: Corporate Project checkbox */}
+                <div className="form-group form-group-full">
+                  <label className="form-label" style={{ marginBottom: 8 }}>
+                    Corporate Project
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      name="corporate_project"
+                      checked={!!editProject.corporate_project}
+                      onChange={handleEditChange}
+                    />
+                    Mark this as a corporate/internal project
+                  </label>
                 </div>
 
                 <div className="form-group">
@@ -1068,7 +1139,6 @@ function ProjectDetails() {
                 logs.map((l) => (
                   <div key={l.id} className="list-item">
                     <div className="list-item-main" onClick={() => openEditLog(l)} role="button" tabIndex={0}>
-                      {/* ✅ removed list-item-top (date row) */}
                       <div className="list-item-notes">{l.notes}</div>
                     </div>
 
