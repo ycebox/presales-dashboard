@@ -172,14 +172,13 @@ const CustomerDetails = () => {
   const [showMetricsModal, setShowMetricsModal] = useState(false);
 
   const [showCompletedProjects, setShowCompletedProjects] = useState(false);
-  const [projectSort, setProjectSort] = useState('stage');
 
   const [metrics, setMetrics] = useState(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
 
   // ✅ separate drafts:
   // - notesDraft -> customers.notes (My Notes)
-  // - companyProfileDraft -> customers.company_profile (Company Profile)
+  // - company_profile -> customers.company_profile (Company Profile)
   const [notesDraft, setNotesDraft] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
 
@@ -465,24 +464,19 @@ const CustomerDetails = () => {
 
     const withSort = [...list];
 
-    if (projectSort === 'value') {
-      withSort.sort((a, b) => (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0));
-    } else if (projectSort === 'due') {
-      withSort.sort((a, b) => {
-        const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
-        const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
-        return ad - bd;
-      });
-    } else {
-      withSort.sort((a, b) => {
-        const sr = getStageRank(getProjectStage(b)) - getStageRank(getProjectStage(a));
-        if (sr !== 0) return sr;
-        return (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0);
-      });
-    }
+    // Default sort: stage importance, then deal value (high to low), then newest
+    withSort.sort((a, b) => {
+      const sr = getStageRank(getProjectStage(b)) - getStageRank(getProjectStage(a));
+      if (sr !== 0) return sr;
+
+      const vr = (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0);
+      if (vr !== 0) return vr;
+
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
 
     return withSort;
-  }, [projects, showCompletedProjects, projectSort]);
+  }, [projects, showCompletedProjects]);
 
   const summary = useMemo(() => {
     const activeProjects = (projects || []).filter((p) => !isProjectCompleted(getProjectStage(p)))
@@ -606,7 +600,6 @@ const CustomerDetails = () => {
         pos_terminals: toIntOrNull(metricsDraft.pos_terminals),
         merchants: toIntOrNull(metricsDraft.merchants),
         tx_per_day: toIntOrNull(metricsDraft.tx_per_day),
-        updated_at: todayISODate(),
       };
 
       const { error: upErr } = await supabase
@@ -1015,7 +1008,8 @@ const CustomerDetails = () => {
               const primary = sorted[0];
               const rank = getStageRank(getProjectStage(primary));
               const attention = rank >= 55 ? 'red' : rank >= 40 ? 'amber' : 'green';
-              const attentionLabel = attention === 'red' ? 'High' : attention === 'amber' ? 'Medium' : 'Low';
+              const attentionLabel =
+                attention === 'red' ? 'High' : attention === 'amber' ? 'Medium' : 'Low';
               const reason = rank >= 55 ? 'late-stage deal' : rank >= 40 ? 'active opportunity' : '';
 
               return (
@@ -1327,7 +1321,6 @@ const CustomerDetails = () => {
                 <p className="section-subtitle">Quick view of pipeline and footprint.</p>
               </div>
 
-              {/* ✅ View -> Edit */}
               <button
                 className="action-button"
                 onClick={() => {
@@ -1374,29 +1367,14 @@ const CustomerDetails = () => {
             </div>
 
             <div className="project-controls-row">
-              <div className="project-controls-left">
-                <label className="control-label">
-                  Sort
-                  <select
-                    className="control-select"
-                    value={projectSort}
-                    onChange={(e) => setProjectSort(e.target.value)}
-                  >
-                    <option value="stage">Stage</option>
-                    <option value="value">Deal value</option>
-                    <option value="due">Due date</option>
-                  </select>
-                </label>
-
-                <label className="control-toggle">
-                  <input
-                    type="checkbox"
-                    checked={showCompletedProjects}
-                    onChange={(e) => setShowCompletedProjects(e.target.checked)}
-                  />
-                  Show completed
-                </label>
-              </div>
+              <label className="control-toggle">
+                <input
+                  type="checkbox"
+                  checked={showCompletedProjects}
+                  onChange={(e) => setShowCompletedProjects(e.target.checked)}
+                />
+                Show completed
+              </label>
             </div>
 
             {visibleProjects.length === 0 ? (
@@ -1479,11 +1457,11 @@ const CustomerDetails = () => {
             <button className="action-button ghost" onClick={() => setShowMetricsModal(false)}>
               Cancel
             </button>
-            <button className="action-button" onClick={fetchCustomerMetrics} disabled={metricsLoading}>
-              <ClipboardCopy size={14} />
-              Refresh
-            </button>
-            <button className="action-button primary" onClick={handleSaveMetrics} disabled={savingMetrics}>
+            <button
+              className="action-button primary"
+              onClick={handleSaveMetrics}
+              disabled={savingMetrics}
+            >
               <Save size={14} />
               {savingMetrics ? 'Saving...' : 'Save'}
             </button>
@@ -1560,13 +1538,6 @@ const CustomerDetails = () => {
               onChange={(e) => setMetricsDraft((p) => ({ ...p, tx_per_day: e.target.value }))}
               placeholder="e.g. 250000"
             />
-          </div>
-
-          <div className="cd-metric">
-            <div className="cd-metric-label">Record</div>
-            <div className="cd-metric-value">
-              {metricsLoading ? 'Loading…' : metrics ? 'Loaded' : 'Not set yet'}
-            </div>
           </div>
         </div>
       </Modal>
