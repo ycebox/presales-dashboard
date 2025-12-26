@@ -21,7 +21,6 @@ import {
   FaExclamationTriangle,
   FaEye,
   FaEyeSlash,
-  FaProjectDiagram,
   FaBullseye,
   FaRocket,
   FaFileAlt,
@@ -92,36 +91,34 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      if (editingTask) {
-        setTaskData({
-          description: editingTask.description || "",
-          status: editingTask.status || "Not Started",
-          start_date: editingTask.start_date || "",
-          end_date: editingTask.end_date || "",
-          due_date: editingTask.due_date || "",
-          notes: editingTask.notes || "",
-          assignee: editingTask.assignee || "",
-          task_type: editingTask.task_type || "",
-        });
-      } else {
-        setTaskData({
-          description: "",
-          status: "Not Started",
-          start_date: "",
-          end_date: "",
-          due_date: "",
-          notes: "",
-          assignee: "",
-          task_type: "",
-        });
-      }
+    if (!isOpen) return;
+
+    if (editingTask) {
+      setTaskData({
+        description: editingTask.description || "",
+        status: editingTask.status || "Not Started",
+        start_date: editingTask.start_date || "",
+        end_date: editingTask.end_date || "",
+        due_date: editingTask.due_date || "",
+        notes: editingTask.notes || "",
+        assignee: editingTask.assignee || "",
+        task_type: editingTask.task_type || "",
+      });
+    } else {
+      setTaskData({
+        description: "",
+        status: "Not Started",
+        start_date: "",
+        end_date: "",
+        due_date: "",
+        notes: "",
+        assignee: "",
+        task_type: "",
+      });
     }
   }, [editingTask, isOpen]);
 
-  const handleChange = (field, value) => {
-    setTaskData((prev) => ({ ...prev, [field]: value }));
-  };
+  const handleChange = (field, value) => setTaskData((prev) => ({ ...prev, [field]: value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -129,8 +126,8 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
       alert("Task description is required");
       return;
     }
-    setLoading(true);
 
+    setLoading(true);
     try {
       await onSave(taskData);
       onClose();
@@ -171,11 +168,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
 
             <div className="form-group">
               <label className="form-label">Status</label>
-              <select
-                className="form-input"
-                value={taskData.status}
-                onChange={(e) => handleChange("status", e.target.value)}
-              >
+              <select className="form-input" value={taskData.status} onChange={(e) => handleChange("status", e.target.value)}>
                 {TASK_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -186,11 +179,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
 
             <div className="form-group">
               <label className="form-label">Assignee</label>
-              <select
-                className="form-input"
-                value={taskData.assignee}
-                onChange={(e) => handleChange("assignee", e.target.value)}
-              >
+              <select className="form-input" value={taskData.assignee} onChange={(e) => handleChange("assignee", e.target.value)}>
                 <option value="">Unassigned</option>
                 {(presalesResources || []).map((p) => (
                   <option key={p} value={p}>
@@ -202,11 +191,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
 
             <div className="form-group">
               <label className="form-label">Task Type</label>
-              <select
-                className="form-input"
-                value={taskData.task_type}
-                onChange={(e) => handleChange("task_type", e.target.value)}
-              >
+              <select className="form-input" value={taskData.task_type} onChange={(e) => handleChange("task_type", e.target.value)}>
                 <option value="">Select type</option>
                 {(taskTypes || []).map((t) => (
                   <option key={t} value={t}>
@@ -218,42 +203,22 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
 
             <div className="form-group">
               <label className="form-label">Start Date</label>
-              <input
-                type="date"
-                className="form-input"
-                value={taskData.start_date || ""}
-                onChange={(e) => handleChange("start_date", e.target.value)}
-              />
+              <input type="date" className="form-input" value={taskData.start_date || ""} onChange={(e) => handleChange("start_date", e.target.value)} />
             </div>
 
             <div className="form-group">
               <label className="form-label">End Date</label>
-              <input
-                type="date"
-                className="form-input"
-                value={taskData.end_date || ""}
-                onChange={(e) => handleChange("end_date", e.target.value)}
-              />
+              <input type="date" className="form-input" value={taskData.end_date || ""} onChange={(e) => handleChange("end_date", e.target.value)} />
             </div>
 
             <div className="form-group">
               <label className="form-label">Due Date</label>
-              <input
-                type="date"
-                className="form-input"
-                value={taskData.due_date || ""}
-                onChange={(e) => handleChange("due_date", e.target.value)}
-              />
+              <input type="date" className="form-input" value={taskData.due_date || ""} onChange={(e) => handleChange("due_date", e.target.value)} />
             </div>
 
             <div className="form-group form-group-full">
               <label className="form-label">Notes</label>
-              <textarea
-                className="form-textarea"
-                value={taskData.notes || ""}
-                onChange={(e) => handleChange("notes", e.target.value)}
-                placeholder="Add notes / context"
-              />
+              <textarea className="form-textarea" value={taskData.notes || ""} onChange={(e) => handleChange("notes", e.target.value)} placeholder="Add notes / context" />
             </div>
           </div>
 
@@ -279,9 +244,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setLogText(editingLog?.notes || "");
-    }
+    if (isOpen) setLogText(editingLog?.notes || "");
   }, [editingLog, isOpen]);
 
   const handleSubmit = async (e) => {
@@ -290,8 +253,8 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
       alert("Log notes are required");
       return;
     }
-    setLoading(true);
 
+    setLoading(true);
     try {
       await onSave(logText);
       onClose();
@@ -321,12 +284,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
         <form onSubmit={handleSubmit} className="modal-body">
           <div className="form-group">
             <label className="form-label">Notes</label>
-            <textarea
-              className="form-textarea"
-              value={logText}
-              onChange={(e) => setLogText(e.target.value)}
-              placeholder="Add progress update, decisions, meeting notes, etc."
-            />
+            <textarea className="form-textarea" value={logText} onChange={(e) => setLogText(e.target.value)} placeholder="Add progress update, decisions, meeting notes, etc." />
           </div>
 
           <div className="modal-actions">
@@ -367,7 +325,7 @@ const ErrorState = ({ error, onBack }) => (
       <h2 className="error-title">Something went wrong</h2>
       <p className="error-message">{error || "Project not found"}</p>
       <button onClick={onBack} className="action-button primary">
-        <span>Back to Home</span>
+        <span>Back</span>
       </button>
     </div>
   </div>
@@ -429,7 +387,6 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
-
   }, [projectId]);
 
   return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
@@ -519,8 +476,6 @@ function ProjectDetails() {
       lastLogDate,
       daysSinceLastLog,
       health,
-      isProjectOverdue,
-      isProjectDueSoon,
     };
   }, [project, tasks, logs]);
 
@@ -574,15 +529,12 @@ function ProjectDetails() {
 
   const healthMeta = useMemo(() => {
     const h = projectMonitor.health;
-    if (h === "RED") {
-      return { label: "At Risk", className: "health-red", Icon: FaExclamationTriangle };
-    }
-    if (h === "AMBER") {
-      return { label: "Watch", className: "health-amber", Icon: FaClock };
-    }
+    if (h === "RED") return { label: "At Risk", className: "health-red", Icon: FaExclamationTriangle };
+    if (h === "AMBER") return { label: "Watch", className: "health-amber", Icon: FaClock };
     return { label: "Healthy", className: "health-green", Icon: FaCheckCircle };
   }, [projectMonitor.health]);
 
+  // ---- Edit project now lives in Project Details header ----
   const handleEditToggle = () => {
     if (isEditing) {
       setEditProject(project);
@@ -654,6 +606,7 @@ function ProjectDetails() {
 
   const saveTask = async (taskData) => {
     if (!project?.id) return;
+
     if (editingTask?.id) {
       const { error } = await supabase.from("project_tasks").update(taskData).eq("id", editingTask.id);
       if (error) throw error;
@@ -661,6 +614,7 @@ function ProjectDetails() {
       const { error } = await supabase.from("project_tasks").insert({ ...taskData, project_id: project.id });
       if (error) throw error;
     }
+
     await fetchTasks();
   };
 
@@ -688,6 +642,7 @@ function ProjectDetails() {
 
   const saveLog = async (notes) => {
     if (!project?.id) return;
+
     if (editingLog?.id) {
       const { error } = await supabase.from("project_logs").update({ notes }).eq("id", editingLog.id);
       if (error) throw error;
@@ -695,6 +650,7 @@ function ProjectDetails() {
       const { error } = await supabase.from("project_logs").insert({ project_id: project.id, notes });
       if (error) throw error;
     }
+
     await fetchLogs();
   };
 
@@ -720,86 +676,74 @@ function ProjectDetails() {
 
   return (
     <div className="project-details-container theme-light">
-      <header className="top-bar">
-        <button className="icon-link" onClick={handleBack}>
-          <FaTimes />
-          <span>Back</span>
-        </button>
-
-        <div className="top-bar-actions">
-          <button className="action-button secondary" onClick={handleEditToggle}>
-            <FaEdit />
-            <span>{isEditing ? "Cancel Edit" : "Edit Project"}</span>
-          </button>
-
-          {project?.customer_name && (
-            <button className="action-button secondary" onClick={openCustomer}>
-              <FaUsers />
-              <span>{project.customer_name}</span>
-            </button>
-          )}
-        </div>
-      </header>
+      {/* top-bar removed */}
 
       <section className="project-header">
         <div className="project-hero">
-          <div className="project-title-section">
-            <div className="project-icon-wrapper">
-              <FaProjectDiagram className="project-icon" />
-            </div>
+          <div className="project-title-content">
+            <div className="project-hero-row">
+              {/* Consolidated into this single block */}
+              <div className="project-hero-right hero-consolidated">
+                <div className="hero-main-row">
+                  <div className="hero-title-block">
+                    <div className="hero-title-line">
+                      <h1 className="project-title">{project.project_name || "Unnamed Project"}</h1>
 
-            <div className="project-title-content">
-              <div className="project-hero-row">
-                <div className="project-hero-left">
-                  <h1 className="project-title">{project.project_name || "Unnamed Project"}</h1>
+                      <button className="hero-back-link" onClick={handleBack} type="button" title="Back">
+                        <FaTimes />
+                        <span>Back</span>
+                      </button>
+                    </div>
 
-                  <div className="project-customer-row">
-                    <FaUsers className="subtitle-icon" />
-                    <span className="project-customer-text">{project.customer_name || "No customer"}</span>
+                    <button className="hero-customer-link" onClick={openCustomer} type="button" title="Open customer">
+                      <FaUsers className="subtitle-icon" />
+                      <span className="project-customer-text">{project.customer_name || "No customer"}</span>
+                    </button>
                   </div>
 
-                  <div className="project-stage-row">
-                    <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
-                      {getSalesStageIcon(project.sales_stage)}
-                      <span>{project.sales_stage || "No Stage"}</span>
-                    </span>
+                  <div className="hero-metrics-block">
+                    <div className="hero-badges">
+                      <span className={`health-badge ${healthMeta.className}`}>
+                        <healthMeta.Icon />
+                        <span>{healthMeta.label}</span>
+                      </span>
+
+                      <span className={`metric-badge ${projectMonitor.overdueCount > 0 ? "metric-danger" : "metric-muted"}`}>
+                        <FaExclamationTriangle />
+                        <span>Overdue: {projectMonitor.overdueCount}</span>
+                      </span>
+
+                      <span className={`metric-badge ${projectMonitor.dueNext7Count > 0 ? "metric-warn" : "metric-muted"}`}>
+                        <FaClock />
+                        <span>Next 7d: {projectMonitor.dueNext7Count}</span>
+                      </span>
+
+                      <span className={`metric-badge ${projectMonitor.unassignedCount > 0 ? "metric-neutral" : "metric-muted"}`}>
+                        <FaUsers />
+                        <span>Unassigned: {projectMonitor.unassignedCount}</span>
+                      </span>
+
+                      <span className="metric-badge metric-muted">
+                        <FaFileAlt />
+                        <span>Last update: {projectMonitor.lastLogDate ? formatDate(projectMonitor.lastLogDate) : "-"}</span>
+                      </span>
+
+                      {project.deal_value !== null && project.deal_value !== undefined && (
+                        <span className="deal-badge">
+                          <FaDollarSign />
+                          <span>{formatCurrency(project.deal_value)}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="project-hero-right">
-                  <div className="hero-badges">
-                    <span className={`health-badge ${healthMeta.className}`}>
-                      <healthMeta.Icon />
-                      <span>{healthMeta.label}</span>
-                    </span>
-
-                    <span className={`metric-badge ${projectMonitor.overdueCount > 0 ? "metric-danger" : "metric-muted"}`}>
-                      <FaExclamationTriangle />
-                      <span>Overdue: {projectMonitor.overdueCount}</span>
-                    </span>
-
-                    <span className={`metric-badge ${projectMonitor.dueNext7Count > 0 ? "metric-warn" : "metric-muted"}`}>
-                      <FaClock />
-                      <span>Next 7d: {projectMonitor.dueNext7Count}</span>
-                    </span>
-
-                    <span className={`metric-badge ${projectMonitor.unassignedCount > 0 ? "metric-neutral" : "metric-muted"}`}>
-                      <FaUsers />
-                      <span>Unassigned: {projectMonitor.unassignedCount}</span>
-                    </span>
-
-                    <span className="metric-badge metric-muted">
-                      <FaFileAlt />
-                      <span>Last update: {projectMonitor.lastLogDate ? formatDate(projectMonitor.lastLogDate) : "-"}</span>
-                    </span>
-                  </div>
-
-                  {project.deal_value !== null && project.deal_value !== undefined && (
-                    <span className="deal-badge">
-                      <FaDollarSign />
-                      <span>{formatCurrency(project.deal_value)}</span>
-                    </span>
-                  )}
+                {/* Keep stage row separate (as requested) */}
+                <div className="project-stage-row">
+                  <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
+                    {getSalesStageIcon(project.sales_stage)}
+                    <span>{project.sales_stage || "No Stage"}</span>
+                  </span>
                 </div>
               </div>
             </div>
@@ -816,12 +760,27 @@ function ProjectDetails() {
                 <span>Project Details</span>
               </div>
 
-              {isEditing && (
-                <button className="action-button primary" onClick={saveProjectEdits} disabled={saving}>
-                  <FaSave />
-                  <span>{saving ? "Saving..." : "Save Changes"}</span>
-                </button>
-              )}
+              {/* Edit controls moved here */}
+              <div className="inline-actions">
+                {!isEditing ? (
+                  <button className="action-button secondary" onClick={handleEditToggle} type="button">
+                    <FaEdit />
+                    <span>Edit Project</span>
+                  </button>
+                ) : (
+                  <>
+                    <button className="action-button secondary" onClick={handleEditToggle} disabled={saving} type="button">
+                      <FaTimes />
+                      <span>Cancel</span>
+                    </button>
+
+                    <button className="action-button primary" onClick={saveProjectEdits} disabled={saving} type="button">
+                      <FaSave />
+                      <span>{saving ? "Saving..." : "Save"}</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             {!isEditing ? (
@@ -849,122 +808,62 @@ function ProjectDetails() {
                 </div>
               </div>
             ) : (
-              <>
-                <div className="project-edit-grid">
-                  <div className="form-group">
-                    <label className="form-label">
-                      <FaBullseye className="form-icon" />
-                      Project Name
-                    </label>
-                    <input
-                      type="text"
-                      name="project_name"
-                      value={editProject.project_name || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">
-                      <FaUsers className="form-icon" />
-                      Customer
-                    </label>
-                    <input
-                      type="text"
-                      name="customer_name"
-                      value={editProject.customer_name || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Account Manager</label>
-                    <input
-                      type="text"
-                      name="account_manager"
-                      value={editProject.account_manager || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Country</label>
-                    <input
-                      type="text"
-                      name="country"
-                      value={editProject.country || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">
-                      <FaChartLine className="form-icon" />
-                      Sales Stage
-                    </label>
-                    <input
-                      type="text"
-                      name="sales_stage"
-                      value={editProject.sales_stage || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">
-                      <FaDollarSign className="form-icon" />
-                      Deal Value (USD)
-                    </label>
-                    <input
-                      type="number"
-                      name="deal_value"
-                      value={editProject.deal_value ?? ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">
-                      <FaCalendarAlt className="form-icon" />
-                      Due Date
-                    </label>
-                    <input
-                      type="date"
-                      name="due_date"
-                      value={editProject.due_date || ""}
-                      onChange={handleEditChange}
-                      className="form-input"
-                    />
-                  </div>
-
-                  <div className="form-group form-group-full">
-                    <label className="form-label">Scope</label>
-                    <textarea
-                      name="scope"
-                      value={editProject.scope || ""}
-                      onChange={handleEditChange}
-                      className="form-textarea"
-                    />
-                  </div>
+              <div className="project-edit-grid">
+                <div className="form-group">
+                  <label className="form-label">
+                    <FaBullseye className="form-icon" />
+                    Project Name
+                  </label>
+                  <input type="text" name="project_name" value={editProject.project_name || ""} onChange={handleEditChange} className="form-input" />
                 </div>
 
-                <div className="project-edit-actions">
-                  <button className="action-button secondary" onClick={handleEditToggle} disabled={saving}>
-                    <FaTimes />
-                    <span>Cancel</span>
-                  </button>
-                  <button className="action-button primary" onClick={saveProjectEdits} disabled={saving}>
-                    <FaSave />
-                    <span>{saving ? "Saving..." : "Save"}</span>
-                  </button>
+                <div className="form-group">
+                  <label className="form-label">
+                    <FaUsers className="form-icon" />
+                    Customer
+                  </label>
+                  <input type="text" name="customer_name" value={editProject.customer_name || ""} onChange={handleEditChange} className="form-input" />
                 </div>
-              </>
+
+                <div className="form-group">
+                  <label className="form-label">Account Manager</label>
+                  <input type="text" name="account_manager" value={editProject.account_manager || ""} onChange={handleEditChange} className="form-input" />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Country</label>
+                  <input type="text" name="country" value={editProject.country || ""} onChange={handleEditChange} className="form-input" />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    <FaChartLine className="form-icon" />
+                    Sales Stage
+                  </label>
+                  <input type="text" name="sales_stage" value={editProject.sales_stage || ""} onChange={handleEditChange} className="form-input" />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    <FaDollarSign className="form-icon" />
+                    Deal Value (USD)
+                  </label>
+                  <input type="number" name="deal_value" value={editProject.deal_value ?? ""} onChange={handleEditChange} className="form-input" />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    <FaCalendarAlt className="form-icon" />
+                    Due Date
+                  </label>
+                  <input type="date" name="due_date" value={editProject.due_date || ""} onChange={handleEditChange} className="form-input" />
+                </div>
+
+                <div className="form-group form-group-full">
+                  <label className="form-label">Scope</label>
+                  <textarea name="scope" value={editProject.scope || ""} onChange={handleEditChange} className="form-textarea" />
+                </div>
+              </div>
             )}
           </section>
 
@@ -976,17 +875,25 @@ function ProjectDetails() {
               </div>
 
               {!isEditingBackground ? (
-                <button className="action-button secondary" onClick={() => setIsEditingBackground(true)}>
+                <button className="action-button secondary" onClick={() => setIsEditingBackground(true)} type="button">
                   <FaEdit />
                   <span>Edit</span>
                 </button>
               ) : (
                 <div className="inline-actions">
-                  <button className="action-button secondary" onClick={() => { setBackgroundDraft(project.remarks || ""); setIsEditingBackground(false); }} disabled={savingBackground}>
+                  <button
+                    className="action-button secondary"
+                    onClick={() => {
+                      setBackgroundDraft(project.remarks || "");
+                      setIsEditingBackground(false);
+                    }}
+                    disabled={savingBackground}
+                    type="button"
+                  >
                     <FaTimes />
                     <span>Cancel</span>
                   </button>
-                  <button className="action-button primary" onClick={saveBackground} disabled={savingBackground}>
+                  <button className="action-button primary" onClick={saveBackground} disabled={savingBackground} type="button">
                     <FaSave />
                     <span>{savingBackground ? "Saving..." : "Save"}</span>
                   </button>
@@ -1021,12 +928,12 @@ function ProjectDetails() {
               </div>
 
               <div className="inline-actions">
-                <button className="filter-button" onClick={() => setShowCompleted((p) => !p)}>
+                <button className="filter-button" onClick={() => setShowCompleted((p) => !p)} type="button">
                   {showCompleted ? <FaEyeSlash /> : <FaEye />}
                   <span>{showCompleted ? "Hide Done" : "Show All"}</span>
                 </button>
 
-                <button className="action-button primary" onClick={openAddTask}>
+                <button className="action-button primary" onClick={openAddTask} type="button">
                   <FaPlus />
                   <span>Add</span>
                 </button>
@@ -1043,9 +950,7 @@ function ProjectDetails() {
                   <div key={t.id} className={`list-item ${t.status === "Completed" ? "is-done" : ""}`}>
                     <div className="list-item-main" onClick={() => openEditTask(t)} role="button" tabIndex={0}>
                       <div className="list-item-top">
-                        <span className={`status-tag status-${safeLower(t.status).replaceAll(" ", "-").replaceAll("/", "-")}`}>
-                          {t.status}
-                        </span>
+                        <span className={`status-tag status-${safeLower(t.status).replaceAll(" ", "-").replaceAll("/", "-")}`}>{t.status}</span>
                         {t.task_type && <span className="type-tag">{t.task_type}</span>}
                       </div>
 
@@ -1064,7 +969,7 @@ function ProjectDetails() {
                     </div>
 
                     <div className="list-item-actions">
-                      <button className="icon-button danger" onClick={() => deleteTask(t.id)} aria-label="Delete task">
+                      <button className="icon-button danger" onClick={() => deleteTask(t.id)} aria-label="Delete task" type="button">
                         <FaTrash />
                       </button>
                     </div>
@@ -1081,7 +986,7 @@ function ProjectDetails() {
                 <span>Project Logs</span>
               </div>
 
-              <button className="action-button primary" onClick={openAddLog}>
+              <button className="action-button primary" onClick={openAddLog} type="button">
                 <FaPlus />
                 <span>Add</span>
               </button>
@@ -1105,7 +1010,7 @@ function ProjectDetails() {
                     </div>
 
                     <div className="list-item-actions">
-                      <button className="icon-button danger" onClick={() => deleteLog(l.id)} aria-label="Delete log">
+                      <button className="icon-button danger" onClick={() => deleteLog(l.id)} aria-label="Delete log" type="button">
                         <FaTrash />
                       </button>
                     </div>
@@ -1126,12 +1031,7 @@ function ProjectDetails() {
         taskTypes={taskTypes}
       />
 
-      <LogModal
-        isOpen={showLogModal}
-        onClose={() => setShowLogModal(false)}
-        onSave={saveLog}
-        editingLog={editingLog}
-      />
+      <LogModal isOpen={showLogModal} onClose={() => setShowLogModal(false)} onSave={saveLog} editingLog={editingLog} />
     </div>
   );
 }
