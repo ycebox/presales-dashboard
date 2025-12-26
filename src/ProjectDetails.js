@@ -149,7 +149,7 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
             <FaTasks />
             <span>{editingTask ? "Edit Task" : "Add Task"}</span>
           </div>
-          <button className="icon-button" onClick={onClose} aria-label="Close">
+          <button className="icon-button" onClick={onClose} aria-label="Close" type="button">
             <FaTimes />
           </button>
         </div>
@@ -276,7 +276,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
             <FaBookOpen />
             <span>{editingLog ? "Edit Log" : "Add Log"}</span>
           </div>
-          <button className="icon-button" onClick={onClose} aria-label="Close">
+          <button className="icon-button" onClick={onClose} aria-label="Close" type="button">
             <FaTimes />
           </button>
         </div>
@@ -324,7 +324,7 @@ const ErrorState = ({ error, onBack }) => (
       </div>
       <h2 className="error-title">Something went wrong</h2>
       <p className="error-message">{error || "Project not found"}</p>
-      <button onClick={onBack} className="action-button primary">
+      <button onClick={onBack} className="action-button primary" type="button">
         <span>Back</span>
       </button>
     </div>
@@ -457,9 +457,7 @@ function ProjectDetails() {
       return dates[0] || null;
     })();
 
-    const daysSinceLastLog = lastLogDate
-      ? Math.floor((new Date().getTime() - lastLogDate.getTime()) / (1000 * 60 * 60 * 24))
-      : null;
+    const daysSinceLastLog = lastLogDate ? Math.floor((new Date().getTime() - lastLogDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
     const projectDue = parseDate(project?.due_date);
     const isProjectOverdue = projectDue ? projectDue < today : false;
@@ -676,75 +674,67 @@ function ProjectDetails() {
 
   return (
     <div className="project-details-container theme-light">
-      {/* top-bar removed */}
-
       <section className="project-header">
         <div className="project-hero">
           <div className="project-title-content">
             <div className="project-hero-row">
-              {/* Consolidated into this single block */}
               <div className="project-hero-right hero-consolidated">
                 <div className="hero-main-row">
                   <div className="hero-title-block">
                     <div className="hero-title-line">
                       <h1 className="project-title">{project.project_name || "Unnamed Project"}</h1>
-
-                      <button className="hero-back-link" onClick={handleBack} type="button" title="Back">
-                        <FaTimes />
-                        <span>Back</span>
-                      </button>
                     </div>
 
                     <button className="hero-customer-link" onClick={openCustomer} type="button" title="Open customer">
                       <FaUsers className="subtitle-icon" />
                       <span className="project-customer-text">{project.customer_name || "No customer"}</span>
                     </button>
-                  </div>
 
-                  <div className="hero-metrics-block">
-                    <div className="hero-badges">
-                      <span className={`health-badge ${healthMeta.className}`}>
-                        <healthMeta.Icon />
-                        <span>{healthMeta.label}</span>
-                      </span>
-
-                      <span className={`metric-badge ${projectMonitor.overdueCount > 0 ? "metric-danger" : "metric-muted"}`}>
-                        <FaExclamationTriangle />
-                        <span>Overdue: {projectMonitor.overdueCount}</span>
-                      </span>
-
-                      <span className={`metric-badge ${projectMonitor.dueNext7Count > 0 ? "metric-warn" : "metric-muted"}`}>
-                        <FaClock />
-                        <span>Next 7d: {projectMonitor.dueNext7Count}</span>
-                      </span>
-
-                      <span className={`metric-badge ${projectMonitor.unassignedCount > 0 ? "metric-neutral" : "metric-muted"}`}>
-                        <FaUsers />
-                        <span>Unassigned: {projectMonitor.unassignedCount}</span>
-                      </span>
-
-                      <span className="metric-badge metric-muted">
-                        <FaFileAlt />
-                        <span>Last update: {projectMonitor.lastLogDate ? formatDate(projectMonitor.lastLogDate) : "-"}</span>
-                      </span>
-
-                      {project.deal_value !== null && project.deal_value !== undefined && (
-                        <span className="deal-badge">
-                          <FaDollarSign />
-                          <span>{formatCurrency(project.deal_value)}</span>
+                    {/* Metrics now below title block */}
+                    <div className="hero-metrics-block">
+                      <div className="hero-badges">
+                        {/* Sales stage is now part of metrics */}
+                        <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
+                          {getSalesStageIcon(project.sales_stage)}
+                          <span>{project.sales_stage || "No Stage"}</span>
                         </span>
-                      )}
+
+                        <span className={`health-badge ${healthMeta.className}`}>
+                          <healthMeta.Icon />
+                          <span>{healthMeta.label}</span>
+                        </span>
+
+                        <span className={`metric-badge ${projectMonitor.overdueCount > 0 ? "metric-danger" : "metric-muted"}`}>
+                          <FaExclamationTriangle />
+                          <span>Overdue: {projectMonitor.overdueCount}</span>
+                        </span>
+
+                        <span className={`metric-badge ${projectMonitor.dueNext7Count > 0 ? "metric-warn" : "metric-muted"}`}>
+                          <FaClock />
+                          <span>Next 7d: {projectMonitor.dueNext7Count}</span>
+                        </span>
+
+                        <span className={`metric-badge ${projectMonitor.unassignedCount > 0 ? "metric-neutral" : "metric-muted"}`}>
+                          <FaUsers />
+                          <span>Unassigned: {projectMonitor.unassignedCount}</span>
+                        </span>
+
+                        <span className="metric-badge metric-muted">
+                          <FaFileAlt />
+                          <span>Last update: {projectMonitor.lastLogDate ? formatDate(projectMonitor.lastLogDate) : "-"}</span>
+                        </span>
+
+                        {project.deal_value !== null && project.deal_value !== undefined && (
+                          <span className="deal-badge">
+                            <FaDollarSign />
+                            <span>{formatCurrency(project.deal_value)}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Keep stage row separate (as requested) */}
-                <div className="project-stage-row">
-                  <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
-                    {getSalesStageIcon(project.sales_stage)}
-                    <span>{project.sales_stage || "No Stage"}</span>
-                  </span>
-                </div>
+                {/* project-stage-row removed */}
               </div>
             </div>
           </div>
@@ -760,7 +750,6 @@ function ProjectDetails() {
                 <span>Project Details</span>
               </div>
 
-              {/* Edit controls moved here */}
               <div className="inline-actions">
                 {!isEditing ? (
                   <button className="action-button secondary" onClick={handleEditToggle} type="button">
