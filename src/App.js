@@ -1,6 +1,6 @@
 // src/App.js
 import React, { useEffect, useMemo, useState } from 'react';
-import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { supabase } from './supabaseClient';
 
@@ -48,6 +48,8 @@ function AppHeader() {
 
 // ----------------- HOME DASHBOARD -----------------
 function HomeDashboard() {
+  const navigate = useNavigate(); // ✅ FIX: define navigate
+
   const [projects, setProjects] = useState([]);
   const [customerIdMap, setCustomerIdMap] = useState({});
   const [portfolioSummary, setPortfolioSummary] = useState({
@@ -270,25 +272,20 @@ function HomeDashboard() {
                     <tr key={p.id}>
                       <td>
                         {customerIdMap[(p.customer_name || '').trim()] ? (
-                       <button
-  className="table-link-btn"
-  onClick={() =>
-    navigate(`/customer/${customerIdMap[(p.customer_name || '').trim()]}`)
-  }
->
-  {p.customer_name}
-</button>
+                          <button
+                            className="table-link-btn"
+                            onClick={() => navigate(`/customer/${customerIdMap[(p.customer_name || '').trim()]}`)}
+                          >
+                            {p.customer_name}
+                          </button>
                         ) : (
                           p.customer_name
                         )}
                       </td>
                       <td>
-                        <button
-  className="table-link-btn"
-  onClick={() => navigate(`/project/${p.id}`)}
->
-  {p.project_name}
-</button>
+                        <button className="table-link-btn" onClick={() => navigate(`/project/${p.id}`)}>
+                          {p.project_name}
+                        </button>
                       </td>
                       <td>{p.sales_stage}</td>
                       <td className="td-right">{formatCurrency(p.deal_value)}</td>
