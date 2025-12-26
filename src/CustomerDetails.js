@@ -176,9 +176,7 @@ const CustomerDetails = () => {
   const [metrics, setMetrics] = useState(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
 
-  // ✅ separate drafts:
-  // - notesDraft -> customers.notes (My Notes)
-  // - company_profile -> customers.company_profile (Company Profile)
+  // notesDraft -> customers.notes (My Notes)
   const [notesDraft, setNotesDraft] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
 
@@ -220,12 +218,6 @@ const CustomerDetails = () => {
       currency: 'USD',
       maximumFractionDigits: 0,
     });
-  };
-
-  const formatNumber = (value) => {
-    const n = Number(value);
-    if (value === null || value === undefined || value === '' || Number.isNaN(n)) return '—';
-    return n.toLocaleString();
   };
 
   const formatCompact = (value) => {
@@ -273,6 +265,16 @@ const CustomerDetails = () => {
     });
   }, []);
 
+  // ✅ numeric-only validation for snapshot fields
+  const setMetricNumber = useCallback(
+    (field) => (e) => {
+      const raw = e.target.value ?? '';
+      const digitsOnly = String(raw).replace(/[^\d]/g, ''); // keep only 0-9
+      setMetricsDraft((p) => ({ ...p, [field]: digitsOnly }));
+    },
+    []
+  );
+
   const fetchCustomer = useCallback(async () => {
     try {
       setLoading(true);
@@ -296,8 +298,6 @@ const CustomerDetails = () => {
 
       setCustomer(data);
       setEditCustomer(data);
-
-      // ✅ notesDraft uses customers.notes
       setNotesDraft(data?.notes || '');
     } catch (err) {
       console.error('Error fetching customer:', err);
@@ -414,47 +414,6 @@ const CustomerDetails = () => {
       .filter((s) => s.name || s.role || s.email || s.phone);
   }, [customer]);
 
-  const dealInsight = useMemo(() => {
-    const active = (projects || []).filter((p) => !isProjectCompleted(getProjectStage(p)));
-
-    if (!active.length) {
-      return {
-        primary: null,
-        attention: 'none',
-        attentionLabel: '—',
-        reason: '',
-      };
-    }
-
-    const sorted = [...active].sort((a, b) => {
-      const sr = getStageRank(getProjectStage(b)) - getStageRank(getProjectStage(a));
-      if (sr !== 0) return sr;
-
-      const vr = (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0);
-      if (vr !== 0) return vr;
-
-      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-    });
-
-    const primary = sorted[0];
-
-    let attention = 'green';
-    const rank = getStageRank(getProjectStage(primary));
-
-    if (rank >= 55) attention = 'red';
-    else if (rank >= 40) attention = 'amber';
-    else attention = 'green';
-
-    const attentionLabel =
-      attention === 'red' ? 'High' : attention === 'amber' ? 'Medium' : 'Low';
-
-    let reason = '';
-    if (rank >= 55) reason = 'late-stage deal';
-    else if (rank >= 40) reason = 'active opportunity';
-
-    return { primary, attention, attentionLabel, reason };
-  }, [projects]);
-
   const visibleProjects = useMemo(() => {
     let list = projects || [];
 
@@ -463,8 +422,6 @@ const CustomerDetails = () => {
     }
 
     const withSort = [...list];
-
-    // Default sort: stage importance, then deal value (high to low), then newest
     withSort.sort((a, b) => {
       const sr = getStageRank(getProjectStage(b)) - getStageRank(getProjectStage(a));
       if (sr !== 0) return sr;
@@ -514,8 +471,6 @@ const CustomerDetails = () => {
             editCustomer?.status_id === '' || editCustomer?.status_id == null
               ? null
               : Number(editCustomer.status_id),
-
-          // ✅ Company profile now from company_profile column
           company_profile: editCustomer?.company_profile ?? null,
         })
         .eq('id', resolvedCustomerId);
@@ -546,7 +501,6 @@ const CustomerDetails = () => {
           editCustomer?.status_id === '' || editCustomer?.status_id == null
             ? null
             : Number(editCustomer.status_id),
-
         company_profile: editCustomer?.company_profile ?? null,
       };
 
@@ -555,7 +509,6 @@ const CustomerDetails = () => {
       setIsEditing(false);
 
       await fetchProjects(newName);
-
       alert('Customer updated successfully');
     } catch (err) {
       console.error('Error updating customer:', err);
@@ -563,7 +516,6 @@ const CustomerDetails = () => {
     }
   };
 
-  // ✅ Save "My Notes" -> customers.notes
   const handleSaveNotes = async () => {
     try {
       setSavingNotes(true);
@@ -587,7 +539,6 @@ const CustomerDetails = () => {
     }
   };
 
-  // ✅ Save metrics -> customer_metrics (upsert)
   const handleSaveMetrics = async () => {
     try {
       setSavingMetrics(true);
@@ -679,7 +630,6 @@ const CustomerDetails = () => {
     }
   };
 
-  // keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
       const tag = e.target?.tagName ? e.target.tagName.toLowerCase() : '';
@@ -697,7 +647,6 @@ const CustomerDetails = () => {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // ----------- Modals (Stakeholders / Project) -----------
   const StakeholdersModal = ({ isOpen, onClose }) => {
     const [rows, setRows] = useState([]);
 
@@ -946,7 +895,6 @@ const CustomerDetails = () => {
       </Modal>
     );
   };
-  // ------------------------------------------------------------
 
   if (loading) {
     return (
@@ -992,33 +940,6 @@ const CustomerDetails = () => {
             <span className="cd-sub-pill">
               <Calendar size={14} /> Updated: {lastUpdatedDisplay || '—'}
             </span>
-
-            {(() => {
-              const active = (projects || []).filter((p) => !isProjectCompleted(getProjectStage(p)));
-              if (!active.length) return null;
-
-              const sorted = [...active].sort((a, b) => {
-                const sr = getStageRank(getProjectStage(b)) - getStageRank(getProjectStage(a));
-                if (sr !== 0) return sr;
-                const vr = (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0);
-                if (vr !== 0) return vr;
-                return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-              });
-
-              const primary = sorted[0];
-              const rank = getStageRank(getProjectStage(primary));
-              const attention = rank >= 55 ? 'red' : rank >= 40 ? 'amber' : 'green';
-              const attentionLabel =
-                attention === 'red' ? 'High' : attention === 'amber' ? 'Medium' : 'Low';
-              const reason = rank >= 55 ? 'late-stage deal' : rank >= 40 ? 'active opportunity' : '';
-
-              return (
-                <span className={`cd-attn-pill ${attention}`}>
-                  <AlertTriangle size={14} /> Attention: {attentionLabel}
-                  {reason ? ` • ${reason}` : ''}
-                </span>
-              );
-            })()}
           </div>
         </div>
       </div>
@@ -1171,7 +1092,6 @@ const CustomerDetails = () => {
                 )}
               </div>
 
-              {/* ✅ Company Profile now uses company_profile column */}
               <div className="info-item" style={{ gridColumn: '1 / -1' }}>
                 <label>Company Profile</label>
                 {isEditing ? (
@@ -1284,7 +1204,7 @@ const CustomerDetails = () => {
             )}
           </div>
 
-          {/* ✅ My Notes -> customers.notes */}
+          {/* My Notes */}
           <div className="section-card">
             <div className="section-header">
               <div>
@@ -1447,7 +1367,7 @@ const CustomerDetails = () => {
       />
       <ProjectModal isOpen={showProjectModal} onClose={() => setShowProjectModal(false)} />
 
-      {/* ✅ Editable Metrics Modal */}
+      {/* Editable Metrics Modal */}
       <Modal
         isOpen={showMetricsModal}
         onClose={() => setShowMetricsModal(false)}
@@ -1484,8 +1404,9 @@ const CustomerDetails = () => {
             <div className="cd-metric-label">ATMs</div>
             <input
               className="cd-input"
+              inputMode="numeric"
               value={metricsDraft.atms}
-              onChange={(e) => setMetricsDraft((p) => ({ ...p, atms: e.target.value }))}
+              onChange={setMetricNumber('atms')}
               placeholder="e.g. 120"
             />
           </div>
@@ -1494,8 +1415,9 @@ const CustomerDetails = () => {
             <div className="cd-metric-label">Debit Cards</div>
             <input
               className="cd-input"
+              inputMode="numeric"
               value={metricsDraft.debit_cards}
-              onChange={(e) => setMetricsDraft((p) => ({ ...p, debit_cards: e.target.value }))}
+              onChange={setMetricNumber('debit_cards')}
               placeholder="e.g. 500000"
             />
           </div>
@@ -1504,8 +1426,9 @@ const CustomerDetails = () => {
             <div className="cd-metric-label">Credit Cards</div>
             <input
               className="cd-input"
+              inputMode="numeric"
               value={metricsDraft.credit_cards}
-              onChange={(e) => setMetricsDraft((p) => ({ ...p, credit_cards: e.target.value }))}
+              onChange={setMetricNumber('credit_cards')}
               placeholder="e.g. 200000"
             />
           </div>
@@ -1514,8 +1437,9 @@ const CustomerDetails = () => {
             <div className="cd-metric-label">POS Terminals</div>
             <input
               className="cd-input"
+              inputMode="numeric"
               value={metricsDraft.pos_terminals}
-              onChange={(e) => setMetricsDraft((p) => ({ ...p, pos_terminals: e.target.value }))}
+              onChange={setMetricNumber('pos_terminals')}
               placeholder="e.g. 15000"
             />
           </div>
@@ -1524,8 +1448,9 @@ const CustomerDetails = () => {
             <div className="cd-metric-label">Merchants</div>
             <input
               className="cd-input"
+              inputMode="numeric"
               value={metricsDraft.merchants}
-              onChange={(e) => setMetricsDraft((p) => ({ ...p, merchants: e.target.value }))}
+              onChange={setMetricNumber('merchants')}
               placeholder="e.g. 8000"
             />
           </div>
@@ -1534,11 +1459,18 @@ const CustomerDetails = () => {
             <div className="cd-metric-label">Txn / Day</div>
             <input
               className="cd-input"
+              inputMode="numeric"
               value={metricsDraft.tx_per_day}
-              onChange={(e) => setMetricsDraft((p) => ({ ...p, tx_per_day: e.target.value }))}
+              onChange={setMetricNumber('tx_per_day')}
               placeholder="e.g. 250000"
             />
           </div>
+
+          {metricsLoading ? (
+            <div className="cd-metric" style={{ gridColumn: '1 / -1' }}>
+              <div className="cd-metric-value">Loading current metrics…</div>
+            </div>
+          ) : null}
         </div>
       </Modal>
     </div>
