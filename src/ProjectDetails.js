@@ -197,7 +197,6 @@ const TaskModal = ({
               </select>
             </div>
 
-            {/* ✅ FIXED: wrap map in { } */}
             <div className="form-group">
               <label className="form-label">Assignee</label>
               <select
@@ -464,7 +463,7 @@ function ProjectDetails() {
 
   const [modulesDraft, setModulesDraft] = useState("");
 
-  // ✅ bring back dropdown options
+  // dropdown options
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
 
@@ -602,7 +601,6 @@ function ProjectDetails() {
 
         smartvista_modules: (modulesDraft || "").trim() || null,
 
-        // in Project Details now
         next_key_activity: editProject.next_key_activity || "",
         remarks: editProject.remarks || "",
       };
@@ -1008,11 +1006,7 @@ function ProjectDetails() {
                 logs.map((l) => (
                   <div key={l.id} className="list-item">
                     <div className="list-item-main" onClick={() => openEditLog(l)} role="button" tabIndex={0}>
-                      <div className="list-item-top">
-                        <span className="muted">
-                          <FaCalendarAlt /> {formatDate(l.created_at)}
-                        </span>
-                      </div>
+                      {/* ✅ removed list-item-top (date row) */}
                       <div className="list-item-notes">{l.notes}</div>
                     </div>
 
