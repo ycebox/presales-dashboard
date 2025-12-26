@@ -621,7 +621,7 @@
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(15, 23, 42, 0.10);
   display: inline-block;
 }
 
@@ -709,23 +709,51 @@
 }
 
 /* ✅ NEW COLOR PALETTE (more distinct) */
-.heatmap-cell.status-free { background: rgba(34, 197, 94, 0.18); }     /* green */
-.heatmap-cell.status-busy { background: rgba(59, 130, 246, 0.18); }    /* blue */
-.heatmap-cell.status-leave { background: rgba(148, 163, 184, 0.35); }  /* gray */
-.heatmap-cell.status-travel { background: rgba(249, 115, 22, 0.22); }  /* orange */
-.heatmap-cell.status-training { background: rgba(168, 85, 247, 0.20); }/* purple */
-.heatmap-cell.status-internal { background: rgba(20, 184, 166, 0.20); }/* teal */
-.heatmap-cell.status-other { background: rgba(234, 179, 8, 0.22); }    /* yellow */
+/* ✅ UPDATED COLOR PALETTE (more distinct + requested changes) */
+.heatmap-cell.status-free { background: rgba(34, 197, 94, 0.18); }       /* green */
+.heatmap-cell.status-busy { background: rgba(59, 130, 246, 0.18); }      /* blue */
+.heatmap-cell.status-leave { background: rgba(239, 68, 68, 0.20); }      /* red */
+.heatmap-cell.status-travel { background: rgba(249, 115, 22, 0.22); }    /* orange */
+.heatmap-cell.status-training { background: rgba(168, 85, 247, 0.20); }  /* purple */
+.heatmap-cell.status-internal { background: rgba(30, 64, 175, 0.18); }   /* indigo/navy */
+.heatmap-cell.status-other { background: rgba(234, 179, 8, 0.22); }      /* yellow */
 
+/* Internal: base tint + subtle diagonal pattern */
+.heatmap-cell.status-internal {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(30, 64, 175, 0.18) 0px,
+      rgba(30, 64, 175, 0.18) 8px,
+      rgba(30, 64, 175, 0.08) 8px,
+      rgba(30, 64, 175, 0.08) 16px
+    );
+}
+
+.heatmap-cell.status-internal {
+  box-shadow: inset 0 0 0 1px rgba(30, 64, 175, 0.10);
+}
 /* Legend swatches must match */
-.sw-free { background: rgba(34, 197, 94, 0.60); }
-.sw-busy { background: rgba(59, 130, 246, 0.60); }
-.sw-leave { background: rgba(148, 163, 184, 0.85); }
-.sw-travel { background: rgba(249, 115, 22, 0.75); }
-.sw-training { background: rgba(168, 85, 247, 0.70); }
-.sw-internal { background: rgba(20, 184, 166, 0.70); }
-.sw-other { background: rgba(234, 179, 8, 0.80); }
+/* ✅ Legend swatches (match heatmap hues, slightly stronger opacity for clarity) */
+.sw-free { background: rgba(34, 197, 94, 0.45); }
+.sw-busy { background: rgba(59, 130, 246, 0.45); }
+.sw-leave { background: rgba(239, 68, 68, 0.48); }
+.sw-travel { background: rgba(249, 115, 22, 0.48); }
+.sw-training { background: rgba(168, 85, 247, 0.45); }
+.sw-internal { background: rgba(30, 64, 175, 0.45); }
+.sw-other { background: rgba(234, 179, 8, 0.48); }
 
+/* Legend swatch pattern for Internal (so it matches the table) */
+.legend-swatch.sw-internal {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(30, 64, 175, 0.45) 0px,
+      rgba(30, 64, 175, 0.45) 6px,
+      rgba(30, 64, 175, 0.22) 6px,
+      rgba(30, 64, 175, 0.22) 12px
+    );
+}
 /* ===== SCHEDULE LIST ===== */
 
 .schedule-list-header {
