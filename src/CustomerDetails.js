@@ -139,6 +139,14 @@ const getStatusBadgeClass = (codeOrLabel) => {
   return 'status-none';
 };
 
+const toIntOrNull = (v) => {
+  const s = String(v ?? '').trim();
+  if (!s) return null;
+  const n = Number(s);
+  if (Number.isNaN(n)) return null;
+  return Math.trunc(n);
+};
+
 const CustomerDetails = () => {
   const { id, customerId } = useParams();
   const navigate = useNavigate();
@@ -169,8 +177,21 @@ const CustomerDetails = () => {
   const [metrics, setMetrics] = useState(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
 
-  const [companyProfileDraft, setCompanyProfileDraft] = useState('');
-  const [savingCompanyProfile, setSavingCompanyProfile] = useState(false);
+  // ✅ separate drafts:
+  // - notesDraft -> customers.notes (My Notes)
+  // - companyProfileDraft -> customers.company_profile (Company Profile)
+  const [notesDraft, setNotesDraft] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  const [metricsDraft, setMetricsDraft] = useState({
+    atms: '',
+    debit_cards: '',
+    credit_cards: '',
+    pos_terminals: '',
+    merchants: '',
+    tx_per_day: '',
+  });
+  const [savingMetrics, setSavingMetrics] = useState(false);
 
   const [deletingProjectId, setDeletingProjectId] = useState(null);
 
@@ -178,7 +199,6 @@ const CustomerDetails = () => {
 
   const goToProjectDetails = (projectId) => {
     if (!projectId) return;
-    // Adjust this route if your app uses a different path
     navigate(`/project/${projectId}`);
   };
 
@@ -243,6 +263,17 @@ const CustomerDetails = () => {
     return 10;
   };
 
+  const syncMetricsDraftFromRecord = useCallback((rec) => {
+    setMetricsDraft({
+      atms: rec?.atms ?? '',
+      debit_cards: rec?.debit_cards ?? '',
+      credit_cards: rec?.credit_cards ?? '',
+      pos_terminals: rec?.pos_terminals ?? '',
+      merchants: rec?.merchants ?? '',
+      tx_per_day: rec?.tx_per_day ?? '',
+    });
+  }, []);
+
   const fetchCustomer = useCallback(async () => {
     try {
       setLoading(true);
@@ -251,7 +282,7 @@ const CustomerDetails = () => {
       if (!isValidCustomerId) {
         setCustomer(null);
         setEditCustomer(null);
-        setCompanyProfileDraft('');
+        setNotesDraft('');
         setError('Invalid or missing customer ID in the URL.');
         return;
       }
@@ -266,7 +297,9 @@ const CustomerDetails = () => {
 
       setCustomer(data);
       setEditCustomer(data);
-      setCompanyProfileDraft(data?.notes || '');
+
+      // ✅ notesDraft uses customers.notes
+      setNotesDraft(data?.notes || '');
     } catch (err) {
       console.error('Error fetching customer:', err);
       setError(err.message || 'Failed to load customer');
@@ -328,14 +361,17 @@ const CustomerDetails = () => {
         .maybeSingle();
 
       if (mErr) throw mErr;
+
       setMetrics(data || null);
+      syncMetricsDraftFromRecord(data || null);
     } catch (err) {
       console.error('Error fetching customer metrics:', err);
       setMetrics(null);
+      syncMetricsDraftFromRecord(null);
     } finally {
       setMetricsLoading(false);
     }
-  }, [isValidCustomerId, resolvedCustomerId]);
+  }, [isValidCustomerId, resolvedCustomerId, syncMetricsDraftFromRecord]);
 
   const fetchProjects = useCallback(async (customerName) => {
     try {
@@ -484,7 +520,9 @@ const CustomerDetails = () => {
             editCustomer?.status_id === '' || editCustomer?.status_id == null
               ? null
               : Number(editCustomer.status_id),
-          notes: editCustomer?.notes ?? null,
+
+          // ✅ Company profile now from company_profile column
+          company_profile: editCustomer?.company_profile ?? null,
         })
         .eq('id', resolvedCustomerId);
 
@@ -514,14 +552,13 @@ const CustomerDetails = () => {
           editCustomer?.status_id === '' || editCustomer?.status_id == null
             ? null
             : Number(editCustomer.status_id),
-        notes: editCustomer?.notes ?? null,
+
+        company_profile: editCustomer?.company_profile ?? null,
       };
 
       setCustomer(updatedCustomer);
       setEditCustomer(updatedCustomer);
       setIsEditing(false);
-
-      setCompanyProfileDraft(updatedCustomer.notes || '');
 
       await fetchProjects(newName);
 
@@ -532,11 +569,12 @@ const CustomerDetails = () => {
     }
   };
 
-  const handleSaveCompanyProfile = async () => {
+  // ✅ Save "My Notes" -> customers.notes
+  const handleSaveNotes = async () => {
     try {
-      setSavingCompanyProfile(true);
+      setSavingNotes(true);
 
-      const nextNotes = safeStr(companyProfileDraft);
+      const nextNotes = safeStr(notesDraft);
 
       const { error: nErr } = await supabase
         .from('customers')
@@ -546,13 +584,45 @@ const CustomerDetails = () => {
       if (nErr) throw nErr;
 
       setCustomer((prev) => ({ ...prev, notes: nextNotes }));
-      setEditCustomer((prev) => (prev ? { ...prev, notes: nextNotes } : prev));
-      alert('Company profile saved.');
+      alert('Notes saved.');
     } catch (err) {
-      console.error('Error saving company profile:', err);
-      alert('Failed to save company profile: ' + (err.message || 'Unknown error'));
+      console.error('Error saving notes:', err);
+      alert('Failed to save notes: ' + (err.message || 'Unknown error'));
     } finally {
-      setSavingCompanyProfile(false);
+      setSavingNotes(false);
+    }
+  };
+
+  // ✅ Save metrics -> customer_metrics (upsert)
+  const handleSaveMetrics = async () => {
+    try {
+      setSavingMetrics(true);
+
+      const payload = {
+        customer_id: resolvedCustomerId,
+        atms: toIntOrNull(metricsDraft.atms),
+        debit_cards: toIntOrNull(metricsDraft.debit_cards),
+        credit_cards: toIntOrNull(metricsDraft.credit_cards),
+        pos_terminals: toIntOrNull(metricsDraft.pos_terminals),
+        merchants: toIntOrNull(metricsDraft.merchants),
+        tx_per_day: toIntOrNull(metricsDraft.tx_per_day),
+        updated_at: todayISODate(),
+      };
+
+      const { error: upErr } = await supabase
+        .from('customer_metrics')
+        .upsert(payload, { onConflict: 'customer_id' });
+
+      if (upErr) throw upErr;
+
+      await fetchCustomerMetrics();
+      alert('Customer snapshot updated.');
+      setShowMetricsModal(false);
+    } catch (err) {
+      console.error('Error saving metrics:', err);
+      alert('Failed to save metrics: ' + (err.message || 'Unknown error'));
+    } finally {
+      setSavingMetrics(false);
     }
   };
 
@@ -923,10 +993,8 @@ const CustomerDetails = () => {
       {/* Header */}
       <div className="cd-header">
         <div className="cd-header-main">
-          {/* ✅ Removed status pill beside name */}
           <div className="cd-title">{customer.customer_name || 'Customer'}</div>
 
-          {/* ✅ Subtitle kept minimal */}
           <div className="cd-subtitle">
             <span className="cd-sub-pill">
               <Calendar size={14} /> Updated: {lastUpdatedDisplay || '—'}
@@ -943,6 +1011,7 @@ const CustomerDetails = () => {
                 if (vr !== 0) return vr;
                 return new Date(b.created_at || 0) - new Date(a.created_at || 0);
               });
+
               const primary = sorted[0];
               const rank = getStageRank(getProjectStage(primary));
               const attention = rank >= 55 ? 'red' : rank >= 40 ? 'amber' : 'green';
@@ -971,7 +1040,6 @@ const CustomerDetails = () => {
                 <p className="section-subtitle">Basic details and ownership.</p>
               </div>
 
-              {/* ✅ Edit/Save/Cancel moved here */}
               <div className="section-actions">
                 {!isEditing ? (
                   <button className="action-button primary" onClick={() => setIsEditing(true)}>
@@ -989,74 +1057,7 @@ const CustomerDetails = () => {
                     >
                       Cancel
                     </button>
-                    <button className="action-button primary" onClick={async () => {
-                      try {
-                        const newName = safeStr(editCustomer?.customer_name).trim();
-                        if (!newName) {
-                          alert('Customer name is required.');
-                          return;
-                        }
-
-                        const oldName = customer?.customer_name || '';
-
-                        const { error: updateError } = await supabase
-                          .from('customers')
-                          .update({
-                            customer_name: newName,
-                            account_manager: editCustomer?.account_manager || null,
-                            country: editCustomer?.country || null,
-                            customer_type: editCustomer?.customer_type || null,
-                            status_id:
-                              editCustomer?.status_id === '' || editCustomer?.status_id == null
-                                ? null
-                                : Number(editCustomer.status_id),
-                            notes: editCustomer?.notes ?? null,
-                          })
-                          .eq('id', resolvedCustomerId);
-
-                        if (updateError) throw updateError;
-
-                        if (oldName && newName && oldName !== newName) {
-                          const { error: projErr } = await supabase
-                            .from('projects')
-                            .update({ customer_name: newName })
-                            .eq('customer_name', oldName);
-
-                          if (projErr) {
-                            console.error('Failed to update projects customer_name:', projErr);
-                            alert(
-                              'Customer updated, but project links were not updated. Please rename projects.customer_name manually in Supabase.'
-                            );
-                          }
-                        }
-
-                        const updatedCustomer = {
-                          ...customer,
-                          customer_name: newName,
-                          account_manager: editCustomer?.account_manager || null,
-                          country: editCustomer?.country || null,
-                          customer_type: editCustomer?.customer_type || null,
-                          status_id:
-                            editCustomer?.status_id === '' || editCustomer?.status_id == null
-                              ? null
-                              : Number(editCustomer.status_id),
-                          notes: editCustomer?.notes ?? null,
-                        };
-
-                        setCustomer(updatedCustomer);
-                        setEditCustomer(updatedCustomer);
-                        setIsEditing(false);
-
-                        setCompanyProfileDraft(updatedCustomer.notes || '');
-
-                        await fetchProjects(newName);
-
-                        alert('Customer updated successfully');
-                      } catch (err) {
-                        console.error('Error updating customer:', err);
-                        alert('Failed to update customer: ' + (err.message || 'Unknown error'));
-                      }
-                    }}>
+                    <button className="action-button primary" onClick={handleUpdateCustomer}>
                       <Save size={14} />
                       Save
                     </button>
@@ -1176,18 +1177,21 @@ const CustomerDetails = () => {
                 )}
               </div>
 
+              {/* ✅ Company Profile now uses company_profile column */}
               <div className="info-item" style={{ gridColumn: '1 / -1' }}>
                 <label>Company Profile</label>
                 {isEditing ? (
                   <textarea
                     className="info-textarea"
-                    value={editCustomer?.notes || ''}
-                    onChange={(e) => setEditCustomer((prev) => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Short customer context, key points, next steps…"
+                    value={editCustomer?.company_profile || ''}
+                    onChange={(e) =>
+                      setEditCustomer((prev) => ({ ...prev, company_profile: e.target.value }))
+                    }
+                    placeholder="Company background, business, context..."
                     rows={5}
                   />
                 ) : (
-                  <div className="info-value">{customer?.notes || '—'}</div>
+                  <div className="info-value">{customer?.company_profile || '—'}</div>
                 )}
               </div>
             </div>
@@ -1286,7 +1290,7 @@ const CustomerDetails = () => {
             )}
           </div>
 
-          {/* Notes */}
+          {/* ✅ My Notes -> customers.notes */}
           <div className="section-card">
             <div className="section-header">
               <div>
@@ -1296,18 +1300,18 @@ const CustomerDetails = () => {
 
               <button
                 className="action-button primary"
-                onClick={handleSaveCompanyProfile}
-                disabled={savingCompanyProfile}
+                onClick={handleSaveNotes}
+                disabled={savingNotes}
               >
                 <Save size={14} />
-                {savingCompanyProfile ? 'Saving...' : 'Save'}
+                {savingNotes ? 'Saving...' : 'Save'}
               </button>
             </div>
 
             <textarea
               className="notes-textarea"
-              value={companyProfileDraft}
-              onChange={(e) => setCompanyProfileDraft(e.target.value)}
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
               placeholder="Write notes about the customer, meetings, next steps, risks..."
             />
           </div>
@@ -1323,9 +1327,16 @@ const CustomerDetails = () => {
                 <p className="section-subtitle">Quick view of pipeline and footprint.</p>
               </div>
 
-              <button className="action-button" onClick={() => setShowMetricsModal(true)}>
+              {/* ✅ View -> Edit */}
+              <button
+                className="action-button"
+                onClick={() => {
+                  syncMetricsDraftFromRecord(metrics);
+                  setShowMetricsModal(true);
+                }}
+              >
                 <Edit3 size={14} />
-                View
+                Edit
               </button>
             </div>
 
@@ -1397,7 +1408,6 @@ const CustomerDetails = () => {
                 {visibleProjects.map((p) => {
                   const stage = getProjectStage(p);
                   const due = p.due_date ? formatDate(p.due_date) : '';
-                  const isPrimary = false; // primary badge optional now; keep simple
 
                   return (
                     <div key={p.id} className="project-item">
@@ -1411,8 +1421,6 @@ const CustomerDetails = () => {
                           >
                             {p.project_name || '(Unnamed Project)'}
                           </button>
-
-                          {isPrimary ? <span className="project-primary-badge">Primary</span> : null}
                         </h3>
 
                         {p.scope ? <p className="project-scope">{p.scope}</p> : null}
@@ -1461,14 +1469,25 @@ const CustomerDetails = () => {
       />
       <ProjectModal isOpen={showProjectModal} onClose={() => setShowProjectModal(false)} />
 
+      {/* ✅ Editable Metrics Modal */}
       <Modal
         isOpen={showMetricsModal}
         onClose={() => setShowMetricsModal(false)}
-        title="Customer Snapshot"
+        title="Edit Customer Snapshot"
         footer={
-          <button className="action-button primary" onClick={() => setShowMetricsModal(false)}>
-            Close
-          </button>
+          <>
+            <button className="action-button ghost" onClick={() => setShowMetricsModal(false)}>
+              Cancel
+            </button>
+            <button className="action-button" onClick={fetchCustomerMetrics} disabled={metricsLoading}>
+              <ClipboardCopy size={14} />
+              Refresh
+            </button>
+            <button className="action-button primary" onClick={handleSaveMetrics} disabled={savingMetrics}>
+              <Save size={14} />
+              {savingMetrics ? 'Saving...' : 'Save'}
+            </button>
+          </>
         }
       >
         <div className="cd-metrics-grid">
@@ -1485,48 +1504,68 @@ const CustomerDetails = () => {
 
           <div className="cd-metric">
             <div className="cd-metric-label">ATMs</div>
-            <div className="cd-metric-value">{formatNumber(metrics?.atms)}</div>
-          </div>
-          <div className="cd-metric">
-            <div className="cd-metric-label">Debit Cards</div>
-            <div className="cd-metric-value">{formatNumber(metrics?.debit_cards)}</div>
-          </div>
-          <div className="cd-metric">
-            <div className="cd-metric-label">Credit Cards</div>
-            <div className="cd-metric-value">{formatNumber(metrics?.credit_cards)}</div>
-          </div>
-          <div className="cd-metric">
-            <div className="cd-metric-label">POS Terminals</div>
-            <div className="cd-metric-value">{formatNumber(metrics?.pos_terminals)}</div>
-          </div>
-          <div className="cd-metric">
-            <div className="cd-metric-label">Merchants</div>
-            <div className="cd-metric-value">{formatNumber(metrics?.merchants)}</div>
-          </div>
-          <div className="cd-metric">
-            <div className="cd-metric-label">Txn / Day</div>
-            <div className="cd-metric-value">{formatNumber(metrics?.tx_per_day)}</div>
+            <input
+              className="cd-input"
+              value={metricsDraft.atms}
+              onChange={(e) => setMetricsDraft((p) => ({ ...p, atms: e.target.value }))}
+              placeholder="e.g. 120"
+            />
           </div>
 
           <div className="cd-metric">
-            <div className="cd-metric-label">Metrics record</div>
-            <div className="cd-metric-value">
-              {metricsLoading ? 'Loading…' : metrics ? 'Loaded' : '—'}
-            </div>
+            <div className="cd-metric-label">Debit Cards</div>
+            <input
+              className="cd-input"
+              value={metricsDraft.debit_cards}
+              onChange={(e) => setMetricsDraft((p) => ({ ...p, debit_cards: e.target.value }))}
+              placeholder="e.g. 500000"
+            />
           </div>
+
           <div className="cd-metric">
-            <div className="cd-metric-label">Refresh</div>
+            <div className="cd-metric-label">Credit Cards</div>
+            <input
+              className="cd-input"
+              value={metricsDraft.credit_cards}
+              onChange={(e) => setMetricsDraft((p) => ({ ...p, credit_cards: e.target.value }))}
+              placeholder="e.g. 200000"
+            />
+          </div>
+
+          <div className="cd-metric">
+            <div className="cd-metric-label">POS Terminals</div>
+            <input
+              className="cd-input"
+              value={metricsDraft.pos_terminals}
+              onChange={(e) => setMetricsDraft((p) => ({ ...p, pos_terminals: e.target.value }))}
+              placeholder="e.g. 15000"
+            />
+          </div>
+
+          <div className="cd-metric">
+            <div className="cd-metric-label">Merchants</div>
+            <input
+              className="cd-input"
+              value={metricsDraft.merchants}
+              onChange={(e) => setMetricsDraft((p) => ({ ...p, merchants: e.target.value }))}
+              placeholder="e.g. 8000"
+            />
+          </div>
+
+          <div className="cd-metric">
+            <div className="cd-metric-label">Txn / Day</div>
+            <input
+              className="cd-input"
+              value={metricsDraft.tx_per_day}
+              onChange={(e) => setMetricsDraft((p) => ({ ...p, tx_per_day: e.target.value }))}
+              placeholder="e.g. 250000"
+            />
+          </div>
+
+          <div className="cd-metric">
+            <div className="cd-metric-label">Record</div>
             <div className="cd-metric-value">
-              <button
-                className="action-button"
-                onClick={async () => {
-                  await fetchCustomerMetrics();
-                  alert('Metrics refreshed.');
-                }}
-              >
-                <ClipboardCopy size={14} />
-                Refresh
-              </button>
+              {metricsLoading ? 'Loading…' : metrics ? 'Loaded' : 'Not set yet'}
             </div>
           </div>
         </div>
