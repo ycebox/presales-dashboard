@@ -1,4 +1,6 @@
 // src/CustomerDetails.js
+// Updated: Add Project modal now supports Primary/Backup Presales (dropdown from presales_resources)
+// and Corporate checkbox (stores to projects.is_corporate)
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import ReactDOM from 'react-dom';
@@ -7,7 +9,6 @@ import './CustomerDetails.css';
 
 import {
   Calendar,
-  ClipboardCopy,
   Edit3,
   Mail,
   Phone,
@@ -22,6 +23,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 
 const todayISODate = () => new Date().toISOString();
+
 const isValidUUID = (id) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     String(id || '')
@@ -35,7 +37,6 @@ const copyToClipboard = async (text) => {
       await navigator.clipboard.writeText(text);
       return true;
     }
-
     const el = document.createElement('textarea');
     el.value = text;
     el.setAttribute('readonly', '');
@@ -192,6 +193,10 @@ const CustomerDetails = () => {
 
   const [deletingProjectId, setDeletingProjectId] = useState(null);
 
+  // ✅ Presales resources for dropdowns
+  const [presalesOptions, setPresalesOptions] = useState([]);
+  const [presalesLoading, setPresalesLoading] = useState(false);
+
   const isValidCustomerId = useMemo(() => isValidUUID(resolvedCustomerId), [resolvedCustomerId]);
 
   const goToProjectDetails = (projectId) => {
@@ -269,7 +274,7 @@ const CustomerDetails = () => {
   const setMetricNumber = useCallback(
     (field) => (e) => {
       const raw = e.target.value ?? '';
-      const digitsOnly = String(raw).replace(/[^\d]/g, ''); // keep only 0-9
+      const digitsOnly = String(raw).replace(/[^\d]/g, '');
       setMetricsDraft((p) => ({ ...p, [field]: digitsOnly }));
     },
     []
@@ -348,6 +353,26 @@ const CustomerDetails = () => {
     }
   }, []);
 
+  // ✅ Presales resources (dropdown)
+  const fetchPresalesResources = useCallback(async () => {
+    try {
+      setPresalesLoading(true);
+      const { data, error: prErr } = await supabase
+        .from('presales_resources')
+        .select('id,name,is_active')
+        .eq('is_active', true)
+        .order('name');
+
+      if (prErr) throw prErr;
+      setPresalesOptions(data || []);
+    } catch (err) {
+      console.error('Error fetching presales resources:', err);
+      setPresalesOptions([]);
+    } finally {
+      setPresalesLoading(false);
+    }
+  }, []);
+
   const fetchCustomerMetrics = useCallback(async () => {
     if (!isValidCustomerId) return;
     try {
@@ -399,7 +424,15 @@ const CustomerDetails = () => {
     fetchCountries();
     fetchAccountManagers();
     fetchCustomerMetrics();
-  }, [fetchCustomer, fetchStatusOptions, fetchCountries, fetchAccountManagers, fetchCustomerMetrics]);
+    fetchPresalesResources();
+  }, [
+    fetchCustomer,
+    fetchStatusOptions,
+    fetchCountries,
+    fetchAccountManagers,
+    fetchCustomerMetrics,
+    fetchPresalesResources,
+  ]);
 
   useEffect(() => {
     if (!customer?.customer_name) return;
@@ -762,6 +795,7 @@ const CustomerDetails = () => {
     );
   };
 
+  // ✅ Updated Project Modal
   const ProjectModal = ({ isOpen, onClose }) => {
     const [form, setForm] = useState({
       project_name: '',
@@ -770,13 +804,18 @@ const CustomerDetails = () => {
       deal_value: '',
       product: '',
       due_date: '',
+      primary_presales: '',
+      backup_presales: '',
+      is_corporate: false,
     });
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
       if (!isOpen) return;
       setSaving(false);
-    }, [isOpen]);
+      // Load dropdown options on open too (just in case)
+      fetchPresalesResources();
+    }, [isOpen, fetchPresalesResources]);
 
     if (!isOpen) return null;
 
@@ -788,6 +827,7 @@ const CustomerDetails = () => {
 
       try {
         setSaving(true);
+
         await handleCreateProject({
           project_name: safeStr(form.project_name).trim(),
           scope: safeStr(form.scope).trim() || null,
@@ -795,9 +835,18 @@ const CustomerDetails = () => {
           deal_value: form.deal_value ? Number(form.deal_value) : null,
           product: safeStr(form.product).trim() || null,
           due_date: form.due_date || null,
+
+          // ✅ new fields
+          primary_presales: form.primary_presales ? form.primary_presales : null,
+          backup_presales: form.backup_presales ? form.backup_presales : null,
+
+          // ✅ IMPORTANT: column name is is_corporate in your projects table
+          is_corporate: !!form.is_corporate,
         });
+
         setSaving(false);
         onClose();
+
         setForm({
           project_name: '',
           scope: '',
@@ -805,6 +854,9 @@ const CustomerDetails = () => {
           deal_value: '',
           product: '',
           due_date: '',
+          primary_presales: '',
+          backup_presales: '',
+          is_corporate: false,
         });
       } catch (err) {
         setSaving(false);
@@ -891,6 +943,53 @@ const CustomerDetails = () => {
             value={form.due_date}
             onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
           />
+
+          {/* ✅ NEW: Primary/Backup presales */}
+          <div className="cd-form-cols">
+            <div>
+              <label className="cd-label">Primary Presales</label>
+              <select
+                className="cd-input"
+                value={form.primary_presales}
+                onChange={(e) => setForm((p) => ({ ...p, primary_presales: e.target.value }))}
+                disabled={presalesLoading}
+              >
+                <option value="">{presalesLoading ? 'Loading...' : 'Select'}</option>
+                {presalesOptions.map((r) => (
+                  <option key={r.id} value={r.name}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="cd-label">Backup Presales</label>
+              <select
+                className="cd-input"
+                value={form.backup_presales}
+                onChange={(e) => setForm((p) => ({ ...p, backup_presales: e.target.value }))}
+                disabled={presalesLoading}
+              >
+                <option value="">{presalesLoading ? 'Loading...' : 'Select'}</option>
+                {presalesOptions.map((r) => (
+                  <option key={r.id} value={r.name}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* ✅ NEW: corporate flag */}
+          <label className="control-toggle" style={{ marginTop: 6 }}>
+            <input
+              type="checkbox"
+              checked={!!form.is_corporate}
+              onChange={(e) => setForm((p) => ({ ...p, is_corporate: e.target.checked }))}
+            />
+            Corporate project
+          </label>
         </div>
       </Modal>
     );
@@ -1331,6 +1430,21 @@ const CustomerDetails = () => {
                             </span>
                           ) : null}
                         </div>
+
+                        {/* Optional: show presales + corporate in a compact line */}
+                        {(p.primary_presales || p.backup_presales || p.is_corporate) && (
+                          <div className="project-mini-row">
+                            {p.primary_presales ? (
+                              <span className="project-mini-pill">Primary: {p.primary_presales}</span>
+                            ) : null}
+                            {p.backup_presales ? (
+                              <span className="project-mini-pill">Backup: {p.backup_presales}</span>
+                            ) : null}
+                            {p.is_corporate ? (
+                              <span className="project-mini-pill">Corporate</span>
+                            ) : null}
+                          </div>
+                        )}
                       </div>
 
                       <div className="project-details">
