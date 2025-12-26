@@ -742,8 +742,9 @@
 }
 
 .heatmap-cell.status-busy {
-  background: rgba(59, 130, 246, 0.18) !important;
+  background: rgba(37, 99, 235, 0.28) !important; /* darker + a bit stronger */
 }
+
 
 .heatmap-cell.status-leave {
   background: rgba(239, 68, 68, 0.22) !important;
@@ -790,7 +791,7 @@
 /* ===== LEGEND (match grid exactly) ===== */
 
 .sw-free { background: rgba(34, 197, 94, 0.55) !important; }
-.sw-busy { background: rgba(59, 130, 246, 0.55) !important; }
+.sw-busy { background: rgba(37, 99, 235, 0.75) !important; }
 .sw-leave { background: rgba(239, 68, 68, 0.60) !important; }
 .sw-travel { background: rgba(249, 115, 22, 0.60) !important; }
 .sw-training { background: rgba(168, 85, 247, 0.55) !important; }
