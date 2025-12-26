@@ -1324,7 +1324,6 @@ function PresalesOverview() {
             </div>
 
             <div className="schedule-actions">
-              {/* Alias to new CSS toggle classes */}
               <div className="schedule-view-toggle toggle-wrap availability-toggle">
                 <button
                   type="button"
@@ -1342,13 +1341,25 @@ function PresalesOverview() {
                 </button>
               </div>
 
+              {/* ✅ New legend */}
+              <div className="availability-legend" aria-label="Availability legend">
+                <div className="legend-item"><span className="legend-swatch sw-free" /> Free</div>
+                <div className="legend-item"><span className="legend-swatch sw-busy" /> Busy</div>
+                <div className="legend-item"><span className="legend-swatch sw-leave" /> Leave</div>
+                <div className="legend-item"><span className="legend-swatch sw-travel" /> Travel</div>
+                <div className="legend-item"><span className="legend-swatch sw-training" /> Training</div>
+                <div className="legend-item"><span className="legend-swatch sw-internal" /> Internal</div>
+                <div className="legend-item"><span className="legend-swatch sw-other" /> Other</div>
+              </div>
+
               <button type="button" className="btn-secondary" onClick={openScheduleModalForCreate}>
                 <Plane size={16} /> Add schedule
               </button>
             </div>
           </div>
 
-          <div className="heatmap-table">
+          {/* ✅ View class drives sizing behavior (Option A) */}
+          <div className={`heatmap-table ${calendarView === '14' ? 'heatmap-view-14' : 'heatmap-view-30'}`}>
             <div className="heatmap-header">
               <div className="heatmap-presales-name heatmap-header-cell">Presales</div>
               {availabilityGrid.days.map((d) => (
