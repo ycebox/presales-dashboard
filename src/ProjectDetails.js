@@ -86,7 +86,14 @@ const toModulesArray = (value) => {
 };
 
 // ---------- Task Modal ----------
-const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResources = [], taskTypes = [] }) => {
+const TaskModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  editingTask = null,
+  presalesResources = [],
+  taskTypes = [],
+}) => {
   const [taskData, setTaskData] = useState({
     description: "",
     status: "Not Started",
@@ -167,12 +174,21 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
           <div className="form-grid">
             <div className="form-group">
               <label className="form-label">Description</label>
-              <input className="form-input" value={taskData.description} onChange={(e) => handleChange("description", e.target.value)} placeholder="Enter task description" />
+              <input
+                className="form-input"
+                value={taskData.description}
+                onChange={(e) => handleChange("description", e.target.value)}
+                placeholder="Enter task description"
+              />
             </div>
 
             <div className="form-group">
               <label className="form-label">Status</label>
-              <select className="form-input" value={taskData.status} onChange={(e) => handleChange("status", e.target.value)}>
+              <select
+                className="form-input"
+                value={taskData.status}
+                onChange={(e) => handleChange("status", e.target.value)}
+              >
                 {TASK_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -181,21 +197,30 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
               </select>
             </div>
 
+            {/* ✅ FIXED: wrap map in { } */}
             <div className="form-group">
               <label className="form-label">Assignee</label>
-              <select className="form-input" value={taskData.assignee} onChange={(e) => handleChange("assignee", e.target.value)}>
+              <select
+                className="form-input"
+                value={taskData.assignee}
+                onChange={(e) => handleChange("assignee", e.target.value)}
+              >
                 <option value="">Unassigned</option>
-                (presalesResources || []).map((p) => (
+                {(presalesResources || []).map((p) => (
                   <option key={p} value={p}>
                     {p}
                   </option>
-                ))
+                ))}
               </select>
             </div>
 
             <div className="form-group">
               <label className="form-label">Task Type</label>
-              <select className="form-input" value={taskData.task_type} onChange={(e) => handleChange("task_type", e.target.value)}>
+              <select
+                className="form-input"
+                value={taskData.task_type}
+                onChange={(e) => handleChange("task_type", e.target.value)}
+              >
                 <option value="">Select type</option>
                 {(taskTypes || []).map((t) => (
                   <option key={t} value={t}>
@@ -207,22 +232,42 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
 
             <div className="form-group">
               <label className="form-label">Start Date</label>
-              <input type="date" className="form-input" value={taskData.start_date || ""} onChange={(e) => handleChange("start_date", e.target.value)} />
+              <input
+                type="date"
+                className="form-input"
+                value={taskData.start_date || ""}
+                onChange={(e) => handleChange("start_date", e.target.value)}
+              />
             </div>
 
             <div className="form-group">
               <label className="form-label">End Date</label>
-              <input type="date" className="form-input" value={taskData.end_date || ""} onChange={(e) => handleChange("end_date", e.target.value)} />
+              <input
+                type="date"
+                className="form-input"
+                value={taskData.end_date || ""}
+                onChange={(e) => handleChange("end_date", e.target.value)}
+              />
             </div>
 
             <div className="form-group">
               <label className="form-label">Due Date</label>
-              <input type="date" className="form-input" value={taskData.due_date || ""} onChange={(e) => handleChange("due_date", e.target.value)} />
+              <input
+                type="date"
+                className="form-input"
+                value={taskData.due_date || ""}
+                onChange={(e) => handleChange("due_date", e.target.value)}
+              />
             </div>
 
             <div className="form-group form-group-full">
               <label className="form-label">Notes</label>
-              <textarea className="form-textarea" value={taskData.notes || ""} onChange={(e) => handleChange("notes", e.target.value)} placeholder="Add notes / context" />
+              <textarea
+                className="form-textarea"
+                value={taskData.notes || ""}
+                onChange={(e) => handleChange("notes", e.target.value)}
+                placeholder="Add notes / context"
+              />
             </div>
           </div>
 
@@ -288,7 +333,12 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
         <form onSubmit={handleSubmit} className="modal-body">
           <div className="form-group">
             <label className="form-label">Notes</label>
-            <textarea className="form-textarea" value={logText} onChange={(e) => setLogText(e.target.value)} placeholder="Add progress update, decisions, meeting notes, etc." />
+            <textarea
+              className="form-textarea"
+              value={logText}
+              onChange={(e) => setLogText(e.target.value)}
+              placeholder="Add progress update, decisions, meeting notes, etc."
+            />
           </div>
 
           <div className="modal-actions">
@@ -344,7 +394,12 @@ const useProjectData = (projectId) => {
 
   const fetchTasks = async () => {
     try {
-      const { data, error } = await supabase.from("project_tasks").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("project_tasks")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+
       if (error) throw error;
       setTasks(data || []);
     } catch (err) {
@@ -354,7 +409,12 @@ const useProjectData = (projectId) => {
 
   const fetchLogs = async () => {
     try {
-      const { data, error } = await supabase.from("project_logs").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("project_logs")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+
       if (error) throw error;
       setLogs(data || []);
     } catch (err) {
@@ -404,6 +464,31 @@ function ProjectDetails() {
 
   const [modulesDraft, setModulesDraft] = useState("");
 
+  // ✅ bring back dropdown options
+  const [presalesResources, setPresalesResources] = useState([]);
+  const [taskTypes, setTaskTypes] = useState([]);
+
+  useEffect(() => {
+    const loadLists = async () => {
+      try {
+        const [{ data: pData, error: pErr }, { data: tData, error: tErr }] = await Promise.all([
+          supabase.from("presales_resources").select("name").order("name"),
+          supabase.from("task_types").select("name").order("name"),
+        ]);
+
+        if (pErr) console.warn("presales_resources load error:", pErr);
+        if (tErr) console.warn("task_types load error:", tErr);
+
+        setPresalesResources((pData || []).map((x) => x.name).filter(Boolean));
+        setTaskTypes((tData || []).map((x) => x.name).filter(Boolean));
+      } catch (e) {
+        console.warn("Failed loading dropdown lists:", e);
+      }
+    };
+
+    loadLists();
+  }, []);
+
   const projectMonitor = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -451,7 +536,9 @@ function ProjectDetails() {
       return dates[0] || null;
     })();
 
-    const daysSinceLastLog = lastLogDate ? Math.floor((new Date().getTime() - lastLogDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
+    const daysSinceLastLog = lastLogDate
+      ? Math.floor((new Date().getTime() - lastLogDate.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
 
     const projectDue = parseDate(project?.due_date);
     const isProjectOverdue = projectDue ? projectDue < today : false;
@@ -513,10 +600,9 @@ function ProjectDetails() {
         sales_stage: editProject.sales_stage || "",
         due_date: editProject.due_date || null,
 
-        // varchar
         smartvista_modules: (modulesDraft || "").trim() || null,
 
-        // NOW INCLUDED IN PROJECT DETAILS EDIT FLOW
+        // in Project Details now
         next_key_activity: editProject.next_key_activity || "",
         remarks: editProject.remarks || "",
       };
@@ -657,7 +743,7 @@ function ProjectDetails() {
 
       <div className="main-content-grid">
         <div className="main-column">
-          {/* Project Details (now includes next_key_activity + remarks as fields) */}
+          {/* Project Details */}
           <section className="content-card">
             <div className="card-header">
               <div className="card-title">
@@ -724,13 +810,11 @@ function ProjectDetails() {
                   )}
                 </div>
 
-                {/* NEW: Next Key Activity as a field */}
                 <div className="detail-item detail-item-full">
                   <span className="detail-label">Next Key Activity</span>
                   <span className="detail-value">{project.next_key_activity || "-"}</span>
                 </div>
 
-                {/* NEW: Project Background as a field */}
                 <div className="detail-item detail-item-full">
                   <span className="detail-label">Project Background</span>
                   <span className="detail-value">{project.remarks || "-"}</span>
@@ -805,7 +889,6 @@ function ProjectDetails() {
                   <div className="hint-text">Tip: separate using commas.</div>
                 </div>
 
-                {/* Editable Next Key Activity inside project edit */}
                 <div className="form-group form-group-full">
                   <label className="form-label">Next Key Activity</label>
                   <input
@@ -818,7 +901,6 @@ function ProjectDetails() {
                   />
                 </div>
 
-                {/* Editable Project Background inside project edit */}
                 <div className="form-group form-group-full">
                   <label className="form-label">Project Background</label>
                   <textarea
@@ -964,8 +1046,8 @@ function ProjectDetails() {
           await fetchTasks();
         }}
         editingTask={editingTask}
-        presalesResources={[]}
-        taskTypes={[]}
+        presalesResources={presalesResources}
+        taskTypes={taskTypes}
       />
 
       <LogModal
