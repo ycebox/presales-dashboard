@@ -76,7 +76,7 @@ const getSalesStageClass = (stage) => {
   return "stage-active";
 };
 
-// smartvista_modules is VARCHAR in your table, so we treat it as a single string (comma-separated)
+// smartvista_modules is VARCHAR in your schema, treat it as comma-separated
 const toModulesArray = (value) => {
   if (!value) return [];
   return String(value)
@@ -185,11 +185,11 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
               <label className="form-label">Assignee</label>
               <select className="form-input" value={taskData.assignee} onChange={(e) => handleChange("assignee", e.target.value)}>
                 <option value="">Unassigned</option>
-                {(presalesResources || []).map((p) => (
+                (presalesResources || []).map((p) => (
                   <option key={p} value={p}>
                     {p}
                   </option>
-                ))}
+                ))
               </select>
             </div>
 
@@ -402,15 +402,6 @@ function ProjectDetails() {
   const [editingLog, setEditingLog] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
 
-  const [isEditingBackground, setIsEditingBackground] = useState(false);
-  const [backgroundDraft, setBackgroundDraft] = useState("");
-  const [savingBackground, setSavingBackground] = useState(false);
-
-  const [isEditingNextActivity, setIsEditingNextActivity] = useState(false);
-  const [nextActivityDraft, setNextActivityDraft] = useState("");
-  const [savingNextActivity, setSavingNextActivity] = useState(false);
-
-  // modules saved as VARCHAR
   const [modulesDraft, setModulesDraft] = useState("");
 
   const projectMonitor = useMemo(() => {
@@ -476,13 +467,9 @@ function ProjectDetails() {
   useEffect(() => {
     if (project) {
       setEditProject(project);
-      setBackgroundDraft(project.remarks || "");
-      setNextActivityDraft(project.next_key_activity || "");
       setModulesDraft(project.smartvista_modules || "");
     }
   }, [project]);
-
-  const handleBack = () => navigate(-1);
 
   const activeTasksCount = tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status)).length;
   const completedTasksCount = tasks.filter((t) => t.status === "Completed").length;
@@ -514,6 +501,7 @@ function ProjectDetails() {
   const saveProjectEdits = async () => {
     if (!project?.id) return;
     setSaving(true);
+
     try {
       const payload = {
         project_name: editProject.project_name || "",
@@ -525,8 +513,12 @@ function ProjectDetails() {
         sales_stage: editProject.sales_stage || "",
         due_date: editProject.due_date || null,
 
-        // VARCHAR in your schema
+        // varchar
         smartvista_modules: (modulesDraft || "").trim() || null,
+
+        // NOW INCLUDED IN PROJECT DETAILS EDIT FLOW
+        next_key_activity: editProject.next_key_activity || "",
+        remarks: editProject.remarks || "",
       };
 
       const { error } = await supabase.from("projects").update(payload).eq("id", project.id);
@@ -539,40 +531,6 @@ function ProjectDetails() {
       alert(`Failed to save project changes: ${err?.message || "Unknown error"}`);
     } finally {
       setSaving(false);
-    }
-  };
-
-  const saveBackground = async () => {
-    if (!project?.id) return;
-    setSavingBackground(true);
-    try {
-      const { error } = await supabase.from("projects").update({ remarks: backgroundDraft || "" }).eq("id", project.id);
-      if (error) throw error;
-
-      setProject((prev) => ({ ...prev, remarks: backgroundDraft || "" }));
-      setIsEditingBackground(false);
-    } catch (err) {
-      console.error("Error saving project background:", err);
-      alert(`Failed to save project background: ${err?.message || "Unknown error"}`);
-    } finally {
-      setSavingBackground(false);
-    }
-  };
-
-  const saveNextActivity = async () => {
-    if (!project?.id) return;
-    setSavingNextActivity(true);
-    try {
-      const { error } = await supabase.from("projects").update({ next_key_activity: nextActivityDraft || "" }).eq("id", project.id);
-      if (error) throw error;
-
-      setProject((prev) => ({ ...prev, next_key_activity: nextActivityDraft || "" }));
-      setIsEditingNextActivity(false);
-    } catch (err) {
-      console.error("Error saving next key activity:", err);
-      alert(`Failed to save next key activity: ${err?.message || "Unknown error"}`);
-    } finally {
-      setSavingNextActivity(false);
     }
   };
 
@@ -628,7 +586,7 @@ function ProjectDetails() {
   const modulesDisplay = useMemo(() => toModulesArray(project?.smartvista_modules), [project?.smartvista_modules]);
 
   if (loading) return <LoadingState />;
-  if (error || !project) return <ErrorState error={error} onBack={handleBack} />;
+  if (error || !project) return <ErrorState error={error} onBack={() => navigate(-1)} />;
 
   return (
     <div className="project-details-container theme-light">
@@ -699,7 +657,7 @@ function ProjectDetails() {
 
       <div className="main-content-grid">
         <div className="main-column">
-          {/* Project Details */}
+          {/* Project Details (now includes next_key_activity + remarks as fields) */}
           <section className="content-card">
             <div className="card-header">
               <div className="card-title">
@@ -764,6 +722,18 @@ function ProjectDetails() {
                   ) : (
                     <span className="detail-value muted">-</span>
                   )}
+                </div>
+
+                {/* NEW: Next Key Activity as a field */}
+                <div className="detail-item detail-item-full">
+                  <span className="detail-label">Next Key Activity</span>
+                  <span className="detail-value">{project.next_key_activity || "-"}</span>
+                </div>
+
+                {/* NEW: Project Background as a field */}
+                <div className="detail-item detail-item-full">
+                  <span className="detail-label">Project Background</span>
+                  <span className="detail-value">{project.remarks || "-"}</span>
                 </div>
 
                 <div className="detail-item detail-item-full">
@@ -835,109 +805,36 @@ function ProjectDetails() {
                   <div className="hint-text">Tip: separate using commas.</div>
                 </div>
 
+                {/* Editable Next Key Activity inside project edit */}
+                <div className="form-group form-group-full">
+                  <label className="form-label">Next Key Activity</label>
+                  <input
+                    type="text"
+                    name="next_key_activity"
+                    className="form-input"
+                    value={editProject.next_key_activity || ""}
+                    onChange={handleEditChange}
+                    placeholder="e.g. RFP due on Jan 15, Meeting on Jan 10, Demo on Jan 12"
+                  />
+                </div>
+
+                {/* Editable Project Background inside project edit */}
+                <div className="form-group form-group-full">
+                  <label className="form-label">Project Background</label>
+                  <textarea
+                    name="remarks"
+                    value={editProject.remarks || ""}
+                    onChange={handleEditChange}
+                    className="form-textarea"
+                    placeholder="Capture project context, timeline, constraints, dependencies, etc."
+                  />
+                </div>
+
                 <div className="form-group form-group-full">
                   <label className="form-label">Scope</label>
                   <textarea name="scope" value={editProject.scope || ""} onChange={handleEditChange} className="form-textarea" />
                 </div>
               </div>
-            )}
-          </section>
-
-          {/* Next Key Activity */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="card-title">
-                <FaClock />
-                <span>Next Key Activity</span>
-              </div>
-
-              {!isEditingNextActivity ? (
-                <button className="action-button secondary" onClick={() => setIsEditingNextActivity(true)} type="button">
-                  <FaEdit />
-                  <span>Edit</span>
-                </button>
-              ) : (
-                <div className="inline-actions">
-                  <button
-                    className="action-button secondary"
-                    onClick={() => {
-                      setNextActivityDraft(project.next_key_activity || "");
-                      setIsEditingNextActivity(false);
-                    }}
-                    disabled={savingNextActivity}
-                    type="button"
-                  >
-                    <FaTimes />
-                    <span>Cancel</span>
-                  </button>
-                  <button className="action-button primary" onClick={saveNextActivity} disabled={savingNextActivity} type="button">
-                    <FaSave />
-                    <span>{savingNextActivity ? "Saving..." : "Save"}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {!isEditingNextActivity ? (
-              <div className="notes-box">
-                {project.next_key_activity ? <p className="notes-text">{project.next_key_activity}</p> : <p className="muted">No next activity yet.</p>}
-              </div>
-            ) : (
-              <textarea
-                className="notes-editor"
-                value={nextActivityDraft}
-                onChange={(e) => setNextActivityDraft(e.target.value)}
-                placeholder="e.g. RFP due on Jan 15, Meeting on Jan 10, Demo on Jan 12"
-              />
-            )}
-          </section>
-
-          {/* Project Background (same DB field: remarks) */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="card-title">
-                <FaInfo />
-                <span>Project Background</span>
-              </div>
-
-              {!isEditingBackground ? (
-                <button className="action-button secondary" onClick={() => setIsEditingBackground(true)} type="button">
-                  <FaEdit />
-                  <span>Edit</span>
-                </button>
-              ) : (
-                <div className="inline-actions">
-                  <button
-                    className="action-button secondary"
-                    onClick={() => {
-                      setBackgroundDraft(project.remarks || "");
-                      setIsEditingBackground(false);
-                    }}
-                    disabled={savingBackground}
-                    type="button"
-                  >
-                    <FaTimes />
-                    <span>Cancel</span>
-                  </button>
-                  <button className="action-button primary" onClick={saveBackground} disabled={savingBackground} type="button">
-                    <FaSave />
-                    <span>{savingBackground ? "Saving..." : "Save"}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {!isEditingBackground ? (
-              <div className="notes-box">
-                {project.remarks ? <p className="notes-text">{project.remarks}</p> : <p className="muted">No background yet.</p>}
-              </div>
-            ) : (
-              <textarea
-                className="notes-editor"
-                value={backgroundDraft}
-                onChange={(e) => setBackgroundDraft(e.target.value)}
-                placeholder="Capture project context, background, timeline, constraints, dependencies, etc."
-              />
             )}
           </section>
         </div>
