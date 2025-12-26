@@ -30,6 +30,7 @@ import {
 const safeLower = (v) => (typeof v === "string" ? v.toLowerCase() : "");
 
 const TASK_STATUSES = ["Not Started", "In Progress", "Completed", "Cancelled/On-hold"];
+const TASK_PRIORITIES = ["High", "Normal", "Low"];
 
 const formatDate = (dateString) => {
   if (!dateString) return "-";
@@ -97,6 +98,8 @@ const TaskModal = ({
   const [taskData, setTaskData] = useState({
     description: "",
     status: "Not Started",
+    priority: "Normal",
+    estimated_hours: "",
     start_date: "",
     end_date: "",
     due_date: "",
@@ -113,6 +116,11 @@ const TaskModal = ({
       setTaskData({
         description: editingTask.description || "",
         status: editingTask.status || "Not Started",
+        priority: editingTask.priority || "Normal",
+        estimated_hours:
+          editingTask.estimated_hours === null || editingTask.estimated_hours === undefined
+            ? ""
+            : String(editingTask.estimated_hours),
         start_date: editingTask.start_date || "",
         end_date: editingTask.end_date || "",
         due_date: editingTask.due_date || "",
@@ -124,6 +132,8 @@ const TaskModal = ({
       setTaskData({
         description: "",
         status: "Not Started",
+        priority: "Normal",
+        estimated_hours: "",
         start_date: "",
         end_date: "",
         due_date: "",
@@ -145,7 +155,24 @@ const TaskModal = ({
 
     setLoading(true);
     try {
-      await onSave(taskData);
+      // Normalize estimated_hours
+      const normalized = {
+        ...taskData,
+        estimated_hours:
+          taskData.estimated_hours === "" || taskData.estimated_hours === null || taskData.estimated_hours === undefined
+            ? null
+            : Number(taskData.estimated_hours),
+      };
+
+      if (normalized.estimated_hours !== null) {
+        if (Number.isNaN(normalized.estimated_hours) || normalized.estimated_hours < 0) {
+          alert("Estimated hours must be a valid number (0 or higher).");
+          setLoading(false);
+          return;
+        }
+      }
+
+      await onSave(normalized);
       onClose();
     } catch (err) {
       console.error("Task save error:", err);
@@ -195,6 +222,36 @@ const TaskModal = ({
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* ✅ NEW: Priority */}
+            <div className="form-group">
+              <label className="form-label">Priority</label>
+              <select
+                className="form-input"
+                value={taskData.priority}
+                onChange={(e) => handleChange("priority", e.target.value)}
+              >
+                {TASK_PRIORITIES.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* ✅ NEW: Estimated Hours */}
+            <div className="form-group">
+              <label className="form-label">Estimated Hours</label>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                className="form-input"
+                value={taskData.estimated_hours}
+                onChange={(e) => handleChange("estimated_hours", e.target.value)}
+                placeholder="e.g. 4"
+              />
             </div>
 
             <div className="form-group">
@@ -440,6 +497,7 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
@@ -956,6 +1014,10 @@ function ProjectDetails() {
                       <div className="list-item-top">
                         <span className={`status-tag status-${safeLower(t.status).replaceAll(" ", "-").replaceAll("/", "-")}`}>{t.status}</span>
                         {t.task_type && <span className="type-tag">{t.task_type}</span>}
+                        {t.priority && <span className="type-tag">{t.priority}</span>}
+                        {t.estimated_hours !== null && t.estimated_hours !== undefined && t.estimated_hours !== "" && (
+                          <span className="type-tag">{t.estimated_hours}h</span>
+                        )}
                       </div>
 
                       <div className="list-item-title">{t.description}</div>
