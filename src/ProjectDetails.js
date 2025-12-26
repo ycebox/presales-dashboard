@@ -76,6 +76,19 @@ const getSalesStageClass = (stage) => {
   return "stage-active";
 };
 
+const toModulesArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean).map((x) => String(x).trim()).filter(Boolean);
+
+  // allow string formats: "SVBO, SVIP; SVFE"
+  return String(value)
+    .split(/[,\n;]+/g)
+    .map((x) => x.trim())
+    .filter(Boolean);
+};
+
+const modulesArrayToString = (arr) => (Array.isArray(arr) ? arr.join(", ") : "");
+
 // ---------- Task Modal ----------
 const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResources = [], taskTypes = [] }) => {
   const [taskData, setTaskData] = useState({
@@ -408,6 +421,18 @@ function ProjectDetails() {
   const [editingLog, setEditingLog] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
 
+  // NEW: Next Key Activity + Modules drafts (so we can edit/save cleanly)
+  const [isEditingBackground, setIsEditingBackground] = useState(false);
+  const [backgroundDraft, setBackgroundDraft] = useState("");
+  const [savingBackground, setSavingBackground] = useState(false);
+
+  const [isEditingNextActivity, setIsEditingNextActivity] = useState(false);
+  const [nextActivityDraft, setNextActivityDraft] = useState("");
+  const [savingNextActivity, setSavingNextActivity] = useState(false);
+
+  // For SmartVista Modules: we store in DB as array OR string, but we edit as string input
+  const [modulesDraft, setModulesDraft] = useState("");
+
   // ---------- Monitoring: health + counters ----------
   const projectMonitor = useMemo(() => {
     const today = new Date();
@@ -429,7 +454,6 @@ function ProjectDetails() {
     };
 
     const isOpenTask = (t) => t?.status !== "Completed" && t?.status !== "Cancelled/On-hold";
-
     const openTasks = (tasks || []).filter(isOpenTask);
 
     const overdueCount = openTasks.filter((t) => {
@@ -480,14 +504,17 @@ function ProjectDetails() {
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
 
-  const [isEditingBackground, setIsEditingBackground] = useState(false);
-  const [backgroundDraft, setBackgroundDraft] = useState("");
-  const [savingBackground, setSavingBackground] = useState(false);
-
   useEffect(() => {
     if (project) {
       setEditProject(project);
+
+      // drafts
       setBackgroundDraft(project.remarks || "");
+      setNextActivityDraft(project.next_key_activity || "");
+
+      // modules draft as a simple comma-separated string
+      const modulesArr = toModulesArray(project.smartvista_modules);
+      setModulesDraft(modulesArr.length ? modulesArrayToString(modulesArr) : "");
     }
   }, [project]);
 
@@ -536,6 +563,9 @@ function ProjectDetails() {
   const handleEditToggle = () => {
     if (isEditing) {
       setEditProject(project);
+      // reset modules draft based on saved value
+      const modulesArr = toModulesArray(project?.smartvista_modules);
+      setModulesDraft(modulesArr.length ? modulesArrayToString(modulesArr) : "");
       setIsEditing(false);
     } else {
       setIsEditing(true);
@@ -550,7 +580,11 @@ function ProjectDetails() {
   const saveProjectEdits = async () => {
     if (!project?.id) return;
     setSaving(true);
+
     try {
+      // smartvista_modules: try to save as text[] (Supabase will accept JS array if column is text[])
+      const modulesArr = toModulesArray(modulesDraft);
+
       const payload = {
         project_name: editProject.project_name || "",
         customer_name: editProject.customer_name || "",
@@ -560,6 +594,9 @@ function ProjectDetails() {
         deal_value: editProject.deal_value === "" ? null : editProject.deal_value,
         sales_stage: editProject.sales_stage || "",
         due_date: editProject.due_date || null,
+
+        // NEW
+        smartvista_modules: modulesArr.length ? modulesArr : null,
       };
 
       const { error } = await supabase.from("projects").update(payload).eq("id", project.id);
@@ -586,9 +623,26 @@ function ProjectDetails() {
       setIsEditingBackground(false);
     } catch (err) {
       console.error("Error saving background:", err);
-      alert("Failed to save background.");
+      alert("Failed to save project background.");
     } finally {
       setSavingBackground(false);
+    }
+  };
+
+  const saveNextActivity = async () => {
+    if (!project?.id) return;
+    setSavingNextActivity(true);
+    try {
+      const { error } = await supabase.from("projects").update({ next_key_activity: nextActivityDraft || "" }).eq("id", project.id);
+      if (error) throw error;
+
+      setProject((prev) => ({ ...prev, next_key_activity: nextActivityDraft || "" }));
+      setIsEditingNextActivity(false);
+    } catch (err) {
+      console.error("Error saving next key activity:", err);
+      alert("Failed to save next key activity.");
+    } finally {
+      setSavingNextActivity(false);
     }
   };
 
@@ -669,6 +723,8 @@ function ProjectDetails() {
     navigate(`/customer/${encodeURIComponent(project.customer_name)}`);
   };
 
+  const modulesDisplay = useMemo(() => toModulesArray(project?.smartvista_modules), [project?.smartvista_modules]);
+
   if (loading) return <LoadingState />;
   if (error || !project) return <ErrorState error={error} onBack={handleBack} />;
 
@@ -690,10 +746,8 @@ function ProjectDetails() {
                       <span className="project-customer-text">{project.customer_name || "No customer"}</span>
                     </button>
 
-                    {/* Metrics now below title block */}
                     <div className="hero-metrics-block">
                       <div className="hero-badges">
-                        {/* Sales stage is now part of metrics */}
                         <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
                           {getSalesStageIcon(project.sales_stage)}
                           <span>{project.sales_stage || "No Stage"}</span>
@@ -743,6 +797,7 @@ function ProjectDetails() {
 
       <div className="main-content-grid">
         <div className="main-column">
+          {/* Project Details */}
           <section className="content-card">
             <div className="card-header">
               <div className="card-title">
@@ -778,17 +833,36 @@ function ProjectDetails() {
                   <span className="detail-label">Account Manager</span>
                   <span className="detail-value">{project.account_manager || "-"}</span>
                 </div>
+
                 <div className="detail-item">
                   <span className="detail-label">Country</span>
                   <span className="detail-value">{project.country || "-"}</span>
                 </div>
+
                 <div className="detail-item">
                   <span className="detail-label">Due Date</span>
                   <span className="detail-value">{formatDate(project.due_date)}</span>
                 </div>
+
                 <div className="detail-item">
                   <span className="detail-label">Deal Value</span>
                   <span className="detail-value">{formatCurrency(project.deal_value)}</span>
+                </div>
+
+                {/* NEW: SmartVista Modules */}
+                <div className="detail-item detail-item-full">
+                  <span className="detail-label">SmartVista Modules</span>
+                  {modulesDisplay.length ? (
+                    <div className="chip-row">
+                      {modulesDisplay.map((m) => (
+                        <span key={m} className="chip">
+                          {m}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="detail-value muted">-</span>
+                  )}
                 </div>
 
                 <div className="detail-item detail-item-full">
@@ -848,6 +922,19 @@ function ProjectDetails() {
                   <input type="date" name="due_date" value={editProject.due_date || ""} onChange={handleEditChange} className="form-input" />
                 </div>
 
+                {/* NEW: SmartVista Modules (editable) */}
+                <div className="form-group form-group-full">
+                  <label className="form-label">SmartVista Modules</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={modulesDraft}
+                    onChange={(e) => setModulesDraft(e.target.value)}
+                    placeholder="e.g. SVBO, SVIP, SVFE, EPG, Merchant Acquiring, Fraud"
+                  />
+                  <div className="hint-text">Tip: separate using commas.</div>
+                </div>
+
                 <div className="form-group form-group-full">
                   <label className="form-label">Scope</label>
                   <textarea name="scope" value={editProject.scope || ""} onChange={handleEditChange} className="form-textarea" />
@@ -856,11 +943,65 @@ function ProjectDetails() {
             )}
           </section>
 
+          {/* NEW: Next Key Activity */}
+          <section className="content-card">
+            <div className="card-header">
+              <div className="card-title">
+                <FaClock />
+                <span>Next Key Activity</span>
+              </div>
+
+              {!isEditingNextActivity ? (
+                <button className="action-button secondary" onClick={() => setIsEditingNextActivity(true)} type="button">
+                  <FaEdit />
+                  <span>Edit</span>
+                </button>
+              ) : (
+                <div className="inline-actions">
+                  <button
+                    className="action-button secondary"
+                    onClick={() => {
+                      setNextActivityDraft(project.next_key_activity || "");
+                      setIsEditingNextActivity(false);
+                    }}
+                    disabled={savingNextActivity}
+                    type="button"
+                  >
+                    <FaTimes />
+                    <span>Cancel</span>
+                  </button>
+                  <button className="action-button primary" onClick={saveNextActivity} disabled={savingNextActivity} type="button">
+                    <FaSave />
+                    <span>{savingNextActivity ? "Saving..." : "Save"}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {!isEditingNextActivity ? (
+              <div className="notes-box">
+                {project.next_key_activity ? (
+                  <p className="notes-text">{project.next_key_activity}</p>
+                ) : (
+                  <p className="muted">No next activity yet.</p>
+                )}
+              </div>
+            ) : (
+              <textarea
+                className="notes-editor"
+                value={nextActivityDraft}
+                onChange={(e) => setNextActivityDraft(e.target.value)}
+                placeholder="e.g. RFP due on Jan 15, Meeting on Jan 10, Demo on Jan 12"
+              />
+            )}
+          </section>
+
+          {/* Project Background (was Customer Background) */}
           <section className="content-card">
             <div className="card-header">
               <div className="card-title">
                 <FaInfo />
-                <span>Customer Background</span>
+                <span>Project Background</span>
               </div>
 
               {!isEditingBackground ? (
@@ -899,13 +1040,14 @@ function ProjectDetails() {
                 className="notes-editor"
                 value={backgroundDraft}
                 onChange={(e) => setBackgroundDraft(e.target.value)}
-                placeholder="Capture customer basics and background, their business, context, etc."
+                placeholder="Capture project context, background, timeline, constraints, dependencies, etc."
               />
             )}
           </section>
         </div>
 
         <div className="side-column">
+          {/* Tasks */}
           <section className="content-card">
             <div className="card-header">
               <div className="card-title">
@@ -968,6 +1110,7 @@ function ProjectDetails() {
             </div>
           </section>
 
+          {/* Logs */}
           <section className="content-card">
             <div className="card-header">
               <div className="card-title">
@@ -1014,13 +1157,42 @@ function ProjectDetails() {
       <TaskModal
         isOpen={showTaskModal}
         onClose={() => setShowTaskModal(false)}
-        onSave={saveTask}
+        onSave={async (taskData) => {
+          if (!project?.id) return;
+
+          if (editingTask?.id) {
+            const { error } = await supabase.from("project_tasks").update(taskData).eq("id", editingTask.id);
+            if (error) throw error;
+          } else {
+            const { error } = await supabase.from("project_tasks").insert({ ...taskData, project_id: project.id });
+            if (error) throw error;
+          }
+
+          await fetchTasks();
+        }}
         editingTask={editingTask}
         presalesResources={presalesResources}
         taskTypes={taskTypes}
       />
 
-      <LogModal isOpen={showLogModal} onClose={() => setShowLogModal(false)} onSave={saveLog} editingLog={editingLog} />
+      <LogModal
+        isOpen={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        onSave={async (notes) => {
+          if (!project?.id) return;
+
+          if (editingLog?.id) {
+            const { error } = await supabase.from("project_logs").update({ notes }).eq("id", editingLog.id);
+            if (error) throw error;
+          } else {
+            const { error } = await supabase.from("project_logs").insert({ project_id: project.id, notes });
+            if (error) throw error;
+          }
+
+          await fetchLogs();
+        }}
+        editingLog={editingLog}
+      />
     </div>
   );
 }
