@@ -1,5 +1,5 @@
 // ProjectDetails.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 import "./ProjectDetails.css";
@@ -27,18 +27,8 @@ import {
   FaFileAlt,
 } from "react-icons/fa";
 
-const SALES_STAGES = [
-  "Discovery",
-  "Demo",
-  "PoC",
-  "RFI",
-  "RFP",
-  "SoW",
-  "Contracting",
-  "Closed-Won",
-  "Closed-Lost",
-  "Closed-Cancelled/Hold",
-];
+// ---------- Helpers ----------
+const safeLower = (v) => (typeof v === "string" ? v.toLowerCase() : "");
 
 const TASK_STATUSES = ["Not Started", "In Progress", "Completed", "Cancelled/On-hold"];
 
@@ -61,49 +51,21 @@ const formatCurrency = (value) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
-      minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(Number(value));
   } catch {
-    return "-";
-  }
-};
-
-const getTaskStatusClass = (status) => {
-  switch (status?.toLowerCase()) {
-    case "completed":
-      return "status-completed";
-    case "in progress":
-      return "status-in-progress";
-    case "not started":
-      return "status-not-started";
-    case "cancelled/on-hold":
-      return "status-cancelled";
-    default:
-      return "status-not-started";
-  }
-};
-
-const getTaskStatusIcon = (status) => {
-  switch (status?.toLowerCase()) {
-    case "completed":
-      return <FaCheckCircle />;
-    case "in progress":
-      return <FaClock />;
-    case "cancelled/on-hold":
-      return <FaExclamationTriangle />;
-    default:
-      return <FaClock />;
+    return value;
   }
 };
 
 const getSalesStageIcon = (stage) => {
-  if (!stage) return <FaRocket className="stage-active" />;
-  const s = stage.toLowerCase();
-  if (s.includes("closed-won")) return <FaCheckCircle className="stage-won" />;
-  if (s.includes("closed-lost")) return <FaExclamationTriangle className="stage-lost" />;
-  if (s.includes("closed-cancelled")) return <FaTimes className="stage-cancelled" />;
-  return <FaRocket className="stage-active" />;
+  const s = safeLower(stage);
+  if (s.includes("lead")) return <FaBullseye />;
+  if (s.includes("opportunity")) return <FaRocket />;
+  if (s.includes("proposal")) return <FaFileAlt />;
+  if (s.includes("contract")) return <FaChartLine />;
+  if (s.includes("done") || s.includes("closed-won")) return <FaCheckCircle />;
+  return <FaBullseye />;
 };
 
 const getSalesStageClass = (stage) => {
@@ -130,28 +92,30 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (editingTask) {
-      setTaskData({
-        description: editingTask.description || "",
-        status: editingTask.status || "Not Started",
-        start_date: editingTask.start_date || "",
-        end_date: editingTask.end_date || "",
-        due_date: editingTask.due_date || "",
-        notes: editingTask.notes || "",
-        assignee: editingTask.assignee || "",
-        task_type: editingTask.task_type || "",
-      });
-    } else {
-      setTaskData({
-        description: "",
-        status: "Not Started",
-        start_date: "",
-        end_date: "",
-        due_date: "",
-        notes: "",
-        assignee: "",
-        task_type: "",
-      });
+    if (isOpen) {
+      if (editingTask) {
+        setTaskData({
+          description: editingTask.description || "",
+          status: editingTask.status || "Not Started",
+          start_date: editingTask.start_date || "",
+          end_date: editingTask.end_date || "",
+          due_date: editingTask.due_date || "",
+          notes: editingTask.notes || "",
+          assignee: editingTask.assignee || "",
+          task_type: editingTask.task_type || "",
+        });
+      } else {
+        setTaskData({
+          description: "",
+          status: "Not Started",
+          start_date: "",
+          end_date: "",
+          due_date: "",
+          notes: "",
+          assignee: "",
+          task_type: "",
+        });
+      }
     }
   }, [editingTask, isOpen]);
 
@@ -166,8 +130,13 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
       return;
     }
     setLoading(true);
+
     try {
       await onSave(taskData);
+      onClose();
+    } catch (err) {
+      console.error("Task save error:", err);
+      alert("Failed to save task. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -175,186 +144,127 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
 
   if (!isOpen) return null;
 
-  const hasPresalesList = presalesResources && presalesResources.length > 0;
-
   return (
-    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" role="dialog" aria-modal="true">
+      <div className="modal">
         <div className="modal-header">
-          <div className="modal-title-wrapper">
-            <FaTasks className="modal-icon" />
-            <h3 className="modal-title">{editingTask ? "Edit Task" : "Create New Task"}</h3>
+          <div className="modal-title">
+            <FaTasks />
+            <span>{editingTask ? "Edit Task" : "Add Task"}</span>
           </div>
-          <button className="modal-close-button" onClick={onClose} aria-label="Close modal">
+          <button className="icon-button" onClick={onClose} aria-label="Close">
             <FaTimes />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-form">
+        <form onSubmit={handleSubmit} className="modal-body">
           <div className="form-grid">
-            <div className="form-group full-width">
-              <label className="form-label">
-                <FaTasks className="form-icon" />
-                Task Description *
-              </label>
+            <div className="form-group">
+              <label className="form-label">Description</label>
               <input
-                name="description"
+                className="form-input"
                 value={taskData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
-                className="form-input"
-                placeholder="What needs to be accomplished?"
-                required
+                placeholder="Enter task description"
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">
-                <FaUsers className="form-icon" />
-                Assignee
-              </label>
-              {hasPresalesList ? (
-                <select
-                  name="assignee"
-                  className="form-select"
-                  value={taskData.assignee || ""}
-                  onChange={(e) => handleChange("assignee", e.target.value)}
-                >
-                  <option value="">Unassigned</option>
-                  {presalesResources
-                    .filter((r) => r.is_active !== false)
-                    .map((r) => (
-                      <option key={r.id} value={r.name}>
-                        {r.name}
-                        {r.region ? ` (${r.region})` : ""}
-                      </option>
-                    ))}
-                </select>
-              ) : (
-                <input
-                  name="assignee"
-                  value={taskData.assignee}
-                  onChange={(e) => handleChange("assignee", e.target.value)}
-                  className="form-input"
-                  placeholder="Who owns this task?"
-                />
-              )}
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <FaChartLine className="form-icon" />
-                Status
-              </label>
+              <label className="form-label">Status</label>
               <select
-                name="status"
+                className="form-input"
                 value={taskData.status}
                 onChange={(e) => handleChange("status", e.target.value)}
-                className="form-select"
               >
-                {TASK_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
+                {TASK_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="form-group">
-              <label className="form-label">
-                <FaInfo className="form-icon" />
-                Task Type
-              </label>
-              {taskTypes && taskTypes.length > 0 ? (
-                <select
-                  name="task_type"
-                  className="form-select"
-                  value={taskData.task_type || ""}
-                  onChange={(e) => handleChange("task_type", e.target.value)}
-                >
-                  <option value="">Select type</option>
-                  {taskTypes.map((t) => (
-                    <option key={t.id} value={t.name}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  name="task_type"
-                  className="form-input"
-                  value={taskData.task_type || ""}
-                  onChange={(e) => handleChange("task_type", e.target.value)}
-                  placeholder="e.g. RFP, Demo, PoC"
-                />
-              )}
+              <label className="form-label">Assignee</label>
+              <select
+                className="form-input"
+                value={taskData.assignee}
+                onChange={(e) => handleChange("assignee", e.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {(presalesResources || []).map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group">
-              <label className="form-label">
-                <FaCalendarAlt className="form-icon" />
-                Start Date
-              </label>
+              <label className="form-label">Task Type</label>
+              <select
+                className="form-input"
+                value={taskData.task_type}
+                onChange={(e) => handleChange("task_type", e.target.value)}
+              >
+                <option value="">Select type</option>
+                {(taskTypes || []).map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Start Date</label>
               <input
-                name="start_date"
                 type="date"
+                className="form-input"
                 value={taskData.start_date || ""}
                 onChange={(e) => handleChange("start_date", e.target.value)}
-                className="form-input"
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">
-                <FaCalendarAlt className="form-icon" />
-                End Date
-              </label>
+              <label className="form-label">End Date</label>
               <input
-                name="end_date"
                 type="date"
+                className="form-input"
                 value={taskData.end_date || ""}
                 onChange={(e) => handleChange("end_date", e.target.value)}
-                className="form-input"
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">
-                <FaCalendarAlt className="form-icon" />
-                Due Date
-              </label>
+              <label className="form-label">Due Date</label>
               <input
-                name="due_date"
                 type="date"
+                className="form-input"
                 value={taskData.due_date || ""}
                 onChange={(e) => handleChange("due_date", e.target.value)}
-                className="form-input"
               />
             </div>
 
-            <div className="form-group full-width">
-              <label className="form-label">
-                <FaFileAlt className="form-icon" />
-                Notes
-              </label>
+            <div className="form-group form-group-full">
+              <label className="form-label">Notes</label>
               <textarea
-                name="notes"
-                value={taskData.notes}
-                onChange={(e) => handleChange("notes", e.target.value)}
-                rows="3"
                 className="form-textarea"
-                placeholder="Additional context or details..."
+                value={taskData.notes || ""}
+                onChange={(e) => handleChange("notes", e.target.value)}
+                placeholder="Add notes / context"
               />
             </div>
           </div>
 
           <div className="modal-actions">
-            <button type="button" onClick={onClose} className="button-cancel" disabled={loading}>
+            <button type="button" className="action-button secondary" onClick={onClose}>
               <FaTimes />
-              Cancel
+              <span>Cancel</span>
             </button>
-            <button type="submit" className="button-submit" disabled={loading}>
+            <button type="submit" className="action-button primary" disabled={loading}>
               <FaSave />
-              {loading ? "Saving..." : editingTask ? "Update Task" : "Create Task"}
+              <span>{loading ? "Saving..." : "Save Task"}</span>
             </button>
           </div>
         </form>
@@ -365,23 +275,29 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
 
 // ---------- Log Modal ----------
 const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
-  const [logEntry, setLogEntry] = useState("");
+  const [logText, setLogText] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setLogEntry(editingLog ? editingLog.entry || "" : "");
+    if (isOpen) {
+      setLogText(editingLog?.notes || "");
+    }
   }, [editingLog, isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!logEntry.trim()) {
-      alert("Log entry is required");
+    if (!logText.trim()) {
+      alert("Log notes are required");
       return;
     }
     setLoading(true);
+
     try {
-      await onSave(logEntry);
-      setLogEntry("");
+      await onSave(logText);
+      onClose();
+    } catch (err) {
+      console.error("Log save error:", err);
+      alert("Failed to save log. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -390,44 +306,37 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" role="dialog" aria-modal="true">
+      <div className="modal">
         <div className="modal-header">
-          <div className="modal-title-wrapper">
-            <FaBookOpen className="modal-icon" />
-            <h3 className="modal-title">{editingLog ? "Edit Log Entry" : "Add Project Log Entry"}</h3>
+          <div className="modal-title">
+            <FaBookOpen />
+            <span>{editingLog ? "Edit Log" : "Add Log"}</span>
           </div>
-          <button className="modal-close-button" onClick={onClose} aria-label="Close modal">
+          <button className="icon-button" onClick={onClose} aria-label="Close">
             <FaTimes />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-grid">
-            <div className="form-group full-width">
-              <label className="form-label">
-                <FaEdit className="form-icon" />
-                Log Entry *
-              </label>
-              <textarea
-                value={logEntry}
-                onChange={(e) => setLogEntry(e.target.value)}
-                rows="5"
-                className="form-textarea"
-                placeholder="Decisions, progress notes, meeting minutes, important updates..."
-                required
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="modal-body">
+          <div className="form-group">
+            <label className="form-label">Notes</label>
+            <textarea
+              className="form-textarea"
+              value={logText}
+              onChange={(e) => setLogText(e.target.value)}
+              placeholder="Add progress update, decisions, meeting notes, etc."
+            />
           </div>
 
           <div className="modal-actions">
-            <button type="button" onClick={onClose} className="button-cancel" disabled={loading}>
+            <button type="button" className="action-button secondary" onClick={onClose}>
               <FaTimes />
-              Cancel
+              <span>Cancel</span>
             </button>
-            <button type="submit" className="button-submit" disabled={loading}>
+            <button type="submit" className="action-button primary" disabled={loading}>
               <FaSave />
-              {loading ? (editingLog ? "Updating..." : "Adding...") : editingLog ? "Update Entry" : "Add Entry"}
+              <span>{loading ? "Saving..." : "Save Log"}</span>
             </button>
           </div>
         </form>
@@ -436,16 +345,20 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
   );
 };
 
-const LoadingScreen = () => (
+// ---------- Loading/Error ----------
+const LoadingState = () => (
   <div className="project-details-container theme-light">
     <div className="loading-state">
-      <div className="loading-spinner"></div>
-      <p className="loading-text">Loading project details...</p>
+      <div className="spinner" />
+      <div className="loading-text">
+        <h2>Loading project...</h2>
+        <p>Please wait a moment.</p>
+      </div>
     </div>
   </div>
 );
 
-const ErrorScreen = ({ error, onBack }) => (
+const ErrorState = ({ error, onBack }) => (
   <div className="project-details-container theme-light">
     <div className="error-state">
       <div className="error-icon-wrapper">
@@ -498,20 +411,17 @@ const useProjectData = (projectId) => {
   };
 
   const fetchProjectDetails = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
+      const { data, error } = await supabase.from("projects").select("*").eq("id", projectId).single();
+      if (error) throw error;
 
-      const { data: projectData, error: projectError } = await supabase.from("projects").select("*").eq("id", projectId).single();
-
-      if (projectError) throw projectError;
-      if (!projectData) throw new Error("Project not found");
-
-      setProject(projectData);
+      setProject(data);
       await Promise.all([fetchTasks(), fetchLogs()]);
     } catch (err) {
       console.error("Error fetching project:", err);
-      setError("Failed to load project details: " + err.message);
+      setError(err.message || "Failed to load project");
     } finally {
       setLoading(false);
     }
@@ -519,6 +429,7 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
@@ -540,6 +451,79 @@ function ProjectDetails() {
   const [editingLog, setEditingLog] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
 
+  // ---------- Monitoring: health + counters ----------
+  const projectMonitor = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const addDays = (base, days) => {
+      const d = new Date(base);
+      d.setDate(d.getDate() + days);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const parseDate = (value) => {
+      if (!value) return null;
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return null;
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const isOpenTask = (t) => t?.status !== "Completed" && t?.status !== "Cancelled/On-hold";
+
+    const openTasks = (tasks || []).filter(isOpenTask);
+
+    const overdueCount = openTasks.filter((t) => {
+      const due = parseDate(t?.due_date);
+      return due && due < today;
+    }).length;
+
+    const dueNext7Count = openTasks.filter((t) => {
+      const due = parseDate(t?.due_date);
+      if (!due) return false;
+      const limit = addDays(today, 7);
+      return due >= today && due <= limit;
+    }).length;
+
+    const unassignedCount = openTasks.filter((t) => {
+      const a = (t?.assignee || "").trim();
+      return !a;
+    }).length;
+
+    const lastLogDate = (() => {
+      const dates = (logs || [])
+        .map((l) => (l?.created_at ? new Date(l.created_at) : null))
+        .filter((d) => d && !Number.isNaN(d.getTime()))
+        .sort((a, b) => b.getTime() - a.getTime());
+      return dates[0] || null;
+    })();
+
+    const daysSinceLastLog = lastLogDate
+      ? Math.floor((new Date().getTime() - lastLogDate.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+
+    const projectDue = parseDate(project?.due_date);
+    const isProjectOverdue = projectDue ? projectDue < today : false;
+    const isProjectDueSoon = projectDue ? projectDue <= addDays(today, 14) && projectDue >= today : false;
+
+    let health = "GREEN";
+    if (isProjectOverdue || overdueCount > 0) health = "RED";
+    else if (isProjectDueSoon || dueNext7Count > 0 || (daysSinceLastLog !== null && daysSinceLastLog > 14)) health = "AMBER";
+
+    return {
+      overdueCount,
+      dueNext7Count,
+      unassignedCount,
+      lastLogDate,
+      daysSinceLastLog,
+      health,
+      isProjectOverdue,
+      isProjectDueSoon,
+    };
+  }, [project, tasks, logs]);
+
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
 
@@ -557,52 +541,47 @@ function ProjectDetails() {
   useEffect(() => {
     const fetchPresalesResources = async () => {
       try {
-        const { data, error } = await supabase
-          .from("presales_resources")
-          .select("id, name, email, region, is_active")
-          .order("name", { ascending: true });
-
-        if (error) {
-          console.warn("Error loading presales_resources:", error.message);
-          setPresalesResources([]);
-          return;
-        }
-        setPresalesResources(data || []);
+        const { data, error } = await supabase.from("presales_resources").select("name").order("name");
+        if (error) throw error;
+        setPresalesResources((data || []).map((d) => d.name).filter(Boolean));
       } catch (err) {
-        console.warn("Unexpected error loading presales_resources:", err);
+        console.warn("Failed to fetch presales resources:", err);
         setPresalesResources([]);
       }
     };
-    fetchPresalesResources();
-  }, []);
 
-  useEffect(() => {
     const fetchTaskTypes = async () => {
       try {
-        const { data, error } = await supabase
-          .from("task_types")
-          .select("id, name, is_active, sort_order")
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true });
-
-        if (error) {
-          console.warn("Error loading task_types:", error.message);
-          setTaskTypes([]);
-          return;
-        }
-        setTaskTypes(data || []);
+        const { data, error } = await supabase.from("task_types").select("name").order("name");
+        if (error) throw error;
+        setTaskTypes((data || []).map((d) => d.name).filter(Boolean));
       } catch (err) {
-        console.warn("Unexpected error loading task_types:", err);
+        console.warn("Failed to fetch task types:", err);
         setTaskTypes([]);
       }
     };
+
+    fetchPresalesResources();
     fetchTaskTypes();
   }, []);
+
+  const handleBack = () => navigate(-1);
 
   const activeTasksCount = tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status)).length;
   const completedTasksCount = tasks.filter((t) => t.status === "Completed").length;
 
   const filteredTasks = showCompleted ? tasks : tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status));
+
+  const healthMeta = useMemo(() => {
+    const h = projectMonitor.health;
+    if (h === "RED") {
+      return { label: "At Risk", className: "health-red", Icon: FaExclamationTriangle };
+    }
+    if (h === "AMBER") {
+      return { label: "Watch", className: "health-amber", Icon: FaClock };
+    }
+    return { label: "Healthy", className: "health-green", Icon: FaCheckCircle };
+  }, [projectMonitor.health]);
 
   const handleEditToggle = () => {
     if (isEditing) {
@@ -615,174 +594,146 @@ function ProjectDetails() {
 
   const handleEditChange = (e) => {
     const { name, value, type } = e.target;
-    const newValue = type === "number" ? (value === "" ? null : Number(value)) : value;
-    setEditProject((prev) => ({ ...prev, [name]: newValue }));
+    setEditProject((prev) => ({ ...prev, [name]: type === "number" ? Number(value) : value }));
   };
 
-  const handleSaveProject = async () => {
+  const saveProjectEdits = async () => {
+    if (!project?.id) return;
+    setSaving(true);
     try {
-      setSaving(true);
-
       const payload = {
-        project_name: editProject.project_name || null,
-        customer_name: editProject.customer_name || null,
-        account_manager: editProject.account_manager || null,
-        scope: editProject.scope || null,
-        deal_value: editProject.deal_value ?? null,
-        product: editProject.product || null,
-        backup_presales: editProject.backup_presales || null,
-        sales_stage: editProject.sales_stage || null,
-        remarks: editProject.remarks || null,
+        project_name: editProject.project_name || "",
+        customer_name: editProject.customer_name || "",
+        account_manager: editProject.account_manager || "",
+        country: editProject.country || "",
+        scope: editProject.scope || "",
+        deal_value: editProject.deal_value === "" ? null : editProject.deal_value,
+        sales_stage: editProject.sales_stage || "",
         due_date: editProject.due_date || null,
-        project_type: editProject.project_type || null,
-        current_status: editProject.current_status || null,
-        smartvista_modules: editProject.smartvista_modules || null,
-        country: editProject.country || null,
-        primary_presales: editProject.primary_presales || null,
       };
 
-      const { data, error } = await supabase.from("projects").update(payload).eq("id", project.id).select().single();
+      const { error } = await supabase.from("projects").update(payload).eq("id", project.id);
       if (error) throw error;
 
-      setProject(data);
+      setProject((prev) => ({ ...prev, ...payload }));
       setIsEditing(false);
-      alert("Project updated successfully!");
     } catch (err) {
-      console.error("Error updating project:", err);
-      alert("Error updating project: " + err.message);
+      console.error("Error saving project:", err);
+      alert("Failed to save project changes.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleTaskStatusChange = async (taskId, currentStatus) => {
+  const saveBackground = async () => {
+    if (!project?.id) return;
+    setSavingBackground(true);
     try {
-      const newStatus = currentStatus === "Completed" ? "Not Started" : "Completed";
-      const { error } = await supabase.from("project_tasks").update({ status: newStatus }).eq("id", taskId);
-      if (error) throw error;
-      await fetchTasks();
-    } catch (err) {
-      console.error("Error updating task status:", err);
-      alert("Error updating task status: " + err.message);
-    }
-  };
-
-  const handleTaskSaved = async (taskData) => {
-    try {
-      if (editingTask) {
-        const { error } = await supabase.from("project_tasks").update(taskData).eq("id", editingTask.id);
-        if (error) throw error;
-        alert("Task updated successfully!");
-      } else {
-        const { error } = await supabase.from("project_tasks").insert([{ ...taskData, project_id: projectId }]);
-        if (error) throw error;
-        alert("Task added successfully!");
-      }
-
-      setShowTaskModal(false);
-      setEditingTask(null);
-      await fetchTasks();
-    } catch (err) {
-      console.error("Error saving task:", err);
-      alert("Error saving task: " + err.message);
-    }
-  };
-
-  const handleDeleteTask = async (taskId) => {
-    if (!window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) return;
-    try {
-      const { error } = await supabase.from("project_tasks").delete().eq("id", taskId);
-      if (error) throw error;
-      alert("Task deleted successfully!");
-      fetchTasks();
-    } catch (err) {
-      console.error("Error deleting task:", err);
-      alert("Error deleting task: " + err.message);
-    }
-  };
-
-  const handleLogSave = async (logEntry) => {
-    try {
-      if (editingLog) {
-        const { error } = await supabase.from("project_logs").update({ entry: logEntry }).eq("id", editingLog.id);
-        if (error) throw error;
-        alert("Log updated successfully!");
-      } else {
-        const { error } = await supabase.from("project_logs").insert([{ project_id: projectId, entry: logEntry }]);
-        if (error) throw error;
-        alert("Log added successfully!");
-      }
-
-      setShowLogModal(false);
-      setEditingLog(null);
-      fetchLogs();
-    } catch (err) {
-      console.error("Error saving log:", err);
-      alert("Error saving log: " + err.message);
-    }
-  };
-
-  const handleDeleteLog = async (logId) => {
-    if (!window.confirm("Are you sure you want to delete this log entry? This action cannot be undone.")) return;
-    try {
-      const { error } = await supabase.from("project_logs").delete().eq("id", logId);
-      if (error) throw error;
-      alert("Log deleted successfully!");
-      fetchLogs();
-    } catch (err) {
-      console.error("Error deleting log:", err);
-      alert("Error deleting log: " + err.message);
-    }
-  };
-
-  const navigateToCustomer = async () => {
-    try {
-      const { data } = await supabase.from("customers").select("id").eq("customer_name", project.customer_name).single();
-      if (data) navigate(`/customer/${data.id}`);
-      else navigate("/");
-    } catch (err) {
-      console.error("Error finding customer:", err);
-      navigate("/");
-    }
-  };
-
-  const handleEditBackground = () => {
-    setBackgroundDraft(project?.remarks || "");
-    setIsEditingBackground(true);
-  };
-
-  const handleCancelBackground = () => {
-    setBackgroundDraft(project?.remarks || "");
-    setIsEditingBackground(false);
-  };
-
-  const handleSaveBackground = async () => {
-    try {
-      setSavingBackground(true);
-
-      const { data, error } = await supabase.from("projects").update({ remarks: backgroundDraft }).eq("id", projectId).select().single();
+      const { error } = await supabase.from("projects").update({ remarks: backgroundDraft || "" }).eq("id", project.id);
       if (error) throw error;
 
-      setProject(data);
+      setProject((prev) => ({ ...prev, remarks: backgroundDraft || "" }));
       setIsEditingBackground(false);
     } catch (err) {
-      console.error("Error saving project background:", err);
-      alert("Failed to save project background: " + err.message);
+      console.error("Error saving background:", err);
+      alert("Failed to save background.");
     } finally {
       setSavingBackground(false);
     }
   };
 
-  if (!projectId) return <ErrorScreen error="No project ID in URL" onBack={() => navigate("/")} />;
-  if (loading) return <LoadingScreen />;
-  if (error || !project) return <ErrorScreen error={error} onBack={() => navigate("/")} />;
+  const openAddTask = () => {
+    setEditingTask(null);
+    setShowTaskModal(true);
+  };
+
+  const openEditTask = (task) => {
+    setEditingTask(task);
+    setShowTaskModal(true);
+  };
+
+  const saveTask = async (taskData) => {
+    if (!project?.id) return;
+    if (editingTask?.id) {
+      const { error } = await supabase.from("project_tasks").update(taskData).eq("id", editingTask.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("project_tasks").insert({ ...taskData, project_id: project.id });
+      if (error) throw error;
+    }
+    await fetchTasks();
+  };
+
+  const deleteTask = async (taskId) => {
+    if (!window.confirm("Delete this task?")) return;
+    try {
+      const { error } = await supabase.from("project_tasks").delete().eq("id", taskId);
+      if (error) throw error;
+      await fetchTasks();
+    } catch (err) {
+      console.error("Delete task error:", err);
+      alert("Failed to delete task.");
+    }
+  };
+
+  const openAddLog = () => {
+    setEditingLog(null);
+    setShowLogModal(true);
+  };
+
+  const openEditLog = (log) => {
+    setEditingLog(log);
+    setShowLogModal(true);
+  };
+
+  const saveLog = async (notes) => {
+    if (!project?.id) return;
+    if (editingLog?.id) {
+      const { error } = await supabase.from("project_logs").update({ notes }).eq("id", editingLog.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("project_logs").insert({ project_id: project.id, notes });
+      if (error) throw error;
+    }
+    await fetchLogs();
+  };
+
+  const deleteLog = async (logId) => {
+    if (!window.confirm("Delete this log entry?")) return;
+    try {
+      const { error } = await supabase.from("project_logs").delete().eq("id", logId);
+      if (error) throw error;
+      await fetchLogs();
+    } catch (err) {
+      console.error("Delete log error:", err);
+      alert("Failed to delete log.");
+    }
+  };
+
+  const openCustomer = () => {
+    if (!project?.customer_name) return;
+    navigate(`/customer/${encodeURIComponent(project.customer_name)}`);
+  };
+
+  if (loading) return <LoadingState />;
+  if (error || !project) return <ErrorState error={error} onBack={handleBack} />;
 
   return (
     <div className="project-details-container theme-light">
-      <header className="navigation-header">
-        <div className="nav-left">
-          {project.customer_name && (
-            <button onClick={navigateToCustomer} className="nav-button secondary">
+      <header className="top-bar">
+        <button className="icon-link" onClick={handleBack}>
+          <FaTimes />
+          <span>Back</span>
+        </button>
+
+        <div className="top-bar-actions">
+          <button className="action-button secondary" onClick={handleEditToggle}>
+            <FaEdit />
+            <span>{isEditing ? "Cancel Edit" : "Edit Project"}</span>
+          </button>
+
+          {project?.customer_name && (
+            <button className="action-button secondary" onClick={openCustomer}>
               <FaUsers />
               <span>{project.customer_name}</span>
             </button>
@@ -816,6 +767,33 @@ function ProjectDetails() {
                 </div>
 
                 <div className="project-hero-right">
+                  <div className="hero-badges">
+                    <span className={`health-badge ${healthMeta.className}`}>
+                      <healthMeta.Icon />
+                      <span>{healthMeta.label}</span>
+                    </span>
+
+                    <span className={`metric-badge ${projectMonitor.overdueCount > 0 ? "metric-danger" : "metric-muted"}`}>
+                      <FaExclamationTriangle />
+                      <span>Overdue: {projectMonitor.overdueCount}</span>
+                    </span>
+
+                    <span className={`metric-badge ${projectMonitor.dueNext7Count > 0 ? "metric-warn" : "metric-muted"}`}>
+                      <FaClock />
+                      <span>Next 7d: {projectMonitor.dueNext7Count}</span>
+                    </span>
+
+                    <span className={`metric-badge ${projectMonitor.unassignedCount > 0 ? "metric-neutral" : "metric-muted"}`}>
+                      <FaUsers />
+                      <span>Unassigned: {projectMonitor.unassignedCount}</span>
+                    </span>
+
+                    <span className="metric-badge metric-muted">
+                      <FaFileAlt />
+                      <span>Last update: {projectMonitor.lastLogDate ? formatDate(projectMonitor.lastLogDate) : "-"}</span>
+                    </span>
+                  </div>
+
                   {project.deal_value !== null && project.deal_value !== undefined && (
                     <span className="deal-badge">
                       <FaDollarSign />
@@ -833,25 +811,58 @@ function ProjectDetails() {
         <div className="main-column">
           <section className="content-card">
             <div className="card-header">
-              <div className="header-title">
-                <FaInfo className="header-icon" />
-                <h3>Project Details</h3>
+              <div className="card-title">
+                <FaInfo />
+                <span>Project Details</span>
               </div>
-              <button className={`action-button secondary ${isEditing ? "active" : ""}`} onClick={handleEditToggle}>
-                {isEditing ? <FaTimes /> : <FaEdit />}
-                <span>{isEditing ? "Cancel" : "Edit"}</span>
-              </button>
+
+              {isEditing && (
+                <button className="action-button primary" onClick={saveProjectEdits} disabled={saving}>
+                  <FaSave />
+                  <span>{saving ? "Saving..." : "Save Changes"}</span>
+                </button>
+              )}
             </div>
 
-            <div className="card-content">
-              {isEditing ? (
+            {!isEditing ? (
+              <div className="details-grid">
+                <div className="detail-item">
+                  <span className="detail-label">Account Manager</span>
+                  <span className="detail-value">{project.account_manager || "-"}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Country</span>
+                  <span className="detail-value">{project.country || "-"}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Due Date</span>
+                  <span className="detail-value">{formatDate(project.due_date)}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Deal Value</span>
+                  <span className="detail-value">{formatCurrency(project.deal_value)}</span>
+                </div>
+
+                <div className="detail-item detail-item-full">
+                  <span className="detail-label">Scope</span>
+                  <span className="detail-value">{project.scope || "-"}</span>
+                </div>
+              </div>
+            ) : (
+              <>
                 <div className="project-edit-grid">
                   <div className="form-group">
                     <label className="form-label">
                       <FaBullseye className="form-icon" />
                       Project Name
                     </label>
-                    <input type="text" name="project_name" value={editProject.project_name || ""} onChange={handleEditChange} className="form-input" />
+                    <input
+                      type="text"
+                      name="project_name"
+                      value={editProject.project_name || ""}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
                   </div>
 
                   <div className="form-group">
@@ -859,17 +870,35 @@ function ProjectDetails() {
                       <FaUsers className="form-icon" />
                       Customer
                     </label>
-                    <input type="text" name="customer_name" value={editProject.customer_name || ""} onChange={handleEditChange} className="form-input" />
+                    <input
+                      type="text"
+                      name="customer_name"
+                      value={editProject.customer_name || ""}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Account Manager</label>
-                    <input type="text" name="account_manager" value={editProject.account_manager || ""} onChange={handleEditChange} className="form-input" />
+                    <input
+                      type="text"
+                      name="account_manager"
+                      value={editProject.account_manager || ""}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Country</label>
-                    <input type="text" name="country" value={editProject.country || ""} onChange={handleEditChange} className="form-input" />
+                    <input
+                      type="text"
+                      name="country"
+                      value={editProject.country || ""}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
                   </div>
 
                   <div className="form-group">
@@ -877,14 +906,13 @@ function ProjectDetails() {
                       <FaChartLine className="form-icon" />
                       Sales Stage
                     </label>
-                    <select name="sales_stage" value={editProject.sales_stage || ""} onChange={handleEditChange} className="form-select">
-                      <option value="">Select stage</option>
-                      {SALES_STAGES.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
+                    <input
+                      type="text"
+                      name="sales_stage"
+                      value={editProject.sales_stage || ""}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
                   </div>
 
                   <div className="form-group">
@@ -892,242 +920,73 @@ function ProjectDetails() {
                       <FaDollarSign className="form-icon" />
                       Deal Value (USD)
                     </label>
-                    <input type="number" name="deal_value" value={editProject.deal_value ?? ""} onChange={handleEditChange} className="form-input" />
+                    <input
+                      type="number"
+                      name="deal_value"
+                      value={editProject.deal_value ?? ""}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Product</label>
-                    <input type="text" name="product" value={editProject.product || ""} onChange={handleEditChange} className="form-input" />
+                    <label className="form-label">
+                      <FaCalendarAlt className="form-icon" />
+                      Due Date
+                    </label>
+                    <input
+                      type="date"
+                      name="due_date"
+                      value={editProject.due_date || ""}
+                      onChange={handleEditChange}
+                      className="form-input"
+                    />
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">Primary Presales</label>
-                    <input type="text" name="primary_presales" value={editProject.primary_presales || ""} onChange={handleEditChange} className="form-input" />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Backup Presales</label>
-                    <input type="text" name="backup_presales" value={editProject.backup_presales || ""} onChange={handleEditChange} className="form-input" />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Due Date</label>
-                    <input type="date" name="due_date" value={editProject.due_date || ""} onChange={handleEditChange} className="form-input" />
-                  </div>
-
-                  <div className="form-group full-width">
+                  <div className="form-group form-group-full">
                     <label className="form-label">Scope</label>
-                    <textarea name="scope" value={editProject.scope || ""} onChange={handleEditChange} rows="3" className="form-textarea" />
-                  </div>
-
-                  <div className="form-group full-width">
-                    <label className="form-label">Remarks</label>
-                    <textarea name="remarks" value={editProject.remarks || ""} onChange={handleEditChange} rows="3" className="form-textarea" />
-                  </div>
-
-                  <div className="project-edit-actions">
-                    <button className="action-button secondary" type="button" onClick={handleEditToggle} disabled={saving}>
-                      <FaTimes />
-                      Cancel
-                    </button>
-                    <button className="action-button primary" type="button" onClick={handleSaveProject} disabled={saving}>
-                      <FaSave />
-                      {saving ? "Saving..." : "Save Changes"}
-                    </button>
+                    <textarea
+                      name="scope"
+                      value={editProject.scope || ""}
+                      onChange={handleEditChange}
+                      className="form-textarea"
+                    />
                   </div>
                 </div>
-              ) : (
-                <div className="project-info-grid">
-                  <div className="info-item">
-                    <span className="info-label">Customer</span>
-                    <span className="info-value">{project.customer_name || "-"}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Account Manager</span>
-                    <span className="info-value">{project.account_manager || "-"}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Country</span>
-                    <span className="info-value">{project.country || "-"}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Sales Stage</span>
-                    <span className={`info-value badge ${getSalesStageClass(project.sales_stage)}`}>
-                      {getSalesStageIcon(project.sales_stage)}
-                      {project.sales_stage || "-"}
-                    </span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Deal Value</span>
-                    <span className="info-value">{formatCurrency(project.deal_value)}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Due Date</span>
-                    <span className="info-value">{project.due_date ? formatDate(project.due_date) : "-"}</span>
-                  </div>
-                  <div className="info-item full-width">
-                    <span className="info-label">Scope</span>
-                    <span className="info-value">{project.scope || "-"}</span>
-                  </div>
-                  <div className="info-item full-width">
-                    <span className="info-label">Remarks</span>
-                    <span className="info-value">{project.remarks || "-"}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
 
-          <section className="content-card">
-            <div className="card-header">
-              <div className="header-title">
-                <FaTasks className="header-icon" />
-                <h3>Project Tasks</h3>
-                <div className="task-counter">
-                  <span className="counter-item active">
-                    <FaClock className="counter-icon" />
-                    {activeTasksCount} active
-                  </span>
-                  <span className="counter-item completed">
-                    <FaCheckCircle className="counter-icon" />
-                    {completedTasksCount} done
-                  </span>
-                </div>
-              </div>
-              <div className="header-actions">
-                <button onClick={() => setShowTaskModal(true)} className="action-button primary">
-                  <FaPlus />
-                  <span>New Task</span>
-                </button>
-                <button
-                  className={`action-button secondary filter-button ${showCompleted ? "active" : ""}`}
-                  onClick={() => setShowCompleted(!showCompleted)}
-                  title={showCompleted ? "Hide completed tasks" : "Show all tasks"}
-                >
-                  {showCompleted ? <FaEyeSlash /> : <FaEye />}
-                  <span>{showCompleted ? "Hide Done" : "Show All"}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="card-content">
-              {filteredTasks.length > 0 ? (
-                <div className="task-list">
-                  {filteredTasks.map((task) => (
-                    <div key={task.id} className={`task-item ${getTaskStatusClass(task.status)}`}>
-                      <div className="task-checkbox-wrapper">
-                        <input
-                          type="checkbox"
-                          className="task-checkbox"
-                          checked={task.status === "Completed"}
-                          onChange={() => handleTaskStatusChange(task.id, task.status)}
-                          aria-label="Toggle task completion"
-                        />
-                      </div>
-
-                      <div className="task-main-content">
-                        <div className="task-header">
-                          <h4 className="task-title">{task.description}</h4>
-                          <div className={`task-status-badge ${getTaskStatusClass(task.status)}`}>
-                            {getTaskStatusIcon(task.status)}
-                            <span className="status-text">{task.status}</span>
-                          </div>
-                        </div>
-
-                        <div className="task-meta-row">
-                          {(task.start_date || task.end_date || task.due_date) && (
-                            <div className="task-meta-item">
-                              <FaCalendarAlt className="meta-icon" />
-                              <span>
-                                {task.start_date && task.end_date
-                                  ? `${formatDate(task.start_date)} → ${formatDate(task.end_date)}`
-                                  : task.due_date
-                                  ? `Due ${formatDate(task.due_date)}`
-                                  : task.start_date
-                                  ? `Starts ${formatDate(task.start_date)}`
-                                  : ""}
-                              </span>
-                            </div>
-                          )}
-
-                          {task.assignee && (
-                            <div className="task-meta-item">
-                              <FaUsers className="meta-icon" />
-                              <span>{task.assignee}</span>
-                            </div>
-                          )}
-
-                          {task.task_type && (
-                            <div className="task-meta-item">
-                              <FaInfo className="meta-icon" />
-                              <span>{task.task_type}</span>
-                            </div>
-                          )}
-
-                          <div className="task-actions">
-                            <button
-                              onClick={() => {
-                                setEditingTask(task);
-                                setShowTaskModal(true);
-                              }}
-                              className="task-action-button edit"
-                              title="Edit task"
-                            >
-                              <FaEdit />
-                            </button>
-                            <button onClick={() => handleDeleteTask(task.id)} className="task-action-button delete" title="Delete task">
-                              <FaTrash />
-                            </button>
-                          </div>
-                        </div>
-
-                        {task.notes && (
-                          <div className="task-meta-item">
-                            <FaFileAlt className="meta-icon" />
-                            <span className="task-notes-preview">{task.notes}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <div className="empty-icon-wrapper">
-                    <FaTasks />
-                  </div>
-                  <h4 className="empty-title">{`No ${showCompleted ? "" : "active "}tasks found`}</h4>
-                  <p className="empty-description">{showCompleted ? "All tasks are completed." : "Create a task to start tracking progress."}</p>
-                  <button onClick={() => setShowTaskModal(true)} className="action-button primary">
-                    <FaPlus />
-                    <span>Create Task</span>
+                <div className="project-edit-actions">
+                  <button className="action-button secondary" onClick={handleEditToggle} disabled={saving}>
+                    <FaTimes />
+                    <span>Cancel</span>
+                  </button>
+                  <button className="action-button primary" onClick={saveProjectEdits} disabled={saving}>
+                    <FaSave />
+                    <span>{saving ? "Saving..." : "Save"}</span>
                   </button>
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </section>
-        </div>
 
-        <div className="side-column">
           <section className="content-card">
             <div className="card-header">
-              <div className="header-title">
-                <FaFileAlt className="header-icon" />
-                <h3>Project Background</h3>
+              <div className="card-title">
+                <FaInfo />
+                <span>Customer Background</span>
               </div>
 
               {!isEditingBackground ? (
-                <button className="action-button secondary" onClick={handleEditBackground}>
+                <button className="action-button secondary" onClick={() => setIsEditingBackground(true)}>
                   <FaEdit />
                   <span>Edit</span>
                 </button>
               ) : (
-                <div className="header-actions">
-                  <button className="action-button secondary" onClick={handleCancelBackground} disabled={savingBackground}>
+                <div className="inline-actions">
+                  <button className="action-button secondary" onClick={() => { setBackgroundDraft(project.remarks || ""); setIsEditingBackground(false); }} disabled={savingBackground}>
                     <FaTimes />
                     <span>Cancel</span>
                   </button>
-                  <button className="action-button primary" onClick={handleSaveBackground} disabled={savingBackground}>
+                  <button className="action-button primary" onClick={saveBackground} disabled={savingBackground}>
                     <FaSave />
                     <span>{savingBackground ? "Saving..." : "Save"}</span>
                   </button>
@@ -1135,103 +994,123 @@ function ProjectDetails() {
               )}
             </div>
 
-            <div className="card-content scrollable-card-content">
-              {!isEditingBackground ? (
-                <div className="project-background-view">
-                  {project.remarks?.trim() ? (
-                    <p className="project-background-text">{project.remarks}</p>
-                  ) : (
-                    <div className="empty-state">
-                      <div className="empty-icon-wrapper">
-                        <FaFileAlt />
-                      </div>
-                      <h4 className="empty-title">No background yet</h4>
-                      <p className="empty-description">Add a short description of the project, context, and key notes.</p>
-                      <button className="action-button primary" onClick={handleEditBackground}>
-                        <FaPlus />
-                        <span>Add Background</span>
-                      </button>
-                    </div>
-                  )}
+            {!isEditingBackground ? (
+              <div className="notes-box">
+                {project.remarks ? <p className="notes-text">{project.remarks}</p> : <p className="muted">No background yet.</p>}
+              </div>
+            ) : (
+              <textarea
+                className="notes-editor"
+                value={backgroundDraft}
+                onChange={(e) => setBackgroundDraft(e.target.value)}
+                placeholder="Capture customer basics and background, their business, context, etc."
+              />
+            )}
+          </section>
+        </div>
+
+        <div className="side-column">
+          <section className="content-card">
+            <div className="card-header">
+              <div className="card-title">
+                <FaTasks />
+                <span>Tasks</span>
+                <span className="pill">
+                  {activeTasksCount} Active / {completedTasksCount} Done
+                </span>
+              </div>
+
+              <div className="inline-actions">
+                <button className="filter-button" onClick={() => setShowCompleted((p) => !p)}>
+                  {showCompleted ? <FaEyeSlash /> : <FaEye />}
+                  <span>{showCompleted ? "Hide Done" : "Show All"}</span>
+                </button>
+
+                <button className="action-button primary" onClick={openAddTask}>
+                  <FaPlus />
+                  <span>Add</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="list">
+              {filteredTasks.length === 0 ? (
+                <div className="empty-state">
+                  <p>No tasks yet.</p>
                 </div>
               ) : (
-                <div className="project-background-edit">
-                  <textarea
-                    className="form-textarea project-background-textarea"
-                    value={backgroundDraft}
-                    onChange={(e) => setBackgroundDraft(e.target.value)}
-                    rows={10}
-                    placeholder="Write the project background here..."
-                  />
-                </div>
+                filteredTasks.map((t) => (
+                  <div key={t.id} className={`list-item ${t.status === "Completed" ? "is-done" : ""}`}>
+                    <div className="list-item-main" onClick={() => openEditTask(t)} role="button" tabIndex={0}>
+                      <div className="list-item-top">
+                        <span className={`status-tag status-${safeLower(t.status).replaceAll(" ", "-").replaceAll("/", "-")}`}>
+                          {t.status}
+                        </span>
+                        {t.task_type && <span className="type-tag">{t.task_type}</span>}
+                      </div>
+
+                      <div className="list-item-title">{t.description}</div>
+
+                      <div className="list-item-meta">
+                        <span>
+                          <FaUsers /> {t.assignee || "Unassigned"}
+                        </span>
+                        <span>
+                          <FaCalendarAlt /> {formatDate(t.due_date)}
+                        </span>
+                      </div>
+
+                      {t.notes && <div className="list-item-notes">{t.notes}</div>}
+                    </div>
+
+                    <div className="list-item-actions">
+                      <button className="icon-button danger" onClick={() => deleteTask(t.id)} aria-label="Delete task">
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </section>
 
           <section className="content-card">
             <div className="card-header">
-              <div className="header-title">
-                <FaBookOpen className="header-icon" />
-                <h3>Project Logs</h3>
+              <div className="card-title">
+                <FaBookOpen />
+                <span>Project Logs</span>
               </div>
 
-              <button
-                onClick={() => {
-                  setEditingLog(null);
-                  setShowLogModal(true);
-                }}
-                className="action-button primary"
-              >
+              <button className="action-button primary" onClick={openAddLog}>
                 <FaPlus />
-                <span>Add Log</span>
+                <span>Add</span>
               </button>
             </div>
 
-            <div className="card-content scrollable-card-content">
-              {logs && logs.length > 0 ? (
-                <div className="log-list">
-                  {logs.map((log) => (
-                    <div key={log.id} className="log-item">
-                      <div className="log-header">
-                        <span className="log-date">{formatDate(log.created_at)}</span>
-                        <div className="log-actions">
-                          <button
-                            className="task-action-button edit"
-                            onClick={() => {
-                              setEditingLog(log);
-                              setShowLogModal(true);
-                            }}
-                            title="Edit log"
-                          >
-                            <FaEdit />
-                          </button>
-                          <button className="task-action-button delete" onClick={() => handleDeleteLog(log.id)} title="Delete log">
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </div>
-                      <p className="log-text">{log.entry}</p>
-                    </div>
-                  ))}
+            <div className="list">
+              {logs.length === 0 ? (
+                <div className="empty-state">
+                  <p>No logs yet.</p>
                 </div>
               ) : (
-                <div className="empty-state">
-                  <div className="empty-icon-wrapper">
-                    <FaBookOpen />
+                logs.map((l) => (
+                  <div key={l.id} className="list-item">
+                    <div className="list-item-main" onClick={() => openEditLog(l)} role="button" tabIndex={0}>
+                      <div className="list-item-top">
+                        <span className="muted">
+                          <FaCalendarAlt /> {formatDate(l.created_at)}
+                        </span>
+                      </div>
+                      <div className="list-item-notes">{l.notes}</div>
+                    </div>
+
+                    <div className="list-item-actions">
+                      <button className="icon-button danger" onClick={() => deleteLog(l.id)} aria-label="Delete log">
+                        <FaTrash />
+                      </button>
+                    </div>
                   </div>
-                  <h4 className="empty-title">No project logs yet</h4>
-                  <p className="empty-description">Use logs to record key decisions, meeting notes, and updates.</p>
-                  <button
-                    onClick={() => {
-                      setEditingLog(null);
-                      setShowLogModal(true);
-                    }}
-                    className="action-button primary"
-                  >
-                    <FaPlus />
-                    <span>Add First Log</span>
-                  </button>
-                </div>
+                ))
               )}
             </div>
           </section>
@@ -1240,11 +1119,8 @@ function ProjectDetails() {
 
       <TaskModal
         isOpen={showTaskModal}
-        onClose={() => {
-          setShowTaskModal(false);
-          setEditingTask(null);
-        }}
-        onSave={handleTaskSaved}
+        onClose={() => setShowTaskModal(false)}
+        onSave={saveTask}
         editingTask={editingTask}
         presalesResources={presalesResources}
         taskTypes={taskTypes}
@@ -1252,11 +1128,8 @@ function ProjectDetails() {
 
       <LogModal
         isOpen={showLogModal}
-        onClose={() => {
-          setShowLogModal(false);
-          setEditingLog(null);
-        }}
-        onSave={handleLogSave}
+        onClose={() => setShowLogModal(false)}
+        onSave={saveLog}
         editingLog={editingLog}
       />
     </div>
