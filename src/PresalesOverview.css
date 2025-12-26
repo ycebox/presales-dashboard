@@ -596,7 +596,7 @@
   color: rgba(30, 64, 175, 0.95);
 }
 
-/* ✅ Legend */
+/* Legend */
 .availability-legend {
   display: inline-flex;
   align-items: center;
@@ -634,11 +634,14 @@
   background: rgba(255, 255, 255, 0.98);
 }
 
-/* We use flex to avoid header overlap issues */
 .heatmap-header,
 .heatmap-row {
   display: flex;
   align-items: center;
+}
+
+.heatmap-row {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 /* Fixed left column */
@@ -667,17 +670,14 @@
   text-align: center;
 }
 
-/* Base cell look */
+/* Column header cells */
 .heatmap-day-col {
   padding: 8px 6px;
   text-align: center;
   user-select: none;
 }
 
-.heatmap-row {
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-}
-
+/* Data cells */
 .heatmap-cell {
   height: 34px;
   border: 1px solid rgba(15, 23, 42, 0.06);
@@ -695,7 +695,7 @@
 
 /* ✅ OPTION A SIZING
    - 14 days: stretch columns to fill width (fluid)
-   - 30 days: compact fixed width (scroll if needed)
+   - 30 days: compact fixed width + consistent spacing
 */
 .heatmap-table.heatmap-view-14 .heatmap-day-col,
 .heatmap-table.heatmap-view-14 .heatmap-cell {
@@ -703,19 +703,13 @@
   min-width: 42px;
 }
 
-/* --- 30-day view alignment fix --- */
+/* 30-day view layout: use gap (remove margins to avoid header mismatch) */
 .heatmap-table.heatmap-view-30 .heatmap-header,
 .heatmap-table.heatmap-view-30 .heatmap-row {
-  flex-wrap: nowrap;   /* safety */
-  gap: 6px;            /* consistent spacing for header + body */
+  flex-wrap: nowrap;
+  gap: 6px;
 }
 
-/* Remove margins in 30-day view (they were causing header/body width mismatch) */
-.heatmap-table.heatmap-view-30 .heatmap-cell {
-  margin: 0;
-}
-
-/* Keep 30-day columns compact and consistent */
 .heatmap-table.heatmap-view-30 .heatmap-day-col,
 .heatmap-table.heatmap-view-30 .heatmap-cell {
   flex: 0 0 46px;
@@ -723,52 +717,48 @@
   max-width: 46px;
 }
 
-/* Make header date text fit better in narrow columns */
-.heatmap-table.heatmap-view-30 .heatmap-day-col.heatmap-header-cell {
-  padding: 8px 0;
+.heatmap-table.heatmap-view-30 .heatmap-cell {
+  margin: 0;
 }
 
-.heatmap-table.heatmap-view-30 .heatmap-day-col,
-.heatmap-table.heatmap-view-30 .heatmap-cell {
-  flex: 0 0 46px;
-}
-/* --- 30-day header: keep dates on ONE line --- */
+/* 30-day header: keep dates on ONE line */
 .heatmap-table.heatmap-view-30 .heatmap-day-col.heatmap-header-cell {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1;
-  height: 34px;            /* match cell height vibe */
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;              /* remove padding that causes wrapping */
-  font-size: 11px;         /* slightly smaller so it fits */
+  padding: 0;
+  font-size: 11px;
 }
+
 /* ===== FINAL HEATMAP COLORS (forced override) ===== */
 
 .heatmap-cell.status-free {
-  background: rgba(34, 197, 94, 0.18) !important;        /* green */
+  background: rgba(34, 197, 94, 0.18) !important;
 }
 
 .heatmap-cell.status-busy {
-  background: rgba(59, 130, 246, 0.18) !important;       /* blue */
+  background: rgba(59, 130, 246, 0.18) !important;
 }
 
 .heatmap-cell.status-leave {
-  background: rgba(239, 68, 68, 0.22) !important;        /* red */
+  background: rgba(239, 68, 68, 0.22) !important;
 }
 
 .heatmap-cell.status-travel {
-  background: rgba(249, 115, 22, 0.22) !important;       /* orange */
+  background: rgba(249, 115, 22, 0.22) !important;
 }
 
 .heatmap-cell.status-training {
-  background: rgba(168, 85, 247, 0.22) !important;       /* purple */
+  background: rgba(168, 85, 247, 0.22) !important;
 }
 
 .heatmap-cell.status-other {
-  background: rgba(234, 179, 8, 0.22) !important;        /* yellow */
+  background: rgba(234, 179, 8, 0.22) !important;
 }
 
 /* Internal: indigo + diagonal pattern */
@@ -781,11 +771,22 @@
       rgba(30, 64, 175, 0.10) 8px,
       rgba(30, 64, 175, 0.10) 16px
     ) !important;
-}
-
-.heatmap-cell.status-internal {
   box-shadow: inset 0 0 0 1px rgba(30, 64, 175, 0.10);
 }
+
+/* ===== Busy + schedule marker (left border) ===== */
+
+.heatmap-cell[class*="marker-"] {
+  box-shadow: inset 3px 0 0 rgba(15, 23, 42, 0.12);
+}
+
+/* Make marker colors strong so they stand out on Busy blue */
+.heatmap-cell.marker-leave { box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.88); }
+.heatmap-cell.marker-travel { box-shadow: inset 3px 0 0 rgba(249, 115, 22, 0.88); }
+.heatmap-cell.marker-training { box-shadow: inset 3px 0 0 rgba(168, 85, 247, 0.88); }
+.heatmap-cell.marker-internal { box-shadow: inset 3px 0 0 rgba(30, 64, 175, 0.92); }
+.heatmap-cell.marker-other { box-shadow: inset 3px 0 0 rgba(234, 179, 8, 0.92); }
+
 /* ===== LEGEND (match grid exactly) ===== */
 
 .sw-free { background: rgba(34, 197, 94, 0.55) !important; }
@@ -805,6 +806,7 @@
       rgba(30, 64, 175, 0.30) 12px
     ) !important;
 }
+
 /* ===== SCHEDULE LIST ===== */
 
 .schedule-list-header {
@@ -981,6 +983,8 @@
   .heatmap-table.heatmap-view-30 .heatmap-day-col,
   .heatmap-table.heatmap-view-30 .heatmap-cell {
     flex: 0 0 40px;
+    min-width: 40px;
+    max-width: 40px;
   }
 }
 
