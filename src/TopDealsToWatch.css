@@ -1,3 +1,27 @@
+/* ===== TopDealsToWatch: align typography with app ===== */
+.topdeals-card {
+  font-size: 14px;
+}
+
+.topdeals-table-head {
+  font-size: 12px; /* header style like your other tables */
+}
+
+.topdeals-row {
+  font-size: 14px; /* data size consistent */
+}
+
+.topdeals-project-cell,
+.topdeals-status-cell {
+  font-size: 14px; /* remove 0.82rem differences */
+}
+
+.topdeals-stage-badge,
+.topdeals-corp-pill,
+.topdeals-stage-pill,
+.topdeals-urgency-pill {
+  font-size: 12px; /* badges can stay smaller */
+}
 .topdeals-card {
   background: var(--card-bg, #020617);
   border-radius: 16px;
