@@ -1,10 +1,28 @@
+/* ReportsDashboard.css - Light theme aligned to PresalesOverview */
+
+/* Page + typography baseline */
 .reports-page {
   padding: 16px 20px 24px;
   max-width: 1280px;
   margin: 0 auto;
-  color: #e5e7eb;
+
+  /* keep all text dark for clarity */
+  color: #0f172a;
+
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+
+  /* warm light background w/ subtle radial gradients */
+  background:
+    radial-gradient(900px 420px at 16% -10%, rgba(59, 130, 246, 0.12), rgba(255, 255, 255, 0) 60%),
+    radial-gradient(900px 420px at 92% 0%, rgba(14, 165, 233, 0.10), rgba(255, 255, 255, 0) 60%),
+    radial-gradient(700px 340px at 55% 115%, rgba(99, 102, 241, 0.08), rgba(255, 255, 255, 0) 55%),
+    #f6f8fc;
+  border-radius: 16px;
 }
 
+/* Header */
 .reports-header {
   display: flex;
   justify-content: space-between;
@@ -16,21 +34,24 @@
 .reports-header-left {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .reports-title {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 24px; /* page title ~24px */
+  font-weight: 700;
   margin: 0;
+  letter-spacing: -0.2px;
+  color: #0b1220;
 }
 
 .reports-subtitle {
-  font-size: 0.8rem;
-  color: #9ca3af;
+  font-size: 13px;
+  color: #475569;
   margin: 0;
 }
 
+/* Filters */
 .reports-filters {
   display: flex;
   gap: 8px;
@@ -38,19 +59,33 @@
   justify-content: flex-end;
 }
 
+/* Chip buttons: secondary by default, primary when active */
 .reports-filter-chip {
   border-radius: 999px;
-  border: 1px solid rgba(75, 85, 99, 0.9);
-  background: rgba(15, 23, 42, 0.9);
-  padding: 4px 10px;
-  font-size: 0.7rem;
-  color: #e5e7eb;
+  border: 1px solid rgba(148, 163, 184, 0.75);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 7px 12px;
+  font-size: 12px;
+  color: #0f172a;
   cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.reports-filter-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  border-color: rgba(100, 116, 139, 0.8);
+}
+
+.reports-filter-chip:active {
+  transform: translateY(0);
 }
 
 .reports-filter-chip-active {
-  border-color: #2563eb;
-  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(37, 99, 235, 0.65);
+  background: rgba(37, 99, 235, 0.10);
+  color: #0b1220;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
 }
 
 /* Layout */
@@ -60,12 +95,14 @@
   gap: 16px;
 }
 
+/* White rounded panels w/ thin slate border + soft shadow */
 .reports-section {
-  background: rgba(15, 23, 42, 0.98);
+  background: rgba(255, 255, 255, 0.92);
   border-radius: 16px;
   padding: 14px 16px 12px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(6px);
 }
 
 .reports-section-header {
@@ -82,18 +119,21 @@
 }
 
 .reports-section-title h2 {
-  font-size: 0.95rem;
+  font-size: 15px;
   margin: 0;
+  font-weight: 700;
+  color: #0b1220;
 }
 
+/* Subtle icon accent (keep it minimal) */
 .reports-section-icon {
-  font-size: 1rem;
-  color: #38bdf8;
+  font-size: 16px;
+  color: #2563eb;
 }
 
 .reports-section-subtitle {
-  font-size: 0.75rem;
-  color: #9ca3af;
+  font-size: 12px;
+  color: #475569;
   margin: 0;
 }
 
@@ -121,11 +161,13 @@
   }
 }
 
+/* KPI cards: white, thin border, soft shadow */
 .reports-kpi-card {
-  background: rgba(15, 23, 42, 0.95);
-  border-radius: 12px;
-  padding: 8px 10px;
-  border: 1px solid rgba(55, 65, 81, 0.95);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -134,61 +176,76 @@
 .reports-kpi-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.7rem;
-  color: #9ca3af;
+  gap: 8px;
+  font-size: 12px;
+  color: #475569;
+  font-weight: 600;
 }
 
 .reports-kpi-label svg {
-  font-size: 0.75rem;
-  color: #38bdf8;
+  font-size: 14px;
+  color: #2563eb;
 }
 
 .reports-kpi-value {
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 800;
   margin-top: 2px;
+  color: #0b1220;
 }
 
 .reports-kpi-hint {
-  font-size: 0.7rem;
-  color: #6b7280;
+  font-size: 12px;
+  color: #64748b;
 }
 
 /* Panels & tables */
 .reports-panel {
-  margin-top: 4px;
-  border-radius: 12px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  background: rgba(15, 23, 42, 0.95);
+  margin-top: 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  background: rgba(255, 255, 255, 0.95);
   overflow: hidden;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
 }
 
+/* Table rows */
 .reports-table-header,
 .reports-table-row {
   display: grid;
   grid-template-columns: 1.6fr 0.7fr 1fr;
-  padding: 6px 10px;
-  font-size: 0.75rem;
-  column-gap: 8px;
+  padding: 10px 12px;
+  font-size: 13px; /* body 12–14px */
+  column-gap: 10px;
+  align-items: center;
+  color: #0f172a;
 }
 
 .reports-table-header {
-  background: rgba(15, 23, 42, 0.98);
-  font-weight: 600;
-  color: #9ca3af;
-  border-bottom: 1px solid rgba(55, 65, 81, 0.9);
+  background: #f8fafc;
+  font-weight: 800;
+  font-size: 12px; /* minimalist headers */
+  color: #334155;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.45);
+}
+
+.reports-table-row {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
 }
 
 .reports-table-row:nth-child(even) {
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(248, 250, 252, 0.6);
+}
+
+.reports-table-row:last-child {
+  border-bottom: none;
 }
 
 .reports-row-muted span {
-  color: #6b7280;
+  color: #64748b;
 }
 
-/* Activity and country tables can be 2-column */
+/* Activity (2 columns) and Country tables (3 columns) – preserve your layout intent */
 .reports-section:nth-of-type(4) .reports-table-header,
 .reports-section:nth-of-type(4) .reports-table-row {
   grid-template-columns: 1.6fr 0.6fr;
@@ -197,4 +254,61 @@
 .reports-section:nth-of-type(5) .reports-table-header,
 .reports-section:nth-of-type(5) .reports-table-row {
   grid-template-columns: 1.4fr 0.7fr 1fr;
+}
+
+/* Loading + error states */
+.reports-loading,
+.reports-error {
+  margin-top: 10px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reports-error {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(254, 242, 242, 0.75);
+}
+
+.reports-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(148, 163, 184, 0.55);
+  border-top-color: rgba(37, 99, 235, 0.85);
+  animation: reportsSpin 0.9s linear infinite;
+}
+
+@keyframes reportsSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Generic modal styling you can reuse across pages */
+.modal-overlay,
+.reports-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35); /* soft overlay */
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 999;
+}
+
+.modal-card,
+.reports-modal-card {
+  width: min(720px, 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.18);
+  color: #0f172a;
 }
