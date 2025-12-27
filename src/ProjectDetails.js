@@ -702,10 +702,12 @@ function ProjectDetails() {
     navigate(`/customer/${encodeURIComponent(project.customer_name)}`);
   };
 
-  const modulesDisplay = useMemo(() => toModulesArray(project?.smartvista_modules), [project?.smartvista_modules]);
-
   if (loading) return <LoadingState />;
   if (error || !project) return <ErrorState error={error} onBack={() => navigate(-1)} />;
+
+  // ✅ Single source of truth for what’s shown in the form
+  const isReadOnly = !isEditing;
+  const viewOrEdit = isEditing ? editProject : project;
 
   return (
     <div className="project-details-container theme-light">
@@ -813,200 +815,230 @@ function ProjectDetails() {
               </div>
             </div>
 
-            {!isEditing ? (
-              <div className="details-grid">
-                <div className="detail-item">
-                  <span className="detail-label">Account Manager</span>
-                  <span className="detail-value">{project.account_manager || "-"}</span>
-                </div>
-
-                <div className="detail-item">
-                  <span className="detail-label">Country</span>
-                  <span className="detail-value">{project.country || "-"}</span>
-                </div>
-
-                <div className="detail-item">
-                  <span className="detail-label">Due Date</span>
-                  <span className="detail-value">{formatDate(project.due_date)}</span>
-                </div>
-
-                <div className="detail-item">
-                  <span className="detail-label">Deal Value</span>
-                  <span className="detail-value">{formatCurrency(project.deal_value)}</span>
-                </div>
-
-                <div className="detail-item">
-                  <span className="detail-label">Primary Presales</span>
-                  <span className="detail-value">{project.primary_presales || "-"}</span>
-                </div>
-
-                <div className="detail-item">
-                  <span className="detail-label">Backup Presales</span>
-                  <span className="detail-value">{project.backup_presales || "-"}</span>
-                </div>
-
-                <div className="detail-item">
-                  <span className="detail-label">Corporate</span>
-                  <span className="detail-value">{project.is_corporate ? "Yes" : "No"}</span>
-                </div>
-
-                <div className="detail-item detail-item-full">
-                  <span className="detail-label">SmartVista Modules</span>
-                  {modulesDisplay.length ? (
-                    <div className="chip-row">
-                      {modulesDisplay.map((m) => (
-                        <span key={m} className="chip">
-                          {m}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="detail-value muted">-</span>
-                  )}
-                </div>
-
-                <div className="detail-item detail-item-full">
-                  <span className="detail-label">Next Key Activity</span>
-                  <span className="detail-value">{project.next_key_activity || "-"}</span>
-                </div>
-
-                <div className="detail-item detail-item-full">
-                  <span className="detail-label">Project Background</span>
-                  <span className="detail-value">{project.remarks || "-"}</span>
-                </div>
-
-                <div className="detail-item detail-item-full">
-                  <span className="detail-label">Scope</span>
-                  <span className="detail-value">{project.scope || "-"}</span>
-                </div>
+            {/* ✅ ONE layout for BOTH view and edit: form grid */}
+            <div className={`project-edit-grid ${isReadOnly ? "is-readonly" : ""}`}>
+              <div className="form-group">
+                <label className="form-label">
+                  <FaBullseye className="form-icon" />
+                  Project Name
+                </label>
+                <input
+                  type="text"
+                  name="project_name"
+                  value={viewOrEdit.project_name || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-input"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
               </div>
-            ) : (
-              <div className="project-edit-grid">
-                <div className="form-group">
-                  <label className="form-label">
-                    <FaBullseye className="form-icon" />
-                    Project Name
-                  </label>
-                  <input type="text" name="project_name" value={editProject.project_name || ""} onChange={handleEditChange} className="form-input" />
-                </div>
 
-                <div className="form-group">
-                  <label className="form-label">
-                    <FaUsers className="form-icon" />
-                    Customer
-                  </label>
-                  <input type="text" name="customer_name" value={editProject.customer_name || ""} onChange={handleEditChange} className="form-input" />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Account Manager</label>
-                  <input type="text" name="account_manager" value={editProject.account_manager || ""} onChange={handleEditChange} className="form-input" />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Country</label>
-                  <input type="text" name="country" value={editProject.country || ""} onChange={handleEditChange} className="form-input" />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Primary Presales</label>
-                  <select className="form-input" name="primary_presales" value={editProject.primary_presales || ""} onChange={handleEditChange}>
-                    <option value="">-</option>
-                    {presalesResources.map((p) => (
-                      <option key={`pp-${p}`} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Backup Presales</label>
-                  <select className="form-input" name="backup_presales" value={editProject.backup_presales || ""} onChange={handleEditChange}>
-                    <option value="">-</option>
-                    {presalesResources.map((p) => (
-                      <option key={`bp-${p}`} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group form-group-full">
-                  <label className="form-label" style={{ marginBottom: 8 }}>
-                    Corporate
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                    <input type="checkbox" name="is_corporate" checked={!!editProject.is_corporate} onChange={handleEditChange} />
-                    Corporate project
-                  </label>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    <FaChartLine className="form-icon" />
-                    Sales Stage
-                  </label>
-                  <input type="text" name="sales_stage" value={editProject.sales_stage || ""} onChange={handleEditChange} className="form-input" />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    <FaDollarSign className="form-icon" />
-                    Deal Value (USD)
-                  </label>
-                  <input type="number" name="deal_value" value={editProject.deal_value ?? ""} onChange={handleEditChange} className="form-input" />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    <FaCalendarAlt className="form-icon" />
-                    Due Date
-                  </label>
-                  <input type="date" name="due_date" value={editProject.due_date || ""} onChange={handleEditChange} className="form-input" />
-                </div>
-
-                <div className="form-group form-group-full">
-                  <label className="form-label">SmartVista Modules</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={modulesDraft}
-                    onChange={(e) => setModulesDraft(e.target.value)}
-                    placeholder="e.g. SVBO, SVIP, SVFE, EPG, Merchant Acquiring, Fraud"
-                  />
-                  <div className="hint-text">Tip: separate using commas.</div>
-                </div>
-
-                <div className="form-group form-group-full">
-                  <label className="form-label">Next Key Activity</label>
-                  <input
-                    type="text"
-                    name="next_key_activity"
-                    className="form-input"
-                    value={editProject.next_key_activity || ""}
-                    onChange={handleEditChange}
-                    placeholder="e.g. RFP due on Jan 15, Meeting on Jan 10, Demo on Jan 12"
-                  />
-                </div>
-
-                <div className="form-group form-group-full">
-                  <label className="form-label">Project Background</label>
-                  <textarea
-                    name="remarks"
-                    value={editProject.remarks || ""}
-                    onChange={handleEditChange}
-                    className="form-textarea"
-                    placeholder="Capture project context, timeline, constraints, dependencies, etc."
-                  />
-                </div>
-
-                <div className="form-group form-group-full">
-                  <label className="form-label">Scope</label>
-                  <textarea name="scope" value={editProject.scope || ""} onChange={handleEditChange} className="form-textarea" />
-                </div>
+              <div className="form-group">
+                <label className="form-label">
+                  <FaUsers className="form-icon" />
+                  Customer
+                </label>
+                <input
+                  type="text"
+                  name="customer_name"
+                  value={viewOrEdit.customer_name || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-input"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
               </div>
-            )}
+
+              <div className="form-group">
+                <label className="form-label">Account Manager</label>
+                <input
+                  type="text"
+                  name="account_manager"
+                  value={viewOrEdit.account_manager || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-input"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Country</label>
+                <input
+                  type="text"
+                  name="country"
+                  value={viewOrEdit.country || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-input"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Primary Presales</label>
+                <select
+                  className="form-input"
+                  name="primary_presales"
+                  value={viewOrEdit.primary_presales || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  disabled={isReadOnly}
+                >
+                  <option value="">-</option>
+                  {presalesResources.map((p) => (
+                    <option key={`pp-${p}`} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Backup Presales</label>
+                <select
+                  className="form-input"
+                  name="backup_presales"
+                  value={viewOrEdit.backup_presales || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  disabled={isReadOnly}
+                >
+                  <option value="">-</option>
+                  {presalesResources.map((p) => (
+                    <option key={`bp-${p}`} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group form-group-full">
+                <label className="form-label" style={{ marginBottom: 8 }}>
+                  Corporate
+                </label>
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    name="is_corporate"
+                    checked={!!viewOrEdit.is_corporate}
+                    onChange={isReadOnly ? undefined : handleEditChange}
+                    disabled={isReadOnly}
+                  />
+                  Corporate project
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <FaChartLine className="form-icon" />
+                  Sales Stage
+                </label>
+                <input
+                  type="text"
+                  name="sales_stage"
+                  value={viewOrEdit.sales_stage || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-input"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <FaDollarSign className="form-icon" />
+                  Deal Value (USD)
+                </label>
+                <input
+                  type="number"
+                  name="deal_value"
+                  value={viewOrEdit.deal_value ?? ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-input"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <FaCalendarAlt className="form-icon" />
+                  Due Date
+                </label>
+                <input
+                  type="date"
+                  name="due_date"
+                  value={viewOrEdit.due_date || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-input"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
+              </div>
+
+              <div className="form-group form-group-full">
+                <label className="form-label">SmartVista Modules</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={isEditing ? modulesDraft : (project.smartvista_modules || "")}
+                  onChange={isReadOnly ? undefined : (e) => setModulesDraft(e.target.value)}
+                  placeholder="e.g. SVBO, SVIP, SVFE, EPG, Merchant Acquiring, Fraud"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
+                <div className="hint-text">Tip: separate using commas.</div>
+
+                {/* Optional: show chips in view mode (still same section) */}
+                {!isEditing && toModulesArray(project.smartvista_modules).length > 0 ? (
+                  <div className="chip-row">
+                    {toModulesArray(project.smartvista_modules).map((m) => (
+                      <span key={m} className="chip">
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="form-group form-group-full">
+                <label className="form-label">Next Key Activity</label>
+                <input
+                  type="text"
+                  name="next_key_activity"
+                  className="form-input"
+                  value={viewOrEdit.next_key_activity || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  placeholder="e.g. RFP due on Jan 15, Meeting on Jan 10, Demo on Jan 12"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
+              </div>
+
+              <div className="form-group form-group-full">
+                <label className="form-label">Project Background</label>
+                <textarea
+                  name="remarks"
+                  value={viewOrEdit.remarks || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-textarea"
+                  placeholder="Capture project context, timeline, constraints, dependencies, etc."
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
+              </div>
+
+              <div className="form-group form-group-full">
+                <label className="form-label">Scope</label>
+                <textarea
+                  name="scope"
+                  value={viewOrEdit.scope || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-textarea"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
+              </div>
+            </div>
           </section>
         </div>
 
