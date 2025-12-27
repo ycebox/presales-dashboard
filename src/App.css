@@ -240,7 +240,16 @@ a {
   font-size: 12px;
   color: var(--muted);
 }
+/* ===== Home Top Deals: only Customer is bold ===== */
+.home-topdeals-table td:first-child .table-link-btn,
+.home-topdeals-table-wide td:first-child .table-link-btn {
+  font-weight: 850;
+}
 
+.home-topdeals-table td:nth-child(2) .table-link-btn,
+.home-topdeals-table-wide td:nth-child(2) .table-link-btn {
+  font-weight: 400; /* project name normal */
+}
 /* Utility muted text */
 .small-muted {
   font-size: 12px;
