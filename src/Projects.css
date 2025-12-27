@@ -321,7 +321,7 @@
 
 .customers-table th,
 .customers-table td {
-  padding: 0.72rem 0.85rem;
+ padding: 0.65rem 0.7rem;
   border-bottom: 1px solid var(--border-2);
   font-size: 14px;
   color: var(--ink-0);
