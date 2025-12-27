@@ -556,7 +556,12 @@
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
   color: rgba(15, 23, 42, 0.90);
 }
+/* ===== WORKLOAD: emphasize presales name (match schedule style) ===== */
 
+.workload-table tbody td:first-child {
+  font-weight: 650;
+  color: #0f172a;
+}
 /* ===== PRESALES AVAILABILITY ===== */
 
 .schedule-actions {
@@ -777,10 +782,22 @@
 
 /* ===== Busy + schedule marker (left border) ===== */
 
+/* ===== SCHEDULE / AVAILABILITY: presales name bold ===== */
+
+.heatmap-presales-name,
+.schedule-presales-name {
+  font-weight: 650;
+  color: #0f172a;
+}
 .heatmap-cell[class*="marker-"] {
   box-shadow: inset 3px 0 0 rgba(15, 23, 42, 0.12);
 }
 
+/* Fallback: first column in schedule rows */
+.schedule-row > :first-child {
+  font-weight: 650;
+  color: #0f172a;
+}
 /* Make marker colors strong so they stand out on Busy blue */
 .heatmap-cell.marker-leave { box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.88); }
 .heatmap-cell.marker-travel { box-shadow: inset 3px 0 0 rgba(249, 115, 22, 0.88); }
