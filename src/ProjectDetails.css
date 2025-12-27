@@ -747,3 +747,8 @@
   gap: 10px;
   font-size: 13px;
 }
+/* Make panel titles a bit bigger */
+.card-title {
+  font-size: 18px;
+  font-weight: 900;
+}
