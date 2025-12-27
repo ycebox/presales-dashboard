@@ -725,3 +725,25 @@
   color: var(--muted);
   margin-top:4px;
 }
+/* Read-only form mode (View mode uses same layout as Edit) */
+.project-edit-grid.is-readonly .form-input,
+.project-edit-grid.is-readonly .form-textarea,
+.project-edit-grid.is-readonly select {
+  background: rgba(15, 23, 42, 0.03);
+  border-color: rgba(15, 23, 42, 0.10);
+  color: var(--text);
+  cursor: default;
+}
+
+.project-edit-grid.is-readonly .form-input:disabled,
+.project-edit-grid.is-readonly .form-textarea:disabled,
+.project-edit-grid.is-readonly select:disabled {
+  opacity: 1; /* important: keep it readable */
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
