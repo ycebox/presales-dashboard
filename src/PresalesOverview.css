@@ -1033,3 +1033,74 @@
 .overdue {
   color: #b91c1c !important;
 }
+/* ===== READABILITY RESET (final) ===== */
+.presales-page-container {
+  font-size: 14px;        /* base size for everything */
+  line-height: 1.45;
+}
+
+/* Panel headers: must be bigger than data */
+.presales-panel-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.presales-panel-header p {
+  font-size: 13px;
+}
+
+/* Page header */
+.presales-header-main h2 {
+  font-size: 26px;
+}
+
+.presales-header-main p {
+  font-size: 14px;
+}
+
+/* Make tables + cards consistent (inherit base) */
+.unassigned-tasks-table,
+.assignment-table,
+.workload-table,
+.schedule-list-table {
+  font-size: 14px;
+}
+
+.unassigned-tasks-table thead th,
+.unassigned-tasks-table tbody td,
+.assignment-table thead th,
+.assignment-table tbody td,
+.workload-table thead th,
+.workload-table tbody td,
+.schedule-list-table thead th,
+.schedule-list-table tbody td {
+  font-size: 14px;
+}
+
+/* Kanban cards */
+.activity-card-title {
+  font-size: 14px;
+}
+
+.activity-card-sub,
+.meta-chip,
+.activities-col-title,
+.activities-col-count,
+.activities-empty,
+.activities-more {
+  font-size: 13px;
+}
+
+/* Buttons + toggles */
+.btn-primary,
+.btn-secondary,
+.toggle-btn,
+.legend-item,
+.schedule-type-chip {
+  font-size: 13px;
+}
+
+/* Heatmap header in 30-day view: keep readable but still compact */
+.heatmap-table.heatmap-view-30 .heatmap-day-col.heatmap-header-cell {
+  font-size: 12px;
+}
