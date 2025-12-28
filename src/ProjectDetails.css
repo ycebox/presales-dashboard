@@ -752,3 +752,20 @@
   font-size: 18px;
   font-weight: 900;
 }
+/* Force consistent typography across all inputs, selects, textareas, buttons */
+.project-details-container,
+.project-details-container * {
+  font-family: inherit;
+}
+
+.form-input,
+.form-textarea,
+.notes-editor,
+select.form-input,
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: 13px;
+}
