@@ -1425,16 +1425,15 @@ const CustomerDetails = () => {
                   return (
                     <div key={p.id} className="project-item">
                       <div className="project-main">
-                        <h3>
-                          <button
-                            type="button"
-                            className="cd-link-btn"
-                            onClick={() => goToProjectDetails(p.id)}
-                            title="Open project details"
-                          >
-                            {p.project_name || '(Unnamed Project)'}
-                          </button>
-                        </h3>
+                        {/* ✅ FIX: remove <h3> wrapper to avoid “double title” look */}
+                        <button
+                          type="button"
+                          className="cd-link-btn project-title-btn"
+                          onClick={() => goToProjectDetails(p.id)}
+                          title="Open project details"
+                        >
+                          {p.project_name || '(Unnamed Project)'}
+                        </button>
 
                         {p.scope ? <p className="project-scope">{p.scope}</p> : null}
 
