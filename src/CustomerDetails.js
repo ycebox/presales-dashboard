@@ -374,7 +374,6 @@ const CustomerDetails = () => {
       setPresalesOptions(data || []);
     } catch (err) {
       console.error('Error fetching presales resources:', err);
-      // allow retry later if it failed
       presalesFetchedRef.current = false;
       setPresalesOptions([]);
     } finally {
@@ -433,7 +432,7 @@ const CustomerDetails = () => {
     fetchCountries();
     fetchAccountManagers();
     fetchCustomerMetrics();
-    fetchPresalesResources(); // ✅ will now fetch once only
+    fetchPresalesResources();
   }, [
     fetchCustomer,
     fetchStatusOptions,
@@ -819,7 +818,6 @@ const CustomerDetails = () => {
     });
     const [saving, setSaving] = useState(false);
 
-    // ✅ IMPORTANT: do NOT fetch presales here (prevents repeated requests)
     useEffect(() => {
       if (!isOpen) return;
       setSaving(false);
@@ -967,7 +965,6 @@ const CustomerDetails = () => {
                 ))}
               </select>
 
-              {/* optional retry button if list is empty */}
               {!presalesLoading && presalesOptions.length === 0 ? (
                 <button
                   type="button"
@@ -1220,7 +1217,9 @@ const CustomerDetails = () => {
                     rows={5}
                   />
                 ) : (
-                  <div className="info-value">{customer?.company_profile || '—'}</div>
+                  <div className="info-value company-profile-value">
+                    {customer?.company_profile || '—'}
+                  </div>
                 )}
               </div>
             </div>
@@ -1356,8 +1355,9 @@ const CustomerDetails = () => {
                 <p className="section-subtitle">Quick view of pipeline and footprint.</p>
               </div>
 
+              {/* ✅ make edit match other primary actions */}
               <button
-                className="action-button"
+                className="action-button primary"
                 onClick={() => {
                   syncMetricsDraftFromRecord(metrics);
                   setShowMetricsModal(true);
@@ -1434,7 +1434,6 @@ const CustomerDetails = () => {
                           {p.project_name || '(Unnamed Project)'}
                         </button>
 
-                        {/* ✅ CHANGE: show next_key_activity under project name */}
                         {p.next_key_activity ? (
                           <p className="project-next-activity">{p.next_key_activity}</p>
                         ) : null}
