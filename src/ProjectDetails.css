@@ -769,3 +769,115 @@ select {
   font-family: inherit;
   font-size: 13px;
 }
+/* ---------- Typography consistency (ProjectDetails) ---------- */
+.project-details-container,
+.project-details-container * {
+  font-family: inherit;
+}
+
+.form-input,
+.form-textarea,
+textarea,
+input,
+select,
+button {
+  font-family: inherit;
+}
+
+/* ---------- SmartVista Modules multi-select ---------- */
+.modules-select {
+  position: relative;
+}
+
+.modules-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.modules-trigger-placeholder {
+  color: rgba(15, 23, 42, 0.55);
+}
+
+.modules-trigger-text {
+  color: rgba(15, 23, 42, 0.95);
+}
+
+.modules-caret {
+  margin-left: 10px;
+  font-size: 12px;
+  opacity: 0.8;
+  transition: transform 0.15s ease;
+}
+
+.modules-caret.open {
+  transform: rotate(180deg);
+}
+
+.modules-select-menu {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-radius: 12px;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12);
+  padding: 10px;
+}
+
+.modules-search-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.modules-search {
+  flex: 1;
+}
+
+.modules-add-btn {
+  height: 36px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.modules-options {
+  max-height: 220px;
+  overflow: auto;
+  padding: 4px 2px;
+  border-top: 1px solid rgba(148, 163, 184, 0.35);
+  margin-top: 10px;
+}
+
+.modules-option {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.modules-option:hover {
+  background: rgba(2, 132, 199, 0.06);
+}
+
+.modules-option input {
+  width: 16px;
+  height: 16px;
+}
+
+.modules-empty {
+  padding: 10px 6px 4px;
+  color: rgba(15, 23, 42, 0.55);
+  font-size: 12px;
+}
+
+.modules-chip-row {
+  margin-top: 10px;
+}
