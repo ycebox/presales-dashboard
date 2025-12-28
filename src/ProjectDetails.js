@@ -975,29 +975,36 @@ function ProjectDetails() {
                 />
               </div>
 
+              {/* ✅ UPDATED: SmartVista Modules - chips only in view mode */}
               <div className="form-group form-group-full">
                 <label className="form-label">SmartVista Modules</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={isEditing ? modulesDraft : (project.smartvista_modules || "")}
-                  onChange={isReadOnly ? undefined : (e) => setModulesDraft(e.target.value)}
-                  placeholder="e.g. SVBO, SVIP, SVFE, EPG, Merchant Acquiring, Fraud"
-                  readOnly={isReadOnly}
-                  disabled={isReadOnly}
-                />
-                <div className="hint-text">Tip: separate using commas.</div>
 
-                {/* Optional: show chips in view mode (still same section) */}
-                {!isEditing && toModulesArray(project.smartvista_modules).length > 0 ? (
-                  <div className="chip-row">
-                    {toModulesArray(project.smartvista_modules).map((m) => (
-                      <span key={m} className="chip">
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
+                {isEditing ? (
+                  <>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={modulesDraft}
+                      onChange={(e) => setModulesDraft(e.target.value)}
+                      placeholder="e.g. SVBO, SVIP, SVFE, EPG, Merchant Acquiring, Fraud"
+                    />
+                    <div className="hint-text">Tip: separate using commas.</div>
+                  </>
+                ) : (
+                  <>
+                    {toModulesArray(project.smartvista_modules).length > 0 ? (
+                      <div className="chip-row">
+                        {toModulesArray(project.smartvista_modules).map((m) => (
+                          <span key={m} className="chip">
+                            {m}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="muted">-</div>
+                    )}
+                  </>
+                )}
               </div>
 
               <div className="form-group form-group-full">
