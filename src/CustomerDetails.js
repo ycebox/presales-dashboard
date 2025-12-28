@@ -1425,7 +1425,6 @@ const CustomerDetails = () => {
                   return (
                     <div key={p.id} className="project-item">
                       <div className="project-main">
-                        {/* ✅ FIX: remove <h3> wrapper to avoid “double title” look */}
                         <button
                           type="button"
                           className="cd-link-btn project-title-btn"
@@ -1435,7 +1434,10 @@ const CustomerDetails = () => {
                           {p.project_name || '(Unnamed Project)'}
                         </button>
 
-                        {p.scope ? <p className="project-scope">{p.scope}</p> : null}
+                        {/* ✅ CHANGE: show next_key_activity under project name */}
+                        {p.next_key_activity ? (
+                          <p className="project-next-activity">{p.next_key_activity}</p>
+                        ) : null}
 
                         <div className="project-mini-row">
                           {stage ? <span className="project-stage-badge">{stage}</span> : null}
@@ -1445,18 +1447,6 @@ const CustomerDetails = () => {
                             </span>
                           ) : null}
                         </div>
-
-                        {(p.primary_presales || p.backup_presales || p.is_corporate) && (
-                          <div className="project-mini-row">
-                            {p.primary_presales ? (
-                              <span className="project-mini-pill">Primary: {p.primary_presales}</span>
-                            ) : null}
-                            {p.backup_presales ? (
-                              <span className="project-mini-pill">Backup: {p.backup_presales}</span>
-                            ) : null}
-                            {p.is_corporate ? <span className="project-mini-pill">Corporate</span> : null}
-                          </div>
-                        )}
                       </div>
 
                       <div className="project-details">
