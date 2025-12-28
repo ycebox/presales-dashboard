@@ -198,132 +198,163 @@ const getEffectiveTaskHours = (task, taskTypeMultiplierMap) => {
       ? task.estimated_hours
       : DEFAULT_TASK_HOURS;
 
-  const t = (task?.task_type || '').toLowerCase().trim();
-  if (!t) return base;
+  const typeNameLower = (task?.task_type || '').toLowerCase().trim();
 
-  const multFromDb = taskTypeMultiplierMap?.get?.(t);
-  if (typeof multFromDb === 'number') return base * multFromDb;
+  let mult = 1.0;
 
-  return base * legacyKeywordMultiplier(t);
+  if (typeNameLower && taskTypeMultiplierMap?.has(typeNameLower)) {
+    mult = taskTypeMultiplierMap.get(typeNameLower);
+  } else {
+    mult = legacyKeywordMultiplier(task?.task_type);
+  }
+
+  const effective = Math.max(0, base * (mult ?? 1.0));
+  return Math.min(effective, 80);
 };
 
-// ---------- UI helpers ----------
-const formatShortDate = (d) => {
-  const date = parseDate(d);
-  if (!date) return '-';
-  return date.toLocaleDateString('en-SG', { month: 'short', day: 'numeric' });
+// ---------- Partial-day schedule blocking ----------
+const toNumberOrNull = (v) => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isNaN(n) ? null : n;
 };
 
-// ---------- Activities Kanban ----------
-const ActivitiesKanban = ({ groups, parseDateFn, today, formatShortDate, onClickTask, onDeleteTask }) => {
-  const statusOrder = ['Overdue', 'In Progress', 'Not Started'];
+const getDefaultBlockHoursByType = (type, dailyCapacity) => {
+  const t = (type || '').toLowerCase();
+  if (t === 'leave' || t === 'travel') return dailyCapacity;
+  if (t === 'training') return Math.min(6, dailyCapacity);
+  if (t === 'internal') return Math.min(3, dailyCapacity);
+  return Math.min(2, dailyCapacity);
+};
 
-  const renderMeta = (task) => {
-    const due = parseDateFn(task.due_date);
-    const start = parseDateFn(task.start_date);
-    const end = parseDateFn(task.end_date);
+const getScheduleBlockHours = (event, dailyCapacity) => {
+  const explicit = toNumberOrNull(event?.block_hours);
+  if (explicit !== null) return Math.max(0, Math.min(explicit, dailyCapacity));
+  return getDefaultBlockHoursByType(event?.type, dailyCapacity);
+};
 
-    const dueLabel = due ? formatShortDate(due) : '-';
+const isFullDayBlocked = (blockedHours, dailyCapacity) => {
+  if (!dailyCapacity) return false;
+  return blockedHours >= dailyCapacity * 0.95;
+};
 
-    let timeLabel = '';
-    if (start && end) timeLabel = `${formatShortDate(start)} – ${formatShortDate(end)}`;
-    else if (start) timeLabel = `${formatShortDate(start)}`;
-    else if (end) timeLabel = `${formatShortDate(end)}`;
+const getPriorityMinFreeHours = (priority) => {
+  const p = (priority || '').toLowerCase();
+  if (p === 'high') return 4;
+  if (p === 'low') return 2;
+  return 3;
+};
 
-    const priority = task.priority || 'Normal';
+// ---------- Kanban ----------
+function ActivitiesKanban({ groups, parseDateFn, today, formatShortDate, onClickTask, onDeleteTask }) {
+  const [limits, setLimits] = useState({
+    Overdue: 6,
+    'In Progress': 6,
+    'Not Started': 6,
+  });
 
-    return (
-      <div className="task-meta">
-        <span className="meta-chip">{task.projectName || 'Unknown project'}</span>
-        {due && (
-          <span className={`meta-chip ${due.getTime() < today.getTime() ? 'chip-overdue' : ''}`}>
-            Due {dueLabel}
-          </span>
-        )}
-        {!due && <span className="meta-chip">Due -</span>}
-        {timeLabel && <span className="meta-chip">{timeLabel}</span>}
-        <span className="meta-chip">{priority}</span>
-      </div>
-    );
-  };
+  const columns = [
+    { key: 'Not Started', title: 'Not Started' },
+    { key: 'In Progress', title: 'In Progress' },
+    { key: 'Overdue', title: 'Overdue' },
+  ];
+
+  const incLimit = (key) => setLimits((p) => ({ ...p, [key]: (p[key] || 6) + 6 }));
+  const countLabel = (key) => groups?.[key]?.length || 0;
 
   return (
-    <div className="kanban-wrap">
-      {statusOrder.map((groupName) => {
-        const list = groups[groupName] || [];
+    <div className="activities-kanban">
+      {columns.map((col) => {
+        const list = groups?.[col.key] || [];
+        const visible = list.slice(0, limits[col.key] || 6);
+        const hasMore = list.length > visible.length;
+
         return (
-          <div className="kanban-col" key={groupName}>
-            <div className="kanban-col-header">
-              <h4>{groupName}</h4>
-              <span className="kanban-count">{list.length}</span>
+          <div key={col.key} className={`activities-col ${col.key === 'Overdue' ? 'is-overdue' : ''}`}>
+            <div className="activities-col-header">
+              <div className="activities-col-title">{col.title}</div>
+              <div className="activities-col-count">{countLabel(col.key)}</div>
             </div>
 
-            {list.length === 0 ? (
-              <div className="kanban-empty">No tasks here</div>
+            {visible.length === 0 ? (
+              <div className="activities-empty">No tasks</div>
             ) : (
-              <div className="kanban-cards">
-                {list.slice(0, 20).map((t) => (
-                  <div className="task-card" key={t.id}>
-                    <div className="task-card-top">
-                      <button
-                        type="button"
-                        className="task-title"
-                        onClick={() => onClickTask(t)}
-                        title="Open task"
-                      >
-                        {t.description || 'Untitled task'}
-                      </button>
+              <div className="activities-cards">
+                {visible.map((t) => {
+                  const due = parseDateFn(t.due_date);
+                  const isOverdue = due && due.getTime() < today.getTime();
 
-                      <button
-                        type="button"
-                        className="task-delete"
-                        onClick={() => onDeleteTask(t)}
-                        title="Delete task"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={`activity-card ${isOverdue ? 'is-overdue' : ''}`}
+                      onClick={() => onClickTask(t)}
+                      title="Click to edit"
+                    >
+                      <div className="activity-card-top">
+                        <div className="activity-card-title">{t.description || 'Untitled task'}</div>
 
-                    {renderMeta(t)}
-
-                    {t.assignee && (
-                      <div className="task-footer">
-                        <span className="assignee-pill">{t.assignee}</span>
+                        <div className="activity-card-actions">
+                          <button
+                            type="button"
+                            className="activity-card-iconbtn danger"
+                            title="Delete task"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteTask?.(t.id);
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
 
-                {list.length > 20 && (
-                  <button type="button" className="activities-more">
-                    Showing 20 of {list.length}. Narrow down using filters below if needed.
-                  </button>
-                )}
+                      <div className="activity-card-sub">
+                        <span className="truncate">{t.customerName || 'Unknown customer'}</span>
+                        <span className="dot">•</span>
+                        <span className="truncate">{t.projectName || 'Unknown project'}</span>
+                      </div>
+
+                      <div className="activity-card-meta">
+                        <div className={`meta-chip ${isOverdue ? 'chip-overdue' : ''}`}>
+                          Due: {formatShortDate(t.due_date) || '-'}
+                        </div>
+                        <div className="meta-chip">{t.assignee || 'Unassigned'}</div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
+            )}
+
+            {hasMore && (
+              <button type="button" className="activities-more" onClick={() => incLimit(col.key)}>
+                Show more
+              </button>
             )}
           </div>
         );
       })}
     </div>
   );
-};
+}
 
-export default function PresalesOverview() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
+function PresalesOverview() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [scheduleEvents, setScheduleEvents] = useState([]);
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
 
-  // Assignment helper filters
-  const [filterRange, setFilterRange] = useState('thisWeek');
-  const [customStart, setCustomStart] = useState('');
-  const [customEnd, setCustomEnd] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState('All');
-  const [dateError, setDateError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Assignment helper
+  const [assignPriority, setAssignPriority] = useState('Normal');
+  const [assignStart, setAssignStart] = useState('');
+  const [assignEnd, setAssignEnd] = useState('');
+  const [assignDateError, setAssignDateError] = useState('');
 
   // Calendar view
   const [calendarView, setCalendarView] = useState('14');
@@ -441,7 +472,19 @@ export default function PresalesOverview() {
     return map;
   }, [projects]);
 
-  // ✅ Next key activities (ONLY those with value)
+  const { thisWeek, nextWeek, last30 } = useMemo(() => getWeekRanges(), []);
+  const today = useMemo(() => toMidnight(new Date()), []);
+  const thisWeekRange = thisWeek;
+  const nextWeekRange = nextWeek;
+  const last30DaysRange = last30;
+
+  const formatShortDate = (d) =>
+    d ? new Date(d).toLocaleDateString('en-SG', { day: '2-digit', month: 'short' }) : '';
+
+  const formatDayDetailDate = (d) =>
+    d ? d.toLocaleDateString('en-SG', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) : '';
+
+  // ✅ Next key activities (only non-empty values)
   const nextKeyActivities = useMemo(() => {
     const list = (projects || [])
       .filter((p) => typeof p?.next_key_activity === 'string' && p.next_key_activity.trim() !== '')
@@ -452,182 +495,582 @@ export default function PresalesOverview() {
         nextKeyActivity: p.next_key_activity.trim(),
       }));
 
-    // Keep stable ordering
     list.sort((a, b) => (a.customerName || '').localeCompare(b.customerName || ''));
     return list;
   }, [projects]);
 
-  // ---------- Dates / ranges ----------
-  const today = useMemo(() => toMidnight(new Date()), []);
-  const weekRanges = useMemo(() => getWeekRanges(), []);
+  // ---- Task type dropdown options (DB-driven + fallback + legacy support) ----
+  const taskTypeOptions = useMemo(() => {
+    const base =
+      (taskTypes || []).length > 0
+        ? (taskTypes || []).map((t) => ({ id: t.id, name: t.name }))
+        : DEFAULT_TASK_TYPES;
 
-  // ---------- Derived: tasks with project names ----------
-  const tasksWithProjectName = useMemo(() => {
-    return (tasks || []).map((t) => ({
-      ...t,
-      projectName: projectMap.get(t.project_id) || 'Unknown project',
-    }));
-  }, [tasks, projectMap]);
-
-  // ---------- Unassigned tasks ----------
-  const unassignedOnly = useMemo(() => {
-    return (tasksWithProjectName || [])
-      .filter((t) => !t.assignee && !isCompletedStatus(t.status))
-      .sort((a, b) => {
-        const da = parseDate(a.due_date);
-        const db = parseDate(b.due_date);
-        if (da && db) return da.getTime() - db.getTime();
-        if (da) return -1;
-        if (db) return 1;
-        return priorityScore(a.priority) - priorityScore(b.priority);
-      });
-  }, [tasksWithProjectName]);
+    const current = (taskForm?.task_type || '').trim();
+    if (current && !base.some((x) => (x.name || '').toLowerCase() === current.toLowerCase())) {
+      return [{ id: 'legacy', name: current }, ...base];
+    }
+    return base;
+  }, [taskTypes, taskForm?.task_type]);
 
   // ---------- Presales Activities grouping ----------
   const ongoingUpcomingGrouped = useMemo(() => {
-    const active = (tasksWithProjectName || []).filter((t) => !isCompletedStatus(t.status));
+    const groups = { Overdue: [], 'In Progress': [], 'Not Started': [] };
 
-    const overdue = [];
-    const inProgress = [];
-    const notStarted = [];
-    const other = [];
+    (tasks || [])
+      .filter((t) => !isCompletedStatus(t.status))
+      .forEach((t) => {
+        const info =
+          projectInfoMap.get(t.project_id) || { customerName: 'Unknown customer', projectName: 'Unknown project' };
+        const row = { ...t, customerName: info.customerName, projectName: info.projectName };
 
-    active.forEach((t) => {
-      const due = parseDate(t.due_date);
+        const due = parseDate(row.due_date);
+        const isOverdue = due && due.getTime() < today.getTime();
 
-      const statusGroup = normalizeStatusGroup(t.status);
-      const isOverdue = due && due.getTime() < today.getTime();
+        if (isOverdue) groups.Overdue.push(row);
+        else {
+          const g = normalizeStatusGroup(row.status);
+          if (g === 'In Progress') groups['In Progress'].push(row);
+          else if (g === 'Not Started') groups['Not Started'].push(row);
+        }
+      });
 
-      if (isOverdue) {
-        overdue.push(t);
-      } else if (statusGroup === 'In Progress') {
-        inProgress.push(t);
-      } else if (statusGroup === 'Not Started') {
-        notStarted.push(t);
-      } else {
-        other.push(t);
-      }
+    Object.keys(groups).forEach((k) => {
+      groups[k].sort((a, b) => {
+        const ad = parseDate(a.due_date) || parseDate(a.end_date) || parseDate(a.start_date) || today;
+        const bd = parseDate(b.due_date) || parseDate(b.end_date) || parseDate(b.start_date) || today;
+        if (ad.getTime() !== bd.getTime()) return ad - bd;
+        return priorityScore(a.priority) - priorityScore(b.priority);
+      });
     });
 
-    const sortFn = (a, b) => {
-      const da = parseDate(a.due_date);
-      const db = parseDate(b.due_date);
-      if (da && db) return da.getTime() - db.getTime();
-      if (da) return -1;
-      if (db) return 1;
-      return priorityScore(a.priority) - priorityScore(b.priority);
-    };
+    return groups;
+  }, [tasks, projectInfoMap, today]);
 
-    overdue.sort(sortFn);
-    inProgress.sort(sortFn);
-    notStarted.sort(sortFn);
-
-    return {
-      Overdue: overdue,
-      'In Progress': inProgress,
-      'Not Started': notStarted,
-      Other: other,
-    };
-  }, [tasksWithProjectName, today]);
-
-  // ---------- Task modal handlers ----------
+  // ---------- Task modal ----------
   const openTaskModal = (task) => {
     setTaskSaveError(null);
-
     setTaskForm({
-      id: task?.id || null,
-      description: task?.description || '',
-      status: task?.status || 'Not Started',
-      assignee: task?.assignee || '',
-      start_date: task?.start_date || '',
-      end_date: task?.end_date || '',
-      due_date: task?.due_date || '',
+      id: task.id,
+      project_id: task.project_id || null,
+      description: task.description || '',
+      status: task.status || 'Not Started',
+      assignee: task.assignee || '',
+      start_date: task.start_date || '',
+      end_date: task.end_date || '',
+      due_date: task.due_date || '',
       estimated_hours:
-        typeof task?.estimated_hours === 'number' ? String(task.estimated_hours) : task?.estimated_hours || '',
-      task_type: task?.task_type || '',
-      priority: task?.priority || 'Normal',
-      notes: task?.notes || '',
-      project_id: task?.project_id || null,
+        typeof task.estimated_hours === 'number' && !Number.isNaN(task.estimated_hours)
+          ? String(task.estimated_hours)
+          : task.estimated_hours
+          ? String(task.estimated_hours)
+          : '',
+      task_type: task.task_type || '',
+      priority: task.priority || 'Normal',
+      notes: task.notes || '',
     });
-
     setTaskModalOpen(true);
   };
 
   const closeTaskModal = () => {
     setTaskModalOpen(false);
-    setTaskSaving(false);
     setTaskSaveError(null);
   };
 
-  const deleteTask = async (task) => {
-    if (!task?.id) return;
+  const saveTaskEdits = async () => {
+    if (!taskForm?.id) return;
+    setTaskSaving(true);
+    setTaskSaveError(null);
 
+    const payload = {
+      description: taskForm.description || null,
+      status: taskForm.status || null,
+      assignee: taskForm.assignee || null,
+      start_date: taskForm.start_date || null,
+      end_date: taskForm.end_date || null,
+      due_date: taskForm.due_date || null,
+      estimated_hours: taskForm.estimated_hours === '' ? null : Number(taskForm.estimated_hours),
+      task_type: taskForm.task_type || null,
+      priority: taskForm.priority || null,
+      notes: taskForm.notes || null,
+    };
+
+    try {
+      const { data, error: updErr } = await supabase
+        .from('project_tasks')
+        .update(payload)
+        .eq('id', taskForm.id)
+        .select();
+
+      if (updErr) {
+        console.error('Error updating task:', updErr);
+        setTaskSaveError('Failed to save task changes.');
+        return;
+      }
+
+      const updated = data && data[0] ? data[0] : null;
+      if (updated) setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      closeTaskModal();
+    } catch (err) {
+      console.error('Unexpected error updating task:', err);
+      setTaskSaveError('Unexpected error while saving.');
+    } finally {
+      setTaskSaving(false);
+    }
+  };
+
+  const deleteTask = async (taskId) => {
     const ok = window.confirm('Delete this task? This cannot be undone.');
     if (!ok) return;
 
     try {
-      const res = await supabase.from('project_tasks').delete().eq('id', task.id);
-      if (res.error) throw res.error;
+      const { error: delErr } = await supabase.from('project_tasks').delete().eq('id', taskId);
 
-      setTasks((prev) => (prev || []).filter((t) => t.id !== task.id));
-    } catch (e) {
-      console.error('Error deleting task:', e);
-      alert('Failed to delete task.');
-    }
-  };
-
-  const saveTask = async () => {
-    setTaskSaving(true);
-    setTaskSaveError(null);
-
-    try {
-      if (!taskForm.project_id) {
-        setTaskSaveError('Please select a project.');
-        setTaskSaving(false);
+      if (delErr) {
+        console.error('Error deleting task:', delErr);
+        alert('Failed to delete task.');
         return;
       }
 
-      const payload = {
-        description: taskForm.description || null,
-        status: taskForm.status || 'Not Started',
-        assignee: taskForm.assignee || null,
-        start_date: taskForm.start_date || null,
-        end_date: taskForm.end_date || null,
-        due_date: taskForm.due_date || null,
-        estimated_hours: taskForm.estimated_hours === '' ? null : Number(taskForm.estimated_hours),
-        task_type: taskForm.task_type || null,
-        priority: taskForm.priority || 'Normal',
-        notes: taskForm.notes || null,
-        project_id: taskForm.project_id,
-      };
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
 
-      let res;
-      if (taskForm.id) {
-        res = await supabase.from('project_tasks').update(payload).eq('id', taskForm.id).select().single();
-      } else {
-        res = await supabase.from('project_tasks').insert(payload).select().single();
+      if (taskModalOpen && taskForm?.id === taskId) {
+        setTaskModalOpen(false);
+      }
+    } catch (err) {
+      console.error('Unexpected error deleting task:', err);
+      alert('Unexpected error while deleting task.');
+    }
+  };
+
+  // ---------- Workload by assignee ----------
+  const workloadByAssignee = useMemo(() => {
+    const map = new Map();
+
+    const getCapacityFor = (name) => {
+      const res = (presalesResources || []).find((p) => (p.name || p.email || 'Unknown') === name);
+
+      const dailyCapacity =
+        res && typeof res.daily_capacity_hours === 'number' && !Number.isNaN(res.daily_capacity_hours)
+          ? res.daily_capacity_hours
+          : HOURS_PER_DAY;
+
+      const targetHours =
+        res && typeof res.target_hours === 'number' && !Number.isNaN(res.target_hours) ? res.target_hours : 6;
+
+      const safeMaxTasksPerDay = res && Number.isInteger(res.max_tasks_per_day) ? res.max_tasks_per_day : 3;
+
+      return { dailyCapacity, targetHours, maxTasksPerDay: safeMaxTasksPerDay };
+    };
+
+    const addHoursToRange = (range, task, hours) => {
+      if (!range?.start || !range?.end) return 0;
+
+      const effHours = typeof hours === 'number' && !Number.isNaN(hours) ? hours : DEFAULT_TASK_HOURS;
+
+      const taskStart = parseDate(task.start_date) || parseDate(task.due_date) || parseDate(task.end_date);
+      const taskEnd = parseDate(task.end_date) || parseDate(task.due_date) || parseDate(task.start_date);
+
+      const days = getOverlapDays(range, taskStart || task.due_date, taskEnd || task.due_date);
+      if (days <= 0) return 0;
+      return (effHours / days) * days;
+    };
+
+    (presalesResources || []).forEach((p) => {
+      const name = p.name || p.email || 'Unknown';
+      if (!map.has(name)) {
+        const { dailyCapacity, targetHours, maxTasksPerDay } = getCapacityFor(name);
+        map.set(name, {
+          assignee: name,
+          total: 0,
+          open: 0,
+          overdue: 0,
+          thisWeekHours: 0,
+          nextWeekHours: 0,
+          overdueLast30: 0,
+          overdueTotalLast30: 0,
+          dailyCapacity,
+          targetHours,
+          maxTasksPerDay,
+        });
+      }
+    });
+
+    (tasks || []).forEach((t) => {
+      const assignee = t.assignee || 'Unassigned';
+      if (!map.has(assignee)) {
+        const { dailyCapacity, targetHours, maxTasksPerDay } = getCapacityFor(assignee);
+        map.set(assignee, {
+          assignee,
+          total: 0,
+          open: 0,
+          overdue: 0,
+          thisWeekHours: 0,
+          nextWeekHours: 0,
+          overdueLast30: 0,
+          overdueTotalLast30: 0,
+          dailyCapacity,
+          targetHours,
+          maxTasksPerDay,
+        });
       }
 
-      if (res.error) throw res.error;
+      const entry = map.get(assignee);
+      entry.total += 1;
 
-      const saved = res.data;
-      setTasks((prev) => {
-        const list = prev || [];
-        const idx = list.findIndex((t) => t.id === saved.id);
-        if (idx >= 0) {
-          const next = [...list];
-          next[idx] = saved;
-          return next;
+      const due = parseDate(t.due_date);
+      const isCompleted = isCompletedStatus(t.status);
+      const isOpen = !isCompleted;
+      const isOverdue = due && isOpen && due.getTime() < today.getTime();
+
+      if (isOpen) entry.open += 1;
+      if (isOverdue) entry.overdue += 1;
+
+      if (due && isWithinRange(due, last30DaysRange.start, last30DaysRange.end)) {
+        entry.overdueTotalLast30 += 1;
+        if (isOverdue) entry.overdueLast30 += 1;
+      }
+
+      if (isOpen) {
+        const taskEffort = getEffectiveTaskHours(t, taskTypeMultiplierMap);
+        entry.thisWeekHours += addHoursToRange(thisWeekRange, t, taskEffort);
+        entry.nextWeekHours += addHoursToRange(nextWeekRange, t, taskEffort);
+      }
+    });
+
+    const arr = Array.from(map.values()).map((e) => {
+      const capacityWeekHours = (e.dailyCapacity || HOURS_PER_DAY) * 5;
+
+      const utilThisWeek = capacityWeekHours ? Math.min((e.thisWeekHours / capacityWeekHours) * 100, 999) : 0;
+      const utilNextWeek = capacityWeekHours ? Math.min((e.nextWeekHours / capacityWeekHours) * 100, 999) : 0;
+
+      const overdueRateLast30 = e.overdueTotalLast30 > 0 ? (e.overdueLast30 / e.overdueTotalLast30) * 100 : 0;
+
+      return {
+        ...e,
+        utilThisWeek,
+        utilNextWeek,
+        overdueRateLast30,
+      };
+    });
+
+    arr.sort((a, b) => b.open - a.open);
+    return arr;
+  }, [tasks, presalesResources, thisWeekRange, nextWeekRange, last30DaysRange, today, taskTypeMultiplierMap]);
+
+  // ✅ Unassigned tasks only (ONE declaration only)
+  const unassignedOnly = useMemo(() => {
+    const unassigned = [];
+    (tasks || []).forEach((t) => {
+      if (isCompletedStatus(t.status)) return;
+      if (!t.assignee) unassigned.push(t);
+    });
+    return unassigned;
+  }, [tasks]);
+
+  // ---------- Assignment helper ----------
+  const assignmentSuggestions = useMemo(() => {
+    if (!assignStart || !assignEnd || !presalesResources) return [];
+
+    const start = parseDate(assignStart);
+    const end = parseDate(assignEnd);
+    if (!start || !end || end.getTime() < start.getTime()) return [];
+
+    const minFreeHours = getPriorityMinFreeHours(assignPriority);
+
+    const days = [];
+    const cur = new Date(start);
+    while (cur.getTime() <= end.getTime()) {
+      days.push(toMidnight(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    const getCapacityFor = (name) => {
+      const res = (presalesResources || []).find((p) => (p.name || p.email || 'Unknown') === name) || {};
+      const dailyCapacity =
+        typeof res.daily_capacity_hours === 'number' && !Number.isNaN(res.daily_capacity_hours)
+          ? res.daily_capacity_hours
+          : HOURS_PER_DAY;
+      return { dailyCapacity };
+    };
+
+    return (presalesResources || [])
+      .map((res) => {
+        const name = res.name || res.email || 'Unknown';
+        const { dailyCapacity } = getCapacityFor(name);
+
+        let freeDays = 0;
+
+        days.forEach((d) => {
+          const daySchedules = (scheduleEvents || []).filter(
+            (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
+          );
+
+          const blockedHours = daySchedules.reduce((sum, s) => sum + getScheduleBlockHours(s, dailyCapacity), 0);
+          const effectiveCapacity = Math.max(0, dailyCapacity - blockedHours);
+          const fullyBlocked = isFullDayBlocked(blockedHours, dailyCapacity);
+
+          if (fullyBlocked) return;
+
+          const dayTasks = (tasks || []).filter(
+            (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
+          );
+          const taskHours = dayTasks.reduce((sum, t) => sum + getEffectiveTaskHours(t, taskTypeMultiplierMap), 0);
+
+          const remaining = effectiveCapacity - taskHours;
+          if (remaining >= minFreeHours) freeDays += 1;
+        });
+
+        const work = workloadByAssignee.find((w) => w.assignee === name);
+        const nextLoad = work ? work.utilNextWeek : 0;
+
+        return { assignee: name, freeDays, nextWeekLoad: nextLoad };
+      })
+      .filter((s) => s.freeDays > 0)
+      .sort((a, b) => {
+        if (b.freeDays !== a.freeDays) return b.freeDays - a.freeDays;
+        return a.nextWeekLoad - b.nextWeekLoad;
+      });
+  }, [
+    assignStart,
+    assignEnd,
+    assignPriority,
+    presalesResources,
+    tasks,
+    scheduleEvents,
+    workloadByAssignee,
+    taskTypeMultiplierMap,
+  ]);
+
+  // ---------- Availability grid ----------
+  const availabilityGrid = useMemo(() => {
+    if (!presalesResources || presalesResources.length === 0) return { days: [], rows: [] };
+
+    const totalDays = calendarView === '14' ? 14 : 30;
+    const base = toMidnight(new Date());
+    const days = [];
+    for (let i = 0; i < totalDays; i += 1) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      days.push(d);
+    }
+
+    const getCapacityFor = (name) => {
+      const res = (presalesResources || []).find((p) => (p.name || p.email || 'Unknown') === name) || {};
+      const dailyCapacity =
+        typeof res.daily_capacity_hours === 'number' && !Number.isNaN(res.daily_capacity_hours)
+          ? res.daily_capacity_hours
+          : HOURS_PER_DAY;
+
+      const maxTasksPerDay =
+        Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0 ? res.max_tasks_per_day : 3;
+
+      return { dailyCapacity, maxTasksPerDay };
+    };
+
+    const pickPrimaryScheduleType = (typesLower) => {
+      if (!typesLower || typesLower.length === 0) return null;
+      if (typesLower.includes('leave')) return 'leave';
+      if (typesLower.includes('travel')) return 'travel';
+      if (typesLower.includes('training')) return 'training';
+      if (typesLower.includes('internal')) return 'internal';
+      return 'other';
+    };
+
+    const formatTypeLabel = (t) => {
+      if (!t) return 'Scheduled';
+      if (t === 'leave') return 'Leave';
+      if (t === 'travel') return 'Travel';
+      if (t === 'training') return 'Training';
+      if (t === 'internal') return 'Internal';
+      if (t === 'other') return 'Other';
+      return 'Scheduled';
+    };
+
+    const rows = (presalesResources || []).map((res) => {
+      const name = res.name || res.email || 'Unknown';
+      const { dailyCapacity, maxTasksPerDay } = getCapacityFor(name);
+
+      const cells = days.map((d) => {
+        const dayTasks = (tasks || []).filter(
+          (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
+        );
+
+        const daySchedules = (scheduleEvents || []).filter(
+          (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
+        );
+
+        const taskCount = dayTasks.length;
+        const totalHours = dayTasks.reduce((sum, t) => sum + getEffectiveTaskHours(t, taskTypeMultiplierMap), 0);
+
+        const blockedHours = daySchedules.reduce((sum, s) => sum + getScheduleBlockHours(s, dailyCapacity), 0);
+        const effectiveCapacity = Math.max(0, dailyCapacity - blockedHours);
+
+        const utilization =
+          effectiveCapacity > 0 ? Math.round((totalHours / effectiveCapacity) * 100) : totalHours > 0 ? 999 : 0;
+
+        const typesLower = daySchedules.map((s) => (s.type || '').toLowerCase().trim()).filter(Boolean);
+        const primaryScheduleType = pickPrimaryScheduleType(typesLower);
+
+        let status = 'free';
+        let label = 'Free';
+
+        if (daySchedules.length > 0) {
+          const fullBlocked = isFullDayBlocked(blockedHours, dailyCapacity);
+
+          if (fullBlocked) {
+            // Full-day blocked: show actual schedule type color
+            status = primaryScheduleType || 'other';
+            label = `${formatTypeLabel(status)} (full day)`;
+          } else {
+            // Partial-day blocked:
+            // If NO tasks, show schedule type color (so legend matches)
+            if (taskCount === 0 && primaryScheduleType) {
+              status = primaryScheduleType;
+              label = `${formatTypeLabel(primaryScheduleType)} · Blocked ${blockedHours.toFixed(1)}h · Left ${effectiveCapacity.toFixed(1)}h`;
+            } else {
+              // If tasks exist, keep it Busy but we’ll add a left marker based on schedule type
+              status = 'busy';
+              label = blockedHours > 0 ? `Scheduled · Blocked ${blockedHours.toFixed(1)}h` : 'Scheduled';
+            }
+          }
         }
-        return [saved, ...list];
+
+        // Tasks override label and generally make the day "busy"
+        if (taskCount > 0) {
+          // If it was marked as full-day schedule but tasks exist, treat it as busy (data inconsistency but better UX)
+          if (status !== 'busy') status = 'busy';
+
+          const baseLabel = `${taskCount} task${taskCount > 1 ? 's' : ''}`;
+          const capText = ` · Tasks ${totalHours.toFixed(1)}h · Blocked ${blockedHours.toFixed(1)}h · Left ${effectiveCapacity.toFixed(1)}h`;
+
+          let prefix = '';
+          if (utilization > 120 || taskCount > maxTasksPerDay) prefix = 'Over capacity: ';
+          else if (utilization >= 90) prefix = 'Near capacity: ';
+
+          label = `${prefix}${baseLabel}${capText}`;
+        } else if (blockedHours > 0 && status === 'busy') {
+          label = `Scheduled · Blocked ${blockedHours.toFixed(1)}h · Left ${effectiveCapacity.toFixed(1)}h`;
+        }
+
+        return {
+          date: d,
+          status,
+          label,
+          tasks: dayTasks,
+          schedules: daySchedules,
+          blockedHours,
+          effectiveCapacity,
+          taskHours: totalHours,
+          // ✅ used for left-border markers on Busy days
+          markerType: status === 'busy' && primaryScheduleType ? primaryScheduleType : null,
+        };
       });
 
-      setTaskModalOpen(false);
-    } catch (e) {
-      console.error('Error saving task:', e);
-      setTaskSaveError('Failed to save task. Please check required fields.');
+      return { assignee: name, cells };
+    });
+
+    return { days, rows };
+  }, [presalesResources, tasks, scheduleEvents, calendarView, taskTypeMultiplierMap]);
+
+  // ---------- Schedule modal handlers ----------
+  const openScheduleModalForCreate = () => {
+    setScheduleMode('create');
+    setEditingScheduleId(null);
+    setScheduleAssignee('');
+    setScheduleType('Leave');
+    setScheduleStart('');
+    setScheduleEnd('');
+    setScheduleNote('');
+    setScheduleBlockHours('');
+    setScheduleError(null);
+    setScheduleDateError('');
+    setShowScheduleModal(true);
+  };
+
+  const openScheduleModalForEdit = (event) => {
+    setScheduleMode('edit');
+    setEditingScheduleId(event.id);
+    setScheduleAssignee(event.assignee || '');
+    setScheduleType(event.type || 'Leave');
+    setScheduleStart(event.start_date || '');
+    setScheduleEnd(event.end_date || event.start_date || '');
+    setScheduleNote(event.note || '');
+    setScheduleBlockHours(event.block_hours === null || event.block_hours === undefined ? '' : String(event.block_hours));
+    setScheduleError(null);
+    setScheduleDateError(validateDateRange(event.start_date || '', event.end_date || event.start_date || ''));
+    setShowScheduleModal(true);
+  };
+
+  const closeScheduleModal = () => setShowScheduleModal(false);
+
+  const handleScheduleSubmit = async (e) => {
+    e.preventDefault();
+    setScheduleError(null);
+
+    if (!scheduleAssignee || !scheduleStart) {
+      setScheduleError('Assignee and start date are required.');
+      return;
+    }
+
+    const dateErr = validateDateRange(scheduleStart, scheduleEnd || scheduleStart);
+    if (dateErr) {
+      setScheduleDateError(dateErr);
+      setScheduleError(dateErr);
+      return;
+    }
+
+    const payload = {
+      assignee: scheduleAssignee,
+      type: scheduleType,
+      start_date: scheduleStart,
+      end_date: scheduleEnd || scheduleStart,
+      note: scheduleNote || null,
+      block_hours: toNumberOrNull(scheduleBlockHours),
+    };
+
+    setScheduleSaving(true);
+
+    try {
+      if (scheduleMode === 'create') {
+        const { data, error: insertError } = await supabase.from('presales_schedule').insert([payload]).select();
+        if (insertError) setScheduleError('Failed to create schedule entry.');
+        else if (data?.[0]) {
+          setScheduleEvents((prev) => [...prev, data[0]]);
+          closeScheduleModal();
+        }
+      } else if (scheduleMode === 'edit' && editingScheduleId) {
+        const { data, error: updateError } = await supabase
+          .from('presales_schedule')
+          .update(payload)
+          .eq('id', editingScheduleId)
+          .select();
+
+        if (updateError) setScheduleError('Failed to update schedule entry.');
+        else if (data?.[0]) {
+          const updated = data[0];
+          setScheduleEvents((prev) => prev.map((ev) => (ev.id === updated.id ? updated : ev)));
+          closeScheduleModal();
+        }
+      }
+    } catch (err) {
+      console.error('Error saving schedule:', err);
+      setScheduleError('Unexpected error while saving schedule.');
     } finally {
-      setTaskSaving(false);
+      setScheduleSaving(false);
+    }
+  };
+
+  const handleDeleteSchedule = async (id) => {
+    if (!window.confirm('Delete this schedule entry?')) return;
+
+    try {
+      const { error: deleteError } = await supabase.from('presales_schedule').delete().eq('id', id);
+      if (deleteError) alert('Failed to delete schedule entry.');
+      else setScheduleEvents((prev) => prev.filter((ev) => ev.id !== id));
+    } catch (err) {
+      console.error('Error deleting schedule:', err);
+      alert('Unexpected error while deleting schedule entry.');
     }
   };
 
@@ -693,50 +1136,40 @@ export default function PresalesOverview() {
             </div>
           </div>
 
-          {/* ✅ NEXT KEY ACTIVITIES (TOP OF PANEL) */}
-          <div className="next-activities-block">
-            <div className="next-activities-header">
-              <h4>Next key activities</h4>
-              <p>Only projects with a defined next step.</p>
-            </div>
-
-            {nextKeyActivities.length === 0 ? (
-              <div className="presales-empty small">
-                <p>No next key activities defined.</p>
+          {/* ✅ NEXT KEY ACTIVITIES (only if value exists) */}
+          {nextKeyActivities.length > 0 && (
+            <div className="unassigned-tasks-table-wrapper" style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                <div style={{ fontWeight: 750, fontSize: 13, opacity: 0.95 }}>Next key activities</div>
+                <div style={{ fontSize: 12, opacity: 0.7 }}>
+                  Showing {nextKeyActivities.length} project{nextKeyActivities.length > 1 ? 's' : ''}
+                </div>
               </div>
-            ) : (
-              <div className="unassigned-tasks-table-wrapper next-activities-table-wrapper">
-                <table className="unassigned-tasks-table next-activities-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '22%' }}>Customer</th>
-                      <th style={{ width: '22%' }}>Project</th>
-                      <th>Next key activity</th>
+
+              <table className="unassigned-tasks-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '26%' }}>Customer</th>
+                    <th style={{ width: '26%' }}>Project</th>
+                    <th>Next key activity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {nextKeyActivities.map((p) => (
+                    <tr key={p.id}>
+                      <td className="td-ellipsis" style={{ fontWeight: 700 }} title={p.customerName}>
+                        {p.customerName}
+                      </td>
+                      <td className="td-ellipsis" title={p.projectName}>
+                        {p.projectName}
+                      </td>
+                      <td title={p.nextKeyActivity}>{p.nextKeyActivity}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {nextKeyActivities.map((p) => (
-                      <tr key={p.id}>
-                        <td className="td-ellipsis next-activity-customer" title={p.customerName}>
-                          {p.customerName}
-                        </td>
-                        <td className="td-ellipsis" title={p.projectName}>
-                          {p.projectName}
-                        </td>
-                        <td>
-                          <div className="next-activity-text" title={p.nextKeyActivity}>
-                            {p.nextKeyActivity}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          <div className="next-activities-divider" />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           <ActivitiesKanban
             groups={ongoingUpcomingGrouped}
@@ -810,12 +1243,583 @@ export default function PresalesOverview() {
         </div>
       </section>
 
-      {/* NOTE:
-        The rest of your existing sections (Assignment helper, Workload, Availability, Schedules, modals)
-        remain unchanged below this point in your original file.
-        If you want, paste the remaining bottom part here and I’ll re-attach it exactly as-is,
-        but this edit is safe and isolated to the top panel + projects query.
-      */}
+      {/* ASSIGNMENT HELPER */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Filter size={18} className="panel-icon" />
+                Assignment helper
+              </h3>
+              <p>Pick a date range and priority. We’ll suggest who has breathing room.</p>
+            </div>
+          </div>
+
+          <div className="assignment-content">
+            <div className="assignment-filters">
+              <div className="assignment-field">
+                <label>Priority</label>
+                <select value={assignPriority} onChange={(e) => setAssignPriority(e.target.value)}>
+                  <option value="High">High — needs ≥ 4 free hours/day</option>
+                  <option value="Normal">Normal — needs ≥ 3 free hours/day</option>
+                  <option value="Low">Low — needs ≥ 2 free hours/day</option>
+                </select>
+              </div>
+
+              <div className="assignment-field">
+                <label>Start date</label>
+                <input
+                  type="date"
+                  value={assignStart}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setAssignStart(v);
+                    setAssignDateError(validateDateRange(v, assignEnd));
+                  }}
+                />
+              </div>
+
+              <div className="assignment-field">
+                <label>End date</label>
+                <input
+                  type="date"
+                  value={assignEnd}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setAssignEnd(v);
+                    setAssignDateError(validateDateRange(assignStart, v));
+                  }}
+                />
+              </div>
+            </div>
+
+            {assignDateError ? (
+              <div className="presales-empty small">
+                <p>{assignDateError}</p>
+              </div>
+            ) : (!assignStart || !assignEnd) ? (
+              <div className="presales-empty small">
+                <p>Select start + end dates to see suggestions.</p>
+              </div>
+            ) : assignmentSuggestions.length === 0 ? (
+              <div className="presales-empty small">
+                <p>No good matches in that range (based on current schedule + tasks).</p>
+              </div>
+            ) : (
+              <div className="assignment-table-wrapper">
+                <table className="assignment-table">
+                  <thead>
+                    <tr>
+                      <th>Presales</th>
+                      <th>Free days</th>
+                      <th>Next week load</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assignmentSuggestions.slice(0, 8).map((s) => (
+                      <tr key={s.assignee}>
+                        <td>{s.assignee}</td>
+                        <td>{s.freeDays}</td>
+                        <td>{Math.round(s.nextWeekLoad)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* WORKLOAD */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Users size={18} className="panel-icon" />
+                Presales workload
+              </h3>
+              <p>Open tasks, overdue risk, and weekly utilization (based on estimated hours + task type).</p>
+            </div>
+          </div>
+
+          <div className="workload-table-wrapper">
+            <table className="workload-table">
+              <thead>
+                <tr>
+                  <th>Presales</th>
+                  <th>Open</th>
+                  <th>Overdue</th>
+                  <th>This week (hrs)</th>
+                  <th>This week (%)</th>
+                  <th>Next week (hrs)</th>
+                  <th>Next week (%)</th>
+                  <th>Overdue rate (30d)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {workloadByAssignee.map((w) => (
+                  <tr key={w.assignee}>
+                    <td className="td-ellipsis">{w.assignee}</td>
+                    <td>{w.open}</td>
+                    <td className={w.overdue > 0 ? 'overdue' : ''}>{w.overdue}</td>
+                    <td className="td-right">{w.thisWeekHours.toFixed(1)}</td>
+                    <td>
+                      {Math.round(w.utilThisWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilThisWeek)})</span>
+                    </td>
+                    <td className="td-right">{w.nextWeekHours.toFixed(1)}</td>
+                    <td>
+                      {Math.round(w.utilNextWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilNextWeek)})</span>
+                    </td>
+                    <td>{Math.round(w.overdueRateLast30)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* AVAILABILITY */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <CalendarDays size={18} className="panel-icon" />
+                Presales availability
+              </h3>
+              <p>Click a cell to see task + schedule details for that day.</p>
+            </div>
+
+            <div className="schedule-actions">
+              <div className="schedule-view-toggle toggle-wrap availability-toggle">
+                <button
+                  type="button"
+                  className={`toggle-btn ${calendarView === '14' ? 'active' : ''}`}
+                  onClick={() => setCalendarView('14')}
+                >
+                  14 days
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-btn ${calendarView === '30' ? 'active' : ''}`}
+                  onClick={() => setCalendarView('30')}
+                >
+                  30 days
+                </button>
+              </div>
+
+              <div className="availability-legend" aria-label="Availability legend">
+                <div className="legend-item"><span className="legend-swatch sw-free" /> Free</div>
+                <div className="legend-item"><span className="legend-swatch sw-busy" /> Busy</div>
+                <div className="legend-item"><span className="legend-swatch sw-leave" /> Leave</div>
+                <div className="legend-item"><span className="legend-swatch sw-travel" /> Travel</div>
+                <div className="legend-item"><span className="legend-swatch sw-training" /> Training</div>
+                <div className="legend-item"><span className="legend-swatch sw-internal" /> Internal</div>
+                <div className="legend-item"><span className="legend-swatch sw-other" /> Other</div>
+              </div>
+
+              <button type="button" className="btn-secondary" onClick={openScheduleModalForCreate}>
+                <Plane size={16} /> Add schedule
+              </button>
+            </div>
+          </div>
+
+          <div className={`heatmap-table ${calendarView === '14' ? 'heatmap-view-14' : 'heatmap-view-30'}`}>
+            <div className="heatmap-header">
+              <div className="heatmap-presales-name heatmap-header-cell">Presales</div>
+              {availabilityGrid.days.map((d) => (
+                <div key={d.toISOString()} className="heatmap-day-col heatmap-header-cell">
+                  {d.toLocaleDateString('en-SG', { day: '2-digit', month: 'short' })}
+                </div>
+              ))}
+            </div>
+
+            {availabilityGrid.rows.map((row) => (
+              <div key={row.assignee} className="heatmap-row">
+                <div className="heatmap-presales-name">{row.assignee}</div>
+
+                {row.cells.map((cell) => (
+                  <button
+                    key={`${row.assignee}-${cell.date.toISOString()}`}
+                    type="button"
+                    className={`heatmap-cell status-${cell.status} ${cell.markerType ? `marker-${cell.markerType}` : ''}`}
+                    title={cell.label}
+                    onClick={() => openDayDetail(row.assignee, cell.date)}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SCHEDULE LIST */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="schedule-list-header">
+            <div>
+              <h3>
+                <Plane size={18} className="panel-icon" />
+                Schedules
+              </h3>
+              <p>Leaves, travel, training, and other blockers (full day or partial).</p>
+            </div>
+          </div>
+
+          {scheduleEvents.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No schedule entries yet.</p>
+            </div>
+          ) : (
+            <div className="schedule-list-table-wrapper">
+              <table className="schedule-list-table">
+                <thead>
+                  <tr>
+                    <th>Presales</th>
+                    <th>Type</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Block hrs</th>
+                    <th>Note</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...scheduleEvents]
+                    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
+                    .map((ev) => (
+                      <tr key={ev.id}>
+                        <td className="td-ellipsis">{ev.assignee}</td>
+                        <td>
+                          <span className="schedule-type-chip">{ev.type}</span>
+                        </td>
+                        <td>{ev.start_date ? new Date(ev.start_date).toLocaleDateString('en-SG') : '-'}</td>
+                        <td>{ev.end_date ? new Date(ev.end_date).toLocaleDateString('en-SG') : '-'}</td>
+                        <td>{ev.block_hours ?? '-'}</td>
+                        <td className="td-ellipsis">{ev.note || '-'}</td>
+                        <td className="td-right">
+                          <button type="button" className="icon-btn" onClick={() => openScheduleModalForEdit(ev)} title="Edit">
+                            <Edit3 size={14} />
+                          </button>
+                          <button type="button" className="icon-btn danger" onClick={() => handleDeleteSchedule(ev.id)} title="Delete">
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* DAY DETAIL MODAL */}
+      {dayDetailOpen && (
+        <div className="schedule-modal-backdrop modal-backdrop" onMouseDown={() => setDayDetailOpen(false)}>
+          <div className="schedule-modal modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="schedule-modal-header modal-header">
+              <div>
+                <div className="schedule-modal-title">Day details</div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  {dayDetail.assignee} • {formatDayDetailDate(dayDetail.date)}
+                </div>
+              </div>
+              <button type="button" className="schedule-modal-close modal-close" onClick={() => setDayDetailOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="day-detail-body modal-body">
+              <div className="day-detail-section">
+                <h4>Schedules</h4>
+                {dayDetail.schedules.length === 0 ? (
+                  <div className="day-detail-empty">No schedules</div>
+                ) : (
+                  <div className="day-detail-list">
+                    {dayDetail.schedules.map((s) => (
+                      <div key={s.id} className="day-detail-task-item">
+                        <div className="day-detail-task-desc">
+                          {s.type} {s.note ? `• ${s.note}` : ''}
+                        </div>
+                        <div style={{ fontSize: 12, opacity: 0.75 }}>
+                          {s.start_date ? new Date(s.start_date).toLocaleDateString('en-SG') : '-'} to{' '}
+                          {s.end_date ? new Date(s.end_date).toLocaleDateString('en-SG') : '-'}
+                          {s.block_hours != null ? ` • block ${s.block_hours}h` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="day-detail-section">
+                <h4>Tasks</h4>
+                {dayDetail.tasks.length === 0 ? (
+                  <div className="day-detail-empty">No tasks</div>
+                ) : (
+                  <div className="day-detail-list">
+                    {dayDetail.tasks.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className="day-detail-task-item"
+                        onClick={() => {
+                          setDayDetailOpen(false);
+                          openTaskModal(t);
+                        }}
+                      >
+                        <div className="day-detail-task-desc">{t.description || 'Untitled task'}</div>
+                        <div style={{ fontSize: 12, opacity: 0.75 }}>
+                          {t.projectName || 'Unknown project'} • Due{' '}
+                          {t.due_date ? new Date(t.due_date).toLocaleDateString('en-SG') : '-'}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SCHEDULE MODAL */}
+      {showScheduleModal && (
+        <div className="schedule-modal-backdrop modal-backdrop" onMouseDown={closeScheduleModal}>
+          <div className="schedule-modal modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="schedule-modal-header modal-header">
+              <div className="schedule-modal-title">
+                {scheduleMode === 'create' ? 'Add schedule' : 'Edit schedule'}
+              </div>
+              <button type="button" className="schedule-modal-close modal-close" onClick={closeScheduleModal}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleScheduleSubmit} className="schedule-form modal-body">
+              {(scheduleError || scheduleDateError) && <div className="form-error">{scheduleError || scheduleDateError}</div>}
+
+              <div className="schedule-field">
+                <label>Assignee</label>
+                <select value={scheduleAssignee} onChange={(e) => setScheduleAssignee(e.target.value)}>
+                  <option value="">Select</option>
+                  {presalesResources.map((p) => {
+                    const name = p.name || p.email || 'Unknown';
+                    return (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Type</label>
+                <select value={scheduleType} onChange={(e) => setScheduleType(e.target.value)}>
+                  <option value="Leave">Leave</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Training">Training</option>
+                  <option value="Internal">Internal</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Start</label>
+                <input
+                  type="date"
+                  value={scheduleStart}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setScheduleStart(v);
+                    setScheduleDateError(validateDateRange(v, scheduleEnd || v));
+                  }}
+                />
+              </div>
+
+              <div className="schedule-field">
+                <label>End</label>
+                <input
+                  type="date"
+                  value={scheduleEnd}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setScheduleEnd(v);
+                    setScheduleDateError(validateDateRange(scheduleStart, v || scheduleStart));
+                  }}
+                />
+              </div>
+
+              <div className="schedule-field">
+                <label>Block hours (optional)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={scheduleBlockHours}
+                  onChange={(e) => setScheduleBlockHours(e.target.value)}
+                  placeholder="Leave blank to use defaults"
+                />
+              </div>
+
+              <div className="schedule-field-full">
+                <label>Note</label>
+                <input value={scheduleNote} onChange={(e) => setScheduleNote(e.target.value)} placeholder="Optional" />
+              </div>
+
+              <div className="schedule-actions modal-footer">
+                <button type="button" className="btn-secondary" onClick={closeScheduleModal} disabled={scheduleSaving}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={scheduleSaving || !!scheduleDateError}>
+                  <Save size={16} /> {scheduleSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* TASK MODAL */}
+      {taskModalOpen && (
+        <div className="schedule-modal-backdrop modal-backdrop" onMouseDown={closeTaskModal}>
+          <div className="schedule-modal modal activity-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="schedule-modal-header modal-header">
+              <div className="schedule-modal-title">Edit task</div>
+              <button type="button" className="schedule-modal-close modal-close" onClick={closeTaskModal}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {taskSaveError && <div className="form-error">{taskSaveError}</div>}
+
+            <div className="schedule-form modal-body">
+              <div className="schedule-field-full">
+                <label>Description</label>
+                <input
+                  value={taskForm.description}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, description: e.target.value }))}
+                />
+              </div>
+
+              <div className="schedule-field">
+                <label>Status</label>
+                <select
+                  value={taskForm.status}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, status: e.target.value }))}
+                >
+                  <option value="Not Started">Not Started</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="On Hold">On Hold</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Assignee</label>
+                <select
+                  value={taskForm.assignee}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, assignee: e.target.value }))}
+                >
+                  <option value="">Unassigned</option>
+                  {presalesResources.map((p) => {
+                    const name = p.name || p.email || 'Unknown';
+                    return (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Due date</label>
+                <input
+                  type="date"
+                  value={taskForm.due_date || ''}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, due_date: e.target.value }))}
+                />
+              </div>
+
+              <div className="schedule-field">
+                <label>Estimated hours</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={taskForm.estimated_hours}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, estimated_hours: e.target.value }))}
+                  placeholder="e.g. 4"
+                />
+              </div>
+
+              <div className="schedule-field">
+                <label>Task type</label>
+                <select
+                  value={taskForm.task_type || ''}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, task_type: e.target.value }))}
+                >
+                  <option value="">Select</option>
+                  {taskTypeOptions.map((t) => (
+                    <option key={t.id} value={t.name}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Priority</label>
+                <select
+                  value={taskForm.priority}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, priority: e.target.value }))}
+                >
+                  <option value="High">High</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+
+              <div className="schedule-field-full">
+                <label>Notes</label>
+                <input
+                  value={taskForm.notes || ''}
+                  onChange={(e) => setTaskForm((p) => ({ ...p, notes: e.target.value }))}
+                />
+              </div>
+
+              <div className="schedule-actions modal-footer">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => deleteTask(taskForm.id)}
+                  disabled={taskSaving}
+                >
+                  <Trash2 size={16} /> Delete
+                </button>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="button" className="btn-secondary" onClick={closeTaskModal} disabled={taskSaving}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn-primary" onClick={saveTaskEdits} disabled={taskSaving}>
+                    <Save size={16} /> {taskSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+export default PresalesOverview;
