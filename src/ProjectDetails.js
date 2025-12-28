@@ -87,7 +87,14 @@ const toModulesArray = (value) => {
 };
 
 // ---------- Task Modal ----------
-const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResources = [], taskTypes = [] }) => {
+const TaskModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  editingTask = null,
+  presalesResources = [],
+  taskTypes = [],
+}) => {
   const [taskData, setTaskData] = useState({
     description: "",
     status: "Not Started",
@@ -151,7 +158,9 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
       const normalized = {
         ...taskData,
         estimated_hours:
-          taskData.estimated_hours === "" || taskData.estimated_hours === null || taskData.estimated_hours === undefined
+          taskData.estimated_hours === "" ||
+          taskData.estimated_hours === null ||
+          taskData.estimated_hours === undefined
             ? null
             : Number(taskData.estimated_hours),
       };
@@ -203,7 +212,11 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
 
             <div className="form-group">
               <label className="form-label">Status</label>
-              <select className="form-input" value={taskData.status} onChange={(e) => handleChange("status", e.target.value)}>
+              <select
+                className="form-input"
+                value={taskData.status}
+                onChange={(e) => handleChange("status", e.target.value)}
+              >
                 {TASK_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -214,7 +227,11 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
 
             <div className="form-group">
               <label className="form-label">Priority</label>
-              <select className="form-input" value={taskData.priority} onChange={(e) => handleChange("priority", e.target.value)}>
+              <select
+                className="form-input"
+                value={taskData.priority}
+                onChange={(e) => handleChange("priority", e.target.value)}
+              >
                 {TASK_PRIORITIES.map((p) => (
                   <option key={p} value={p}>
                     {p}
@@ -238,7 +255,11 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
 
             <div className="form-group">
               <label className="form-label">Assignee</label>
-              <select className="form-input" value={taskData.assignee} onChange={(e) => handleChange("assignee", e.target.value)}>
+              <select
+                className="form-input"
+                value={taskData.assignee}
+                onChange={(e) => handleChange("assignee", e.target.value)}
+              >
                 <option value="">Unassigned</option>
                 {(presalesResources || []).map((p) => (
                   <option key={p} value={p}>
@@ -250,7 +271,11 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
 
             <div className="form-group">
               <label className="form-label">Task Type</label>
-              <select className="form-input" value={taskData.task_type} onChange={(e) => handleChange("task_type", e.target.value)}>
+              <select
+                className="form-input"
+                value={taskData.task_type}
+                onChange={(e) => handleChange("task_type", e.target.value)}
+              >
                 <option value="">Select type</option>
                 {(taskTypes || []).map((t) => (
                   <option key={t} value={t}>
@@ -262,17 +287,32 @@ const TaskModal = ({ isOpen, onClose, onSave, editingTask = null, presalesResour
 
             <div className="form-group">
               <label className="form-label">Start Date</label>
-              <input type="date" className="form-input" value={taskData.start_date || ""} onChange={(e) => handleChange("start_date", e.target.value)} />
+              <input
+                type="date"
+                className="form-input"
+                value={taskData.start_date || ""}
+                onChange={(e) => handleChange("start_date", e.target.value)}
+              />
             </div>
 
             <div className="form-group">
               <label className="form-label">End Date</label>
-              <input type="date" className="form-input" value={taskData.end_date || ""} onChange={(e) => handleChange("end_date", e.target.value)} />
+              <input
+                type="date"
+                className="form-input"
+                value={taskData.end_date || ""}
+                onChange={(e) => handleChange("end_date", e.target.value)}
+              />
             </div>
 
             <div className="form-group">
               <label className="form-label">Due Date</label>
-              <input type="date" className="form-input" value={taskData.due_date || ""} onChange={(e) => handleChange("due_date", e.target.value)} />
+              <input
+                type="date"
+                className="form-input"
+                value={taskData.due_date || ""}
+                onChange={(e) => handleChange("due_date", e.target.value)}
+              />
             </div>
 
             <div className="form-group form-group-full">
@@ -479,6 +519,12 @@ function ProjectDetails() {
 
   const [modulesDraft, setModulesDraft] = useState("");
 
+  // SmartVista Modules catalog (multi-select)
+  const [moduleOptions, setModuleOptions] = useState([]);
+  const [selectedModules, setSelectedModules] = useState([]);
+  const [modulesOpen, setModulesOpen] = useState(false);
+  const [moduleSearch, setModuleSearch] = useState("");
+
   // dropdown options
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
@@ -486,16 +532,23 @@ function ProjectDetails() {
   useEffect(() => {
     const loadLists = async () => {
       try {
-        const [{ data: pData, error: pErr }, { data: tData, error: tErr }] = await Promise.all([
+        const [
+          { data: pData, error: pErr },
+          { data: tData, error: tErr },
+          { data: mData, error: mErr },
+        ] = await Promise.all([
           supabase.from("presales_resources").select("name").order("name"),
           supabase.from("task_types").select("name").order("name"),
+          supabase.from("smartvista_modules_catalog").select("name").order("name"),
         ]);
 
         if (pErr) console.warn("presales_resources load error:", pErr);
         if (tErr) console.warn("task_types load error:", tErr);
+        if (mErr) console.warn("smartvista_modules_catalog load error:", mErr);
 
         setPresalesResources((pData || []).map((x) => x.name).filter(Boolean));
         setTaskTypes((tData || []).map((x) => x.name).filter(Boolean));
+        setModuleOptions((mData || []).map((x) => x.name).filter(Boolean));
       } catch (e) {
         console.warn("Failed loading dropdown lists:", e);
       }
@@ -561,7 +614,12 @@ function ProjectDetails() {
 
     let health = "GREEN";
     if (isProjectOverdue || overdueCount > 0) health = "RED";
-    else if (isProjectDueSoon || dueNext7Count > 0 || (daysSinceLastLog !== null && daysSinceLastLog > 14)) health = "AMBER";
+    else if (
+      isProjectDueSoon ||
+      dueNext7Count > 0 ||
+      (daysSinceLastLog !== null && daysSinceLastLog > 14)
+    )
+      health = "AMBER";
 
     return { overdueCount, dueNext7Count, unassignedCount, lastLogDate, daysSinceLastLog, health };
   }, [project, tasks, logs]);
@@ -572,14 +630,19 @@ function ProjectDetails() {
         ...project,
         is_corporate: !!project.is_corporate,
       });
-      setModulesDraft(project.smartvista_modules || "");
+
+      const initialModules = toModulesArray(project.smartvista_modules);
+      setSelectedModules(initialModules);
+      setModulesDraft(initialModules.join(", "));
     }
   }, [project]);
 
   const activeTasksCount = tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status)).length;
   const completedTasksCount = tasks.filter((t) => t.status === "Completed").length;
 
-  const filteredTasks = showCompleted ? tasks : tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status));
+  const filteredTasks = showCompleted
+    ? tasks
+    : tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status));
 
   const healthMeta = useMemo(() => {
     const h = projectMonitor.health;
@@ -594,7 +657,13 @@ function ProjectDetails() {
         ...project,
         is_corporate: !!project?.is_corporate,
       });
-      setModulesDraft(project?.smartvista_modules || "");
+
+      const initialModules = toModulesArray(project?.smartvista_modules);
+      setSelectedModules(initialModules);
+      setModulesDraft(initialModules.join(", "));
+      setModulesOpen(false);
+      setModuleSearch("");
+
       setIsEditing(false);
     } else {
       setIsEditing(true);
@@ -653,6 +722,42 @@ function ProjectDetails() {
     }
   };
 
+  // ---- SmartVista Modules multi-select helpers ----
+  const updateSelectedModules = (next) => {
+    const unique = Array.from(new Set((next || []).map((x) => String(x).trim()).filter(Boolean)));
+    unique.sort((a, b) => a.localeCompare(b));
+    setSelectedModules(unique);
+    setModulesDraft(unique.join(", "));
+  };
+
+  const toggleModule = (name) => {
+    const n = String(name || "").trim();
+    if (!n) return;
+    if (selectedModules.includes(n)) {
+      updateSelectedModules(selectedModules.filter((x) => x !== n));
+    } else {
+      updateSelectedModules([...selectedModules, n]);
+    }
+  };
+
+  const addCustomModule = (name) => {
+    const n = String(name || "").trim();
+    if (!n) return;
+    if (!selectedModules.includes(n)) updateSelectedModules([...selectedModules, n]);
+    setModuleSearch("");
+  };
+
+  useEffect(() => {
+    if (!modulesOpen) return;
+
+    const onMouseDown = (e) => {
+      if (!e.target.closest(".modules-select")) setModulesOpen(false);
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [modulesOpen, selectedModules]);
+
   const openAddTask = () => {
     setEditingTask(null);
     setShowTaskModal(true);
@@ -705,7 +810,6 @@ function ProjectDetails() {
   if (loading) return <LoadingState />;
   if (error || !project) return <ErrorState error={error} onBack={() => navigate(-1)} />;
 
-  // ✅ Single source of truth for what’s shown in the form
   const isReadOnly = !isEditing;
   const viewOrEdit = isEditing ? editProject : project;
 
@@ -722,7 +826,12 @@ function ProjectDetails() {
                       <h1 className="project-title">{project.project_name || "Unnamed Project"}</h1>
                     </div>
 
-                    <button className="hero-customer-link" onClick={openCustomer} type="button" title="Open customer">
+                    <button
+                      className="hero-customer-link"
+                      onClick={openCustomer}
+                      type="button"
+                      title="Open customer"
+                    >
                       <FaUsers className="subtitle-icon" />
                       <span className="project-customer-text">{project.customer_name || "No customer"}</span>
                     </button>
@@ -746,24 +855,38 @@ function ProjectDetails() {
                           </span>
                         ) : null}
 
-                        <span className={`metric-badge ${projectMonitor.overdueCount > 0 ? "metric-danger" : "metric-muted"}`}>
+                        <span
+                          className={`metric-badge ${
+                            projectMonitor.overdueCount > 0 ? "metric-danger" : "metric-muted"
+                          }`}
+                        >
                           <FaExclamationTriangle />
                           <span>Overdue: {projectMonitor.overdueCount}</span>
                         </span>
 
-                        <span className={`metric-badge ${projectMonitor.dueNext7Count > 0 ? "metric-warn" : "metric-muted"}`}>
+                        <span
+                          className={`metric-badge ${
+                            projectMonitor.dueNext7Count > 0 ? "metric-warn" : "metric-muted"
+                          }`}
+                        >
                           <FaClock />
                           <span>Next 7d: {projectMonitor.dueNext7Count}</span>
                         </span>
 
-                        <span className={`metric-badge ${projectMonitor.unassignedCount > 0 ? "metric-neutral" : "metric-muted"}`}>
+                        <span
+                          className={`metric-badge ${
+                            projectMonitor.unassignedCount > 0 ? "metric-neutral" : "metric-muted"
+                          }`}
+                        >
                           <FaUsers />
                           <span>Unassigned: {projectMonitor.unassignedCount}</span>
                         </span>
 
                         <span className="metric-badge metric-muted">
                           <FaFileAlt />
-                          <span>Last update: {projectMonitor.lastLogDate ? formatDate(projectMonitor.lastLogDate) : "-"}</span>
+                          <span>
+                            Last update: {projectMonitor.lastLogDate ? formatDate(projectMonitor.lastLogDate) : "-"}
+                          </span>
                         </span>
 
                         {project.deal_value !== null && project.deal_value !== undefined && (
@@ -801,12 +924,22 @@ function ProjectDetails() {
                   </button>
                 ) : (
                   <>
-                    <button className="action-button secondary" onClick={handleEditToggle} disabled={saving} type="button">
+                    <button
+                      className="action-button secondary"
+                      onClick={handleEditToggle}
+                      disabled={saving}
+                      type="button"
+                    >
                       <FaTimes />
                       <span>Cancel</span>
                     </button>
 
-                    <button className="action-button primary" onClick={saveProjectEdits} disabled={saving} type="button">
+                    <button
+                      className="action-button primary"
+                      onClick={saveProjectEdits}
+                      disabled={saving}
+                      type="button"
+                    >
                       <FaSave />
                       <span>{saving ? "Saving..." : "Save"}</span>
                     </button>
@@ -815,7 +948,6 @@ function ProjectDetails() {
               </div>
             </div>
 
-            {/* ✅ ONE layout for BOTH view and edit: form grid */}
             <div className={`project-edit-grid ${isReadOnly ? "is-readonly" : ""}`}>
               <div className="form-group">
                 <label className="form-label">
@@ -975,21 +1107,94 @@ function ProjectDetails() {
                 />
               </div>
 
-              {/* ✅ UPDATED: SmartVista Modules - chips only in view mode */}
               <div className="form-group form-group-full">
                 <label className="form-label">SmartVista Modules</label>
 
                 {isEditing ? (
-                  <>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={modulesDraft}
-                      onChange={(e) => setModulesDraft(e.target.value)}
-                      placeholder="e.g. SVBO, SVIP, SVFE, EPG, Merchant Acquiring, Fraud"
-                    />
-                    <div className="hint-text">Tip: separate using commas.</div>
-                  </>
+                  <div className="modules-select">
+                    <button
+                      type="button"
+                      className="form-input modules-select-trigger"
+                      onClick={() => setModulesOpen((v) => !v)}
+                    >
+                      {selectedModules.length > 0 ? (
+                        <span className="modules-trigger-text">{selectedModules.length} selected</span>
+                      ) : (
+                        <span className="modules-trigger-placeholder">Select modules…</span>
+                      )}
+                      <span className={`modules-caret ${modulesOpen ? "open" : ""}`}>▾</span>
+                    </button>
+
+                    {modulesOpen ? (
+                      <div className="modules-select-menu">
+                        <div className="modules-search-row">
+                          <input
+                            className="form-input modules-search"
+                            value={moduleSearch}
+                            onChange={(e) => setModuleSearch(e.target.value)}
+                            placeholder="Search or type to add…"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                addCustomModule(moduleSearch);
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className="action-button secondary modules-add-btn"
+                            onClick={() => addCustomModule(moduleSearch)}
+                            disabled={!moduleSearch.trim()}
+                          >
+                            Add
+                          </button>
+                        </div>
+
+                        <div className="modules-options">
+                          {(moduleOptions || [])
+                            .filter((m) => {
+                              const q = moduleSearch.trim().toLowerCase();
+                              if (!q) return true;
+                              return String(m).toLowerCase().includes(q);
+                            })
+                            .map((m) => {
+                              const name = String(m);
+                              const checked = selectedModules.includes(name);
+                              return (
+                                <label key={name} className="modules-option">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleModule(name)}
+                                  />
+                                  <span>{name}</span>
+                                </label>
+                              );
+                            })}
+                        </div>
+
+                        {moduleOptions.length === 0 ? (
+                          <div className="modules-empty">No modules loaded from database.</div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {selectedModules.length > 0 ? (
+                      <div className="chip-row modules-chip-row">
+                        {selectedModules.map((m) => (
+                          <span key={m} className="chip">
+                            {m}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="muted">-</div>
+                    )}
+
+                    <div className="hint-text">
+                      Saved as a comma-separated list. You can also type and click Add to include a custom entry.
+                    </div>
+                  </div>
                 ) : (
                   <>
                     {toModulesArray(project.smartvista_modules).length > 0 ? (
@@ -1084,12 +1289,18 @@ function ProjectDetails() {
                   <div key={t.id} className={`list-item ${t.status === "Completed" ? "is-done" : ""}`}>
                     <div className="list-item-main" onClick={() => openEditTask(t)} role="button" tabIndex={0}>
                       <div className="list-item-top">
-                        <span className={`status-tag status-${safeLower(t.status).replaceAll(" ", "-").replaceAll("/", "-")}`}>{t.status}</span>
+                        <span
+                          className={`status-tag status-${safeLower(t.status)
+                            .replaceAll(" ", "-")
+                            .replaceAll("/", "-")}`}
+                        >
+                          {t.status}
+                        </span>
                         {t.task_type && <span className="type-tag">{t.task_type}</span>}
                         {t.priority && <span className="type-tag">{t.priority}</span>}
-                        {t.estimated_hours !== null && t.estimated_hours !== undefined && t.estimated_hours !== "" && (
-                          <span className="type-tag">{t.estimated_hours}h</span>
-                        )}
+                        {t.estimated_hours !== null &&
+                          t.estimated_hours !== undefined &&
+                          t.estimated_hours !== "" && <span className="type-tag">{t.estimated_hours}h</span>}
                       </div>
 
                       <div className="list-item-title">{t.description}</div>
@@ -1107,7 +1318,12 @@ function ProjectDetails() {
                     </div>
 
                     <div className="list-item-actions">
-                      <button className="icon-button danger" onClick={() => deleteTask(t.id)} aria-label="Delete task" type="button">
+                      <button
+                        className="icon-button danger"
+                        onClick={() => deleteTask(t.id)}
+                        aria-label="Delete task"
+                        type="button"
+                      >
                         <FaTrash />
                       </button>
                     </div>
@@ -1144,7 +1360,12 @@ function ProjectDetails() {
                     </div>
 
                     <div className="list-item-actions">
-                      <button className="icon-button danger" onClick={() => deleteLog(l.id)} aria-label="Delete log" type="button">
+                      <button
+                        className="icon-button danger"
+                        onClick={() => deleteLog(l.id)}
+                        aria-label="Delete log"
+                        type="button"
+                      >
                         <FaTrash />
                       </button>
                     </div>
