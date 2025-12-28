@@ -919,26 +919,20 @@ function PresalesOverview() {
           const fullBlocked = isFullDayBlocked(blockedHours, dailyCapacity);
 
           if (fullBlocked) {
-            // Full-day blocked: show actual schedule type color
             status = primaryScheduleType || 'other';
             label = `${formatTypeLabel(status)} (full day)`;
           } else {
-            // Partial-day blocked:
-            // If NO tasks, show schedule type color (so legend matches)
             if (taskCount === 0 && primaryScheduleType) {
               status = primaryScheduleType;
               label = `${formatTypeLabel(primaryScheduleType)} · Blocked ${blockedHours.toFixed(1)}h · Left ${effectiveCapacity.toFixed(1)}h`;
             } else {
-              // If tasks exist, keep it Busy but we’ll add a left marker based on schedule type
               status = 'busy';
               label = blockedHours > 0 ? `Scheduled · Blocked ${blockedHours.toFixed(1)}h` : 'Scheduled';
             }
           }
         }
 
-        // Tasks override label and generally make the day "busy"
         if (taskCount > 0) {
-          // If it was marked as full-day schedule but tasks exist, treat it as busy (data inconsistency but better UX)
           if (status !== 'busy') status = 'busy';
 
           const baseLabel = `${taskCount} task${taskCount > 1 ? 's' : ''}`;
@@ -962,7 +956,6 @@ function PresalesOverview() {
           blockedHours,
           effectiveCapacity,
           taskHours: totalHours,
-          // ✅ used for left-border markers on Busy days
           markerType: status === 'busy' && primaryScheduleType ? primaryScheduleType : null,
         };
       });
@@ -1082,7 +1075,9 @@ function PresalesOverview() {
       .filter((t) => t.assignee === assignee && !isCompletedStatus(t.status) && isTaskOnDay(t, day))
       .map((t) => ({ ...t, projectName: projectMap.get(t.project_id) || 'Unknown project' }));
 
-    const daySchedules = (scheduleEvents || []).filter((ev) => ev.assignee === assignee && isWithinRange(day, ev.start_date, ev.end_date));
+    const daySchedules = (scheduleEvents || []).filter((ev) =>
+      ev.assignee === assignee && isWithinRange(day, ev.start_date, ev.end_date)
+    );
 
     setDayDetail({ assignee, date: day, tasks: dayTasks, schedules: daySchedules });
     setDayDetailOpen(true);
@@ -1123,6 +1118,57 @@ function PresalesOverview() {
         </div>
       </header>
 
+      {/* ✅ NEXT KEY ACTIVITIES - NOW ITS OWN PANEL */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large next-activities-panel">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <CalendarDays size={18} className="panel-icon" />
+                Next key activities
+              </h3>
+              <p>Only projects with a defined next step.</p>
+            </div>
+            <div className="next-activities-count">
+              Showing {nextKeyActivities.length} project{nextKeyActivities.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+
+          {nextKeyActivities.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No next key activities defined.</p>
+            </div>
+          ) : (
+            <div className="unassigned-tasks-table-wrapper next-activities-table-wrap">
+              <table className="unassigned-tasks-table next-activities-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '26%' }}>Customer</th>
+                    <th style={{ width: '26%' }}>Project</th>
+                    <th>Next key activity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {nextKeyActivities.map((p) => (
+                    <tr key={p.id}>
+                      <td className="td-ellipsis next-activity-customer" title={p.customerName}>
+                        {p.customerName}
+                      </td>
+                      <td className="td-ellipsis" title={p.projectName}>
+                        {p.projectName}
+                      </td>
+                      <td className="next-activity-cell" title={p.nextKeyActivity}>
+                        <div className="next-activity-text">{p.nextKeyActivity}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* PRESALES ACTIVITIES */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
@@ -1135,41 +1181,6 @@ function PresalesOverview() {
               <p>Overdue, In Progress, and Not Started tasks. Click a card to edit.</p>
             </div>
           </div>
-
-          {/* ✅ NEXT KEY ACTIVITIES (only if value exists) */}
-          {nextKeyActivities.length > 0 && (
-            <div className="unassigned-tasks-table-wrapper" style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
-                <div style={{ fontWeight: 750, fontSize: 13, opacity: 0.95 }}>Next key activities</div>
-                <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  Showing {nextKeyActivities.length} project{nextKeyActivities.length > 1 ? 's' : ''}
-                </div>
-              </div>
-
-              <table className="unassigned-tasks-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '26%' }}>Customer</th>
-                    <th style={{ width: '26%' }}>Project</th>
-                    <th>Next key activity</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {nextKeyActivities.map((p) => (
-                    <tr key={p.id}>
-                      <td className="td-ellipsis" style={{ fontWeight: 700 }} title={p.customerName}>
-                        {p.customerName}
-                      </td>
-                      <td className="td-ellipsis" title={p.projectName}>
-                        {p.projectName}
-                      </td>
-                      <td title={p.nextKeyActivity}>{p.nextKeyActivity}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
 
           <ActivitiesKanban
             groups={ongoingUpcomingGrouped}
@@ -1229,9 +1240,7 @@ function PresalesOverview() {
                         {projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}
                       </td>
 
-                      <td>
-                        {(t.due_date && new Date(t.due_date).toLocaleDateString('en-SG')) || '-'}
-                      </td>
+                      <td>{(t.due_date && new Date(t.due_date).toLocaleDateString('en-SG')) || '-'}</td>
 
                       <td>{t.priority || 'Normal'}</td>
                     </tr>
@@ -1298,7 +1307,7 @@ function PresalesOverview() {
               <div className="presales-empty small">
                 <p>{assignDateError}</p>
               </div>
-            ) : (!assignStart || !assignEnd) ? (
+            ) : !assignStart || !assignEnd ? (
               <div className="presales-empty small">
                 <p>Select start + end dates to see suggestions.</p>
               </div>
@@ -1367,11 +1376,13 @@ function PresalesOverview() {
                     <td className={w.overdue > 0 ? 'overdue' : ''}>{w.overdue}</td>
                     <td className="td-right">{w.thisWeekHours.toFixed(1)}</td>
                     <td>
-                      {Math.round(w.utilThisWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilThisWeek)})</span>
+                      {Math.round(w.utilThisWeek)}%{' '}
+                      <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilThisWeek)})</span>
                     </td>
                     <td className="td-right">{w.nextWeekHours.toFixed(1)}</td>
                     <td>
-                      {Math.round(w.utilNextWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilNextWeek)})</span>
+                      {Math.round(w.utilNextWeek)}%{' '}
+                      <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilNextWeek)})</span>
                     </td>
                     <td>{Math.round(w.overdueRateLast30)}%</td>
                   </tr>
