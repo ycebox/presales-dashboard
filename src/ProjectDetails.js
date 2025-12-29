@@ -58,38 +58,9 @@ const formatCurrency = (value) => {
   }
 };
 
-const getSalesStageIcon = (stage) => {
-  const s = safeLower(stage);
-  if (s.includes("lead")) return <FaBullseye />;
-  if (s.includes("opportunity")) return <FaRocket />;
-  if (s.includes("proposal")) return <FaFileAlt />;
-  if (s.includes("contract")) return <FaChartLine />;
-  if (s.includes("done") || s.includes("closed-won")) return <FaCheckCircle />;
-  return <FaBullseye />;
-};
-
-const getSalesStageClass = (stage) => {
-  if (!stage) return "stage-active";
-  const s = stage.toLowerCase();
-  if (s.includes("closed-won")) return "stage-won";
-  if (s.includes("closed-lost")) return "stage-lost";
-  if (s.includes("closed-cancelled")) return "stage-cancelled";
-  return "stage-active";
-};
-
-// smartvista_modules is VARCHAR in your schema, treat it as comma-separated
-const toModulesArray = (value) => {
-  if (!value) return [];
-  return String(value)
-    .split(/[,\n;]+/g)
-    .map((x) => x.trim())
-    .filter(Boolean);
-};
-
-// ---- Date helpers for suggestion engine ----
+// ---- Date helpers for suggestion engine (working days) ----
 const pad2 = (n) => String(n).padStart(2, "0");
-const toISODate = (d) =>
-  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const toISODate = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
 const parseISODate = (s) => {
   if (!s) return null;
@@ -107,7 +78,6 @@ const isWeekend = (d) => {
 const nextWorkingDay = (fromDate = new Date()) => {
   const d = new Date(fromDate);
   d.setHours(0, 0, 0, 0);
-  // start from today if it's a weekday and not past-day logic needed
   while (isWeekend(d)) d.setDate(d.getDate() + 1);
   return d;
 };
@@ -140,6 +110,34 @@ const roundToHalf = (x) => {
   return Math.round(n * 2) / 2;
 };
 
+const getSalesStageIcon = (stage) => {
+  const s = safeLower(stage);
+  if (s.includes("lead")) return <FaBullseye />;
+  if (s.includes("opportunity")) return <FaRocket />;
+  if (s.includes("proposal")) return <FaFileAlt />;
+  if (s.includes("contract")) return <FaChartLine />;
+  if (s.includes("done") || s.includes("closed-won")) return <FaCheckCircle />;
+  return <FaBullseye />;
+};
+
+const getSalesStageClass = (stage) => {
+  if (!stage) return "stage-active";
+  const s = stage.toLowerCase();
+  if (s.includes("closed-won")) return "stage-won";
+  if (s.includes("closed-lost")) return "stage-lost";
+  if (s.includes("closed-cancelled")) return "stage-cancelled";
+  return "stage-active";
+};
+
+// smartvista_modules is VARCHAR in your schema, treat it as comma-separated
+const toModulesArray = (value) => {
+  if (!value) return [];
+  return String(value)
+    .split(/[,\n;]+/g)
+    .map((x) => x.trim())
+    .filter(Boolean);
+};
+
 // ---------- Task Modal ----------
 const TaskModal = ({
   isOpen,
@@ -148,7 +146,7 @@ const TaskModal = ({
   editingTask = null,
   presalesResources = [],
   taskTypes = [],
-  taskTypeDefaultsMap = {}, // { [task_type]: { base_hours, buffer_pct, focus_hours_per_day, review_buffer_days } }
+  taskTypeDefaultsMap = {},
 }) => {
   const [taskData, setTaskData] = useState({
     description: "",
@@ -201,7 +199,7 @@ const TaskModal = ({
 
   const handleChange = (field, value) => setTaskData((prev) => ({ ...prev, [field]: value }));
 
-  // ---- Suggestion engine (Option B) ----
+  // ---- Option B: Suggest hours + dates based on task_types defaults ----
   const suggestedPlan = useMemo(() => {
     const t = (taskData.task_type || "").trim();
     if (!t) return null;
@@ -228,11 +226,9 @@ const TaskModal = ({
     let end;
 
     if (due) {
-      // Plan backward: end = due date, start = due - (workDays-1 + reviewDays)
       end = due;
       start = subtractWorkingDays(end, Math.max(0, totalDaysWithReview - 1));
     } else {
-      // Plan forward: start = next working day, end = start + (totalDaysWithReview-1)
       start = nextWorkingDay(new Date());
       end = addWorkingDays(start, Math.max(0, totalDaysWithReview - 1));
     }
@@ -402,7 +398,7 @@ const TaskModal = ({
               </select>
             </div>
 
-            {/* Suggested plan card (Option B) */}
+            {/* Suggested plan (auto-estimate) */}
             <div className="form-group form-group-full">
               <div className="suggestion-card">
                 <div className="suggestion-header">
@@ -416,7 +412,11 @@ const TaskModal = ({
                     className="action-button secondary suggestion-apply-btn"
                     onClick={applySuggestion}
                     disabled={!suggestedPlan || suggestedPlan.missing || suggestedPlan.invalid || !!editingTask}
-                    title={editingTask ? "Suggestions are disabled while editing. Create a new task to use auto-plan." : "Fill Estimated Hours + Start/End"}
+                    title={
+                      editingTask
+                        ? "Suggestions are disabled while editing. Create a new task to use auto-plan."
+                        : "Fill Estimated Hours + Start/End"
+                    }
                   >
                     <FaCheckCircle />
                     <span>Apply suggestion</span>
@@ -427,7 +427,8 @@ const TaskModal = ({
                   <div className="suggestion-muted">Select a Task Type to see recommended hours and dates.</div>
                 ) : suggestedPlan?.missing ? (
                   <div className="suggestion-warn">
-                    No defaults found for <b>{suggestedPlan.task_type}</b>. Add it in <b>task_type_defaults</b>.
+                    No defaults found for <b>{suggestedPlan.task_type}</b>. Add base/buffer/focus columns to{" "}
+                    <b>task_types</b> and set values for this type.
                   </div>
                 ) : suggestedPlan?.invalid ? (
                   <div className="suggestion-warn">
@@ -446,7 +447,7 @@ const TaskModal = ({
                     </div>
 
                     <div className="suggestion-row">
-                      <span className="suggestion-label">Workload assumption</span>
+                      <span className="suggestion-label">Assumption</span>
                       <span className="suggestion-value">
                         {suggestedPlan.focus_hours_per_day}h/day focus
                         <span className="suggestion-sub">
@@ -474,8 +475,7 @@ const TaskModal = ({
                     <div className="suggestion-footnote">
                       {suggestedPlan.planned_from_due_date
                         ? "Planned backward from Due Date."
-                        : "Planned forward from next working day."}
-                      {" "}
+                        : "Planned forward from next working day."}{" "}
                       You can still override any fields.
                     </div>
                   </div>
@@ -727,8 +727,6 @@ function ProjectDetails() {
   // dropdown options
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
-
-  // Option B defaults
   const [taskTypeDefaultsMap, setTaskTypeDefaultsMap] = useState({});
 
   useEffect(() => {
@@ -738,38 +736,39 @@ function ProjectDetails() {
           { data: pData, error: pErr },
           { data: tData, error: tErr },
           { data: mData, error: mErr },
-          { data: dData, error: dErr },
         ] = await Promise.all([
           supabase.from("presales_resources").select("name").order("name"),
-          supabase.from("task_types").select("name").order("name"),
-          supabase.from("smartvista_modules_catalog").select("name").order("name"),
           supabase
-            .from("task_type_defaults")
-            .select("task_type, base_hours, buffer_pct, focus_hours_per_day, review_buffer_days, is_active")
+            .from("task_types")
+            .select("name, base_hours, buffer_pct, focus_hours_per_day, review_buffer_days, is_active, sort_order")
             .eq("is_active", true)
-            .order("task_type"),
+            .order("sort_order", { ascending: true })
+            .order("name", { ascending: true }),
+          supabase.from("smartvista_modules_catalog").select("name").order("name"),
         ]);
 
         if (pErr) console.warn("presales_resources load error:", pErr);
         if (tErr) console.warn("task_types load error:", tErr);
         if (mErr) console.warn("smartvista_modules_catalog load error:", mErr);
-        if (dErr) console.warn("task_type_defaults load error:", dErr);
 
         setPresalesResources((pData || []).map((x) => x.name).filter(Boolean));
-        setTaskTypes((tData || []).map((x) => x.name).filter(Boolean));
-        setModuleOptions((mData || []).map((x) => x.name).filter(Boolean));
+
+        const typeNames = (tData || []).map((x) => x.name).filter(Boolean);
+        setTaskTypes(typeNames);
 
         const map = {};
-        (dData || []).forEach((row) => {
-          if (!row?.task_type) return;
-          map[row.task_type] = {
-            base_hours: row.base_hours,
-            buffer_pct: row.buffer_pct,
-            focus_hours_per_day: row.focus_hours_per_day,
-            review_buffer_days: row.review_buffer_days,
+        (tData || []).forEach((row) => {
+          if (!row?.name) return;
+          map[row.name] = {
+            base_hours: row.base_hours ?? 4,
+            buffer_pct: row.buffer_pct ?? 0.25,
+            focus_hours_per_day: row.focus_hours_per_day ?? 3,
+            review_buffer_days: row.review_buffer_days ?? 0,
           };
         });
         setTaskTypeDefaultsMap(map);
+
+        setModuleOptions((mData || []).map((x) => x.name).filter(Boolean));
       } catch (e) {
         console.warn("Failed loading dropdown lists:", e);
       }
