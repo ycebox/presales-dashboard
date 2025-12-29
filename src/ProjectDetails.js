@@ -1,4 +1,4 @@
-// ProjectDetails.js
+\// ProjectDetails.js
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
@@ -82,6 +82,17 @@ const toModulesArray = (value) => {
     .split(/[,\n;]+/g)
     .map((x) => x.trim())
     .filter(Boolean);
+};
+
+const isStageClosedOrDone = (stage) => {
+  const s = safeLower(stage);
+  if (!s) return false;
+  return (
+    s.includes("done") ||
+    s.includes("closed-won") ||
+    s.includes("closed-lost") ||
+    s.includes("closed-cancelled")
+  );
 };
 
 // ---------- Log Modal ----------
@@ -223,7 +234,11 @@ const useProjectData = (projectId) => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase.from("projects").select("*").eq("id", projectId).single();
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", projectId)
+        .single();
       if (error) throw error;
 
       setProject(data);
@@ -238,6 +253,7 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
@@ -271,6 +287,10 @@ function ProjectDetails() {
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
   const [taskTypeDefaultsMap, setTaskTypeDefaultsMap] = useState({});
+
+  // ✅ Bid manager load info (how many active projects assigned to the same bid manager)
+  const [bidManagerLoad, setBidManagerLoad] = useState(null);
+  const [bidManagerLoadError, setBidManagerLoadError] = useState(null);
 
   useEffect(() => {
     const loadLists = async () => {
@@ -319,6 +339,44 @@ function ProjectDetails() {
 
     loadLists();
   }, []);
+
+  // ✅ Load bid manager "active projects count"
+  useEffect(() => {
+    const loadBidManagerLoad = async () => {
+      setBidManagerLoad(null);
+      setBidManagerLoadError(null);
+
+      const bm = (project?.bid_manager || "").trim();
+      const required = !!project?.bid_manager_required;
+
+      if (!bm || !required) return;
+
+      try {
+        // Fetch all projects for this bid manager, then count "active" in JS
+        const { data, error: qErr } = await supabase
+          .from("projects")
+          .select("id, sales_stage, bid_manager, bid_manager_required")
+          .eq("bid_manager_required", true)
+          .eq("bid_manager", bm);
+
+        if (qErr) throw qErr;
+
+        const list = data || [];
+        const active = list.filter((p) => !isStageClosedOrDone(p.sales_stage)).length;
+
+        setBidManagerLoad({
+          bid_manager: bm,
+          total: list.length,
+          active,
+        });
+      } catch (e) {
+        console.warn("Failed to load bid manager load:", e);
+        setBidManagerLoadError("Failed to compute bid manager load.");
+      }
+    };
+
+    loadBidManagerLoad();
+  }, [project?.bid_manager, project?.bid_manager_required, project?.id]);
 
   const projectMonitor = useMemo(() => {
     const today = new Date();
@@ -388,6 +446,8 @@ function ProjectDetails() {
       setEditProject({
         ...project,
         is_corporate: !!project.is_corporate,
+        bid_manager_required: !!project.bid_manager_required,
+        bid_manager: project.bid_manager || "",
       });
 
       const initialModules = toModulesArray(project.smartvista_modules);
@@ -415,6 +475,8 @@ function ProjectDetails() {
       setEditProject({
         ...project,
         is_corporate: !!project?.is_corporate,
+        bid_manager_required: !!project?.bid_manager_required,
+        bid_manager: project?.bid_manager || "",
       });
 
       const initialModules = toModulesArray(project?.smartvista_modules);
@@ -433,6 +495,16 @@ function ProjectDetails() {
     const { name, value, type, checked } = e.target;
 
     if (type === "checkbox") {
+      // Special case: if bid_manager_required is turned off, clear bid_manager in edit state
+      if (name === "bid_manager_required") {
+        setEditProject((prev) => ({
+          ...prev,
+          bid_manager_required: !!checked,
+          bid_manager: checked ? (prev.bid_manager || "") : "",
+        }));
+        return;
+      }
+
       setEditProject((prev) => ({ ...prev, [name]: !!checked }));
       return;
     }
@@ -448,6 +520,9 @@ function ProjectDetails() {
     setSaving(true);
 
     try {
+      const requiresBM = !!editProject.bid_manager_required;
+      const bmValue = requiresBM ? (editProject.bid_manager || "").trim() : "";
+
       const payload = {
         project_name: editProject.project_name || "",
         customer_name: editProject.customer_name || "",
@@ -466,6 +541,10 @@ function ProjectDetails() {
         primary_presales: (editProject.primary_presales || "").trim() || null,
         backup_presales: (editProject.backup_presales || "").trim() || null,
         is_corporate: !!editProject.is_corporate,
+
+        // ✅ Bid manager fields
+        bid_manager_required: requiresBM,
+        bid_manager: bmValue ? bmValue : null,
       };
 
       const { error } = await supabase.from("projects").update(payload).eq("id", project.id);
@@ -648,6 +727,29 @@ function ProjectDetails() {
                           </span>
                         </span>
 
+                        {/* ✅ Bid manager assignment + load */}
+                        {project.bid_manager_required ? (
+                          <span className="metric-badge metric-muted" title="Bid manager assignment">
+                            <FaUsers />
+                            <span>
+                              Bid: {project.bid_manager ? project.bid_manager : "Unassigned"}
+                            </span>
+                          </span>
+                        ) : null}
+
+                        {project.bid_manager_required && project.bid_manager ? (
+                          <span
+                            className="metric-badge metric-muted"
+                            title={bidManagerLoadError ? bidManagerLoadError : "Active projects assigned to this bid manager"}
+                          >
+                            <FaTasks />
+                            <span>
+                              BM load:{" "}
+                              {bidManagerLoad ? `${bidManagerLoad.active} active` : (bidManagerLoadError ? "N/A" : "…")}
+                            </span>
+                          </span>
+                        ) : null}
+
                         {project.deal_value !== null && project.deal_value !== undefined && (
                           <span className="deal-badge">
                             <FaDollarSign />
@@ -800,6 +902,46 @@ function ProjectDetails() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* ✅ Bid manager section */}
+              <div className="form-group form-group-full">
+                <label className="form-label" style={{ marginBottom: 8 }}>
+                  Bid Manager
+                </label>
+
+                <label className="checkbox-row" style={{ marginBottom: 10 }}>
+                  <input
+                    type="checkbox"
+                    name="bid_manager_required"
+                    checked={!!viewOrEdit.bid_manager_required}
+                    onChange={isReadOnly ? undefined : handleEditChange}
+                    disabled={isReadOnly}
+                  />
+                  Requires bid manager
+                </label>
+
+                <div className="hint-text" style={{ marginBottom: 8 }}>
+                  If enabled, you can assign a bid manager so you can track involvement and load.
+                </div>
+
+                <input
+                  type="text"
+                  name="bid_manager"
+                  value={viewOrEdit.bid_manager || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-input"
+                  placeholder="Enter bid manager name (e.g. Juan Dela Cruz)"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly || !viewOrEdit.bid_manager_required}
+                />
+
+                {!isEditing && viewOrEdit.bid_manager_required && viewOrEdit.bid_manager ? (
+                  <div className="hint-text" style={{ marginTop: 8 }}>
+                    Current BM load:{" "}
+                    {bidManagerLoad ? `${bidManagerLoad.active} active project(s)` : (bidManagerLoadError ? "N/A" : "…")}
+                  </div>
+                ) : null}
               </div>
 
               <div className="form-group form-group-full">
