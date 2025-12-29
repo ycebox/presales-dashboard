@@ -1496,7 +1496,7 @@ function PresalesOverview() {
                     <th>Type</th>
                     <th>From</th>
                     <th>To</th>
-                    <th>Block hrs</th>
+                
                     <th>Note</th>
                     <th />
                   </tr>
@@ -1512,7 +1512,7 @@ function PresalesOverview() {
                         </td>
                         <td>{ev.start_date ? new Date(ev.start_date).toLocaleDateString('en-SG') : '-'}</td>
                         <td>{ev.end_date ? new Date(ev.end_date).toLocaleDateString('en-SG') : '-'}</td>
-                        <td>{ev.block_hours ?? '-'}</td>
+                
                         <td className="td-ellipsis">{ev.note || '-'}</td>
                         <td className="td-right">
                           <button
