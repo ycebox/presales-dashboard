@@ -499,6 +499,16 @@ function PresalesOverview() {
   const formatDayDetailDate = (d) =>
     d ? d.toLocaleDateString('en-SG', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
+  // ✅ PATCH: hide past schedules from Schedules table (keep in DB)
+  const scheduleEventsForTable = useMemo(() => {
+    const t = toMidnight(new Date());
+    return (scheduleEvents || []).filter((ev) => {
+      const end = parseDate(ev.end_date || ev.start_date);
+      if (!end) return true; // safer: keep showing if date is invalid/missing
+      return end.getTime() >= t.getTime();
+    });
+  }, [scheduleEvents]);
+
   // ✅ Next key activities (only non-empty values)
   const nextKeyActivities = useMemo(() => {
     const list = (projects || [])
@@ -1324,11 +1334,13 @@ function PresalesOverview() {
                     <td className={w.overdue > 0 ? 'overdue' : ''}>{w.overdue}</td>
                     <td className="td-right">{w.thisWeekHours.toFixed(1)}</td>
                     <td>
-                      {Math.round(w.utilThisWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilThisWeek)})</span>
+                      {Math.round(w.utilThisWeek)}%{' '}
+                      <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilThisWeek)})</span>
                     </td>
                     <td className="td-right">{w.nextWeekHours.toFixed(1)}</td>
                     <td>
-                      {Math.round(w.utilNextWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilNextWeek)})</span>
+                      {Math.round(w.utilNextWeek)}%{' '}
+                      <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilNextWeek)})</span>
                     </td>
                     <td>{Math.round(w.overdueRateLast30)}%</td>
                   </tr>
@@ -1376,13 +1388,27 @@ function PresalesOverview() {
               </div>
 
               <div className="availability-legend" aria-label="Availability legend">
-                <div className="legend-item"><span className="legend-swatch sw-free" /> Free</div>
-                <div className="legend-item"><span className="legend-swatch sw-busy" /> Busy</div>
-                <div className="legend-item"><span className="legend-swatch sw-leave" /> Leave</div>
-                <div className="legend-item"><span className="legend-swatch sw-travel" /> Travel</div>
-                <div className="legend-item"><span className="legend-swatch sw-training" /> Training</div>
-                <div className="legend-item"><span className="legend-swatch sw-internal" /> Internal</div>
-                <div className="legend-item"><span className="legend-swatch sw-other" /> Other</div>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-free" /> Free
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-busy" /> Busy
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-leave" /> Leave
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-travel" /> Travel
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-training" /> Training
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-internal" /> Internal
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-other" /> Other
+                </div>
               </div>
 
               <button type="button" className="btn-secondary" onClick={openScheduleModalForCreate}>
@@ -1433,7 +1459,8 @@ function PresalesOverview() {
             </div>
           </div>
 
-          {scheduleEvents.length === 0 ? (
+          {/* ✅ PATCH: use scheduleEventsForTable */}
+          {scheduleEventsForTable.length === 0 ? (
             <div className="presales-empty small">
               <p>No schedule entries yet.</p>
             </div>
@@ -1452,7 +1479,7 @@ function PresalesOverview() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...scheduleEvents]
+                  {[...scheduleEventsForTable]
                     .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
                     .map((ev) => (
                       <tr key={ev.id}>
@@ -1465,10 +1492,20 @@ function PresalesOverview() {
                         <td>{ev.block_hours ?? '-'}</td>
                         <td className="td-ellipsis">{ev.note || '-'}</td>
                         <td className="td-right">
-                          <button type="button" className="icon-btn" onClick={() => openScheduleModalForEdit(ev)} title="Edit">
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            onClick={() => openScheduleModalForEdit(ev)}
+                            title="Edit"
+                          >
                             <Edit3 size={14} />
                           </button>
-                          <button type="button" className="icon-btn danger" onClick={() => handleDeleteSchedule(ev.id)} title="Delete">
+                          <button
+                            type="button"
+                            className="icon-btn danger"
+                            onClick={() => handleDeleteSchedule(ev.id)}
+                            title="Delete"
+                          >
                             <Trash2 size={14} />
                           </button>
                         </td>
@@ -1492,7 +1529,11 @@ function PresalesOverview() {
                   {dayDetail.assignee} • {formatDayDetailDate(dayDetail.date)}
                 </div>
               </div>
-              <button type="button" className="schedule-modal-close modal-close" onClick={() => setDayDetailOpen(false)}>
+              <button
+                type="button"
+                className="schedule-modal-close modal-close"
+                onClick={() => setDayDetailOpen(false)}
+              >
                 <X size={18} />
               </button>
             </div>
@@ -1565,9 +1606,7 @@ function PresalesOverview() {
             </div>
 
             <form onSubmit={handleScheduleSubmit} className="schedule-form modal-body">
-              {(scheduleError || scheduleDateError) && (
-                <div className="form-error">{scheduleError || scheduleDateError}</div>
-              )}
+              {(scheduleError || scheduleDateError) && <div className="form-error">{scheduleError || scheduleDateError}</div>}
 
               <div className="schedule-field">
                 <label>Assignee</label>
@@ -1635,11 +1674,7 @@ function PresalesOverview() {
 
               <div className="schedule-field-full">
                 <label>Note</label>
-                <input
-                  value={scheduleNote}
-                  onChange={(e) => setScheduleNote(e.target.value)}
-                  placeholder="Optional"
-                />
+                <input value={scheduleNote} onChange={(e) => setScheduleNote(e.target.value)} placeholder="Optional" />
               </div>
 
               <div className="schedule-actions modal-footer">
