@@ -12,6 +12,7 @@ import {
   ListChecks,
   Save,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './PresalesOverview.css';
 import TaskModal from './TaskModal';
 
@@ -342,11 +343,16 @@ function ActivitiesKanban({ groups, parseDateFn, today, formatShortDate, onClick
 }
 
 function PresalesOverview() {
+  const navigate = useNavigate();
+
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [scheduleEvents, setScheduleEvents] = useState([]);
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]); // rows from DB (or fallback)
+
+  // ✅ map customer_name -> customer id (used for clickable Customer links)
+  const [customerIdMap, setCustomerIdMap] = useState({});
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -389,7 +395,7 @@ function PresalesOverview() {
       setError(null);
 
       try {
-        const [projRes, taskRes, scheduleRes, presalesRes, taskTypesRes] = await Promise.all([
+        const [projRes, taskRes, scheduleRes, presalesRes, taskTypesRes, custRes] = await Promise.all([
           supabase
             .from('projects')
             .select('id, customer_name, project_name, sales_stage, deal_value, next_key_activity')
@@ -411,6 +417,8 @@ function PresalesOverview() {
             .eq('is_active', true)
             .order('sort_order', { ascending: true })
             .order('name', { ascending: true }),
+          // ✅ customer map for clickable links
+          supabase.from('customers').select('id, customer_name').eq('is_archived', false),
         ]);
 
         if (projRes.error) throw projRes.error;
@@ -418,6 +426,7 @@ function PresalesOverview() {
         if (scheduleRes.error) throw scheduleRes.error;
         if (presalesRes.error) throw presalesRes.error;
         if (taskTypesRes.error) throw taskTypesRes.error;
+        if (custRes.error) throw custRes.error;
 
         setProjects(projRes.data || []);
         setTasks(taskRes.data || []);
@@ -426,6 +435,12 @@ function PresalesOverview() {
 
         const typesFromDb = taskTypesRes.data || [];
         setTaskTypes(typesFromDb.length > 0 ? typesFromDb : DEFAULT_TASK_TYPES);
+
+        const map = {};
+        (custRes.data || []).forEach((c) => {
+          map[(c.customer_name || '').trim()] = c.id;
+        });
+        setCustomerIdMap(map);
       } catch (err) {
         console.error('Error loading presales overview data:', err);
         setError('Failed to load presales overview data.');
@@ -882,7 +897,9 @@ function PresalesOverview() {
           } else {
             if (taskCount === 0 && primaryScheduleType) {
               status = primaryScheduleType;
-              label = `${formatTypeLabel(primaryScheduleType)} · Blocked ${blockedHours.toFixed(1)}h · Left ${effectiveCapacity.toFixed(1)}h`;
+              label = `${formatTypeLabel(primaryScheduleType)} · Blocked ${blockedHours.toFixed(
+                1
+              )}h · Left ${effectiveCapacity.toFixed(1)}h`;
             } else {
               status = 'busy';
               label = blockedHours > 0 ? `Scheduled · Blocked ${blockedHours.toFixed(1)}h` : 'Scheduled';
@@ -894,7 +911,9 @@ function PresalesOverview() {
           if (status !== 'busy') status = 'busy';
 
           const baseLabel = `${taskCount} task${taskCount > 1 ? 's' : ''}`;
-          const capText = ` · Tasks ${totalHours.toFixed(1)}h · Blocked ${blockedHours.toFixed(1)}h · Left ${effectiveCapacity.toFixed(1)}h`;
+          const capText = ` · Tasks ${totalHours.toFixed(1)}h · Blocked ${blockedHours.toFixed(
+            1
+          )}h · Left ${effectiveCapacity.toFixed(1)}h`;
 
           let prefix = '';
           if (utilization > 120 || taskCount > maxTasksPerDay) prefix = 'Over capacity: ';
@@ -1110,11 +1129,33 @@ function PresalesOverview() {
                   {nextKeyActivities.map((p) => (
                     <tr key={p.id}>
                       <td className="td-ellipsis next-activity-customer" title={p.customerName}>
-                        {p.customerName}
+                        {customerIdMap[(p.customerName || '').trim()] ? (
+                          <button
+                            type="button"
+                            className="table-link-btn"
+                            onClick={() =>
+                              navigate(`/customer/${customerIdMap[(p.customerName || '').trim()]}`)
+                            }
+                            title="Open customer details"
+                          >
+                            {p.customerName}
+                          </button>
+                        ) : (
+                          p.customerName
+                        )}
                       </td>
+
                       <td className="td-ellipsis" title={p.projectName}>
-                        {p.projectName}
+                        <button
+                          type="button"
+                          className="table-link-btn"
+                          onClick={() => navigate(`/project/${p.id}`)}
+                          title="Open project details"
+                        >
+                          {p.projectName}
+                        </button>
                       </td>
+
                       <td className="next-activity-cell" title={p.nextKeyActivity}>
                         <div className="next-activity-text">{p.nextKeyActivity}</div>
                       </td>
@@ -1194,9 +1235,7 @@ function PresalesOverview() {
                         </button>
                       </td>
 
-                      <td className="td-ellipsis">
-                        {projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}
-                      </td>
+                      <td className="td-ellipsis">{projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}</td>
 
                       <td>{(t.due_date && new Date(t.due_date).toLocaleDateString('en-SG')) || '-'}</td>
 
@@ -1334,13 +1373,11 @@ function PresalesOverview() {
                     <td className={w.overdue > 0 ? 'overdue' : ''}>{w.overdue}</td>
                     <td className="td-right">{w.thisWeekHours.toFixed(1)}</td>
                     <td>
-                      {Math.round(w.utilThisWeek)}%{' '}
-                      <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilThisWeek)})</span>
+                      {Math.round(w.utilThisWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilThisWeek)})</span>
                     </td>
                     <td className="td-right">{w.nextWeekHours.toFixed(1)}</td>
                     <td>
-                      {Math.round(w.utilNextWeek)}%{' '}
-                      <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilNextWeek)})</span>
+                      {Math.round(w.utilNextWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilNextWeek)})</span>
                     </td>
                     <td>{Math.round(w.overdueRateLast30)}%</td>
                   </tr>
@@ -1388,27 +1425,13 @@ function PresalesOverview() {
               </div>
 
               <div className="availability-legend" aria-label="Availability legend">
-                <div className="legend-item">
-                  <span className="legend-swatch sw-free" /> Free
-                </div>
-                <div className="legend-item">
-                  <span className="legend-swatch sw-busy" /> Busy
-                </div>
-                <div className="legend-item">
-                  <span className="legend-swatch sw-leave" /> Leave
-                </div>
-                <div className="legend-item">
-                  <span className="legend-swatch sw-travel" /> Travel
-                </div>
-                <div className="legend-item">
-                  <span className="legend-swatch sw-training" /> Training
-                </div>
-                <div className="legend-item">
-                  <span className="legend-swatch sw-internal" /> Internal
-                </div>
-                <div className="legend-item">
-                  <span className="legend-swatch sw-other" /> Other
-                </div>
+                <div className="legend-item"><span className="legend-swatch sw-free" /> Free</div>
+                <div className="legend-item"><span className="legend-swatch sw-busy" /> Busy</div>
+                <div className="legend-item"><span className="legend-swatch sw-leave" /> Leave</div>
+                <div className="legend-item"><span className="legend-swatch sw-travel" /> Travel</div>
+                <div className="legend-item"><span className="legend-swatch sw-training" /> Training</div>
+                <div className="legend-item"><span className="legend-swatch sw-internal" /> Internal</div>
+                <div className="legend-item"><span className="legend-swatch sw-other" /> Other</div>
               </div>
 
               <button type="button" className="btn-secondary" onClick={openScheduleModalForCreate}>
@@ -1606,7 +1629,9 @@ function PresalesOverview() {
             </div>
 
             <form onSubmit={handleScheduleSubmit} className="schedule-form modal-body">
-              {(scheduleError || scheduleDateError) && <div className="form-error">{scheduleError || scheduleDateError}</div>}
+              {(scheduleError || scheduleDateError) && (
+                <div className="form-error">{scheduleError || scheduleDateError}</div>
+              )}
 
               <div className="schedule-field">
                 <label>Assignee</label>
