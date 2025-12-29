@@ -162,10 +162,16 @@ const TaskModal = ({
   });
   const [loading, setLoading] = useState(false);
 
+  // Track the original type while editing, so we can tell if user changed it
+  const [originalTaskType, setOriginalTaskType] = useState("");
+
   useEffect(() => {
     if (!isOpen) return;
 
     if (editingTask) {
+      const original = (editingTask.task_type || "").trim();
+      setOriginalTaskType(original);
+
       setTaskData({
         description: editingTask.description || "",
         status: editingTask.status || "Not Started",
@@ -182,6 +188,7 @@ const TaskModal = ({
         task_type: editingTask.task_type || "",
       });
     } else {
+      setOriginalTaskType("");
       setTaskData({
         description: "",
         status: "Not Started",
@@ -248,9 +255,40 @@ const TaskModal = ({
     };
   }, [taskData.task_type, taskData.due_date, taskTypeDefaultsMap]);
 
+  const hasExistingPlanValues = () => {
+    const hasHours = String(taskData.estimated_hours || "").trim() !== "";
+    const hasStart = String(taskData.start_date || "").trim() !== "";
+    const hasEnd = String(taskData.end_date || "").trim() !== "";
+    return hasHours || hasStart || hasEnd;
+  };
+
+  // ✅ allow applying even in edit mode
+  // - if new task: fill blank fields (same behavior as before)
+  // - if editing: allow overwrite with confirmation
   const applySuggestion = () => {
     if (!suggestedPlan || suggestedPlan.missing || suggestedPlan.invalid) return;
 
+    const isEditing = !!editingTask?.id;
+    const typeChanged = isEditing && (taskData.task_type || "").trim() !== (originalTaskType || "").trim();
+
+    // If editing and there are existing values, ask before overwriting
+    if (isEditing && hasExistingPlanValues()) {
+      const msg = typeChanged
+        ? "Re-apply suggested plan based on the new Task Type? This will overwrite Estimated Hours, Start Date, and End Date."
+        : "Re-apply suggested plan? This will overwrite Estimated Hours, Start Date, and End Date.";
+      const ok = window.confirm(msg);
+      if (!ok) return;
+
+      setTaskData((prev) => ({
+        ...prev,
+        estimated_hours: String(suggestedPlan.suggested_hours ?? ""),
+        start_date: suggestedPlan.suggested_start_date || "",
+        end_date: suggestedPlan.suggested_end_date || "",
+      }));
+      return;
+    }
+
+    // Default behavior: fill blanks only (no overwrite)
     setTaskData((prev) => ({
       ...prev,
       estimated_hours: prev.estimated_hours !== "" ? prev.estimated_hours : String(suggestedPlan.suggested_hours ?? ""),
@@ -297,6 +335,9 @@ const TaskModal = ({
   };
 
   if (!isOpen) return null;
+
+  const isEditing = !!editingTask?.id;
+  const typeChanged = isEditing && (taskData.task_type || "").trim() !== (originalTaskType || "").trim();
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">
@@ -405,21 +446,22 @@ const TaskModal = ({
                   <div className="suggestion-title">
                     <FaInfo />
                     <span>Suggested plan</span>
+                    {isEditing && typeChanged ? (
+                      <span style={{ fontSize: 12, opacity: 0.75, marginLeft: 10 }}>
+                        (Task Type changed)
+                      </span>
+                    ) : null}
                   </div>
 
                   <button
                     type="button"
                     className="action-button secondary suggestion-apply-btn"
                     onClick={applySuggestion}
-                    disabled={!suggestedPlan || suggestedPlan.missing || suggestedPlan.invalid || !!editingTask}
-                    title={
-                      editingTask
-                        ? "Suggestions are disabled while editing. Create a new task to use auto-plan."
-                        : "Fill Estimated Hours + Start/End"
-                    }
+                    disabled={!suggestedPlan || suggestedPlan.missing || suggestedPlan.invalid}
+                    title="Apply (or re-apply) Estimated Hours + Start/End"
                   >
                     <FaCheckCircle />
-                    <span>Apply suggestion</span>
+                    <span>{isEditing ? "Re-apply suggestion" : "Apply suggestion"}</span>
                   </button>
                 </div>
 
@@ -694,7 +736,6 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
-   
   }, [projectId]);
 
   return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
@@ -834,11 +875,7 @@ function ProjectDetails() {
 
     let health = "GREEN";
     if (isProjectOverdue || overdueCount > 0) health = "RED";
-    else if (
-      isProjectDueSoon ||
-      dueNext7Count > 0 ||
-      (daysSinceLastLog !== null && daysSinceLastLog > 14)
-    )
+    else if (isProjectDueSoon || dueNext7Count > 0 || (daysSinceLastLog !== null && daysSinceLastLog > 14))
       health = "AMBER";
 
     return { overdueCount, dueNext7Count, unassignedCount, lastLogDate, daysSinceLastLog, health };
@@ -1035,6 +1072,10 @@ function ProjectDetails() {
 
   return (
     <div className="project-details-container theme-light">
+      {/* --- the rest of your component remains unchanged --- */}
+      {/* NOTE: I kept everything below exactly the same as your original file. */}
+      {/* Because your request was focused on re-applying suggestion when editing tasks. */}
+
       <section className="project-header">
         <div className="project-hero">
           <div className="project-title-content">
@@ -1169,6 +1210,7 @@ function ProjectDetails() {
             </div>
 
             <div className={`project-edit-grid ${isReadOnly ? "is-readonly" : ""}`}>
+              {/* ... unchanged fields ... */}
               <div className="form-group">
                 <label className="form-label">
                   <FaBullseye className="form-icon" />
@@ -1327,6 +1369,7 @@ function ProjectDetails() {
                 />
               </div>
 
+              {/* Modules + rest unchanged... */}
               <div className="form-group form-group-full">
                 <label className="form-label">SmartVista Modules</label>
 
