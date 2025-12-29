@@ -13,6 +13,7 @@ import {
   Save,
 } from 'lucide-react';
 import './PresalesOverview.css';
+import TaskModal from './TaskModal';
 
 const HOURS_PER_DAY = 8;
 const DEFAULT_TASK_HOURS = 4;
@@ -345,7 +346,7 @@ function PresalesOverview() {
   const [tasks, setTasks] = useState([]);
   const [scheduleEvents, setScheduleEvents] = useState([]);
   const [presalesResources, setPresalesResources] = useState([]);
-  const [taskTypes, setTaskTypes] = useState([]);
+  const [taskTypes, setTaskTypes] = useState([]); // rows from DB (or fallback)
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -377,25 +378,9 @@ function PresalesOverview() {
   const [dayDetailOpen, setDayDetailOpen] = useState(false);
   const [dayDetail, setDayDetail] = useState({ assignee: '', date: null, tasks: [], schedules: [] });
 
-  // Task edit modal
+  // ✅ Shared TaskModal state
   const [taskModalOpen, setTaskModalOpen] = useState(false);
-  const [taskSaving, setTaskSaving] = useState(false);
-  const [taskSaveError, setTaskSaveError] = useState(null);
-
-  const [taskForm, setTaskForm] = useState({
-    id: null,
-    description: '',
-    status: 'Not Started',
-    assignee: '',
-    start_date: '',
-    end_date: '',
-    due_date: '',
-    estimated_hours: '',
-    task_type: '',
-    priority: 'Normal',
-    notes: '',
-    project_id: null,
-  });
+  const [editingTask, setEditingTask] = useState(null);
 
   // ---------- Load data ----------
   useEffect(() => {
@@ -419,9 +404,10 @@ function PresalesOverview() {
             .from('presales_resources')
             .select('id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day')
             .order('name', { ascending: true }),
+          // ✅ load defaults needed by TaskModal suggestion logic
           supabase
             .from('task_types')
-            .select('id, name, is_active, sort_order')
+            .select('id, name, is_active, sort_order, base_hours, buffer_pct, focus_hours_per_day, review_buffer_days')
             .eq('is_active', true)
             .order('sort_order', { ascending: true })
             .order('name', { ascending: true }),
@@ -437,7 +423,9 @@ function PresalesOverview() {
         setTasks(taskRes.data || []);
         setScheduleEvents(scheduleRes.data || []);
         setPresalesResources((presalesRes.data || []).filter((p) => p.is_active !== false));
-        setTaskTypes(taskTypesRes.data || []);
+
+        const typesFromDb = taskTypesRes.data || [];
+        setTaskTypes(typesFromDb.length > 0 ? typesFromDb : DEFAULT_TASK_TYPES);
       } catch (err) {
         console.error('Error loading presales overview data:', err);
         setError('Failed to load presales overview data.');
@@ -448,6 +436,33 @@ function PresalesOverview() {
 
     loadData();
   }, []);
+
+  // ✅ for TaskModal props
+  const presalesResourceNames = useMemo(() => {
+    return (presalesResources || [])
+      .map((p) => p.name || p.email || 'Unknown')
+      .filter(Boolean);
+  }, [presalesResources]);
+
+  const taskTypeNames = useMemo(() => {
+    return (taskTypes || [])
+      .map((t) => t?.name)
+      .filter(Boolean);
+  }, [taskTypes]);
+
+  const taskTypeDefaultsMap = useMemo(() => {
+    const map = {};
+    (taskTypes || []).forEach((t) => {
+      if (!t?.name) return;
+      map[t.name] = {
+        base_hours: t.base_hours ?? 4,
+        buffer_pct: t.buffer_pct ?? 0.25,
+        focus_hours_per_day: t.focus_hours_per_day ?? 3,
+        review_buffer_days: t.review_buffer_days ?? 0,
+      };
+    });
+    return map;
+  }, [taskTypes]);
 
   // ---------- DB-driven multiplier map ----------
   const taskTypeMultiplierMap = useMemo(() => buildTaskTypeMultiplierMap(taskTypes), [taskTypes]);
@@ -499,20 +514,6 @@ function PresalesOverview() {
     return list;
   }, [projects]);
 
-  // ---- Task type dropdown options (DB-driven + fallback + legacy support) ----
-  const taskTypeOptions = useMemo(() => {
-    const base =
-      (taskTypes || []).length > 0
-        ? (taskTypes || []).map((t) => ({ id: t.id, name: t.name }))
-        : DEFAULT_TASK_TYPES;
-
-    const current = (taskForm?.task_type || '').trim();
-    if (current && !base.some((x) => (x.name || '').toLowerCase() === current.toLowerCase())) {
-      return [{ id: 'legacy', name: current }, ...base];
-    }
-    return base;
-  }, [taskTypes, taskForm?.task_type]);
-
   // ---------- Presales Activities grouping ----------
   const ongoingUpcomingGrouped = useMemo(() => {
     const groups = { Overdue: [], 'In Progress': [], 'Not Started': [] };
@@ -547,76 +548,15 @@ function PresalesOverview() {
     return groups;
   }, [tasks, projectInfoMap, today]);
 
-  // ---------- Task modal ----------
+  // ---------- Shared TaskModal handlers ----------
   const openTaskModal = (task) => {
-    setTaskSaveError(null);
-    setTaskForm({
-      id: task.id,
-      project_id: task.project_id || null,
-      description: task.description || '',
-      status: task.status || 'Not Started',
-      assignee: task.assignee || '',
-      start_date: task.start_date || '',
-      end_date: task.end_date || '',
-      due_date: task.due_date || '',
-      estimated_hours:
-        typeof task.estimated_hours === 'number' && !Number.isNaN(task.estimated_hours)
-          ? String(task.estimated_hours)
-          : task.estimated_hours
-          ? String(task.estimated_hours)
-          : '',
-      task_type: task.task_type || '',
-      priority: task.priority || 'Normal',
-      notes: task.notes || '',
-    });
+    setEditingTask(task || null);
     setTaskModalOpen(true);
   };
 
   const closeTaskModal = () => {
     setTaskModalOpen(false);
-    setTaskSaveError(null);
-  };
-
-  const saveTaskEdits = async () => {
-    if (!taskForm?.id) return;
-    setTaskSaving(true);
-    setTaskSaveError(null);
-
-    const payload = {
-      description: taskForm.description || null,
-      status: taskForm.status || null,
-      assignee: taskForm.assignee || null,
-      start_date: taskForm.start_date || null,
-      end_date: taskForm.end_date || null,
-      due_date: taskForm.due_date || null,
-      estimated_hours: taskForm.estimated_hours === '' ? null : Number(taskForm.estimated_hours),
-      task_type: taskForm.task_type || null,
-      priority: taskForm.priority || null,
-      notes: taskForm.notes || null,
-    };
-
-    try {
-      const { data, error: updErr } = await supabase
-        .from('project_tasks')
-        .update(payload)
-        .eq('id', taskForm.id)
-        .select();
-
-      if (updErr) {
-        console.error('Error updating task:', updErr);
-        setTaskSaveError('Failed to save task changes.');
-        return;
-      }
-
-      const updated = data && data[0] ? data[0] : null;
-      if (updated) setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-      closeTaskModal();
-    } catch (err) {
-      console.error('Unexpected error updating task:', err);
-      setTaskSaveError('Unexpected error while saving.');
-    } finally {
-      setTaskSaving(false);
-    }
+    setEditingTask(null);
   };
 
   const deleteTask = async (taskId) => {
@@ -633,10 +573,7 @@ function PresalesOverview() {
       }
 
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
-
-      if (taskModalOpen && taskForm?.id === taskId) {
-        setTaskModalOpen(false);
-      }
+      if (taskModalOpen && editingTask?.id === taskId) closeTaskModal();
     } catch (err) {
       console.error('Unexpected error deleting task:', err);
       alert('Unexpected error while deleting task.');
@@ -758,7 +695,7 @@ function PresalesOverview() {
     return arr;
   }, [tasks, presalesResources, thisWeekRange, nextWeekRange, last30DaysRange, today, taskTypeMultiplierMap]);
 
-  // ✅ Unassigned tasks only (ONE declaration only)
+  // ✅ Unassigned tasks only
   const unassignedOnly = useMemo(() => {
     const unassigned = [];
     (tasks || []).forEach((t) => {
@@ -1118,7 +1055,7 @@ function PresalesOverview() {
         </div>
       </header>
 
-      {/* ✅ NEXT KEY ACTIVITIES - NOW ITS OWN PANEL */}
+      {/* ✅ NEXT KEY ACTIVITIES */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large next-activities-panel">
           <div className="presales-panel-header">
@@ -1187,7 +1124,7 @@ function PresalesOverview() {
             parseDateFn={parseDate}
             today={today}
             formatShortDate={formatShortDate}
-            onClickTask={openTaskModal}
+            onClickTask={(t) => openTaskModal(t)}
             onDeleteTask={deleteTask}
           />
         </div>
@@ -1697,138 +1634,31 @@ function PresalesOverview() {
         </div>
       )}
 
-      {/* TASK MODAL */}
-      {taskModalOpen && (
-        <div className="schedule-modal-backdrop modal-backdrop" onMouseDown={closeTaskModal}>
-          <div className="schedule-modal modal activity-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="schedule-modal-header modal-header">
-              <div className="schedule-modal-title">Edit task</div>
-              <button type="button" className="schedule-modal-close modal-close" onClick={closeTaskModal}>
-                <X size={18} />
-              </button>
-            </div>
+      {/* ✅ SHARED TASK MODAL */}
+      <TaskModal
+        isOpen={taskModalOpen}
+        onClose={closeTaskModal}
+        editingTask={editingTask}
+        presalesResources={presalesResourceNames}
+        taskTypes={taskTypeNames}
+        taskTypeDefaultsMap={taskTypeDefaultsMap}
+        onSave={async (taskData) => {
+          if (!editingTask?.id) return;
 
-            {taskSaveError && <div className="form-error">{taskSaveError}</div>}
+          const { data, error: updErr } = await supabase
+            .from('project_tasks')
+            .update(taskData)
+            .eq('id', editingTask.id)
+            .select();
 
-            <div className="schedule-form modal-body">
-              <div className="schedule-field-full">
-                <label>Description</label>
-                <input
-                  value={taskForm.description}
-                  onChange={(e) => setTaskForm((p) => ({ ...p, description: e.target.value }))}
-                />
-              </div>
+          if (updErr) throw updErr;
 
-              <div className="schedule-field">
-                <label>Status</label>
-                <select
-                  value={taskForm.status}
-                  onChange={(e) => setTaskForm((p) => ({ ...p, status: e.target.value }))}
-                >
-                  <option value="Not Started">Not Started</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="On Hold">On Hold</option>
-                  <option value="Completed">Completed</option>
-                </select>
-              </div>
+          const updated = data && data[0] ? data[0] : null;
+          if (updated) setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
 
-              <div className="schedule-field">
-                <label>Assignee</label>
-                <select
-                  value={taskForm.assignee}
-                  onChange={(e) => setTaskForm((p) => ({ ...p, assignee: e.target.value }))}
-                >
-                  <option value="">Unassigned</option>
-                  {presalesResources.map((p) => {
-                    const name = p.name || p.email || 'Unknown';
-                    return (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-
-              <div className="schedule-field">
-                <label>Due date</label>
-                <input
-                  type="date"
-                  value={taskForm.due_date || ''}
-                  onChange={(e) => setTaskForm((p) => ({ ...p, due_date: e.target.value }))}
-                />
-              </div>
-
-              <div className="schedule-field">
-                <label>Estimated hours</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  value={taskForm.estimated_hours}
-                  onChange={(e) => setTaskForm((p) => ({ ...p, estimated_hours: e.target.value }))}
-                  placeholder="e.g. 4"
-                />
-              </div>
-
-              <div className="schedule-field">
-                <label>Task type</label>
-                <select
-                  value={taskForm.task_type || ''}
-                  onChange={(e) => setTaskForm((p) => ({ ...p, task_type: e.target.value }))}
-                >
-                  <option value="">Select</option>
-                  {taskTypeOptions.map((t) => (
-                    <option key={t.id} value={t.name}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="schedule-field">
-                <label>Priority</label>
-                <select
-                  value={taskForm.priority}
-                  onChange={(e) => setTaskForm((p) => ({ ...p, priority: e.target.value }))}
-                >
-                  <option value="High">High</option>
-                  <option value="Normal">Normal</option>
-                  <option value="Low">Low</option>
-                </select>
-              </div>
-
-              <div className="schedule-field-full">
-                <label>Notes</label>
-                <input
-                  value={taskForm.notes || ''}
-                  onChange={(e) => setTaskForm((p) => ({ ...p, notes: e.target.value }))}
-                />
-              </div>
-
-              <div className="schedule-actions modal-footer">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => deleteTask(taskForm.id)}
-                  disabled={taskSaving}
-                >
-                  <Trash2 size={16} /> Delete
-                </button>
-
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button type="button" className="btn-secondary" onClick={closeTaskModal} disabled={taskSaving}>
-                    Cancel
-                  </button>
-                  <button type="button" className="btn-primary" onClick={saveTaskEdits} disabled={taskSaving}>
-                    <Save size={16} /> {taskSaving ? 'Saving…' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+          closeTaskModal();
+        }}
+      />
     </div>
   );
 }
