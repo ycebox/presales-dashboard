@@ -613,6 +613,7 @@ function PresalesOverview() {
       return (effHours / days) * days;
     };
 
+    // Seed map ONLY with actual presales resources (no "Unassigned")
     (presalesResources || []).forEach((p) => {
       const name = p.name || p.email || 'Unknown';
       if (!map.has(name)) {
@@ -634,7 +635,14 @@ function PresalesOverview() {
     });
 
     (tasks || []).forEach((t) => {
-      const assignee = t.assignee || 'Unassigned';
+      // ✅ PATCH: skip unassigned tasks in the workload list
+      const assigneeRaw = (t.assignee || '').trim();
+      if (!assigneeRaw) return;
+
+      const assignee = assigneeRaw;
+
+      // If a task is assigned to a name not in presales_resources,
+      // we still show it as a row (but NOT "Unassigned").
       if (!map.has(assignee)) {
         const { dailyCapacity, targetHours, maxTasksPerDay } = getCapacityFor(assignee);
         map.set(assignee, {
@@ -675,21 +683,24 @@ function PresalesOverview() {
       }
     });
 
-    const arr = Array.from(map.values()).map((e) => {
-      const capacityWeekHours = (e.dailyCapacity || HOURS_PER_DAY) * 5;
+    // ✅ PATCH: hide rows that are totally empty (0 tasks)
+    const arr = Array.from(map.values())
+      .filter((e) => e.total > 0) // <-- key: only show presales who actually have tasks
+      .map((e) => {
+        const capacityWeekHours = (e.dailyCapacity || HOURS_PER_DAY) * 5;
 
-      const utilThisWeek = capacityWeekHours ? Math.min((e.thisWeekHours / capacityWeekHours) * 100, 999) : 0;
-      const utilNextWeek = capacityWeekHours ? Math.min((e.nextWeekHours / capacityWeekHours) * 100, 999) : 0;
+        const utilThisWeek = capacityWeekHours ? Math.min((e.thisWeekHours / capacityWeekHours) * 100, 999) : 0;
+        const utilNextWeek = capacityWeekHours ? Math.min((e.nextWeekHours / capacityWeekHours) * 100, 999) : 0;
 
-      const overdueRateLast30 = e.overdueTotalLast30 > 0 ? (e.overdueLast30 / e.overdueTotalLast30) * 100 : 0;
+        const overdueRateLast30 = e.overdueTotalLast30 > 0 ? (e.overdueLast30 / e.overdueTotalLast30) * 100 : 0;
 
-      return {
-        ...e,
-        utilThisWeek,
-        utilNextWeek,
-        overdueRateLast30,
-      };
-    });
+        return {
+          ...e,
+          utilThisWeek,
+          utilNextWeek,
+          overdueRateLast30,
+        };
+      });
 
     arr.sort((a, b) => b.open - a.open);
     return arr;
@@ -1313,19 +1324,23 @@ function PresalesOverview() {
                     <td className={w.overdue > 0 ? 'overdue' : ''}>{w.overdue}</td>
                     <td className="td-right">{w.thisWeekHours.toFixed(1)}</td>
                     <td>
-                      {Math.round(w.utilThisWeek)}%{' '}
-                      <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilThisWeek)})</span>
+                      {Math.round(w.utilThisWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilThisWeek)})</span>
                     </td>
                     <td className="td-right">{w.nextWeekHours.toFixed(1)}</td>
                     <td>
-                      {Math.round(w.utilNextWeek)}%{' '}
-                      <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilNextWeek)})</span>
+                      {Math.round(w.utilNextWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilNextWeek)})</span>
                     </td>
                     <td>{Math.round(w.overdueRateLast30)}%</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            {workloadByAssignee.length === 0 ? (
+              <div className="presales-empty small" style={{ marginTop: 10 }}>
+                <p>No assigned tasks found. (Unassigned tasks are shown in the section above.)</p>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
@@ -1550,7 +1565,9 @@ function PresalesOverview() {
             </div>
 
             <form onSubmit={handleScheduleSubmit} className="schedule-form modal-body">
-              {(scheduleError || scheduleDateError) && <div className="form-error">{scheduleError || scheduleDateError}</div>}
+              {(scheduleError || scheduleDateError) && (
+                <div className="form-error">{scheduleError || scheduleDateError}</div>
+              )}
 
               <div className="schedule-field">
                 <label>Assignee</label>
@@ -1618,7 +1635,11 @@ function PresalesOverview() {
 
               <div className="schedule-field-full">
                 <label>Note</label>
-                <input value={scheduleNote} onChange={(e) => setScheduleNote(e.target.value)} placeholder="Optional" />
+                <input
+                  value={scheduleNote}
+                  onChange={(e) => setScheduleNote(e.target.value)}
+                  placeholder="Optional"
+                />
               </div>
 
               <div className="schedule-actions modal-footer">
