@@ -358,6 +358,12 @@
   letter-spacing: -0.01em;
 }
 
+/* Make panel titles a bit bigger */
+.card-title {
+  font-size: 18px;
+  font-weight: 900;
+}
+
 .inline-actions {
   display: inline-flex;
   gap: 10px;
@@ -700,6 +706,7 @@
     grid-template-columns: 1fr;
   }
 }
+
 /* chips for SmartVista Modules */
 .chip-row{
   display:flex;
@@ -725,6 +732,7 @@
   color: var(--muted);
   margin-top:4px;
 }
+
 /* Read-only form mode (View mode uses same layout as Edit) */
 .project-edit-grid.is-readonly .form-input,
 .project-edit-grid.is-readonly .form-textarea,
@@ -747,11 +755,7 @@
   gap: 10px;
   font-size: 13px;
 }
-/* Make panel titles a bit bigger */
-.card-title {
-  font-size: 18px;
-  font-weight: 900;
-}
+
 /* Force consistent typography across all inputs, selects, textareas, buttons */
 .project-details-container,
 .project-details-container * {
@@ -769,6 +773,7 @@ select {
   font-family: inherit;
   font-size: 13px;
 }
+
 /* ---------- Typography consistency (ProjectDetails) ---------- */
 .project-details-container,
 .project-details-container * {
@@ -880,4 +885,157 @@ button {
 
 .modules-chip-row {
   margin-top: 10px;
+}
+
+/* =========================================================
+   Suggested Plan (Task Modal) - Nicer UI
+   ========================================================= */
+
+.suggestion-card {
+  position: relative;
+  border: 1px solid rgba(29, 78, 216, 0.16);
+  background:
+    radial-gradient(circle at 15% 15%, rgba(29, 78, 216, 0.10), transparent 45%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.86));
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.suggestion-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: rgba(29, 78, 216, 0.75);
+}
+
+.suggestion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.suggestion-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 900;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.suggestion-title svg {
+  width: 16px;
+  height: 16px;
+  color: var(--primary);
+}
+
+.suggestion-apply-btn {
+  padding: 7px 10px;
+  border-radius: 999px;
+}
+
+.suggestion-apply-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.suggestion-muted {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.suggestion-warn {
+  color: #7c2d12;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.suggestion-body {
+  display: grid;
+  gap: 10px;
+}
+
+.suggestion-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.suggestion-block {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 14px;
+  padding: 10px;
+}
+
+.suggestion-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 8px 0;
+  border-bottom: 1px dashed rgba(15, 23, 42, 0.10);
+}
+
+.suggestion-row:last-child {
+  border-bottom: 0;
+}
+
+.suggestion-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.suggestion-value {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.suggestion-value strong {
+  font-weight: 900;
+}
+
+.suggestion-sub {
+  color: var(--muted-2);
+  font-weight: 800;
+  margin-left: 6px;
+}
+
+.suggestion-footnote {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  border-top: 1px dashed rgba(15, 23, 42, 0.12);
+  padding-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .suggestion-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .suggestion-grid {
+    grid-template-columns: 1fr;
+  }
 }
