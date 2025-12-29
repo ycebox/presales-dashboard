@@ -460,7 +460,7 @@
 }
 
 .form-textarea {
-  min-height: 90px;
+  min-height: 70px;
   resize: vertical;
 }
 
@@ -692,7 +692,10 @@
 .modal-body {
   padding: 14px 16px;
 }
-
+/* For task modal notes specifically (if you want it even smaller) */
+.modal-body .form-textarea {
+  min-height: 64px;
+}
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -888,146 +891,78 @@ button {
 }
 
 /* =========================================================
-   Suggested Plan (Task Modal) - Nicer UI
+   Suggested Plan – Compact version
    ========================================================= */
 
 .suggestion-card {
   position: relative;
-  border: 1px solid rgba(29, 78, 216, 0.16);
+  border: 1px solid rgba(29, 78, 216, 0.14);
   background:
-    radial-gradient(circle at 15% 15%, rgba(29, 78, 216, 0.10), transparent 45%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.86));
-  border-radius: 16px;
-  padding: 12px;
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
-  overflow: hidden;
+    radial-gradient(circle at 15% 15%, rgba(29, 78, 216, 0.08), transparent 45%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.88));
+  border-radius: 14px;
+  padding: 10px; /* reduced */
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
 }
 
 .suggestion-card::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: rgba(29, 78, 216, 0.75);
+  width: 3px; /* thinner accent */
 }
 
 .suggestion-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .suggestion-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 900;
-  color: var(--text);
-  font-size: 13px;
+  font-size: 12px; /* smaller */
+  gap: 8px;
 }
 
 .suggestion-title svg {
-  width: 16px;
-  height: 16px;
-  color: var(--primary);
+  width: 14px;
+  height: 14px;
 }
 
 .suggestion-apply-btn {
-  padding: 7px 10px;
-  border-radius: 999px;
-}
-
-.suggestion-apply-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-.suggestion-muted {
-  color: var(--muted);
+  padding: 6px 9px;
   font-size: 12px;
-  font-weight: 800;
-  line-height: 1.35;
 }
 
+.suggestion-muted,
 .suggestion-warn {
-  color: #7c2d12;
-  background: rgba(245, 158, 11, 0.14);
-  border: 1px solid rgba(245, 158, 11, 0.28);
-  padding: 10px 12px;
-  border-radius: 14px;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1.35;
+  font-size: 11.5px;
+  line-height: 1.3;
 }
 
 .suggestion-body {
-  display: grid;
-  gap: 10px;
-}
-
-.suggestion-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.suggestion-block {
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.72);
-  border-radius: 14px;
-  padding: 10px;
+  gap: 6px; /* tighter */
 }
 
 .suggestion-row {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 10px;
-  align-items: start;
-  padding: 8px 0;
-  border-bottom: 1px dashed rgba(15, 23, 42, 0.10);
-}
-
-.suggestion-row:last-child {
-  border-bottom: 0;
+  grid-template-columns: 120px 1fr; /* narrower label column */
+  gap: 8px;
+  padding: 6px 0;
 }
 
 .suggestion-label {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 900;
+  font-size: 11.5px;
 }
 
 .suggestion-value {
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.suggestion-value strong {
-  font-weight: 900;
+  font-size: 11.5px;
 }
 
 .suggestion-sub {
-  color: var(--muted-2);
-  font-weight: 800;
-  margin-left: 6px;
+  font-size: 11px;
 }
 
 .suggestion-footnote {
   margin-top: 6px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.35;
-  border-top: 1px dashed rgba(15, 23, 42, 0.12);
-  padding-top: 10px;
+  padding-top: 6px;
+  font-size: 11px;
 }
+
+
 
 @media (max-width: 640px) {
   .suggestion-row {
