@@ -86,6 +86,60 @@ const toModulesArray = (value) => {
     .filter(Boolean);
 };
 
+// ---- Date helpers for suggestion engine ----
+const pad2 = (n) => String(n).padStart(2, "0");
+const toISODate = (d) =>
+  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+const parseISODate = (s) => {
+  if (!s) return null;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const isWeekend = (d) => {
+  const day = d.getDay();
+  return day === 0 || day === 6;
+};
+
+const nextWorkingDay = (fromDate = new Date()) => {
+  const d = new Date(fromDate);
+  d.setHours(0, 0, 0, 0);
+  // start from today if it's a weekday and not past-day logic needed
+  while (isWeekend(d)) d.setDate(d.getDate() + 1);
+  return d;
+};
+
+const addWorkingDays = (start, daysToAdd) => {
+  const d = new Date(start);
+  d.setHours(0, 0, 0, 0);
+  let remaining = Math.max(0, Number(daysToAdd) || 0);
+  while (remaining > 0) {
+    d.setDate(d.getDate() + 1);
+    if (!isWeekend(d)) remaining -= 1;
+  }
+  return d;
+};
+
+const subtractWorkingDays = (end, daysToSub) => {
+  const d = new Date(end);
+  d.setHours(0, 0, 0, 0);
+  let remaining = Math.max(0, Number(daysToSub) || 0);
+  while (remaining > 0) {
+    d.setDate(d.getDate() - 1);
+    if (!isWeekend(d)) remaining -= 1;
+  }
+  return d;
+};
+
+const roundToHalf = (x) => {
+  const n = Number(x);
+  if (Number.isNaN(n)) return null;
+  return Math.round(n * 2) / 2;
+};
+
 // ---------- Task Modal ----------
 const TaskModal = ({
   isOpen,
@@ -94,6 +148,7 @@ const TaskModal = ({
   editingTask = null,
   presalesResources = [],
   taskTypes = [],
+  taskTypeDefaultsMap = {}, // { [task_type]: { base_hours, buffer_pct, focus_hours_per_day, review_buffer_days } }
 }) => {
   const [taskData, setTaskData] = useState({
     description: "",
@@ -145,6 +200,68 @@ const TaskModal = ({
   }, [editingTask, isOpen]);
 
   const handleChange = (field, value) => setTaskData((prev) => ({ ...prev, [field]: value }));
+
+  // ---- Suggestion engine (Option B) ----
+  const suggestedPlan = useMemo(() => {
+    const t = (taskData.task_type || "").trim();
+    if (!t) return null;
+
+    const def = taskTypeDefaultsMap?.[t];
+    if (!def) return { missing: true, task_type: t };
+
+    const base = Number(def.base_hours);
+    const buffer = Number(def.buffer_pct);
+    const focusPerDay = Number(def.focus_hours_per_day);
+    const reviewDays = Number(def.review_buffer_days || 0);
+
+    if ([base, buffer, focusPerDay].some((n) => Number.isNaN(n))) {
+      return { invalid: true, task_type: t };
+    }
+
+    const totalHours = roundToHalf(base * (1 + buffer));
+    const focus = focusPerDay > 0 ? focusPerDay : 3;
+    const workDays = Math.max(1, Math.ceil((totalHours || 0) / focus));
+    const totalDaysWithReview = workDays + Math.max(0, reviewDays);
+
+    const due = parseISODate(taskData.due_date);
+    let start;
+    let end;
+
+    if (due) {
+      // Plan backward: end = due date, start = due - (workDays-1 + reviewDays)
+      end = due;
+      start = subtractWorkingDays(end, Math.max(0, totalDaysWithReview - 1));
+    } else {
+      // Plan forward: start = next working day, end = start + (totalDaysWithReview-1)
+      start = nextWorkingDay(new Date());
+      end = addWorkingDays(start, Math.max(0, totalDaysWithReview - 1));
+    }
+
+    return {
+      task_type: t,
+      base_hours: base,
+      buffer_pct: buffer,
+      focus_hours_per_day: focus,
+      review_buffer_days: Math.max(0, reviewDays),
+      suggested_hours: totalHours,
+      work_days: workDays,
+      total_days: totalDaysWithReview,
+      suggested_start_date: toISODate(start),
+      suggested_end_date: toISODate(end),
+      planned_from_due_date: !!due,
+    };
+  }, [taskData.task_type, taskData.due_date, taskTypeDefaultsMap]);
+
+  const applySuggestion = () => {
+    if (!suggestedPlan || suggestedPlan.missing || suggestedPlan.invalid) return;
+
+    setTaskData((prev) => ({
+      ...prev,
+      estimated_hours: prev.estimated_hours !== "" ? prev.estimated_hours : String(suggestedPlan.suggested_hours ?? ""),
+      start_date: prev.start_date || suggestedPlan.suggested_start_date || "",
+      end_date: prev.end_date || suggestedPlan.suggested_end_date || "",
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -283,6 +400,87 @@ const TaskModal = ({
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Suggested plan card (Option B) */}
+            <div className="form-group form-group-full">
+              <div className="suggestion-card">
+                <div className="suggestion-header">
+                  <div className="suggestion-title">
+                    <FaInfo />
+                    <span>Suggested plan</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="action-button secondary suggestion-apply-btn"
+                    onClick={applySuggestion}
+                    disabled={!suggestedPlan || suggestedPlan.missing || suggestedPlan.invalid || !!editingTask}
+                    title={editingTask ? "Suggestions are disabled while editing. Create a new task to use auto-plan." : "Fill Estimated Hours + Start/End"}
+                  >
+                    <FaCheckCircle />
+                    <span>Apply suggestion</span>
+                  </button>
+                </div>
+
+                {!taskData.task_type ? (
+                  <div className="suggestion-muted">Select a Task Type to see recommended hours and dates.</div>
+                ) : suggestedPlan?.missing ? (
+                  <div className="suggestion-warn">
+                    No defaults found for <b>{suggestedPlan.task_type}</b>. Add it in <b>task_type_defaults</b>.
+                  </div>
+                ) : suggestedPlan?.invalid ? (
+                  <div className="suggestion-warn">
+                    Defaults for <b>{suggestedPlan.task_type}</b> look invalid (check base/buffer/focus values).
+                  </div>
+                ) : (
+                  <div className="suggestion-body">
+                    <div className="suggestion-row">
+                      <span className="suggestion-label">Hours</span>
+                      <span className="suggestion-value">
+                        {suggestedPlan.suggested_hours}h{" "}
+                        <span className="suggestion-sub">
+                          (base {suggestedPlan.base_hours}h + {(suggestedPlan.buffer_pct * 100).toFixed(0)}% buffer)
+                        </span>
+                      </span>
+                    </div>
+
+                    <div className="suggestion-row">
+                      <span className="suggestion-label">Workload assumption</span>
+                      <span className="suggestion-value">
+                        {suggestedPlan.focus_hours_per_day}h/day focus
+                        <span className="suggestion-sub">
+                          {" "}
+                          → {suggestedPlan.work_days} working day{suggestedPlan.work_days > 1 ? "s" : ""}
+                          {suggestedPlan.review_buffer_days > 0
+                            ? ` + ${suggestedPlan.review_buffer_days} review day${
+                                suggestedPlan.review_buffer_days > 1 ? "s" : ""
+                              }`
+                            : ""}
+                        </span>
+                      </span>
+                    </div>
+
+                    <div className="suggestion-row">
+                      <span className="suggestion-label">Start</span>
+                      <span className="suggestion-value">{formatDate(suggestedPlan.suggested_start_date)}</span>
+                    </div>
+
+                    <div className="suggestion-row">
+                      <span className="suggestion-label">End / Commit</span>
+                      <span className="suggestion-value">{formatDate(suggestedPlan.suggested_end_date)}</span>
+                    </div>
+
+                    <div className="suggestion-footnote">
+                      {suggestedPlan.planned_from_due_date
+                        ? "Planned backward from Due Date."
+                        : "Planned forward from next working day."}
+                      {" "}
+                      You can still override any fields.
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="form-group">
@@ -496,6 +694,7 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
@@ -529,6 +728,9 @@ function ProjectDetails() {
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
 
+  // Option B defaults
+  const [taskTypeDefaultsMap, setTaskTypeDefaultsMap] = useState({});
+
   useEffect(() => {
     const loadLists = async () => {
       try {
@@ -536,19 +738,38 @@ function ProjectDetails() {
           { data: pData, error: pErr },
           { data: tData, error: tErr },
           { data: mData, error: mErr },
+          { data: dData, error: dErr },
         ] = await Promise.all([
           supabase.from("presales_resources").select("name").order("name"),
           supabase.from("task_types").select("name").order("name"),
           supabase.from("smartvista_modules_catalog").select("name").order("name"),
+          supabase
+            .from("task_type_defaults")
+            .select("task_type, base_hours, buffer_pct, focus_hours_per_day, review_buffer_days, is_active")
+            .eq("is_active", true)
+            .order("task_type"),
         ]);
 
         if (pErr) console.warn("presales_resources load error:", pErr);
         if (tErr) console.warn("task_types load error:", tErr);
         if (mErr) console.warn("smartvista_modules_catalog load error:", mErr);
+        if (dErr) console.warn("task_type_defaults load error:", dErr);
 
         setPresalesResources((pData || []).map((x) => x.name).filter(Boolean));
         setTaskTypes((tData || []).map((x) => x.name).filter(Boolean));
         setModuleOptions((mData || []).map((x) => x.name).filter(Boolean));
+
+        const map = {};
+        (dData || []).forEach((row) => {
+          if (!row?.task_type) return;
+          map[row.task_type] = {
+            base_hours: row.base_hours,
+            buffer_pct: row.buffer_pct,
+            focus_hours_per_day: row.focus_hours_per_day,
+            review_buffer_days: row.review_buffer_days,
+          };
+        });
+        setTaskTypeDefaultsMap(map);
       } catch (e) {
         console.warn("Failed loading dropdown lists:", e);
       }
@@ -1162,11 +1383,7 @@ function ProjectDetails() {
                               const checked = selectedModules.includes(name);
                               return (
                                 <label key={name} className="modules-option">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => toggleModule(name)}
-                                  />
+                                  <input type="checkbox" checked={checked} onChange={() => toggleModule(name)} />
                                   <span>{name}</span>
                                 </label>
                               );
@@ -1396,6 +1613,7 @@ function ProjectDetails() {
         editingTask={editingTask}
         presalesResources={presalesResources}
         taskTypes={taskTypes}
+        taskTypeDefaultsMap={taskTypeDefaultsMap}
       />
 
       <LogModal
