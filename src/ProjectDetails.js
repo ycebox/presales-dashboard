@@ -200,13 +200,13 @@ const TaskModal = ({
 
         <form onSubmit={handleSubmit} className="modal-body">
           <div className="form-grid">
-            <div className="form-group">
+            <div className="form-group form-group-full">
               <label className="form-label">Description</label>
               <input
                 className="form-input"
                 value={taskData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
-                placeholder="Enter task description"
+                placeholder="What needs to be done?"
               />
             </div>
 
@@ -241,16 +241,19 @@ const TaskModal = ({
             </div>
 
             <div className="form-group">
-              <label className="form-label">Estimated Hours</label>
-              <input
-                type="number"
-                min="0"
-                step="0.5"
+              <label className="form-label">Task Type</label>
+              <select
                 className="form-input"
-                value={taskData.estimated_hours}
-                onChange={(e) => handleChange("estimated_hours", e.target.value)}
-                placeholder="e.g. 4"
-              />
+                value={taskData.task_type}
+                onChange={(e) => handleChange("task_type", e.target.value)}
+              >
+                <option value="">-</option>
+                {taskTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group">
@@ -260,8 +263,8 @@ const TaskModal = ({
                 value={taskData.assignee}
                 onChange={(e) => handleChange("assignee", e.target.value)}
               >
-                <option value="">Unassigned</option>
-                {(presalesResources || []).map((p) => (
+                <option value="">-</option>
+                {presalesResources.map((p) => (
                   <option key={p} value={p}>
                     {p}
                   </option>
@@ -270,27 +273,23 @@ const TaskModal = ({
             </div>
 
             <div className="form-group">
-              <label className="form-label">Task Type</label>
-              <select
+              <label className="form-label">Estimated Hours</label>
+              <input
                 className="form-input"
-                value={taskData.task_type}
-                onChange={(e) => handleChange("task_type", e.target.value)}
-              >
-                <option value="">Select type</option>
-                {(taskTypes || []).map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+                type="number"
+                value={taskData.estimated_hours}
+                onChange={(e) => handleChange("estimated_hours", e.target.value)}
+                placeholder="e.g. 4"
+                min="0"
+              />
             </div>
 
             <div className="form-group">
               <label className="form-label">Start Date</label>
               <input
-                type="date"
                 className="form-input"
-                value={taskData.start_date || ""}
+                type="date"
+                value={taskData.start_date}
                 onChange={(e) => handleChange("start_date", e.target.value)}
               />
             </div>
@@ -298,9 +297,9 @@ const TaskModal = ({
             <div className="form-group">
               <label className="form-label">End Date</label>
               <input
-                type="date"
                 className="form-input"
-                value={taskData.end_date || ""}
+                type="date"
+                value={taskData.end_date}
                 onChange={(e) => handleChange("end_date", e.target.value)}
               />
             </div>
@@ -308,9 +307,9 @@ const TaskModal = ({
             <div className="form-group">
               <label className="form-label">Due Date</label>
               <input
-                type="date"
                 className="form-input"
-                value={taskData.due_date || ""}
+                type="date"
+                value={taskData.due_date}
                 onChange={(e) => handleChange("due_date", e.target.value)}
               />
             </div>
@@ -318,20 +317,20 @@ const TaskModal = ({
             <div className="form-group form-group-full">
               <label className="form-label">Notes</label>
               <textarea
-                className="form-textarea"
-                value={taskData.notes || ""}
+                className="form-input"
+                rows={3}
+                value={taskData.notes}
                 onChange={(e) => handleChange("notes", e.target.value)}
-                placeholder="Add notes / context"
+                placeholder="Optional notes…"
               />
             </div>
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="action-button secondary" onClick={onClose}>
-              <FaTimes />
-              <span>Cancel</span>
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
+              Cancel
             </button>
-            <button type="submit" className="action-button primary" disabled={loading}>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
               <FaSave />
               <span>{loading ? "Saving..." : "Save Task"}</span>
             </button>
@@ -344,23 +343,30 @@ const TaskModal = ({
 
 // ---------- Log Modal ----------
 const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
-  const [logText, setLogText] = useState("");
+  const [logData, setLogData] = useState({ title: "", content: "" });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen) setLogText(editingLog?.notes || "");
+    if (!isOpen) return;
+    if (editingLog) {
+      setLogData({
+        title: editingLog.title || "",
+        content: editingLog.content || "",
+      });
+    } else {
+      setLogData({ title: "", content: "" });
+    }
   }, [editingLog, isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!logText.trim()) {
-      alert("Log notes are required");
+    if (!logData.title.trim()) {
+      alert("Log title is required");
       return;
     }
-
     setLoading(true);
     try {
-      await onSave(logText);
+      await onSave({ ...logData });
       onClose();
     } catch (err) {
       console.error("Log save error:", err);
@@ -386,22 +392,34 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="modal-body">
-          <div className="form-group">
-            <label className="form-label">Notes</label>
-            <textarea
-              className="form-textarea"
-              value={logText}
-              onChange={(e) => setLogText(e.target.value)}
-              placeholder="Add progress update, decisions, meeting notes, etc."
-            />
+          <div className="form-grid">
+            <div className="form-group form-group-full">
+              <label className="form-label">Title</label>
+              <input
+                className="form-input"
+                value={logData.title}
+                onChange={(e) => setLogData((p) => ({ ...p, title: e.target.value }))}
+                placeholder="e.g. Workshop notes"
+              />
+            </div>
+
+            <div className="form-group form-group-full">
+              <label className="form-label">Content</label>
+              <textarea
+                className="form-input"
+                rows={6}
+                value={logData.content}
+                onChange={(e) => setLogData((p) => ({ ...p, content: e.target.value }))}
+                placeholder="Write your notes…"
+              />
+            </div>
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="action-button secondary" onClick={onClose}>
-              <FaTimes />
-              <span>Cancel</span>
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
+              Cancel
             </button>
-            <button type="submit" className="action-button primary" disabled={loading}>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
               <FaSave />
               <span>{loading ? "Saving..." : "Save Log"}</span>
             </button>
@@ -412,34 +430,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
   );
 };
 
-// ---------- Loading/Error ----------
-const LoadingState = () => (
-  <div className="project-details-container theme-light">
-    <div className="loading-state">
-      <div className="spinner" />
-      <div className="loading-text">
-        <h2>Loading project...</h2>
-        <p>Please wait a moment.</p>
-      </div>
-    </div>
-  </div>
-);
-
-const ErrorState = ({ error, onBack }) => (
-  <div className="project-details-container theme-light">
-    <div className="error-state">
-      <div className="error-icon-wrapper">
-        <FaExclamationTriangle className="error-icon" />
-      </div>
-      <h2 className="error-title">Something went wrong</h2>
-      <p className="error-message">{error || "Project not found"}</p>
-      <button onClick={onBack} className="action-button primary" type="button">
-        <span>Back</span>
-      </button>
-    </div>
-  </div>
-);
-
+// ---------- Data Hook ----------
 const useProjectData = (projectId) => {
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -706,6 +697,7 @@ function ProjectDetails() {
 
         primary_presales: (editProject.primary_presales || "").trim() || null,
         backup_presales: (editProject.backup_presales || "").trim() || null,
+        bid_manager: (editProject.bid_manager || "").trim() || null,
         is_corporate: !!editProject.is_corporate,
       };
 
@@ -780,6 +772,19 @@ function ProjectDetails() {
     }
   };
 
+  const saveTask = async (taskPayload) => {
+    if (!project?.id) return;
+
+    if (editingTask?.id) {
+      const { error } = await supabase.from("project_tasks").update(taskPayload).eq("id", editingTask.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("project_tasks").insert([{ ...taskPayload, project_id: project.id }]);
+      if (error) throw error;
+    }
+    await fetchTasks();
+  };
+
   const openAddLog = () => {
     setEditingLog(null);
     setShowLogModal(true);
@@ -791,7 +796,7 @@ function ProjectDetails() {
   };
 
   const deleteLog = async (logId) => {
-    if (!window.confirm("Delete this log entry?")) return;
+    if (!window.confirm("Delete this log?")) return;
     try {
       const { error } = await supabase.from("project_logs").delete().eq("id", logId);
       if (error) throw error;
@@ -802,130 +807,124 @@ function ProjectDetails() {
     }
   };
 
-  const openCustomer = () => {
-    if (!project?.customer_name) return;
-    navigate(`/customer/${encodeURIComponent(project.customer_name)}`);
+  const saveLog = async (logPayload) => {
+    if (!project?.id) return;
+
+    if (editingLog?.id) {
+      const { error } = await supabase.from("project_logs").update(logPayload).eq("id", editingLog.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("project_logs").insert([{ ...logPayload, project_id: project.id }]);
+      if (error) throw error;
+    }
+    await fetchLogs();
   };
 
-  if (loading) return <LoadingState />;
-  if (error || !project) return <ErrorState error={error} onBack={() => navigate(-1)} />;
-
+  const viewOrEdit = isEditing ? editProject : project || {};
   const isReadOnly = !isEditing;
-  const viewOrEdit = isEditing ? editProject : project;
+
+  if (loading) {
+    return (
+      <div className="page-wrap">
+        <div className="page-title-row">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate(-1)}>
+            <FaTimes />
+            <span>Back</span>
+          </button>
+          <h1 className="page-title">Project Details</h1>
+        </div>
+
+        <div className="panel">
+          <div className="panel-body">
+            <p className="muted">Loading project…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <div className="page-wrap">
+        <div className="page-title-row">
+          <button className="btn btn-secondary" type="button" onClick={() => navigate(-1)}>
+            <FaTimes />
+            <span>Back</span>
+          </button>
+          <h1 className="page-title">Project Details</h1>
+        </div>
+
+        <div className="panel">
+          <div className="panel-body">
+            <p className="muted">{error || "Project not found"}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="project-details-container theme-light">
-      <section className="project-header">
-        <div className="project-hero">
-          <div className="project-title-content">
-            <div className="project-hero-row">
-              <div className="project-hero-right hero-consolidated">
-                <div className="hero-main-row">
-                  <div className="hero-title-block">
-                    <div className="hero-title-line">
-                      <h1 className="project-title">{project.project_name || "Unnamed Project"}</h1>
-                    </div>
+    <div className="page-wrap">
+      <div className="page-title-row">
+        <button className="btn btn-secondary" type="button" onClick={() => navigate(-1)}>
+          <FaTimes />
+          <span>Back</span>
+        </button>
 
-                    <button
-                      className="hero-customer-link"
-                      onClick={openCustomer}
-                      type="button"
-                      title="Open customer"
-                    >
-                      <FaUsers className="subtitle-icon" />
-                      <span className="project-customer-text">{project.customer_name || "No customer"}</span>
-                    </button>
+        <div className="page-title-wrap">
+          <h1 className="page-title">{project.project_name || "Project"}</h1>
+          <div className="subtitle-row">
+            <div className={`stage-pill ${getSalesStageClass(project.sales_stage)}`}>
+              <span className="stage-icon">{getSalesStageIcon(project.sales_stage)}</span>
+              <span>{project.sales_stage || "Active"}</span>
+            </div>
 
-                    <div className="hero-metrics-block">
-                      <div className="hero-badges">
-                        <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
-                          {getSalesStageIcon(project.sales_stage)}
-                          <span>{project.sales_stage || "No Stage"}</span>
-                        </span>
+            <div className={`health-pill ${healthMeta.className}`}>
+              <healthMeta.Icon />
+              <span>{healthMeta.label}</span>
+            </div>
 
-                        <span className={`health-badge ${healthMeta.className}`}>
-                          <healthMeta.Icon />
-                          <span>{healthMeta.label}</span>
-                        </span>
+            <div className="subtitle-item">
+              <FaUsers />
+              <span className="subtitle-label">Customer:</span>
+              <span className="subtitle-value">{project.customer_name || "-"}</span>
+            </div>
 
-                        {project.is_corporate ? (
-                          <span className="metric-badge metric-muted">
-                            <FaUsers />
-                            <span>Corporate</span>
-                          </span>
-                        ) : null}
+            <div className="subtitle-item">
+              <FaCalendarAlt />
+              <span className="subtitle-label">Due:</span>
+              <span className="subtitle-value">{formatDate(project.due_date)}</span>
+            </div>
 
-                        <span
-                          className={`metric-badge ${
-                            projectMonitor.overdueCount > 0 ? "metric-danger" : "metric-muted"
-                          }`}
-                        >
-                          <FaExclamationTriangle />
-                          <span>Overdue: {projectMonitor.overdueCount}</span>
-                        </span>
-
-                        <span
-                          className={`metric-badge ${
-                            projectMonitor.dueNext7Count > 0 ? "metric-warn" : "metric-muted"
-                          }`}
-                        >
-                          <FaClock />
-                          <span>Next 7d: {projectMonitor.dueNext7Count}</span>
-                        </span>
-
-                        <span
-                          className={`metric-badge ${
-                            projectMonitor.unassignedCount > 0 ? "metric-neutral" : "metric-muted"
-                          }`}
-                        >
-                          <FaUsers />
-                          <span>Unassigned: {projectMonitor.unassignedCount}</span>
-                        </span>
-
-                        <span className="metric-badge metric-muted">
-                          <FaFileAlt />
-                          <span>
-                            Last update: {projectMonitor.lastLogDate ? formatDate(projectMonitor.lastLogDate) : "-"}
-                          </span>
-                        </span>
-
-                        {project.deal_value !== null && project.deal_value !== undefined && (
-                          <span className="deal-badge">
-                            <FaDollarSign />
-                            <span>{formatCurrency(project.deal_value)}</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* project-stage-row removed */}
-              </div>
+            <div className="subtitle-item">
+              <FaDollarSign />
+              <span className="subtitle-label">Value:</span>
+              <span className="subtitle-value">{formatCurrency(project.deal_value)}</span>
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      <div className="main-content-grid">
-        <div className="main-column">
-          {/* Project Details */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="card-title">
+      <div className="layout-grid">
+        {/* Left Column: Details */}
+        <div className="col-left">
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">
                 <FaInfo />
-                <span>Project Details</span>
+                <span>Project Info</span>
               </div>
 
-              <div className="inline-actions">
+              <div className="panel-actions">
                 {!isEditing ? (
-                  <button className="action-button secondary" onClick={handleEditToggle} type="button">
+                  <button className="btn btn-primary" onClick={handleEditToggle} type="button">
                     <FaEdit />
                     <span>Edit Project</span>
                   </button>
                 ) : (
                   <>
                     <button
-                      className="action-button secondary"
+                      className="btn btn-secondary"
                       onClick={handleEditToggle}
                       disabled={saving}
                       type="button"
@@ -933,9 +932,8 @@ function ProjectDetails() {
                       <FaTimes />
                       <span>Cancel</span>
                     </button>
-
                     <button
-                      className="action-button primary"
+                      className="btn btn-primary"
                       onClick={saveProjectEdits}
                       disabled={saving}
                       type="button"
@@ -1043,6 +1041,21 @@ function ProjectDetails() {
                 </select>
               </div>
 
+              {/* ✅ NEW FIELD */}
+              <div className="form-group">
+                <label className="form-label">Bid Manager</label>
+                <input
+                  type="text"
+                  name="bid_manager"
+                  value={viewOrEdit.bid_manager || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-input"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                  placeholder="Enter bid manager name"
+                />
+              </div>
+
               <div className="form-group form-group-full">
                 <label className="form-label" style={{ marginBottom: 8 }}>
                   Corporate
@@ -1118,125 +1131,77 @@ function ProjectDetails() {
                       onClick={() => setModulesOpen((v) => !v)}
                     >
                       {selectedModules.length > 0 ? (
-                        <span className="modules-trigger-text">{selectedModules.length} selected</span>
+                        <span className="modules-selected">
+                          {selectedModules.slice(0, 3).join(", ")}
+                          {selectedModules.length > 3 ? ` +${selectedModules.length - 3} more` : ""}
+                        </span>
                       ) : (
-                        <span className="modules-trigger-placeholder">Select modules…</span>
+                        <span className="muted">Select modules…</span>
                       )}
-                      <span className={`modules-caret ${modulesOpen ? "open" : ""}`}>▾</span>
+                      <span className="modules-caret">{modulesOpen ? <FaEyeSlash /> : <FaEye />}</span>
                     </button>
 
-                    {modulesOpen ? (
-                      <div className="modules-select-menu">
-                        <div className="modules-search-row">
+                    {modulesOpen && (
+                      <div className="modules-dropdown">
+                        <div className="modules-search">
                           <input
-                            className="form-input modules-search"
+                            className="form-input"
                             value={moduleSearch}
                             onChange={(e) => setModuleSearch(e.target.value)}
                             placeholder="Search or type to add…"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                addCustomModule(moduleSearch);
-                              }
-                            }}
                           />
                           <button
                             type="button"
-                            className="action-button secondary modules-add-btn"
+                            className="btn btn-secondary"
                             onClick={() => addCustomModule(moduleSearch)}
                             disabled={!moduleSearch.trim()}
                           >
-                            Add
+                            <FaPlus />
+                            <span>Add</span>
                           </button>
                         </div>
 
-                        <div className="modules-options">
+                        <div className="modules-list">
                           {(moduleOptions || [])
-                            .filter((m) => {
-                              const q = moduleSearch.trim().toLowerCase();
-                              if (!q) return true;
-                              return String(m).toLowerCase().includes(q);
-                            })
-                            .map((m) => {
-                              const name = String(m);
-                              const checked = selectedModules.includes(name);
-                              return (
-                                <label key={name} className="modules-option">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => toggleModule(name)}
-                                  />
-                                  <span>{name}</span>
-                                </label>
-                              );
-                            })}
+                            .filter((m) => safeLower(m).includes(safeLower(moduleSearch)))
+                            .slice(0, 80)
+                            .map((m) => (
+                              <label key={m} className="modules-item">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedModules.includes(m)}
+                                  onChange={() => toggleModule(m)}
+                                />
+                                <span>{m}</span>
+                              </label>
+                            ))}
                         </div>
 
-                        {moduleOptions.length === 0 ? (
-                          <div className="modules-empty">No modules loaded from database.</div>
-                        ) : null}
+                        <div className="modules-footer">
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => {
+                              updateSelectedModules([]);
+                              setModulesOpen(false);
+                            }}
+                          >
+                            Clear
+                          </button>
+                          <button type="button" className="btn btn-primary" onClick={() => setModulesOpen(false)}>
+                            Done
+                          </button>
+                        </div>
                       </div>
-                    ) : null}
-
-                    {selectedModules.length > 0 ? (
-                      <div className="chip-row modules-chip-row">
-                        {selectedModules.map((m) => (
-                          <span key={m} className="chip">
-                            {m}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="muted">-</div>
                     )}
-
-                    <div className="hint-text">
-                      Saved as a comma-separated list. You can also type and click Add to include a custom entry.
-                    </div>
                   </div>
                 ) : (
-                  <>
-                    {toModulesArray(project.smartvista_modules).length > 0 ? (
-                      <div className="chip-row">
-                        {toModulesArray(project.smartvista_modules).map((m) => (
-                          <span key={m} className="chip">
-                            {m}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="muted">-</div>
-                    )}
-                  </>
+                  <div className="readonly-box">
+                    {toModulesArray(viewOrEdit.smartvista_modules).length > 0
+                      ? toModulesArray(viewOrEdit.smartvista_modules).join(", ")
+                      : "-"}
+                  </div>
                 )}
-              </div>
-
-              <div className="form-group form-group-full">
-                <label className="form-label">Next Key Activity</label>
-                <input
-                  type="text"
-                  name="next_key_activity"
-                  className="form-input"
-                  value={viewOrEdit.next_key_activity || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  placeholder="e.g. RFP due on Jan 15, Meeting on Jan 10, Demo on Jan 12"
-                  readOnly={isReadOnly}
-                  disabled={isReadOnly}
-                />
-              </div>
-
-              <div className="form-group form-group-full">
-                <label className="form-label">Project Background</label>
-                <textarea
-                  name="remarks"
-                  value={viewOrEdit.remarks || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-textarea"
-                  placeholder="Capture project context, timeline, constraints, dependencies, etc."
-                  readOnly={isReadOnly}
-                  disabled={isReadOnly}
-                />
               </div>
 
               <div className="form-group form-group-full">
@@ -1245,154 +1210,184 @@ function ProjectDetails() {
                   name="scope"
                   value={viewOrEdit.scope || ""}
                   onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-textarea"
+                  className="form-input"
                   readOnly={isReadOnly}
                   disabled={isReadOnly}
+                  rows={4}
+                />
+              </div>
+
+              <div className="form-group form-group-full">
+                <label className="form-label">Next Key Activity</label>
+                <textarea
+                  name="next_key_activity"
+                  value={viewOrEdit.next_key_activity || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-input"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                  rows={3}
+                />
+              </div>
+
+              <div className="form-group form-group-full">
+                <label className="form-label">Remarks</label>
+                <textarea
+                  name="remarks"
+                  value={viewOrEdit.remarks || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-input"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                  rows={4}
                 />
               </div>
             </div>
-          </section>
+          </div>
         </div>
 
-        <div className="side-column">
-          {/* Tasks */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="card-title">
+        {/* Right Column: Tasks */}
+        <div className="col-right">
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">
                 <FaTasks />
                 <span>Tasks</span>
-                <span className="pill">
-                  {activeTasksCount} Active / {completedTasksCount} Done
-                </span>
               </div>
 
-              <div className="inline-actions">
-                <button className="filter-button" onClick={() => setShowCompleted((p) => !p)} type="button">
+              <div className="panel-actions">
+                <button className="btn btn-secondary" type="button" onClick={() => setShowCompleted((v) => !v)}>
                   {showCompleted ? <FaEyeSlash /> : <FaEye />}
-                  <span>{showCompleted ? "Hide Done" : "Show All"}</span>
+                  <span>{showCompleted ? "Hide Completed" : "Show Completed"}</span>
                 </button>
 
-                <button className="action-button primary" onClick={openAddTask} type="button">
+                <button className="btn btn-primary" type="button" onClick={openAddTask}>
                   <FaPlus />
-                  <span>Add</span>
+                  <span>Add Task</span>
                 </button>
               </div>
             </div>
 
-            <div className="list">
+            <div className="panel-body">
+              <div className="kpi-row">
+                <div className="kpi">
+                  <div className="kpi-label">Open</div>
+                  <div className="kpi-value">{activeTasksCount}</div>
+                </div>
+                <div className="kpi">
+                  <div className="kpi-label">Completed</div>
+                  <div className="kpi-value">{completedTasksCount}</div>
+                </div>
+                <div className="kpi">
+                  <div className="kpi-label">Overdue</div>
+                  <div className="kpi-value">{projectMonitor.overdueCount}</div>
+                </div>
+                <div className="kpi">
+                  <div className="kpi-label">Unassigned</div>
+                  <div className="kpi-value">{projectMonitor.unassignedCount}</div>
+                </div>
+              </div>
+
               {filteredTasks.length === 0 ? (
                 <div className="empty-state">
-                  <p>No tasks yet.</p>
+                  <p className="muted">No tasks yet.</p>
                 </div>
               ) : (
-                filteredTasks.map((t) => (
-                  <div key={t.id} className={`list-item ${t.status === "Completed" ? "is-done" : ""}`}>
-                    <div className="list-item-main" onClick={() => openEditTask(t)} role="button" tabIndex={0}>
-                      <div className="list-item-top">
-                        <span
-                          className={`status-tag status-${safeLower(t.status)
-                            .replaceAll(" ", "-")
-                            .replaceAll("/", "-")}`}
-                        >
-                          {t.status}
-                        </span>
-                        {t.task_type && <span className="type-tag">{t.task_type}</span>}
-                        {t.priority && <span className="type-tag">{t.priority}</span>}
-                        {t.estimated_hours !== null &&
-                          t.estimated_hours !== undefined &&
-                          t.estimated_hours !== "" && <span className="type-tag">{t.estimated_hours}h</span>}
+                <div className="task-list">
+                  {filteredTasks.map((t) => (
+                    <div key={t.id} className="task-item">
+                      <div className="task-top">
+                        <div className="task-title">{t.description}</div>
+                        <div className="task-actions">
+                          <button className="icon-button" onClick={() => openEditTask(t)} type="button">
+                            <FaEdit />
+                          </button>
+                          <button className="icon-button danger" onClick={() => deleteTask(t.id)} type="button">
+                            <FaTrash />
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="list-item-title">{t.description}</div>
-
-                      <div className="list-item-meta">
-                        <span>
-                          <FaUsers /> {t.assignee || "Unassigned"}
+                      <div className="task-meta">
+                        <span className={`badge status-${safeLower(t.status).replace(/[^a-z]+/g, "-")}`}>
+                          {t.status || "-"}
                         </span>
-                        <span>
-                          <FaCalendarAlt /> {formatDate(t.due_date)}
+                        <span className={`badge prio-${safeLower(t.priority)}`}>{t.priority || "-"}</span>
+                        <span className="meta-item">
+                          <FaUsers /> {t.assignee || "-"}
                         </span>
+                        <span className="meta-item">
+                          <FaCalendarAlt /> Due: {formatDate(t.due_date)}
+                        </span>
+                        {t.task_type ? (
+                          <span className="meta-item">
+                            <FaBullseye /> {t.task_type}
+                          </span>
+                        ) : null}
                       </div>
 
-                      {t.notes && <div className="list-item-notes">{t.notes}</div>}
+                      {t.notes ? <div className="task-notes">{t.notes}</div> : null}
                     </div>
-
-                    <div className="list-item-actions">
-                      <button
-                        className="icon-button danger"
-                        onClick={() => deleteTask(t.id)}
-                        aria-label="Delete task"
-                        type="button"
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
-          </section>
+          </div>
 
           {/* Logs */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="card-title">
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">
                 <FaBookOpen />
                 <span>Project Logs</span>
               </div>
 
-              <button className="action-button primary" onClick={openAddLog} type="button">
-                <FaPlus />
-                <span>Add</span>
-              </button>
+              <div className="panel-actions">
+                <button className="btn btn-primary" type="button" onClick={openAddLog}>
+                  <FaPlus />
+                  <span>Add Log</span>
+                </button>
+              </div>
             </div>
 
-            <div className="list">
+            <div className="panel-body">
               {logs.length === 0 ? (
                 <div className="empty-state">
-                  <p>No logs yet.</p>
+                  <p className="muted">No logs yet.</p>
                 </div>
               ) : (
-                logs.map((l) => (
-                  <div key={l.id} className="list-item">
-                    <div className="list-item-main" onClick={() => openEditLog(l)} role="button" tabIndex={0}>
-                      <div className="list-item-notes">{l.notes}</div>
+                <div className="log-list">
+                  {logs.map((l) => (
+                    <div key={l.id} className="log-item">
+                      <div className="log-top">
+                        <div className="log-title">{l.title}</div>
+                        <div className="log-actions">
+                          <button className="icon-button" onClick={() => openEditLog(l)} type="button">
+                            <FaEdit />
+                          </button>
+                          <button className="icon-button danger" onClick={() => deleteLog(l.id)} type="button">
+                            <FaTrash />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="log-meta">
+                        <span className="muted">{formatDate(l.created_at)}</span>
+                      </div>
+                      {l.content ? <div className="log-content">{l.content}</div> : null}
                     </div>
-
-                    <div className="list-item-actions">
-                      <button
-                        className="icon-button danger"
-                        onClick={() => deleteLog(l.id)}
-                        aria-label="Delete log"
-                        type="button"
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
-          </section>
+          </div>
         </div>
       </div>
 
+      {/* Modals */}
       <TaskModal
         isOpen={showTaskModal}
         onClose={() => setShowTaskModal(false)}
-        onSave={async (taskData) => {
-          if (!project?.id) return;
-
-          if (editingTask?.id) {
-            const { error } = await supabase.from("project_tasks").update(taskData).eq("id", editingTask.id);
-            if (error) throw error;
-          } else {
-            const { error } = await supabase.from("project_tasks").insert({ ...taskData, project_id: project.id });
-            if (error) throw error;
-          }
-
-          await fetchTasks();
-        }}
+        onSave={saveTask}
         editingTask={editingTask}
         presalesResources={presalesResources}
         taskTypes={taskTypes}
@@ -1401,19 +1396,7 @@ function ProjectDetails() {
       <LogModal
         isOpen={showLogModal}
         onClose={() => setShowLogModal(false)}
-        onSave={async (notes) => {
-          if (!project?.id) return;
-
-          if (editingLog?.id) {
-            const { error } = await supabase.from("project_logs").update({ notes }).eq("id", editingLog.id);
-            if (error) throw error;
-          } else {
-            const { error } = await supabase.from("project_logs").insert({ project_id: project.id, notes });
-            if (error) throw error;
-          }
-
-          await fetchLogs();
-        }}
+        onSave={saveLog}
         editingLog={editingLog}
       />
     </div>
