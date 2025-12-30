@@ -74,6 +74,15 @@ const roundToHalf = (x) => {
  * Shared TaskModal used by:
  * - ProjectDetails (task list edit/add)
  * - PresalesOverview (kanban task edit)
+ *
+ * ✅ Enhancements added:
+ * - Parent task / Sub-task support via parent_task_id
+ * - Parent task grouping mode (no estimated hours)
+ *
+ * New optional props:
+ * - parentTaskOptions: [{ id, description }]  // used for "Parent Task" dropdown
+ * - editingHasChildren: boolean              // lock hours if editing parent with children
+ * - disableParentSelection: boolean          // optionally lock parent selection UI
  */
 export default function TaskModal({
   isOpen,
@@ -83,6 +92,11 @@ export default function TaskModal({
   presalesResources = [],
   taskTypes = [],
   taskTypeDefaultsMap = {},
+
+  // ✅ New optional props
+  parentTaskOptions = [],
+  editingHasChildren = false,
+  disableParentSelection = false,
 }) {
   const [taskData, setTaskData] = useState({
     description: "",
@@ -95,10 +109,27 @@ export default function TaskModal({
     notes: "",
     assignee: "",
     task_type: "",
-  });
-  const [loading, setLoading] = useState(false);
 
+    // ✅ New field
+    parent_task_id: "",
+  });
+
+  // ✅ parent grouping flag
+  const [isParentTask, setIsParentTask] = useState(false);
+
+  const [loading, setLoading] = useState(false);
   const [originalTaskType, setOriginalTaskType] = useState("");
+
+  // For UI: when editing a task that already has children, we lock hours as "parent container"
+  const isLockedAsParentContainer = !!editingTask?.id && !!editingHasChildren;
+
+  // Determine if the current form represents a sub-task
+  const isSubTask = !!String(taskData.parent_task_id || "").trim();
+
+  // Parent container rule:
+  // - user explicitly checked "isParentTask" OR
+  // - editing a task with children (locked container)
+  const isParentContainer = isLockedAsParentContainer || !!isParentTask;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -106,6 +137,12 @@ export default function TaskModal({
     if (editingTask) {
       const original = (editingTask.task_type || "").trim();
       setOriginalTaskType(original);
+
+      const existingParentId = editingTask.parent_task_id || "";
+
+      // If it's a sub-task (has parent), checkbox should be false
+      // If it's being edited and has children, lock as parent container
+      setIsParentTask(false);
 
       setTaskData({
         description: editingTask.description || "",
@@ -121,9 +158,16 @@ export default function TaskModal({
         notes: editingTask.notes || "",
         assignee: editingTask.assignee || "",
         task_type: editingTask.task_type || "",
+        parent_task_id: existingParentId || "",
       });
+
+      // If editing a task with children, force container behavior (no hours)
+      if (editingHasChildren) {
+        setIsParentTask(true);
+      }
     } else {
       setOriginalTaskType("");
+      setIsParentTask(false);
       setTaskData({
         description: "",
         status: "Not Started",
@@ -135,13 +179,42 @@ export default function TaskModal({
         notes: "",
         assignee: "",
         task_type: "",
+        parent_task_id: "",
       });
     }
-  }, [editingTask, isOpen]);
+  }, [editingTask, isOpen, editingHasChildren]);
 
   const handleChange = (field, value) => setTaskData((prev) => ({ ...prev, [field]: value }));
 
+  // If user toggles "Parent task", enforce rules
+  const handleToggleParentTask = (checked) => {
+    // If it’s locked due to children, don't allow turning off
+    if (isLockedAsParentContainer && !checked) return;
+
+    setIsParentTask(checked);
+
+    setTaskData((prev) => ({
+      ...prev,
+      // Parent task should not be linked under another parent
+      parent_task_id: checked ? "" : prev.parent_task_id,
+      // Parent tasks should not have estimated hours (avoid double counting)
+      estimated_hours: checked ? "" : prev.estimated_hours,
+    }));
+  };
+
+  // When selecting a parent task, make sure parent checkbox is off (it's a sub-task)
+  const handleParentSelection = (parentId) => {
+    if (disableParentSelection || isLockedAsParentContainer) return;
+
+    const v = parentId || "";
+    setTaskData((prev) => ({ ...prev, parent_task_id: v }));
+    if (v) setIsParentTask(false);
+  };
+
   const suggestedPlan = useMemo(() => {
+    // For parent container tasks, suggested plan is not applicable (hours should remain empty)
+    if (isParentContainer) return null;
+
     const t = (taskData.task_type || "").trim();
     if (!t) return null;
 
@@ -187,7 +260,7 @@ export default function TaskModal({
       suggested_end_date: toISODate(end),
       planned_from_due_date: !!due,
     };
-  }, [taskData.task_type, taskData.due_date, taskTypeDefaultsMap]);
+  }, [taskData.task_type, taskData.due_date, taskTypeDefaultsMap, isParentContainer]);
 
   const hasExistingPlanValues = () => {
     const hasHours = String(taskData.estimated_hours || "").trim() !== "";
@@ -198,6 +271,7 @@ export default function TaskModal({
 
   const applySuggestion = () => {
     if (!suggestedPlan || suggestedPlan.missing || suggestedPlan.invalid) return;
+    if (isParentContainer) return;
 
     const isEditing = !!editingTask?.id;
     const typeChanged = isEditing && (taskData.task_type || "").trim() !== (originalTaskType || "").trim();
@@ -228,17 +302,26 @@ export default function TaskModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!taskData.description.trim()) {
       alert("Task description is required");
       return;
     }
 
+    // If task is a parent container, force no estimated hours
+    const shouldForceNoHours = isParentContainer;
+
     setLoading(true);
     try {
       const normalized = {
         ...taskData,
+
+        // ✅ normalize parent_task_id
+        parent_task_id: String(taskData.parent_task_id || "").trim() === "" ? null : taskData.parent_task_id,
+
+        // ✅ normalize estimated_hours
         estimated_hours:
-          taskData.estimated_hours === "" || taskData.estimated_hours == null
+          shouldForceNoHours || taskData.estimated_hours === "" || taskData.estimated_hours == null
             ? null
             : Number(taskData.estimated_hours),
       };
@@ -266,6 +349,18 @@ export default function TaskModal({
   const isEditing = !!editingTask?.id;
   const typeChanged = isEditing && (taskData.task_type || "").trim() !== (originalTaskType || "").trim();
 
+  // Parent dropdown: show only valid parents (exclude the task itself when editing)
+  const filteredParentOptions = useMemo(() => {
+    const selfId = editingTask?.id;
+    const list = Array.isArray(parentTaskOptions) ? parentTaskOptions : [];
+    return list.filter((t) => {
+      if (!t) return false;
+      if (!t.id) return false;
+      if (selfId && t.id === selfId) return false;
+      return true;
+    });
+  }, [parentTaskOptions, editingTask?.id]);
+
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">
       <div className="modal">
@@ -281,6 +376,57 @@ export default function TaskModal({
 
         <form onSubmit={handleSubmit} className="modal-body">
           <div className="form-grid">
+            {/* ✅ PARENT TASK / SUBTASK CONTROLS */}
+            <div className="form-group form-group-full">
+              <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                <label style={{ display: "inline-flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={isParentTask || isLockedAsParentContainer}
+                    onChange={(e) => handleToggleParentTask(e.target.checked)}
+                    disabled={isLockedAsParentContainer}
+                  />
+                  <span className="form-label" style={{ margin: 0 }}>
+                    This is a parent task (grouping only)
+                  </span>
+                </label>
+
+                {isLockedAsParentContainer ? (
+                  <span style={{ fontSize: 12, opacity: 0.75 }}>
+                    (This task has sub-tasks, so Estimated Hours is locked to none.)
+                  </span>
+                ) : null}
+              </div>
+
+              <div style={{ marginTop: 10 }}>
+                <label className="form-label">Parent Task (optional)</label>
+                <select
+                  className="form-input"
+                  value={taskData.parent_task_id || ""}
+                  onChange={(e) => handleParentSelection(e.target.value)}
+                  disabled={disableParentSelection || isParentContainer}
+                  title={isParentContainer ? "Parent tasks cannot be placed under another parent." : "Link this task as a sub-task."}
+                >
+                  <option value="">None (top-level task)</option>
+                  {filteredParentOptions.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.description || "(Untitled task)"}
+                    </option>
+                  ))}
+                </select>
+
+                {isParentContainer ? (
+                  <div style={{ fontSize: 12, opacity: 0.75, marginTop: 6 }}>
+                    Parent tasks can’t be linked under another parent.
+                  </div>
+                ) : isSubTask ? (
+                  <div style={{ fontSize: 12, opacity: 0.75, marginTop: 6 }}>
+                    This task is a sub-task. It will count normally in workload and availability.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
             <div className="form-group">
               <label className="form-label">Description</label>
               <input
@@ -293,11 +439,7 @@ export default function TaskModal({
 
             <div className="form-group">
               <label className="form-label">Status</label>
-              <select
-                className="form-input"
-                value={taskData.status}
-                onChange={(e) => handleChange("status", e.target.value)}
-              >
+              <select className="form-input" value={taskData.status} onChange={(e) => handleChange("status", e.target.value)}>
                 {TASK_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -308,11 +450,7 @@ export default function TaskModal({
 
             <div className="form-group">
               <label className="form-label">Priority</label>
-              <select
-                className="form-input"
-                value={taskData.priority}
-                onChange={(e) => handleChange("priority", e.target.value)}
-              >
+              <select className="form-input" value={taskData.priority} onChange={(e) => handleChange("priority", e.target.value)}>
                 {TASK_PRIORITIES.map((p) => (
                   <option key={p} value={p}>
                     {p}
@@ -330,17 +468,20 @@ export default function TaskModal({
                 className="form-input"
                 value={taskData.estimated_hours}
                 onChange={(e) => handleChange("estimated_hours", e.target.value)}
-                placeholder="e.g. 4"
+                placeholder={isParentContainer ? "Not applicable for parent tasks" : "e.g. 4"}
+                disabled={isParentContainer}
+                title={isParentContainer ? "Parent tasks are grouping-only and should not have estimated hours." : ""}
               />
+              {isParentContainer ? (
+                <div style={{ fontSize: 12, opacity: 0.75, marginTop: 6 }}>
+                  Parent tasks don’t carry estimated hours. Use sub-tasks to track workload.
+                </div>
+              ) : null}
             </div>
 
             <div className="form-group">
               <label className="form-label">Assignee</label>
-              <select
-                className="form-input"
-                value={taskData.assignee}
-                onChange={(e) => handleChange("assignee", e.target.value)}
-              >
+              <select className="form-input" value={taskData.assignee} onChange={(e) => handleChange("assignee", e.target.value)}>
                 <option value="">Unassigned</option>
                 {(presalesResources || []).map((p) => (
                   <option key={p} value={p}>
@@ -352,11 +493,7 @@ export default function TaskModal({
 
             <div className="form-group">
               <label className="form-label">Task Type</label>
-              <select
-                className="form-input"
-                value={taskData.task_type}
-                onChange={(e) => handleChange("task_type", e.target.value)}
-              >
+              <select className="form-input" value={taskData.task_type} onChange={(e) => handleChange("task_type", e.target.value)}>
                 <option value="">Select type</option>
                 {(taskTypes || []).map((t) => (
                   <option key={t} value={t}>
@@ -381,20 +518,27 @@ export default function TaskModal({
                     type="button"
                     className="action-button secondary suggestion-apply-btn"
                     onClick={applySuggestion}
-                    disabled={!suggestedPlan || suggestedPlan.missing || suggestedPlan.invalid}
-                    title="Apply (or re-apply) Estimated Hours + Start/End"
+                    disabled={isParentContainer || !suggestedPlan || suggestedPlan.missing || suggestedPlan.invalid}
+                    title={
+                      isParentContainer
+                        ? "Suggested plan is disabled for parent tasks."
+                        : "Apply (or re-apply) Estimated Hours + Start/End"
+                    }
                   >
                     <FaCheckCircle />
                     <span>{isEditing ? "Re-apply suggestion" : "Apply suggestion"}</span>
                   </button>
                 </div>
 
-                {!taskData.task_type ? (
+                {isParentContainer ? (
+                  <div className="suggestion-muted">
+                    Parent tasks are grouping-only. Create sub-tasks to apply suggested hours and dates.
+                  </div>
+                ) : !taskData.task_type ? (
                   <div className="suggestion-muted">Select a Task Type to see recommended hours and dates.</div>
                 ) : suggestedPlan?.missing ? (
                   <div className="suggestion-warn">
-                    No defaults found for <b>{suggestedPlan.task_type}</b>. Fill base/buffer/focus columns in{" "}
-                    <b>task_types</b>.
+                    No defaults found for <b>{suggestedPlan.task_type}</b>. Fill base/buffer/focus columns in <b>task_types</b>.
                   </div>
                 ) : suggestedPlan?.invalid ? (
                   <div className="suggestion-warn">
