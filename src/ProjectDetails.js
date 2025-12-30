@@ -25,6 +25,8 @@ import {
   FaBullseye,
   FaRocket,
   FaFileAlt,
+  FaChevronRight,
+  FaChevronDown,
 } from "react-icons/fa";
 
 // ---------- Helpers ----------
@@ -94,6 +96,11 @@ const isStageClosedOrDone = (stage) => {
     s.includes("closed-cancelled")
   );
 };
+
+const isTaskDoneOrHold = (status) => ["Completed", "Cancelled/On-hold"].includes(status || "");
+
+const normalizeStatusKey = (s) =>
+  safeLower(s).replaceAll(" ", "-").replaceAll("/", "-");
 
 // ---------- Log Modal ----------
 const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
@@ -204,7 +211,7 @@ const useProjectData = (projectId) => {
     try {
       const { data, error } = await supabase
         .from("project_tasks")
-        .select("*")
+        .select("*") // includes parent_task_id once your DB is updated
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
 
@@ -253,7 +260,6 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
-    
   }, [projectId]);
 
   return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
@@ -288,9 +294,12 @@ function ProjectDetails() {
   const [taskTypes, setTaskTypes] = useState([]);
   const [taskTypeDefaultsMap, setTaskTypeDefaultsMap] = useState({});
 
-  // ✅ Bid manager load info (how many active projects assigned to the same bid manager)
+  // ✅ Bid manager load info
   const [bidManagerLoad, setBidManagerLoad] = useState(null);
   const [bidManagerLoadError, setBidManagerLoadError] = useState(null);
+
+  // ✅ UI state for expanding parent groups
+  const [expandedParents, setExpandedParents] = useState({});
 
   useEffect(() => {
     const loadLists = async () => {
@@ -352,7 +361,6 @@ function ProjectDetails() {
       if (!bm || !required) return;
 
       try {
-        // Fetch all projects for this bid manager, then count "active" in JS
         const { data, error: qErr } = await supabase
           .from("projects")
           .select("id, sales_stage, bid_manager, bid_manager_required")
@@ -456,12 +464,79 @@ function ProjectDetails() {
     }
   }, [project]);
 
-  const activeTasksCount = tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status)).length;
-  const completedTasksCount = tasks.filter((t) => t.status === "Completed").length;
+  // ✅ Group tasks into parent/children for display + logic
+  const { groupedParents, childrenByParent, parentIdsWithChildren } = useMemo(() => {
+    const list = Array.isArray(tasks) ? tasks : [];
 
-  const filteredTasks = showCompleted
-    ? tasks
-    : tasks.filter((t) => !["Completed", "Cancelled/On-hold"].includes(t.status));
+    const childrenMap = {};
+    const parents = [];
+    const parentSet = new Set();
+
+    // build children + parents
+    list.forEach((t) => {
+      const pid = t?.parent_task_id;
+      if (pid) {
+        if (!childrenMap[pid]) childrenMap[pid] = [];
+        childrenMap[pid].push(t);
+        parentSet.add(pid);
+      } else {
+        parents.push(t);
+      }
+    });
+
+    // sort parents by created_at desc (matches your original fetch ordering)
+    parents.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    // sort children by created_at desc (keep consistent)
+    Object.keys(childrenMap).forEach((pid) => {
+      childrenMap[pid].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    });
+
+    return {
+      groupedParents: parents,
+      childrenByParent: childrenMap,
+      parentIdsWithChildren: parentSet,
+    };
+  }, [tasks]);
+
+  // ✅ Ensure expand state auto-initializes for parents that have children
+  useEffect(() => {
+    setExpandedParents((prev) => {
+      const next = { ...prev };
+      groupedParents.forEach((p) => {
+        const hasKids = (childrenByParent[p.id] || []).length > 0;
+        if (hasKids && typeof next[p.id] === "undefined") next[p.id] = true; // default expanded
+      });
+      return next;
+    });
+  }, [groupedParents, childrenByParent]);
+
+  const activeTasksCount = tasks.filter((t) => !isTaskDoneOrHold(t.status)).length;
+  const completedTasksCount = tasks.filter((t) => (t.status || "") === "Completed").length;
+
+  // Filter visible list (include parents + children, but keep grouping)
+  const isVisible = (t) => (showCompleted ? true : !isTaskDoneOrHold(t.status));
+
+  const filteredParentList = useMemo(() => {
+    return groupedParents.filter(isVisible);
+  }, [groupedParents, showCompleted]);
+
+  const getParentProgress = (parentId) => {
+    const kids = (childrenByParent[parentId] || []).filter(isVisible);
+    const total = kids.length;
+    if (!total) return { done: 0, total: 0, pct: 0 };
+    const done = kids.filter((k) => (k.status || "") === "Completed").length;
+    const pct = Math.round((done / total) * 100);
+    return { done, total, pct };
+  };
+
+  // Parent task options for TaskModal (top-level tasks only)
+  const parentTaskOptions = useMemo(() => {
+    // allow selecting from top-level tasks (including standalone tasks)
+    return groupedParents
+      .map((p) => ({ id: p.id, description: p.description || "(Untitled task)" }))
+      .filter((x) => x.id);
+  }, [groupedParents]);
 
   const healthMeta = useMemo(() => {
     const h = projectMonitor.health;
@@ -495,7 +570,6 @@ function ProjectDetails() {
     const { name, value, type, checked } = e.target;
 
     if (type === "checkbox") {
-      // Special case: if bid_manager_required is turned off, clear bid_manager in edit state
       if (name === "bid_manager_required") {
         setEditProject((prev) => ({
           ...prev,
@@ -542,7 +616,6 @@ function ProjectDetails() {
         backup_presales: (editProject.backup_presales || "").trim() || null,
         is_corporate: !!editProject.is_corporate,
 
-        // ✅ Bid manager fields
         bid_manager_required: requiresBM,
         bid_manager: bmValue ? bmValue : null,
       };
@@ -606,8 +679,19 @@ function ProjectDetails() {
     setShowTaskModal(true);
   };
 
+  const toggleParentExpand = (parentId) => {
+    setExpandedParents((prev) => ({ ...prev, [parentId]: !prev[parentId] }));
+  };
+
   const deleteTask = async (taskId) => {
-    if (!window.confirm("Delete this task?")) return;
+    const hasKids = (childrenByParent[taskId] || []).length > 0;
+
+    const msg = hasKids
+      ? "This is a parent task with sub-tasks. Deleting it will NOT delete sub-tasks. Sub-tasks will become top-level tasks.\n\nContinue?"
+      : "Delete this task?";
+
+    if (!window.confirm(msg)) return;
+
     try {
       const { error } = await supabase.from("project_tasks").delete().eq("id", taskId);
       if (error) throw error;
@@ -650,6 +734,10 @@ function ProjectDetails() {
 
   const isReadOnly = !isEditing;
   const viewOrEdit = isEditing ? editProject : project;
+
+  // ✅ When editing a task, detect if it has children so TaskModal locks hours to none
+  const editingHasChildren =
+    !!editingTask?.id && (childrenByParent[editingTask.id] || []).length > 0;
 
   return (
     <div className="project-details-container theme-light">
@@ -727,13 +815,10 @@ function ProjectDetails() {
                           </span>
                         </span>
 
-                        {/* ✅ Bid manager assignment + load */}
                         {project.bid_manager_required ? (
                           <span className="metric-badge metric-muted" title="Bid manager assignment">
                             <FaUsers />
-                            <span>
-                              Bid: {project.bid_manager ? project.bid_manager : "Unassigned"}
-                            </span>
+                            <span>Bid: {project.bid_manager ? project.bid_manager : "Unassigned"}</span>
                           </span>
                         ) : null}
 
@@ -1177,55 +1262,154 @@ function ProjectDetails() {
             </div>
 
             <div className="list">
-              {filteredTasks.length === 0 ? (
+              {filteredParentList.length === 0 ? (
                 <div className="empty-state">
                   <p>No tasks yet.</p>
                 </div>
               ) : (
-                filteredTasks.map((t) => (
-                  <div key={t.id} className={`list-item ${t.status === "Completed" ? "is-done" : ""}`}>
-                    <div className="list-item-main" onClick={() => openEditTask(t)} role="button" tabIndex={0}>
-                      <div className="list-item-top">
-                        <span
-                          className={`status-tag status-${safeLower(t.status)
-                            .replaceAll(" ", "-")
-                            .replaceAll("/", "-")}`}
+                filteredParentList.map((t) => {
+                  const kidsAll = childrenByParent[t.id] || [];
+                  const kidsVisible = kidsAll.filter(isVisible);
+
+                  const hasChildren = kidsAll.length > 0;
+                  const isExpanded = !!expandedParents[t.id];
+
+                  const prog = hasChildren ? getParentProgress(t.id) : null;
+
+                  return (
+                    <div key={t.id} className={`list-group ${hasChildren ? "has-children" : ""}`}>
+                      {/* Parent row */}
+                      <div className={`list-item ${t.status === "Completed" ? "is-done" : ""}`}>
+                        <div
+                          className="list-item-main"
+                          onClick={() => openEditTask(t)}
+                          role="button"
+                          tabIndex={0}
                         >
-                          {t.status}
-                        </span>
-                        {t.task_type && <span className="type-tag">{t.task_type}</span>}
-                        {t.priority && <span className="type-tag">{t.priority}</span>}
-                        {t.estimated_hours !== null &&
-                          t.estimated_hours !== undefined &&
-                          t.estimated_hours !== "" && <span className="type-tag">{t.estimated_hours}h</span>}
+                          <div className="list-item-top">
+                            {/* expand/collapse control */}
+                            {hasChildren ? (
+                              <button
+                                type="button"
+                                className="icon-button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleParentExpand(t.id);
+                                }}
+                                aria-label={isExpanded ? "Collapse" : "Expand"}
+                                title={isExpanded ? "Collapse" : "Expand"}
+                                style={{ marginRight: 6 }}
+                              >
+                                {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
+                              </button>
+                            ) : null}
+
+                            <span className={`status-tag status-${normalizeStatusKey(t.status)}`}>
+                              {t.status}
+                            </span>
+
+                            {t.task_type && <span className="type-tag">{t.task_type}</span>}
+                            {t.priority && <span className="type-tag">{t.priority}</span>}
+
+                            {/* Important: show hours only when it’s not a parent with children */}
+                            {!hasChildren &&
+                              t.estimated_hours !== null &&
+                              t.estimated_hours !== undefined &&
+                              t.estimated_hours !== "" && <span className="type-tag">{t.estimated_hours}h</span>}
+
+                            {/* parent progress pill */}
+                            {hasChildren ? (
+                              <span className="type-tag" title={`${prog.done}/${prog.total} completed`}>
+                                {prog.done}/{prog.total} done
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="list-item-title">{t.description}</div>
+
+                          <div className="list-item-meta">
+                            <span>
+                              <FaUsers /> {t.assignee || "Unassigned"}
+                            </span>
+                            <span>
+                              <FaCalendarAlt /> {formatDate(t.due_date)}
+                            </span>
+                          </div>
+
+                          {t.notes && <div className="list-item-notes">{t.notes}</div>}
+                        </div>
+
+                        <div className="list-item-actions">
+                          <button
+                            className="icon-button danger"
+                            onClick={() => deleteTask(t.id)}
+                            aria-label="Delete task"
+                            type="button"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="list-item-title">{t.description}</div>
+                      {/* Sub-tasks */}
+                      {hasChildren && isExpanded ? (
+                        <div className="subtask-list">
+                          {kidsVisible.length === 0 ? (
+                            <div className="empty-state" style={{ paddingLeft: 18 }}>
+                              <p>No visible sub-tasks.</p>
+                            </div>
+                          ) : (
+                            kidsVisible.map((k) => (
+                              <div key={k.id} className={`list-item is-subtask ${k.status === "Completed" ? "is-done" : ""}`}>
+                                <div
+                                  className="list-item-main"
+                                  onClick={() => openEditTask(k)}
+                                  role="button"
+                                  tabIndex={0}
+                                >
+                                  <div className="list-item-top">
+                                    <span className={`status-tag status-${normalizeStatusKey(k.status)}`}>
+                                      {k.status}
+                                    </span>
+                                    {k.task_type && <span className="type-tag">{k.task_type}</span>}
+                                    {k.priority && <span className="type-tag">{k.priority}</span>}
+                                    {k.estimated_hours !== null &&
+                                      k.estimated_hours !== undefined &&
+                                      k.estimated_hours !== "" && <span className="type-tag">{k.estimated_hours}h</span>}
+                                  </div>
 
-                      <div className="list-item-meta">
-                        <span>
-                          <FaUsers /> {t.assignee || "Unassigned"}
-                        </span>
-                        <span>
-                          <FaCalendarAlt /> {formatDate(t.due_date)}
-                        </span>
-                      </div>
+                                  <div className="list-item-title">{k.description}</div>
 
-                      {t.notes && <div className="list-item-notes">{t.notes}</div>}
+                                  <div className="list-item-meta">
+                                    <span>
+                                      <FaUsers /> {k.assignee || "Unassigned"}
+                                    </span>
+                                    <span>
+                                      <FaCalendarAlt /> {formatDate(k.due_date)}
+                                    </span>
+                                  </div>
+
+                                  {k.notes && <div className="list-item-notes">{k.notes}</div>}
+                                </div>
+
+                                <div className="list-item-actions">
+                                  <button
+                                    className="icon-button danger"
+                                    onClick={() => deleteTask(k.id)}
+                                    aria-label="Delete task"
+                                    type="button"
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      ) : null}
                     </div>
-
-                    <div className="list-item-actions">
-                      <button
-                        className="icon-button danger"
-                        onClick={() => deleteTask(t.id)}
-                        aria-label="Delete task"
-                        type="button"
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </section>
@@ -1283,11 +1467,21 @@ function ProjectDetails() {
         onSave={async (taskData) => {
           if (!project?.id) return;
 
-          if (editingTask?.id) {
-            const { error } = await supabase.from("project_tasks").update(taskData).eq("id", editingTask.id);
+          // ✅ Safety rule: if updating a parent that has children, force estimated_hours = null
+          const isEditing = !!editingTask?.id;
+          const hasChildren = isEditing && (childrenByParent[editingTask.id] || []).length > 0;
+
+          const payload = { ...taskData };
+
+          if (hasChildren) {
+            payload.estimated_hours = null;
+          }
+
+          if (isEditing) {
+            const { error } = await supabase.from("project_tasks").update(payload).eq("id", editingTask.id);
             if (error) throw error;
           } else {
-            const { error } = await supabase.from("project_tasks").insert({ ...taskData, project_id: project.id });
+            const { error } = await supabase.from("project_tasks").insert({ ...payload, project_id: project.id });
             if (error) throw error;
           }
 
@@ -1297,6 +1491,8 @@ function ProjectDetails() {
         presalesResources={presalesResources}
         taskTypes={taskTypes}
         taskTypeDefaultsMap={taskTypeDefaultsMap}
+        parentTaskOptions={parentTaskOptions}
+        editingHasChildren={editingHasChildren}
       />
 
       <LogModal
