@@ -131,7 +131,652 @@
   color: rgba(30, 64, 175, 0.90);
 }
 
-/* ... (your existing CSS continues unchanged above this line) ... */
+/* ===== BUTTONS ===== */
+
+.btn-primary {
+  background: rgba(30, 64, 175, 0.95);
+  border: 1px solid rgba(30, 64, 175, 0.95);
+  color: #ffffff;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary:hover {
+  background: rgba(29, 78, 216, 0.95);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-secondary:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.icon-btn {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(15, 23, 42, 0.70);
+  border-radius: 12px;
+  padding: 6px 8px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.icon-btn:hover {
+  background: rgba(15, 23, 42, 0.04);
+  color: rgba(15, 23, 42, 0.85);
+}
+
+.icon-btn.danger {
+  border-color: rgba(220, 38, 38, 0.35);
+  color: rgba(185, 28, 28, 0.95);
+}
+
+.icon-btn.danger:hover {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+/* ===== FORMS ===== */
+
+.schedule-form label,
+.assignment-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.72);
+  margin: 0 0 6px;
+}
+
+.schedule-form input,
+.schedule-form select,
+.assignment-filters input,
+.assignment-filters select,
+.day-detail-body input,
+.day-detail-body select {
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.98);
+  color: #0f172a;
+  outline: none;
+  font-size: 13px;
+}
+
+.schedule-form input:focus,
+.schedule-form select:focus,
+.assignment-filters input:focus,
+.assignment-filters select:focus {
+  border-color: rgba(59, 130, 246, 0.55);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.form-error {
+  border-radius: 12px;
+  border: 1px solid rgba(220, 38, 38, 0.30);
+  background: rgba(220, 38, 38, 0.08);
+  padding: 10px 12px;
+  color: rgba(185, 28, 28, 0.95);
+  margin: 12px 16px 0;
+  font-size: 12px;
+}
+
+/* ===== PRESALES ACTIVITIES ===== */
+
+.activities-kanban {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.activities-col {
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.92);
+  overflow: hidden;
+}
+
+.activities-col-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.activities-col-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.activities-col-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.70);
+  background: rgba(15, 23, 42, 0.05);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.activities-empty {
+  padding: 12px 12px;
+  color: rgba(15, 23, 42, 0.65);
+  font-size: 12px;
+}
+
+.activities-cards {
+  padding: 10px 10px 12px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.activity-card {
+  width: 100%;
+  text-align: left;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.98);
+  padding: 10px 10px 10px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+}
+
+.activity-card:hover {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.activity-card.is-overdue {
+  border-color: rgba(220, 38, 38, 0.25);
+  background: rgba(220, 38, 38, 0.06);
+}
+
+.activity-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.activity-card-title {
+  font-size: 13px;
+  font-weight: 650;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+
+.activity-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.activity-card-iconbtn {
+  border: none;
+  background: transparent;
+  padding: 4px;
+  cursor: pointer;
+  color: rgba(15, 23, 42, 0.60);
+}
+
+.activity-card-iconbtn:hover {
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 10px;
+  color: rgba(15, 23, 42, 0.85);
+}
+
+.activity-card-iconbtn.danger {
+  color: rgba(185, 28, 28, 0.95);
+}
+
+.activity-card-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.70);
+  margin-top: 4px;
+}
+
+.activity-card-sub .dot {
+  opacity: 0.6;
+}
+
+.truncate {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.03);
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.78);
+}
+
+.meta-chip.chip-overdue {
+  border-color: rgba(220, 38, 38, 0.35);
+  background: rgba(220, 38, 38, 0.08);
+  color: rgba(185, 28, 28, 0.90);
+}
+
+.activities-more {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: rgba(30, 64, 175, 0.95);
+}
+
+.activities-more:hover {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+/* ===== UNASSIGNED TASKS ===== */
+
+.unassigned-tasks-table-wrapper {
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.97);
+  overflow: hidden;
+}
+
+.unassigned-tasks-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.unassigned-tasks-table thead th {
+  font-size: 12px;
+  padding: 8px 10px;
+  text-align: left;
+  background: rgba(15, 23, 42, 0.03);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.70);
+}
+
+.unassigned-tasks-table tbody td {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.90);
+}
+
+.unassigned-tasks-table tbody tr:hover {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.unassigned-task-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: left;
+  color: rgba(30, 64, 175, 0.95);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.unassigned-task-link:hover {
+  text-decoration: underline;
+}
+
+.td-ellipsis {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.td-right {
+  text-align: right;
+}
+
+.overdue {
+  color: rgba(185, 28, 28, 0.95);
+  font-weight: 700;
+}
+
+/* ===== ASSIGNMENT HELPER ===== */
+
+.assignment-content {
+  margin-top: 10px;
+}
+
+.assignment-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  align-items: end;
+}
+
+.assignment-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.assignment-table-wrapper {
+  margin-top: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.97);
+  overflow: hidden;
+}
+
+.assignment-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.assignment-table thead th {
+  font-size: 12px;
+  padding: 8px 10px;
+  text-align: left;
+  background: rgba(15, 23, 42, 0.03);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.70);
+}
+
+.assignment-table tbody td {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.90);
+}
+
+/* ===== WORKLOAD TABLE ===== */
+
+.workload-table-wrapper {
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.98);
+  overflow: auto;
+}
+
+.workload-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 960px;
+  font-size: 12px;
+}
+
+.workload-table thead th {
+  font-size: 12px;
+  padding: 8px 10px;
+  text-align: left;
+  background: rgba(15, 23, 42, 0.03);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.70);
+}
+
+.workload-table tbody td {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.90);
+}
+
+/* ===== WORKLOAD: emphasize presales name (match schedule style) ===== */
+
+.workload-table tbody td:first-child {
+  font-weight: 650;
+  color: #0f172a;
+}
+
+/* ===== PRESALES AVAILABILITY ===== */
+
+.schedule-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.schedule-view-toggle {
+  display: inline-flex;
+}
+
+.toggle-wrap {
+  display: inline-flex;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.98);
+  overflow: hidden;
+}
+
+.toggle-btn {
+  border: 0;
+  background: transparent;
+  color: rgba(15, 23, 42, 0.70);
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.toggle-btn:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.toggle-btn.active {
+  background: rgba(59, 130, 246, 0.14);
+  color: rgba(30, 64, 175, 0.95);
+}
+
+/* Legend */
+.availability-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.78);
+  white-space: nowrap;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  display: inline-block;
+}
+
+/* ===== Heatmap container ===== */
+
+.heatmap-table {
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.heatmap-header,
+.heatmap-row {
+  display: flex;
+  align-items: center;
+}
+
+.heatmap-row {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+/* Fixed left column */
+.heatmap-presales-name {
+  flex: 0 0 180px;
+  width: 180px;
+  min-width: 180px;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background: rgba(255, 255, 255, 0.98);
+  padding: 8px 10px;
+  border-right: 1px solid rgba(15, 23, 42, 0.06);
+  font-weight: 650;
+}
+
+.heatmap-header-cell {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: #f1f5f9;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.72);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.10);
+  padding: 8px 10px;
+  text-align: center;
+}
+
+/* Column header cells */
+.heatmap-day-col {
+  padding: 8px 6px;
+  text-align: center;
+  user-select: none;
+}
+
+/* Data cells */
+.heatmap-cell {
+  height: 34px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-top: none;
+  border-bottom: none;
+  cursor: pointer;
+  border-radius: 8px;
+  margin: 2px 3px;
+}
+
+.heatmap-cell:hover {
+  outline: 2px solid rgba(59, 130, 246, 0.30);
+  outline-offset: -2px;
+}
+
+/* ✅ OPTION A SIZING */
+.heatmap-table.heatmap-view-14 .heatmap-day-col,
+.heatmap-table.heatmap-view-14 .heatmap-cell {
+  flex: 1 1 0;
+  min-width: 42px;
+}
+
+/* 30-day view layout */
+.heatmap-table.heatmap-view-30 .heatmap-header,
+.heatmap-table.heatmap-view-30 .heatmap-row {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.heatmap-table.heatmap-view-30 .heatmap-day-col,
+.heatmap-table.heatmap-view-30 .heatmap-cell {
+  flex: 0 0 46px;
+  min-width: 46px;
+  max-width: 46px;
+}
+
+.heatmap-table.heatmap-view-30 .heatmap-cell {
+  margin: 0;
+}
+
+/* 30-day header: keep dates on ONE line */
+.heatmap-table.heatmap-view-30 .heatmap-day-col.heatmap-header-cell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 11px;
+}
+
+/* ===== FINAL HEATMAP COLORS (forced override) ===== */
+
+.heatmap-cell.status-free {
+  background: rgba(34, 197, 94, 0.18) !important;
+}
+
+.heatmap-cell.status-busy {
+  background: rgba(37, 99, 235, 0.28) !important;
+}
+
+.heatmap-cell.status-leave {
+  background: rgba(239, 68, 68, 0.22) !important;
+}
+
+.heatmap-cell.status-travel {
+  background: rgba(249, 115, 22, 0.22) !important;
+}
+
+.heatmap-cell.status-training {
+  background: rgba(168, 85, 247, 0.22) !important;
+}
+
+.heatmap-cell.status-other {
+  background: rgba(234, 179, 8, 0.22) !important;
+}
+
+/* Internal */
+.heatmap-cell.status-internal {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(30, 64, 175, 0.22),
+      rgba(30, 64, 175, 0.22) 8px,
+      rgba(30, 64, 175, 0.10) 8px,
+      rgba(30, 64, 175, 0.10) 16px
+    ) !important;
+  box-shadow: inset 0 0 0 1px rgba(30, 64, 175, 0.10);
+}
 
 /* Busy + schedule marker */
 .heatmap-presales-name,
@@ -140,7 +785,336 @@
   color: #0f172a;
 }
 
-/* ... (your existing CSS continues unchanged below this line) ... */
+.heatmap-cell[class*="marker-"] {
+  box-shadow: inset 3px 0 0 rgba(15, 23, 42, 0.12);
+}
+
+.schedule-row > :first-child {
+  font-weight: 650;
+  color: #0f172a;
+}
+
+.heatmap-cell.marker-leave { box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.88); }
+.heatmap-cell.marker-travel { box-shadow: inset 3px 0 0 rgba(249, 115, 22, 0.88); }
+.heatmap-cell.marker-training { box-shadow: inset 3px 0 0 rgba(168, 85, 247, 0.88); }
+.heatmap-cell.marker-internal { box-shadow: inset 3px 0 0 rgba(30, 64, 175, 0.92); }
+.heatmap-cell.marker-other { box-shadow: inset 3px 0 0 rgba(234, 179, 8, 0.92); }
+
+/* Legend swatches */
+.sw-free { background: rgba(34, 197, 94, 0.55) !important; }
+.sw-busy { background: rgba(37, 99, 235, 0.75) !important; }
+.sw-leave { background: rgba(239, 68, 68, 0.60) !important; }
+.sw-travel { background: rgba(249, 115, 22, 0.60) !important; }
+.sw-training { background: rgba(168, 85, 247, 0.55) !important; }
+.sw-other { background: rgba(234, 179, 8, 0.60) !important; }
+
+.legend-swatch.sw-internal {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(30, 64, 175, 0.60),
+      rgba(30, 64, 175, 0.60) 6px,
+      rgba(30, 64, 175, 0.30) 6px,
+      rgba(30, 64, 175, 0.30) 12px
+    ) !important;
+}
+
+/* ===== SCHEDULE LIST ===== */
+
+.schedule-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.schedule-list-table-wrapper {
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.98);
+  overflow: auto;
+}
+
+.schedule-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 920px;
+  font-size: 12px;
+}
+
+.schedule-list-table thead th {
+  font-size: 12px;
+  padding: 8px 10px;
+  text-align: left;
+  background: rgba(15, 23, 42, 0.03);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.70);
+}
+
+.schedule-list-table tbody td {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.90);
+}
+
+.schedule-type-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.03);
+  font-size: 12px;
+}
+
+/* ===== MODALS ===== */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 999;
+}
+
+.modal {
+  width: min(920px, 96vw);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.16);
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.modal-close {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(15, 23, 42, 0.70);
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  background: rgba(15, 23, 42, 0.04);
+  color: rgba(15, 23, 42, 0.85);
+}
+
+.modal-body {
+  padding: 14px 16px 16px;
+  color: rgba(15, 23, 42, 0.90);
+}
+
+.modal-footer {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.02);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.day-detail-body h4 {
+  margin: 10px 0 8px;
+  font-size: 13px;
+  color: rgba(15, 23, 42, 0.85);
+}
+
+.day-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-detail-task-item {
+  width: 100%;
+  text-align: left;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.98);
+  padding: 10px 10px;
+}
+
+.day-detail-task-item:hover {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.day-detail-task-desc {
+  font-size: 13px;
+  font-weight: 650;
+  color: rgba(15, 23, 42, 0.88);
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 1024px) {
+  .assignment-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .presales-page-container {
+    padding: 16px 16px 28px;
+  }
+
+  .presales-header-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .activities-kanban {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmap-presales-name {
+    flex: 0 0 140px;
+    width: 140px;
+    min-width: 140px;
+  }
+
+  .heatmap-table.heatmap-view-14 .heatmap-day-col,
+  .heatmap-table.heatmap-view-14 .heatmap-cell {
+    min-width: 36px;
+  }
+
+  .heatmap-table.heatmap-view-30 .heatmap-day-col,
+  .heatmap-table.heatmap-view-30 .heatmap-cell {
+    flex: 0 0 40px;
+    min-width: 40px;
+    max-width: 40px;
+  }
+}
+
+/* ===== READABILITY: MAKE ALL TEXT BLACK (keep primary button text white) ===== */
+.presales-page-container,
+.presales-page-container p,
+.presales-page-container span,
+.presales-page-container td,
+.presales-page-container th,
+.presales-page-container label,
+.presales-page-container h1,
+.presales-page-container h2,
+.presales-page-container h3,
+.presales-page-container h4,
+.presales-page-container h5,
+.presales-page-container h6,
+.presales-page-container input,
+.presales-page-container select,
+.presales-page-container textarea {
+  color: #0b0b0b !important;
+}
+
+.btn-primary,
+.btn-primary * {
+  color: #ffffff !important;
+}
+
+.overdue {
+  color: #b91c1c !important;
+}
+
+/* ===== READABILITY RESET (final) ===== */
+.presales-page-container {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* Panel headers: must be bigger than data */
+.presales-panel-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.presales-panel-header p {
+  font-size: 13px;
+}
+
+/* Page header */
+.presales-header-main h2 {
+  font-size: 26px;
+}
+
+.presales-header-main p {
+  font-size: 14px;
+}
+
+/* Make tables + cards consistent (inherit base) */
+.unassigned-tasks-table,
+.assignment-table,
+.workload-table,
+.schedule-list-table {
+  font-size: 14px;
+}
+
+.unassigned-tasks-table thead th,
+.unassigned-tasks-table tbody td,
+.assignment-table thead th,
+.assignment-table tbody td,
+.workload-table thead th,
+.workload-table tbody td,
+.schedule-list-table thead th,
+.schedule-list-table tbody td {
+  font-size: 14px;
+}
+
+/* Kanban cards */
+.activity-card-title {
+  font-size: 14px;
+}
+
+.activity-card-sub,
+.meta-chip,
+.activities-col-title,
+.activities-col-count,
+.activities-empty,
+.activities-more {
+  font-size: 13px;
+}
+
+/* Buttons + toggles */
+.btn-primary,
+.btn-secondary,
+.toggle-btn,
+.legend-item,
+.schedule-type-chip {
+  font-size: 13px;
+}
+
+/* Heatmap header in 30-day view */
+.heatmap-table.heatmap-view-30 .heatmap-day-col.heatmap-header-cell {
+  font-size: 12px;
+}
+
+/* ===== NEXT KEY ACTIVITIES PANEL (NEW) ===== */
+
+.next-activities-panel .presales-panel-header {
+  margin-bottom: 12px;
+}
+
+.next-activities-count {
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.65);
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  border-radius: 999px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
 
 .next-activities-table-wrap {
   margin-top: 2px;
@@ -150,31 +1124,55 @@
   font-weight: 700;
 }
 
-/* ===== Clickable links in tables (Next key activities) ===== */
-.table-link-btn{
+.next-activity-cell {
+  vertical-align: top;
+}
+
+.next-activity-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.35;
+}
+
+/* =========================================================
+   ✅ PATCH: clickable customer/project links + bold rules
+   (added for your Next Key Activities + Schedules update)
+   ========================================================= */
+
+.table-link-btn {
   border: 0;
   background: transparent;
   padding: 0;
   margin: 0;
   cursor: pointer;
   text-align: left;
-  color: rgba(30, 64, 175, 0.95);
   font: inherit;
+  color: rgba(30, 64, 175, 0.95) !important;
 }
 
-.table-link-btn:hover{
+.table-link-btn:hover {
   text-decoration: underline;
 }
 
-.table-link-btn.customer-link{
+/* Customer name: bold */
+.table-link-btn.customer-link {
   font-weight: 700;
 }
 
-.table-link-btn.project-link{
+/* Project name: not bold */
+.table-link-btn.project-link {
   font-weight: 500;
 }
 
-/* ===== Schedules table: make presales name bold ===== */
-.schedule-list-table tbody td.schedule-presales-name{
+/* Also cover the customer cell if it renders as plain text fallback */
+.next-activity-customer {
   font-weight: 700;
+}
+
+/* Schedule panel: presales name bold (stronger override) */
+.schedule-list-table tbody td.schedule-presales-name,
+.schedule-presales-name {
+  font-weight: 700 !important;
 }
