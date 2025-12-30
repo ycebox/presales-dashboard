@@ -410,14 +410,12 @@ function PresalesOverview() {
             .from('presales_resources')
             .select('id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day')
             .order('name', { ascending: true }),
-          // ✅ load defaults needed by TaskModal suggestion logic
           supabase
             .from('task_types')
             .select('id, name, is_active, sort_order, base_hours, buffer_pct, focus_hours_per_day, review_buffer_days')
             .eq('is_active', true)
             .order('sort_order', { ascending: true })
             .order('name', { ascending: true }),
-          // ✅ customer map for clickable links
           supabase.from('customers').select('id, customer_name').eq('is_archived', false),
         ]);
 
@@ -710,7 +708,7 @@ function PresalesOverview() {
 
     // ✅ PATCH: hide rows that are totally empty (0 tasks)
     const arr = Array.from(map.values())
-      .filter((e) => e.total > 0) // <-- key: only show presales who actually have tasks
+      .filter((e) => e.total > 0)
       .map((e) => {
         const capacityWeekHours = (e.dailyCapacity || HOURS_PER_DAY) * 5;
 
@@ -1128,11 +1126,12 @@ function PresalesOverview() {
                 <tbody>
                   {nextKeyActivities.map((p) => (
                     <tr key={p.id}>
+                      {/* ✅ Customer bold */}
                       <td className="td-ellipsis next-activity-customer" title={p.customerName}>
                         {customerIdMap[(p.customerName || '').trim()] ? (
                           <button
                             type="button"
-                            className="table-link-btn"
+                            className="table-link-btn customer-link"
                             onClick={() =>
                               navigate(`/customer/${customerIdMap[(p.customerName || '').trim()]}`)
                             }
@@ -1145,10 +1144,11 @@ function PresalesOverview() {
                         )}
                       </td>
 
+                      {/* ✅ Project NOT bold */}
                       <td className="td-ellipsis" title={p.projectName}>
                         <button
                           type="button"
-                          className="table-link-btn"
+                          className="table-link-btn project-link"
                           onClick={() => navigate(`/project/${p.id}`)}
                           title="Open project details"
                         >
@@ -1496,7 +1496,6 @@ function PresalesOverview() {
                     <th>Type</th>
                     <th>From</th>
                     <th>To</th>
-                
                     <th>Note</th>
                     <th />
                   </tr>
@@ -1506,13 +1505,13 @@ function PresalesOverview() {
                     .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
                     .map((ev) => (
                       <tr key={ev.id}>
-                        <td className="td-ellipsis">{ev.assignee}</td>
+                        {/* ✅ Presales name bold */}
+                        <td className="td-ellipsis schedule-presales-name">{ev.assignee}</td>
                         <td>
                           <span className="schedule-type-chip">{ev.type}</span>
                         </td>
                         <td>{ev.start_date ? new Date(ev.start_date).toLocaleDateString('en-SG') : '-'}</td>
                         <td>{ev.end_date ? new Date(ev.end_date).toLocaleDateString('en-SG') : '-'}</td>
-                
                         <td className="td-ellipsis">{ev.note || '-'}</td>
                         <td className="td-right">
                           <button
