@@ -5,21 +5,7 @@ import { FaTasks, FaTimes, FaInfo, FaCheckCircle, FaSave } from "react-icons/fa"
 const TASK_STATUSES = ["Not Started", "In Progress", "Completed", "Cancelled/On-hold"];
 const TASK_PRIORITIES = ["High", "Normal", "Low"];
 
-// ✅ Safety: always return a renderable string
-const safeString = (v, fallback = "") => {
-  if (v === null || v === undefined) return fallback;
-  if (typeof v === "string") return v;
-  if (typeof v === "number") return String(v);
-  // avoid rendering [object Object]
-  try {
-    // If it's an array or object, don't stringify huge stuff — just fallback
-    return fallback;
-  } catch {
-    return fallback;
-  }
-};
-
-// ✅ Fix for React #310: convert arrays of objects into arrays of strings safely
+// ✅ Prevent rendering objects in <option>
 const normalizeToStrings = (arr) => {
   if (!Array.isArray(arr)) return [];
   return arr
@@ -28,27 +14,11 @@ const normalizeToStrings = (arr) => {
       if (typeof x === "string") return x;
       if (typeof x === "number") return String(x);
 
-      // Common shapes: Supabase rows, select lists, etc.
+      // common shapes from DB rows
       return x.name || x.label || x.value || x.title || x.text || "";
     })
     .map((s) => String(s).trim())
     .filter(Boolean);
-};
-
-// ✅ Parent dropdown safety: ensure id + label are always strings
-const normalizeParentOptions = (arr) => {
-  if (!Array.isArray(arr)) return [];
-  return arr
-    .map((t) => {
-      const id = t?.id;
-      const label =
-        t?.description ?? t?.title ?? t?.name ?? t?.label ?? t?.value ?? "(Untitled task)";
-      return {
-        id: safeString(id, ""),
-        label: safeString(label, "(Untitled task)") || "(Untitled task)",
-      };
-    })
-    .filter((x) => x.id); // must have an id
 };
 
 const formatDate = (dateString) => {
@@ -116,12 +86,25 @@ const roundToHalf = (x) => {
   return Math.round(n * 2) / 2;
 };
 
+/**
+ * Shared TaskModal used by:
+ * - ProjectDetails (task list edit/add)
+ * - PresalesOverview (kanban task edit)
+ *
+ * Enhancements:
+ * - Parent task / Sub-task support via parent_task_id
+ * - Parent task grouping mode (no estimated hours)
+ *
+ * Optional props:
+ * - parentTaskOptions: [{ id, description }]
+ * - editingHasChildren: boolean
+ * - disableParentSelection: boolean
+ */
 export default function TaskModal({
   isOpen,
   onClose,
   onSave,
   editingTask = null,
-
   presalesResources = [],
   taskTypes = [],
   taskTypeDefaultsMap = {},
@@ -130,10 +113,9 @@ export default function TaskModal({
   editingHasChildren = false,
   disableParentSelection = false,
 }) {
-  // ✅ always use safe dropdown options
+  // ✅ Normalize dropdown options once
   const presalesOptions = useMemo(() => normalizeToStrings(presalesResources), [presalesResources]);
   const taskTypeOptions = useMemo(() => normalizeToStrings(taskTypes), [taskTypes]);
-  const parentOptions = useMemo(() => normalizeParentOptions(parentTaskOptions), [parentTaskOptions]);
 
   const [taskData, setTaskData] = useState({
     description: "",
@@ -161,24 +143,28 @@ export default function TaskModal({
     if (!isOpen) return;
 
     if (editingTask) {
-      setOriginalTaskType(safeString(editingTask.task_type, "").trim());
+      const original = (editingTask.task_type || "").trim();
+      setOriginalTaskType(original);
+
+      const existingParentId = editingTask.parent_task_id || "";
+
       setIsParentTask(false);
 
       setTaskData({
-        description: safeString(editingTask.description, ""),
-        status: safeString(editingTask.status, "Not Started") || "Not Started",
-        priority: safeString(editingTask.priority, "Normal") || "Normal",
+        description: editingTask.description || "",
+        status: editingTask.status || "Not Started",
+        priority: editingTask.priority || "Normal",
         estimated_hours:
           editingTask.estimated_hours === null || editingTask.estimated_hours === undefined
             ? ""
-            : safeString(editingTask.estimated_hours, ""),
-        start_date: safeString(editingTask.start_date, ""),
-        end_date: safeString(editingTask.end_date, ""),
-        due_date: safeString(editingTask.due_date, ""),
-        notes: safeString(editingTask.notes, ""),
-        assignee: safeString(editingTask.assignee, ""),
-        task_type: safeString(editingTask.task_type, ""),
-        parent_task_id: safeString(editingTask.parent_task_id, ""),
+            : String(editingTask.estimated_hours),
+        start_date: editingTask.start_date || "",
+        end_date: editingTask.end_date || "",
+        due_date: editingTask.due_date || "",
+        notes: editingTask.notes || "",
+        assignee: editingTask.assignee || "",
+        task_type: editingTask.task_type || "",
+        parent_task_id: existingParentId || "",
       });
 
       if (editingHasChildren) setIsParentTask(true);
@@ -272,6 +258,18 @@ export default function TaskModal({
     };
   }, [taskData.task_type, taskData.due_date, taskTypeDefaultsMap, isParentContainer]);
 
+  // ✅ IMPORTANT: keep this useMemo ABOVE any early return (fixes hook order #310)
+  const filteredParentOptions = useMemo(() => {
+    const selfId = editingTask?.id;
+    const list = Array.isArray(parentTaskOptions) ? parentTaskOptions : [];
+    return list.filter((t) => {
+      if (!t) return false;
+      if (!t.id) return false;
+      if (selfId && t.id === selfId) return false;
+      return true;
+    });
+  }, [parentTaskOptions, editingTask?.id]);
+
   const hasExistingPlanValues = () => {
     const hasHours = String(taskData.estimated_hours || "").trim() !== "";
     const hasStart = String(taskData.start_date || "").trim() !== "";
@@ -284,8 +282,7 @@ export default function TaskModal({
     if (isParentContainer) return;
 
     const isEditing = !!editingTask?.id;
-    const typeChanged =
-      isEditing && (taskData.task_type || "").trim() !== (originalTaskType || "").trim();
+    const typeChanged = isEditing && (taskData.task_type || "").trim() !== (originalTaskType || "").trim();
 
     if (isEditing && hasExistingPlanValues()) {
       const msg = typeChanged
@@ -305,8 +302,7 @@ export default function TaskModal({
 
     setTaskData((prev) => ({
       ...prev,
-      estimated_hours:
-        prev.estimated_hours !== "" ? prev.estimated_hours : String(suggestedPlan.suggested_hours ?? ""),
+      estimated_hours: prev.estimated_hours !== "" ? prev.estimated_hours : String(suggestedPlan.suggested_hours ?? ""),
       start_date: prev.start_date || suggestedPlan.suggested_start_date || "",
       end_date: prev.end_date || suggestedPlan.suggested_end_date || "",
     }));
@@ -351,17 +347,11 @@ export default function TaskModal({
     }
   };
 
+  // ✅ early return only after all hooks are defined
   if (!isOpen) return null;
 
   const isEditing = !!editingTask?.id;
-  const typeChanged =
-    isEditing && (taskData.task_type || "").trim() !== (originalTaskType || "").trim();
-
-  // exclude self as parent
-  const filteredParentOptions = useMemo(() => {
-    const selfId = safeString(editingTask?.id, "");
-    return parentOptions.filter((t) => !selfId || t.id !== selfId);
-  }, [parentOptions, editingTask?.id]);
+  const typeChanged = isEditing && (taskData.task_type || "").trim() !== (originalTaskType || "").trim();
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">
@@ -378,7 +368,7 @@ export default function TaskModal({
 
         <form onSubmit={handleSubmit} className="modal-body">
           <div className="form-grid">
-            {/* Parent/Sub-task controls */}
+            {/* Parent task / Subtask controls */}
             <div className="form-group form-group-full">
               <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <label style={{ display: "inline-flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
@@ -407,16 +397,12 @@ export default function TaskModal({
                   value={taskData.parent_task_id || ""}
                   onChange={(e) => handleParentSelection(e.target.value)}
                   disabled={disableParentSelection || isParentContainer}
-                  title={
-                    isParentContainer
-                      ? "Parent tasks cannot be placed under another parent."
-                      : "Link this task as a sub-task."
-                  }
+                  title={isParentContainer ? "Parent tasks cannot be placed under another parent." : "Link this task as a sub-task."}
                 >
                   <option value="">None (top-level task)</option>
                   {filteredParentOptions.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.label}
+                      {String(t.description || "(Untitled task)")}
                     </option>
                   ))}
                 </select>
@@ -437,7 +423,7 @@ export default function TaskModal({
               <label className="form-label">Description</label>
               <input
                 className="form-input"
-                value={safeString(taskData.description, "")}
+                value={taskData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
                 placeholder="Enter task description"
               />
@@ -445,11 +431,7 @@ export default function TaskModal({
 
             <div className="form-group">
               <label className="form-label">Status</label>
-              <select
-                className="form-input"
-                value={safeString(taskData.status, "Not Started")}
-                onChange={(e) => handleChange("status", e.target.value)}
-              >
+              <select className="form-input" value={taskData.status} onChange={(e) => handleChange("status", e.target.value)}>
                 {TASK_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -460,11 +442,7 @@ export default function TaskModal({
 
             <div className="form-group">
               <label className="form-label">Priority</label>
-              <select
-                className="form-input"
-                value={safeString(taskData.priority, "Normal")}
-                onChange={(e) => handleChange("priority", e.target.value)}
-              >
+              <select className="form-input" value={taskData.priority} onChange={(e) => handleChange("priority", e.target.value)}>
                 {TASK_PRIORITIES.map((p) => (
                   <option key={p} value={p}>
                     {p}
@@ -480,20 +458,22 @@ export default function TaskModal({
                 min="0"
                 step="0.5"
                 className="form-input"
-                value={safeString(taskData.estimated_hours, "")}
+                value={taskData.estimated_hours}
                 onChange={(e) => handleChange("estimated_hours", e.target.value)}
                 placeholder={isParentContainer ? "Not applicable for parent tasks" : "e.g. 4"}
                 disabled={isParentContainer}
+                title={isParentContainer ? "Parent tasks are grouping-only and should not have estimated hours." : ""}
               />
+              {isParentContainer ? (
+                <div style={{ fontSize: 12, opacity: 0.75, marginTop: 6 }}>
+                  Parent tasks don’t carry estimated hours. Use sub-tasks to track workload.
+                </div>
+              ) : null}
             </div>
 
             <div className="form-group">
               <label className="form-label">Assignee</label>
-              <select
-                className="form-input"
-                value={safeString(taskData.assignee, "")}
-                onChange={(e) => handleChange("assignee", e.target.value)}
-              >
+              <select className="form-input" value={taskData.assignee} onChange={(e) => handleChange("assignee", e.target.value)}>
                 <option value="">Unassigned</option>
                 {presalesOptions.map((p) => (
                   <option key={p} value={p}>
@@ -505,11 +485,7 @@ export default function TaskModal({
 
             <div className="form-group">
               <label className="form-label">Task Type</label>
-              <select
-                className="form-input"
-                value={safeString(taskData.task_type, "")}
-                onChange={(e) => handleChange("task_type", e.target.value)}
-              >
+              <select className="form-input" value={taskData.task_type} onChange={(e) => handleChange("task_type", e.target.value)}>
                 <option value="">Select type</option>
                 {taskTypeOptions.map((t) => (
                   <option key={t} value={t}>
@@ -535,6 +511,7 @@ export default function TaskModal({
                     className="action-button secondary suggestion-apply-btn"
                     onClick={applySuggestion}
                     disabled={isParentContainer || !suggestedPlan || suggestedPlan.missing || suggestedPlan.invalid}
+                    title={isParentContainer ? "Suggested plan is disabled for parent tasks." : "Apply (or re-apply) Estimated Hours + Start/End"}
                   >
                     <FaCheckCircle />
                     <span>{isEditing ? "Re-apply suggestion" : "Apply suggestion"}</span>
@@ -549,7 +526,7 @@ export default function TaskModal({
                   <div className="suggestion-muted">Select a Task Type to see recommended hours and dates.</div>
                 ) : suggestedPlan?.missing ? (
                   <div className="suggestion-warn">
-                    No defaults found for <b>{suggestedPlan.task_type}</b>. Update your task type defaults table.
+                    No defaults found for <b>{suggestedPlan.task_type}</b>. Fill base/buffer/focus columns in <b>task_types</b>.
                   </div>
                 ) : suggestedPlan?.invalid ? (
                   <div className="suggestion-warn">
@@ -568,6 +545,20 @@ export default function TaskModal({
                     </div>
 
                     <div className="suggestion-row">
+                      <span className="suggestion-label">Assumption</span>
+                      <span className="suggestion-value">
+                        {suggestedPlan.focus_hours_per_day}h/day focus
+                        <span className="suggestion-sub">
+                          {" "}
+                          → {suggestedPlan.work_days} working day{suggestedPlan.work_days > 1 ? "s" : ""}
+                          {suggestedPlan.review_buffer_days > 0
+                            ? ` + ${suggestedPlan.review_buffer_days} review day${suggestedPlan.review_buffer_days > 1 ? "s" : ""}`
+                            : ""}
+                        </span>
+                      </span>
+                    </div>
+
+                    <div className="suggestion-row">
                       <span className="suggestion-label">Start</span>
                       <span className="suggestion-value">{formatDate(suggestedPlan.suggested_start_date)}</span>
                     </div>
@@ -576,6 +567,11 @@ export default function TaskModal({
                       <span className="suggestion-label">End / Commit</span>
                       <span className="suggestion-value">{formatDate(suggestedPlan.suggested_end_date)}</span>
                     </div>
+
+                    <div className="suggestion-footnote">
+                      {suggestedPlan.planned_from_due_date ? "Planned backward from Due Date." : "Planned forward from next working day."}{" "}
+                      You can still override any fields.
+                    </div>
                   </div>
                 )}
               </div>
@@ -583,42 +579,22 @@ export default function TaskModal({
 
             <div className="form-group">
               <label className="form-label">Start Date</label>
-              <input
-                type="date"
-                className="form-input"
-                value={safeString(taskData.start_date, "")}
-                onChange={(e) => handleChange("start_date", e.target.value)}
-              />
+              <input type="date" className="form-input" value={taskData.start_date || ""} onChange={(e) => handleChange("start_date", e.target.value)} />
             </div>
 
             <div className="form-group">
               <label className="form-label">End Date</label>
-              <input
-                type="date"
-                className="form-input"
-                value={safeString(taskData.end_date, "")}
-                onChange={(e) => handleChange("end_date", e.target.value)}
-              />
+              <input type="date" className="form-input" value={taskData.end_date || ""} onChange={(e) => handleChange("end_date", e.target.value)} />
             </div>
 
             <div className="form-group">
               <label className="form-label">Due Date</label>
-              <input
-                type="date"
-                className="form-input"
-                value={safeString(taskData.due_date, "")}
-                onChange={(e) => handleChange("due_date", e.target.value)}
-              />
+              <input type="date" className="form-input" value={taskData.due_date || ""} onChange={(e) => handleChange("due_date", e.target.value)} />
             </div>
 
             <div className="form-group form-group-full">
               <label className="form-label">Notes</label>
-              <textarea
-                className="form-textarea"
-                value={safeString(taskData.notes, "")}
-                onChange={(e) => handleChange("notes", e.target.value)}
-                placeholder="Add notes / context"
-              />
+              <textarea className="form-textarea" value={taskData.notes || ""} onChange={(e) => handleChange("notes", e.target.value)} placeholder="Add notes / context" />
             </div>
           </div>
 
