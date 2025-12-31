@@ -123,6 +123,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
       await onSave(logText);
       onClose();
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Log save error:", err);
       alert(`Failed to save log: ${err?.message || "Unknown error"}`);
     } finally {
@@ -209,30 +210,32 @@ const useProjectData = (projectId) => {
 
   const fetchTasks = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error: qErr } = await supabase
         .from("project_tasks")
-        .select("*") // includes parent_task_id once your DB is updated
+        .select("*")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (qErr) throw qErr;
       setTasks(data || []);
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Error fetching tasks:", err);
     }
   };
 
   const fetchLogs = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error: qErr } = await supabase
         .from("project_logs")
         .select("*")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (qErr) throw qErr;
       setLogs(data || []);
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Error fetching logs:", err);
     }
   };
@@ -241,16 +244,18 @@ const useProjectData = (projectId) => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase
+      const { data, error: qErr } = await supabase
         .from("projects")
         .select("*")
         .eq("id", projectId)
         .single();
-      if (error) throw error;
+
+      if (qErr) throw qErr;
 
       setProject(data);
       await Promise.all([fetchTasks(), fetchLogs()]);
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Error fetching project:", err);
       setError(err.message || "Failed to load project");
     } finally {
@@ -260,6 +265,7 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
@@ -269,7 +275,8 @@ function ProjectDetails() {
   const { projectId } = useParams();
   const navigate = useNavigate();
 
-  const { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs } = useProjectData(projectId);
+  const { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs } =
+    useProjectData(projectId);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editProject, setEditProject] = useState({});
@@ -301,6 +308,9 @@ function ProjectDetails() {
   // ✅ UI state for expanding parent groups
   const [expandedParents, setExpandedParents] = useState({});
 
+  // ✅ Customer UUID lookup (so /customer/:customerId works)
+  const [customerId, setCustomerId] = useState(null);
+
   useEffect(() => {
     const loadLists = async () => {
       try {
@@ -312,7 +322,9 @@ function ProjectDetails() {
           supabase.from("presales_resources").select("name").order("name"),
           supabase
             .from("task_types")
-            .select("name, base_hours, buffer_pct, focus_hours_per_day, review_buffer_days, is_active, sort_order")
+            .select(
+              "name, base_hours, buffer_pct, focus_hours_per_day, review_buffer_days, is_active, sort_order"
+            )
             .eq("is_active", true)
             .order("sort_order", { ascending: true })
             .order("name", { ascending: true }),
@@ -348,6 +360,32 @@ function ProjectDetails() {
 
     loadLists();
   }, []);
+
+  // ✅ Customer ID lookup based on project.customer_name
+  useEffect(() => {
+    const lookupCustomerId = async () => {
+      setCustomerId(null);
+      const name = (project?.customer_name || "").trim();
+      if (!name) return;
+
+      try {
+        const { data, error: qErr } = await supabase
+          .from("customers")
+          .select("id, customer_name")
+          .eq("is_archived", false)
+          .eq("customer_name", name)
+          .maybeSingle();
+
+        if (qErr) throw qErr;
+        setCustomerId(data?.id || null);
+      } catch (e) {
+        console.warn("Customer ID lookup failed:", e);
+        setCustomerId(null);
+      }
+    };
+
+    lookupCustomerId();
+  }, [project?.customer_name]);
 
   // ✅ Load bid manager "active projects count"
   useEffect(() => {
@@ -443,7 +481,11 @@ function ProjectDetails() {
 
     let health = "GREEN";
     if (isProjectOverdue || overdueCount > 0) health = "RED";
-    else if (isProjectDueSoon || dueNext7Count > 0 || (daysSinceLastLog !== null && daysSinceLastLog > 14))
+    else if (
+      isProjectDueSoon ||
+      dueNext7Count > 0 ||
+      (daysSinceLastLog !== null && daysSinceLastLog > 14)
+    )
       health = "AMBER";
 
     return { overdueCount, dueNext7Count, unassignedCount, lastLogDate, daysSinceLastLog, health };
@@ -465,29 +507,24 @@ function ProjectDetails() {
   }, [project]);
 
   // ✅ Group tasks into parent/children for display + logic
-  const { groupedParents, childrenByParent, parentIdsWithChildren } = useMemo(() => {
+  const { groupedParents, childrenByParent } = useMemo(() => {
     const list = Array.isArray(tasks) ? tasks : [];
 
     const childrenMap = {};
     const parents = [];
-    const parentSet = new Set();
 
-    // build children + parents
     list.forEach((t) => {
       const pid = t?.parent_task_id;
       if (pid) {
         if (!childrenMap[pid]) childrenMap[pid] = [];
         childrenMap[pid].push(t);
-        parentSet.add(pid);
       } else {
         parents.push(t);
       }
     });
 
-    // sort parents by created_at desc (matches your original fetch ordering)
     parents.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
-    // sort children by created_at desc (keep consistent)
     Object.keys(childrenMap).forEach((pid) => {
       childrenMap[pid].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
     });
@@ -495,7 +532,6 @@ function ProjectDetails() {
     return {
       groupedParents: parents,
       childrenByParent: childrenMap,
-      parentIdsWithChildren: parentSet,
     };
   }, [tasks]);
 
@@ -505,7 +541,7 @@ function ProjectDetails() {
       const next = { ...prev };
       groupedParents.forEach((p) => {
         const hasKids = (childrenByParent[p.id] || []).length > 0;
-        if (hasKids && typeof next[p.id] === "undefined") next[p.id] = true; // default expanded
+        if (hasKids && typeof next[p.id] === "undefined") next[p.id] = true;
       });
       return next;
     });
@@ -514,7 +550,6 @@ function ProjectDetails() {
   const activeTasksCount = tasks.filter((t) => !isTaskDoneOrHold(t.status)).length;
   const completedTasksCount = tasks.filter((t) => (t.status || "") === "Completed").length;
 
-  // Filter visible list (include parents + children, but keep grouping)
   const isVisible = (t) => (showCompleted ? true : !isTaskDoneOrHold(t.status));
 
   const filteredParentList = useMemo(() => {
@@ -532,7 +567,6 @@ function ProjectDetails() {
 
   // Parent task options for TaskModal (top-level tasks only)
   const parentTaskOptions = useMemo(() => {
-    // allow selecting from top-level tasks (including standalone tasks)
     return groupedParents
       .map((p) => ({ id: p.id, description: p.description || "(Untitled task)" }))
       .filter((x) => x.id);
@@ -574,7 +608,7 @@ function ProjectDetails() {
         setEditProject((prev) => ({
           ...prev,
           bid_manager_required: !!checked,
-          bid_manager: checked ? (prev.bid_manager || "") : "",
+          bid_manager: checked ? prev.bid_manager || "" : "",
         }));
         return;
       }
@@ -620,12 +654,13 @@ function ProjectDetails() {
         bid_manager: bmValue ? bmValue : null,
       };
 
-      const { error } = await supabase.from("projects").update(payload).eq("id", project.id);
-      if (error) throw error;
+      const { error: qErr } = await supabase.from("projects").update(payload).eq("id", project.id);
+      if (qErr) throw qErr;
 
       setProject((prev) => ({ ...prev, ...payload }));
       setIsEditing(false);
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Error saving project:", err);
       alert(`Failed to save project changes: ${err?.message || "Unknown error"}`);
     } finally {
@@ -693,10 +728,11 @@ function ProjectDetails() {
     if (!window.confirm(msg)) return;
 
     try {
-      const { error } = await supabase.from("project_tasks").delete().eq("id", taskId);
-      if (error) throw error;
+      const { error: qErr } = await supabase.from("project_tasks").delete().eq("id", taskId);
+      if (qErr) throw qErr;
       await fetchTasks();
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Delete task error:", err);
       alert(`Failed to delete task: ${err?.message || "Unknown error"}`);
     }
@@ -715,18 +751,29 @@ function ProjectDetails() {
   const deleteLog = async (logId) => {
     if (!window.confirm("Delete this log entry?")) return;
     try {
-      const { error } = await supabase.from("project_logs").delete().eq("id", logId);
-      if (error) throw error;
+      const { error: qErr } = await supabase.from("project_logs").delete().eq("id", logId);
+      if (qErr) throw qErr;
       await fetchLogs();
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Delete log error:", err);
       alert(`Failed to delete log: ${err?.message || "Unknown error"}`);
     }
   };
 
   const openCustomer = () => {
-    if (!project?.customer_name) return;
-    navigate(`/customer/${encodeURIComponent(project.customer_name)}`);
+    const name = (project?.customer_name || "").trim();
+    if (!name) return;
+
+    if (!customerId) {
+      alert(
+        "I can’t open the CustomerDetails page because I can’t find this customer in the customers table.\n\n" +
+          `Customer name: ${name}`
+      );
+      return;
+    }
+
+    navigate(`/customer/${customerId}`);
   };
 
   if (loading) return <LoadingState />;
@@ -735,7 +782,7 @@ function ProjectDetails() {
   const isReadOnly = !isEditing;
   const viewOrEdit = isEditing ? editProject : project;
 
-  // ✅ When editing a task, detect if it has children so TaskModal locks hours to none
+  // ✅ When editing a task, detect if it has children so TaskModal can lock hours
   const editingHasChildren =
     !!editingTask?.id && (childrenByParent[editingTask.id] || []).length > 0;
 
@@ -756,7 +803,7 @@ function ProjectDetails() {
                       className="hero-customer-link"
                       onClick={openCustomer}
                       type="button"
-                      title="Open customer"
+                      title={customerId ? "Open customer" : "Customer not found in customers table"}
                     >
                       <FaUsers className="subtitle-icon" />
                       <span className="project-customer-text">{project.customer_name || "No customer"}</span>
@@ -811,7 +858,8 @@ function ProjectDetails() {
                         <span className="metric-badge metric-muted">
                           <FaFileAlt />
                           <span>
-                            Last update: {projectMonitor.lastLogDate ? formatDate(projectMonitor.lastLogDate) : "-"}
+                            Last update:{" "}
+                            {projectMonitor.lastLogDate ? formatDate(projectMonitor.lastLogDate) : "-"}
                           </span>
                         </span>
 
@@ -825,12 +873,20 @@ function ProjectDetails() {
                         {project.bid_manager_required && project.bid_manager ? (
                           <span
                             className="metric-badge metric-muted"
-                            title={bidManagerLoadError ? bidManagerLoadError : "Active projects assigned to this bid manager"}
+                            title={
+                              bidManagerLoadError
+                                ? bidManagerLoadError
+                                : "Active projects assigned to this bid manager"
+                            }
                           >
                             <FaTasks />
                             <span>
                               BM load:{" "}
-                              {bidManagerLoad ? `${bidManagerLoad.active} active` : (bidManagerLoadError ? "N/A" : "…")}
+                              {bidManagerLoad
+                                ? `${bidManagerLoad.active} active`
+                                : bidManagerLoadError
+                                ? "N/A"
+                                : "…"}
                             </span>
                           </span>
                         ) : null}
@@ -1024,7 +1080,11 @@ function ProjectDetails() {
                 {!isEditing && viewOrEdit.bid_manager_required && viewOrEdit.bid_manager ? (
                   <div className="hint-text" style={{ marginTop: 8 }}>
                     Current BM load:{" "}
-                    {bidManagerLoad ? `${bidManagerLoad.active} active project(s)` : (bidManagerLoadError ? "N/A" : "…")}
+                    {bidManagerLoad
+                      ? `${bidManagerLoad.active} active project(s)`
+                      : bidManagerLoadError
+                      ? "N/A"
+                      : "…"}
                   </div>
                 ) : null}
               </div>
@@ -1287,7 +1347,6 @@ function ProjectDetails() {
                           tabIndex={0}
                         >
                           <div className="list-item-top">
-                            {/* expand/collapse control */}
                             {hasChildren ? (
                               <button
                                 type="button"
@@ -1304,20 +1363,16 @@ function ProjectDetails() {
                               </button>
                             ) : null}
 
-                            <span className={`status-tag status-${normalizeStatusKey(t.status)}`}>
-                              {t.status}
-                            </span>
+                            <span className={`status-tag status-${normalizeStatusKey(t.status)}`}>{t.status}</span>
 
                             {t.task_type && <span className="type-tag">{t.task_type}</span>}
                             {t.priority && <span className="type-tag">{t.priority}</span>}
 
-                            {/* Important: show hours only when it’s not a parent with children */}
                             {!hasChildren &&
                               t.estimated_hours !== null &&
                               t.estimated_hours !== undefined &&
                               t.estimated_hours !== "" && <span className="type-tag">{t.estimated_hours}h</span>}
 
-                            {/* parent progress pill */}
                             {hasChildren ? (
                               <span className="type-tag" title={`${prog.done}/${prog.total} completed`}>
                                 {prog.done}/{prog.total} done
@@ -1360,7 +1415,10 @@ function ProjectDetails() {
                             </div>
                           ) : (
                             kidsVisible.map((k) => (
-                              <div key={k.id} className={`list-item is-subtask ${k.status === "Completed" ? "is-done" : ""}`}>
+                              <div
+                                key={k.id}
+                                className={`list-item is-subtask ${k.status === "Completed" ? "is-done" : ""}`}
+                              >
                                 <div
                                   className="list-item-main"
                                   onClick={() => openEditTask(k)}
@@ -1467,9 +1525,8 @@ function ProjectDetails() {
         onSave={async (taskData) => {
           if (!project?.id) return;
 
-          // ✅ Safety rule: if updating a parent that has children, force estimated_hours = null
-          const isEditing = !!editingTask?.id;
-          const hasChildren = isEditing && (childrenByParent[editingTask.id] || []).length > 0;
+          const isEditingNow = !!editingTask?.id;
+          const hasChildren = isEditingNow && (childrenByParent[editingTask.id] || []).length > 0;
 
           const payload = { ...taskData };
 
@@ -1477,12 +1534,14 @@ function ProjectDetails() {
             payload.estimated_hours = null;
           }
 
-          if (isEditing) {
-            const { error } = await supabase.from("project_tasks").update(payload).eq("id", editingTask.id);
-            if (error) throw error;
+          if (isEditingNow) {
+            const { error: qErr } = await supabase.from("project_tasks").update(payload).eq("id", editingTask.id);
+            if (qErr) throw qErr;
           } else {
-            const { error } = await supabase.from("project_tasks").insert({ ...payload, project_id: project.id });
-            if (error) throw error;
+            const { error: qErr } = await supabase
+              .from("project_tasks")
+              .insert({ ...payload, project_id: project.id });
+            if (qErr) throw qErr;
           }
 
           await fetchTasks();
@@ -1505,11 +1564,11 @@ function ProjectDetails() {
           if (!project?.id) return;
 
           if (editingLog?.id) {
-            const { error } = await supabase.from("project_logs").update({ notes }).eq("id", editingLog.id);
-            if (error) throw error;
+            const { error: qErr } = await supabase.from("project_logs").update({ notes }).eq("id", editingLog.id);
+            if (qErr) throw qErr;
           } else {
-            const { error } = await supabase.from("project_logs").insert({ project_id: project.id, notes });
-            if (error) throw error;
+            const { error: qErr } = await supabase.from("project_logs").insert({ project_id: project.id, notes });
+            if (qErr) throw qErr;
           }
 
           await fetchLogs();
