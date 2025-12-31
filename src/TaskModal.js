@@ -5,6 +5,22 @@ import { FaTasks, FaTimes, FaInfo, FaCheckCircle, FaSave } from "react-icons/fa"
 const TASK_STATUSES = ["Not Started", "In Progress", "Completed", "Cancelled/On-hold"];
 const TASK_PRIORITIES = ["High", "Normal", "Low"];
 
+// ✅ Fix for React error #310: allow options as strings OR objects
+const normalizeToStrings = (arr) => {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((x) => {
+      if (x === null || x === undefined) return "";
+      if (typeof x === "string") return x;
+      if (typeof x === "number") return String(x);
+
+      // common shapes from DB rows
+      return x.name || x.label || x.value || x.title || x.text || "";
+    })
+    .map((s) => String(s).trim())
+    .filter(Boolean);
+};
+
 const formatDate = (dateString) => {
   if (!dateString) return "-";
   try {
@@ -98,6 +114,10 @@ export default function TaskModal({
   editingHasChildren = false,
   disableParentSelection = false,
 }) {
+  // ✅ normalized options to prevent React rendering objects in <option>
+  const presalesOptions = useMemo(() => normalizeToStrings(presalesResources), [presalesResources]);
+  const taskTypeOptions = useMemo(() => normalizeToStrings(taskTypes), [taskTypes]);
+
   const [taskData, setTaskData] = useState({
     description: "",
     status: "Not Started",
@@ -483,7 +503,7 @@ export default function TaskModal({
               <label className="form-label">Assignee</label>
               <select className="form-input" value={taskData.assignee} onChange={(e) => handleChange("assignee", e.target.value)}>
                 <option value="">Unassigned</option>
-                {(presalesResources || []).map((p) => (
+                {presalesOptions.map((p) => (
                   <option key={p} value={p}>
                     {p}
                   </option>
@@ -495,7 +515,7 @@ export default function TaskModal({
               <label className="form-label">Task Type</label>
               <select className="form-input" value={taskData.task_type} onChange={(e) => handleChange("task_type", e.target.value)}>
                 <option value="">Select type</option>
-                {(taskTypes || []).map((t) => (
+                {taskTypeOptions.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
