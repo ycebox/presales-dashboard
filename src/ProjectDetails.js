@@ -123,7 +123,7 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
       await onSave(logText);
       onClose();
     } catch (err) {
-      // eslint-disable-next-line no-console
+    
       console.error("Log save error:", err);
       alert(`Failed to save log: ${err?.message || "Unknown error"}`);
     } finally {
@@ -219,7 +219,7 @@ const useProjectData = (projectId) => {
       if (qErr) throw qErr;
       setTasks(data || []);
     } catch (err) {
-      // eslint-disable-next-line no-console
+     
       console.error("Error fetching tasks:", err);
     }
   };
@@ -235,7 +235,7 @@ const useProjectData = (projectId) => {
       if (qErr) throw qErr;
       setLogs(data || []);
     } catch (err) {
-      // eslint-disable-next-line no-console
+      
       console.error("Error fetching logs:", err);
     }
   };
@@ -255,7 +255,7 @@ const useProjectData = (projectId) => {
       setProject(data);
       await Promise.all([fetchTasks(), fetchLogs()]);
     } catch (err) {
-      // eslint-disable-next-line no-console
+      
       console.error("Error fetching project:", err);
       setError(err.message || "Failed to load project");
     } finally {
@@ -265,7 +265,7 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [projectId]);
 
   return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
@@ -660,7 +660,7 @@ function ProjectDetails() {
       setProject((prev) => ({ ...prev, ...payload }));
       setIsEditing(false);
     } catch (err) {
-      // eslint-disable-next-line no-console
+    
       console.error("Error saving project:", err);
       alert(`Failed to save project changes: ${err?.message || "Unknown error"}`);
     } finally {
@@ -732,7 +732,7 @@ function ProjectDetails() {
       if (qErr) throw qErr;
       await fetchTasks();
     } catch (err) {
-      // eslint-disable-next-line no-console
+   
       console.error("Delete task error:", err);
       alert(`Failed to delete task: ${err?.message || "Unknown error"}`);
     }
@@ -755,7 +755,7 @@ function ProjectDetails() {
       if (qErr) throw qErr;
       await fetchLogs();
     } catch (err) {
-      // eslint-disable-next-line no-console
+    
       console.error("Delete log error:", err);
       alert(`Failed to delete log: ${err?.message || "Unknown error"}`);
     }
