@@ -5,7 +5,7 @@ import { FaTasks, FaTimes, FaInfo, FaCheckCircle, FaSave } from "react-icons/fa"
 const TASK_STATUSES = ["Not Started", "In Progress", "Completed", "Cancelled/On-hold"];
 const TASK_PRIORITIES = ["High", "Normal", "Low"];
 
-// ✅ Fix for React error #310: allow options as strings OR objects
+// ✅ Prevent React #310: normalize arrays that might contain objects
 const normalizeToStrings = (arr) => {
   if (!Array.isArray(arr)) return [];
   return arr
@@ -14,11 +14,17 @@ const normalizeToStrings = (arr) => {
       if (typeof x === "string") return x;
       if (typeof x === "number") return String(x);
 
-      // common shapes from DB rows
+      // common shapes from Supabase rows / configs
       return x.name || x.label || x.value || x.title || x.text || "";
     })
     .map((s) => String(s).trim())
     .filter(Boolean);
+};
+
+// ✅ Prevent React #310 if react-icons export is missing
+const SafeIcon = ({ Icon, fallback = null }) => {
+  if (!Icon) return fallback;
+  return <Icon />;
 };
 
 const formatDate = (dateString) => {
@@ -86,20 +92,6 @@ const roundToHalf = (x) => {
   return Math.round(n * 2) / 2;
 };
 
-/**
- * Shared TaskModal used by:
- * - ProjectDetails (task list edit/add)
- * - PresalesOverview (kanban task edit)
- *
- * ✅ Enhancements added:
- * - Parent task / Sub-task support via parent_task_id
- * - Parent task grouping mode (no estimated hours)
- *
- * New optional props:
- * - parentTaskOptions: [{ id, description }]  // used for "Parent Task" dropdown
- * - editingHasChildren: boolean              // lock hours if editing parent with children
- * - disableParentSelection: boolean          // optionally lock parent selection UI
- */
 export default function TaskModal({
   isOpen,
   onClose,
@@ -109,12 +101,12 @@ export default function TaskModal({
   taskTypes = [],
   taskTypeDefaultsMap = {},
 
-  // ✅ New optional props
+  // optional props
   parentTaskOptions = [],
   editingHasChildren = false,
   disableParentSelection = false,
 }) {
-  // ✅ normalized options to prevent React rendering objects in <option>
+  // ✅ Use normalized options everywhere (prevents #310)
   const presalesOptions = useMemo(() => normalizeToStrings(presalesResources), [presalesResources]);
   const taskTypeOptions = useMemo(() => normalizeToStrings(taskTypes), [taskTypes]);
 
@@ -129,26 +121,15 @@ export default function TaskModal({
     notes: "",
     assignee: "",
     task_type: "",
-
-    // ✅ New field
     parent_task_id: "",
   });
 
-  // ✅ parent grouping flag
   const [isParentTask, setIsParentTask] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [originalTaskType, setOriginalTaskType] = useState("");
 
-  // For UI: when editing a task that already has children, we lock hours as "parent container"
   const isLockedAsParentContainer = !!editingTask?.id && !!editingHasChildren;
-
-  // Determine if the current form represents a sub-task
   const isSubTask = !!String(taskData.parent_task_id || "").trim();
-
-  // Parent container rule:
-  // - user explicitly checked "isParentTask" OR
-  // - editing a task with children (locked container)
   const isParentContainer = isLockedAsParentContainer || !!isParentTask;
 
   useEffect(() => {
@@ -160,8 +141,6 @@ export default function TaskModal({
 
       const existingParentId = editingTask.parent_task_id || "";
 
-      // If it's a sub-task (has parent), checkbox should be false
-      // If it's being edited and has children, lock as parent container
       setIsParentTask(false);
 
       setTaskData({
@@ -181,10 +160,7 @@ export default function TaskModal({
         parent_task_id: existingParentId || "",
       });
 
-      // If editing a task with children, force container behavior (no hours)
-      if (editingHasChildren) {
-        setIsParentTask(true);
-      }
+      if (editingHasChildren) setIsParentTask(true);
     } else {
       setOriginalTaskType("");
       setIsParentTask(false);
@@ -206,23 +182,18 @@ export default function TaskModal({
 
   const handleChange = (field, value) => setTaskData((prev) => ({ ...prev, [field]: value }));
 
-  // If user toggles "Parent task", enforce rules
   const handleToggleParentTask = (checked) => {
-    // If it’s locked due to children, don't allow turning off
     if (isLockedAsParentContainer && !checked) return;
 
     setIsParentTask(checked);
 
     setTaskData((prev) => ({
       ...prev,
-      // Parent task should not be linked under another parent
       parent_task_id: checked ? "" : prev.parent_task_id,
-      // Parent tasks should not have estimated hours (avoid double counting)
       estimated_hours: checked ? "" : prev.estimated_hours,
     }));
   };
 
-  // When selecting a parent task, make sure parent checkbox is off (it's a sub-task)
   const handleParentSelection = (parentId) => {
     if (disableParentSelection || isLockedAsParentContainer) return;
 
@@ -232,7 +203,6 @@ export default function TaskModal({
   };
 
   const suggestedPlan = useMemo(() => {
-    // For parent container tasks, suggested plan is not applicable (hours should remain empty)
     if (isParentContainer) return null;
 
     const t = (taskData.task_type || "").trim();
@@ -328,18 +298,13 @@ export default function TaskModal({
       return;
     }
 
-    // If task is a parent container, force no estimated hours
     const shouldForceNoHours = isParentContainer;
 
     setLoading(true);
     try {
       const normalized = {
         ...taskData,
-
-        // ✅ normalize parent_task_id
         parent_task_id: String(taskData.parent_task_id || "").trim() === "" ? null : taskData.parent_task_id,
-
-        // ✅ normalize estimated_hours
         estimated_hours:
           shouldForceNoHours || taskData.estimated_hours === "" || taskData.estimated_hours == null
             ? null
@@ -369,16 +334,10 @@ export default function TaskModal({
   const isEditing = !!editingTask?.id;
   const typeChanged = isEditing && (taskData.task_type || "").trim() !== (originalTaskType || "").trim();
 
-  // Parent dropdown: show only valid parents (exclude the task itself when editing)
   const filteredParentOptions = useMemo(() => {
     const selfId = editingTask?.id;
     const list = Array.isArray(parentTaskOptions) ? parentTaskOptions : [];
-    return list.filter((t) => {
-      if (!t) return false;
-      if (!t.id) return false;
-      if (selfId && t.id === selfId) return false;
-      return true;
-    });
+    return list.filter((t) => t && t.id && (!selfId || t.id !== selfId));
   }, [parentTaskOptions, editingTask?.id]);
 
   return (
@@ -386,17 +345,17 @@ export default function TaskModal({
       <div className="modal">
         <div className="modal-header">
           <div className="modal-title">
-            <FaTasks />
+            <SafeIcon Icon={FaTasks} />
             <span>{editingTask ? "Edit Task" : "Add Task"}</span>
           </div>
           <button className="icon-button" onClick={onClose} aria-label="Close" type="button">
-            <FaTimes />
+            <SafeIcon Icon={FaTimes} fallback={<span style={{ fontSize: 18, lineHeight: 1 }}>×</span>} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-body">
           <div className="form-grid">
-            {/* ✅ PARENT TASK / SUBTASK CONTROLS */}
+            {/* Parent/Sub-task controls */}
             <div className="form-group form-group-full">
               <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <label style={{ display: "inline-flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
@@ -459,7 +418,11 @@ export default function TaskModal({
 
             <div className="form-group">
               <label className="form-label">Status</label>
-              <select className="form-input" value={taskData.status} onChange={(e) => handleChange("status", e.target.value)}>
+              <select
+                className="form-input"
+                value={taskData.status}
+                onChange={(e) => handleChange("status", e.target.value)}
+              >
                 {TASK_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -470,7 +433,11 @@ export default function TaskModal({
 
             <div className="form-group">
               <label className="form-label">Priority</label>
-              <select className="form-input" value={taskData.priority} onChange={(e) => handleChange("priority", e.target.value)}>
+              <select
+                className="form-input"
+                value={taskData.priority}
+                onChange={(e) => handleChange("priority", e.target.value)}
+              >
                 {TASK_PRIORITIES.map((p) => (
                   <option key={p} value={p}>
                     {p}
@@ -501,7 +468,11 @@ export default function TaskModal({
 
             <div className="form-group">
               <label className="form-label">Assignee</label>
-              <select className="form-input" value={taskData.assignee} onChange={(e) => handleChange("assignee", e.target.value)}>
+              <select
+                className="form-input"
+                value={taskData.assignee}
+                onChange={(e) => handleChange("assignee", e.target.value)}
+              >
                 <option value="">Unassigned</option>
                 {presalesOptions.map((p) => (
                   <option key={p} value={p}>
@@ -513,7 +484,11 @@ export default function TaskModal({
 
             <div className="form-group">
               <label className="form-label">Task Type</label>
-              <select className="form-input" value={taskData.task_type} onChange={(e) => handleChange("task_type", e.target.value)}>
+              <select
+                className="form-input"
+                value={taskData.task_type}
+                onChange={(e) => handleChange("task_type", e.target.value)}
+              >
                 <option value="">Select type</option>
                 {taskTypeOptions.map((t) => (
                   <option key={t} value={t}>
@@ -527,7 +502,7 @@ export default function TaskModal({
               <div className="suggestion-card">
                 <div className="suggestion-header">
                   <div className="suggestion-title">
-                    <FaInfo />
+                    <SafeIcon Icon={FaInfo} />
                     <span>Suggested plan</span>
                     {isEditing && typeChanged ? (
                       <span style={{ fontSize: 12, opacity: 0.75, marginLeft: 10 }}>(Task Type changed)</span>
@@ -539,13 +514,9 @@ export default function TaskModal({
                     className="action-button secondary suggestion-apply-btn"
                     onClick={applySuggestion}
                     disabled={isParentContainer || !suggestedPlan || suggestedPlan.missing || suggestedPlan.invalid}
-                    title={
-                      isParentContainer
-                        ? "Suggested plan is disabled for parent tasks."
-                        : "Apply (or re-apply) Estimated Hours + Start/End"
-                    }
+                    title={isParentContainer ? "Suggested plan is disabled for parent tasks." : "Apply (or re-apply) Estimated Hours + Start/End"}
                   >
-                    <FaCheckCircle />
+                    <SafeIcon Icon={FaCheckCircle} />
                     <span>{isEditing ? "Re-apply suggestion" : "Apply suggestion"}</span>
                   </button>
                 </div>
@@ -584,9 +555,7 @@ export default function TaskModal({
                           {" "}
                           → {suggestedPlan.work_days} working day{suggestedPlan.work_days > 1 ? "s" : ""}
                           {suggestedPlan.review_buffer_days > 0
-                            ? ` + ${suggestedPlan.review_buffer_days} review day${
-                                suggestedPlan.review_buffer_days > 1 ? "s" : ""
-                              }`
+                            ? ` + ${suggestedPlan.review_buffer_days} review day${suggestedPlan.review_buffer_days > 1 ? "s" : ""}`
                             : ""}
                         </span>
                       </span>
@@ -603,9 +572,7 @@ export default function TaskModal({
                     </div>
 
                     <div className="suggestion-footnote">
-                      {suggestedPlan.planned_from_due_date
-                        ? "Planned backward from Due Date."
-                        : "Planned forward from next working day."}{" "}
+                      {suggestedPlan.planned_from_due_date ? "Planned backward from Due Date." : "Planned forward from next working day."}{" "}
                       You can still override any fields.
                     </div>
                   </div>
@@ -656,11 +623,11 @@ export default function TaskModal({
 
           <div className="modal-actions">
             <button type="button" className="action-button secondary" onClick={onClose}>
-              <FaTimes />
+              <SafeIcon Icon={FaTimes} fallback={<span style={{ fontSize: 16, lineHeight: 1 }}>×</span>} />
               <span>Cancel</span>
             </button>
             <button type="submit" className="action-button primary" disabled={loading}>
-              <FaSave />
+              <SafeIcon Icon={FaSave} />
               <span>{loading ? "Saving..." : "Save Task"}</span>
             </button>
           </div>
