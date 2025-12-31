@@ -512,12 +512,12 @@ function PresalesOverview() {
   const formatDayDetailDate = (d) =>
     d ? d.toLocaleDateString('en-SG', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
-  // ✅ PATCH: hide past schedules from Schedules table (keep in DB)
+  // ✅ hide past schedules from Schedules table (keep in DB)
   const scheduleEventsForTable = useMemo(() => {
     const t = toMidnight(new Date());
     return (scheduleEvents || []).filter((ev) => {
       const end = parseDate(ev.end_date || ev.start_date);
-      if (!end) return true; // safer: keep showing if date is invalid/missing
+      if (!end) return true;
       return end.getTime() >= t.getTime();
     });
   }, [scheduleEvents]);
@@ -658,7 +658,7 @@ function PresalesOverview() {
     });
 
     (tasks || []).forEach((t) => {
-      // ✅ PATCH: skip unassigned tasks in the workload list
+      // ✅ skip unassigned tasks in the workload list
       const assigneeRaw = (t.assignee || '').trim();
       if (!assigneeRaw) return;
 
@@ -706,7 +706,7 @@ function PresalesOverview() {
       }
     });
 
-    // ✅ PATCH: hide rows that are totally empty (0 tasks)
+    // ✅ hide rows that are totally empty (0 tasks)
     const arr = Array.from(map.values())
       .filter((e) => e.total > 0)
       .map((e) => {
@@ -1126,7 +1126,7 @@ function PresalesOverview() {
                 <tbody>
                   {nextKeyActivities.map((p) => (
                     <tr key={p.id}>
-                      {/* ✅ Customer bold */}
+                      {/* ✅ Customer bold + clickable */}
                       <td className="td-ellipsis next-activity-customer" title={p.customerName}>
                         {customerIdMap[(p.customerName || '').trim()] ? (
                           <button
@@ -1144,7 +1144,7 @@ function PresalesOverview() {
                         )}
                       </td>
 
-                      {/* ✅ Project NOT bold */}
+                      {/* ✅ Project NOT bold + clickable */}
                       <td className="td-ellipsis" title={p.projectName}>
                         <button
                           type="button"
@@ -1185,7 +1185,7 @@ function PresalesOverview() {
             groups={ongoingUpcomingGrouped}
             parseDateFn={parseDate}
             today={today}
-            formatShortDate={formatShortDate}
+            formatShortDate={(d) => (d ? new Date(d).toLocaleDateString('en-SG', { day: '2-digit', month: 'short' }) : '')}
             onClickTask={(t) => openTaskModal(t)}
             onDeleteTask={deleteTask}
           />
@@ -1482,7 +1482,6 @@ function PresalesOverview() {
             </div>
           </div>
 
-          {/* ✅ PATCH: use scheduleEventsForTable */}
           {scheduleEventsForTable.length === 0 ? (
             <div className="presales-empty small">
               <p>No schedule entries yet.</p>
