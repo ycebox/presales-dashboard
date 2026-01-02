@@ -51,7 +51,6 @@ function ReportsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // For now we hardcode "Last 90 days"
   const [period, setPeriod] = useState('last90'); // 'last90' | 'ytd' | 'all'
 
   useEffect(() => {
@@ -63,7 +62,6 @@ function ReportsDashboard() {
         const [projectsRes, tasksRes, customersRes] = await Promise.all([
           supabase
             .from('projects')
-            // ✅ Added next_key_activity
             .select(
               'id, project_name, customer_name, sales_stage, deal_value, next_key_activity, created_at'
             ),
@@ -72,7 +70,6 @@ function ReportsDashboard() {
             .select('id, task_type, status, due_date, created_at'),
           supabase
             .from('customers')
-            // ✅ Added primary_presales (for grouping)
             .select('id, customer_name, country, primary_presales')
         ]);
 
@@ -117,12 +114,11 @@ function ReportsDashboard() {
       return { periodStart: start, periodEnd: end };
     }
 
-    // 'all' – effectively no start filter
     return { periodStart: null, periodEnd: end };
   }, [period]);
 
   const projectsInPeriod = useMemo(() => {
-    if (!periodStart) return projects; // "all time"
+    if (!periodStart) return projects;
     return projects.filter((p) => {
       if (!p.created_at) return false;
       const created = new Date(p.created_at);
@@ -139,7 +135,7 @@ function ReportsDashboard() {
     });
   }, [tasks, periodStart, periodEnd]);
 
-  // Build customer -> country map
+  // customer -> country
   const customerCountryMap = useMemo(() => {
     const map = new Map();
     customers.forEach((c) => {
@@ -151,7 +147,7 @@ function ReportsDashboard() {
     return map;
   }, [customers]);
 
-  // ✅ Build customer -> presales map (for grouping)
+  // customer -> presales
   const customerPresalesMap = useMemo(() => {
     const map = new Map();
     customers.forEach((c) => {
@@ -367,14 +363,13 @@ function ReportsDashboard() {
     return (value / totalPipelineValueForCountry) * 100;
   };
 
-  // ✅ Projects grouped by presales (current snapshot)
+  // Projects grouped by presales (current snapshot)
   const projectsGroupedByPresales = useMemo(() => {
     const map = new Map();
 
     projects.forEach((p) => {
       const customerName = p.customer_name || '';
       const presales =
-        // if you later add a project-level presales column, prefer it here
         p.primary_presales ||
         customerPresalesMap.get(customerName) ||
         'Unassigned';
@@ -383,7 +378,6 @@ function ReportsDashboard() {
       map.get(presales).push(p);
     });
 
-    // sort presales names + sort projects inside each bucket
     const groups = Array.from(map.entries()).map(([presales, items]) => {
       const sorted = [...items].sort((a, b) => {
         const aName = (a.project_name || '').toLowerCase();
@@ -398,7 +392,6 @@ function ReportsDashboard() {
   }, [projects, customerPresalesMap]);
 
   const exportProjectsByPresalesToExcel = () => {
-    // Build an “on-screen-like” report: grouped by presales + repeated headers per group
     const aoa = [];
     const COLS = ['Project', 'Customer', 'Stage', 'Next key activity', 'Value'];
 
@@ -431,29 +424,25 @@ function ReportsDashboard() {
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-    // Column widths
     ws['!cols'] = [
-      { wch: 28 }, // Project
-      { wch: 22 }, // Customer
-      { wch: 14 }, // Stage
-      { wch: 40 }, // Next key activity
-      { wch: 14 } // Value
+      { wch: 28 },
+      { wch: 22 },
+      { wch: 14 },
+      { wch: 40 },
+      { wch: 14 }
     ];
 
-    // Freeze title/meta rows
     ws['!freeze'] = { xSplit: 0, ySplit: 3 };
 
-    // Merges for title + meta + each presales header row
     const merges = [];
-    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }); // Title
-    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 4 } }); // Generated
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } });
+    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 4 } });
 
     const setCellStyle = (addr, style) => {
       if (!ws[addr]) return;
       ws[addr].s = style;
     };
 
-    // Styles (note: some build setups may ignore styles; layout will still export correctly)
     const titleStyle = {
       font: { bold: true, sz: 16 },
       alignment: { horizontal: 'left', vertical: 'center' }
@@ -498,22 +487,18 @@ function ReportsDashboard() {
     setCellStyle('A1', titleStyle);
     setCellStyle('A2', metaStyle);
 
-    // Apply merges + styles for each group section
-    let r = 3; // 0-based row index in worksheet (after title/meta/blank)
+    let r = 3; // 0-based row index
     projectsGroupedByPresales.forEach((group) => {
-      // Presales header row merged across A-E
       merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
       setCellStyle(`A${r + 1}`, presalesStyle);
 
-      // Header row is r + 1 (0-based), aka row number r+2 (1-based)
       const headerRowNum = r + 2;
       ['A', 'B', 'C', 'D', 'E'].forEach((col) => {
         setCellStyle(`${col}${headerRowNum}`, headerStyle);
       });
 
-      // Data rows begin after header row
       for (let i = 0; i < group.items.length; i++) {
-        const rowNum = r + 3 + i; // 1-based row number
+        const rowNum = r + 3 + i;
         setCellStyle(`A${rowNum}`, rowStyle);
         setCellStyle(`B${rowNum}`, rowStyle);
         setCellStyle(`C${rowNum}`, rowStyle);
@@ -521,7 +506,6 @@ function ReportsDashboard() {
         setCellStyle(`E${rowNum}`, moneyStyle);
       }
 
-      // Move pointer: presales header (1) + table header (1) + data rows (N) + spacer (1)
       r = r + 2 + group.items.length + 1;
     });
 
@@ -529,7 +513,6 @@ function ReportsDashboard() {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Projects by Presales');
-
     XLSX.writeFile(wb, `projects_by_presales_${yyyy}-${mm}-${dd}.xlsx`);
   };
 
@@ -576,7 +559,6 @@ function ReportsDashboard() {
 
   return (
     <div className="reports-page">
-      {/* Page header */}
       <header className="reports-header">
         <div className="reports-header-left">
           <h1 className="reports-title">Presales Reports & Analytics</h1>
@@ -615,16 +597,6 @@ function ReportsDashboard() {
             onClick={() => handleFilterClick('all')}
           >
             All time
-          </button>
-
-          {/* ✅ Export button */}
-          <button
-            className="reports-filter-chip reports-export-chip"
-            onClick={exportProjectsByPresalesToExcel}
-            title="Export Projects grouped by Presales"
-          >
-            <FaFileExcel style={{ marginRight: 6 }} />
-            Export Excel
           </button>
         </div>
       </header>
@@ -721,8 +693,7 @@ function ReportsDashboard() {
               <h2>Win / Loss Overview</h2>
             </div>
             <p className="reports-section-subtitle">
-              Deals we won, lost, or closed in the selected period (by project
-              stage).
+              Deals we won, lost, or closed in the selected period (by project stage).
             </p>
           </div>
 
@@ -763,8 +734,7 @@ function ReportsDashboard() {
               <h2>Pipeline by Stage</h2>
             </div>
             <p className="reports-section-subtitle">
-              Distribution of opportunities across sales stages (current
-              snapshot).
+              Distribution of opportunities across sales stages (current snapshot).
             </p>
           </div>
 
@@ -800,8 +770,7 @@ function ReportsDashboard() {
               <h2>Activity by Task Type</h2>
             </div>
             <p className="reports-section-subtitle">
-              How presales time is used across demos, RFPs, PoCs, and internal
-              work (selected period).
+              How presales time is used across demos, RFPs, PoCs, and internal work (selected period).
             </p>
           </div>
 
@@ -869,17 +838,30 @@ function ReportsDashboard() {
           </div>
         </section>
 
-        {/* ✅ Section F: Projects grouped by Presales */}
+        {/* ✅ Section F: Projects grouped by Presales (Export button moved here) */}
         <section className="reports-section">
           <div className="reports-section-header">
-            <div className="reports-section-title">
-              <FaTasks className="reports-section-icon" />
-              <h2>Projects by Presales</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%' }}>
+              <div>
+                <div className="reports-section-title">
+                  <FaTasks className="reports-section-icon" />
+                  <h2>Projects by Presales</h2>
+                </div>
+                <p className="reports-section-subtitle" style={{ marginTop: 6 }}>
+                  All projects grouped by presales owner, including next key activity.
+                </p>
+              </div>
+
+              <button
+                className="reports-filter-chip reports-export-chip"
+                onClick={exportProjectsByPresalesToExcel}
+                title="Export Projects grouped by Presales"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                <FaFileExcel style={{ marginRight: 6 }} />
+                Export Excel
+              </button>
             </div>
-            <p className="reports-section-subtitle">
-              All projects grouped by presales owner, including next key
-              activity. Use Export Excel to download.
-            </p>
           </div>
 
           {projectsGroupedByPresales.length === 0 ? (
@@ -894,8 +876,7 @@ function ReportsDashboard() {
                 <div className="reports-presales-group-header">
                   <div className="reports-presales-name">{group.presales}</div>
                   <div className="reports-presales-count">
-                    {group.items.length} project
-                    {group.items.length !== 1 ? 's' : ''}
+                    {group.items.length} project{group.items.length !== 1 ? 's' : ''}
                   </div>
                 </div>
 
