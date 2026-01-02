@@ -1,5 +1,5 @@
 // ReportsDashboard.js
-import React, { useEffect, useMemo, useState } from 'react'; 
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FaChartLine,
   FaTrophy,
@@ -64,7 +64,9 @@ function ReportsDashboard() {
           supabase
             .from('projects')
             // ✅ Added next_key_activity
-            .select('id, project_name, customer_name, sales_stage, deal_value, next_key_activity, created_at'),
+            .select(
+              'id, project_name, customer_name, sales_stage, deal_value, next_key_activity, created_at'
+            ),
           supabase
             .from('project_tasks')
             .select('id, task_type, status, due_date, created_at'),
@@ -199,16 +201,13 @@ function ReportsDashboard() {
 
     const rfpTypes = ['RFP / Proposal', 'RFI'];
     const rfpCountVal = tasksInPeriod.filter(
-      (t) =>
-        t.status === 'Completed' &&
-        rfpTypes.includes(t.task_type || '')
+      (t) => t.status === 'Completed' && rfpTypes.includes(t.task_type || '')
     ).length;
 
     const demoPoCTypes = ['Demo / Walkthrough', 'PoC / Sandbox'];
     const demosPoCsCountVal = tasksInPeriod.filter(
       (t) =>
-        t.status === 'Completed' &&
-        demoPoCTypes.includes(t.task_type || '')
+        t.status === 'Completed' && demoPoCTypes.includes(t.task_type || '')
     ).length;
 
     const now = new Date();
@@ -368,7 +367,7 @@ function ReportsDashboard() {
     return (value / totalPipelineValueForCountry) * 100;
   };
 
-  // ✅ NEW: Projects grouped by presales (current snapshot, not filtered by stage)
+  // ✅ Projects grouped by presales (current snapshot)
   const projectsGroupedByPresales = useMemo(() => {
     const map = new Map();
 
@@ -398,33 +397,138 @@ function ReportsDashboard() {
     return groups;
   }, [projects, customerPresalesMap]);
 
-  // ✅ NEW: Excel export for "Projects by Presales" report
   const exportProjectsByPresalesToExcel = () => {
-    const rows = [];
+    // Build an “on-screen-like” report: grouped by presales + repeated headers per group
+    const aoa = [];
+    const COLS = ['Project', 'Customer', 'Stage', 'Next key activity', 'Value'];
 
-    projectsGroupedByPresales.forEach((g) => {
-      g.items.forEach((p) => {
-        rows.push({
-          Presales: g.presales,
-          'Project Name': p.project_name || '',
-          Customer: p.customer_name || '',
-          Country: customerCountryMap.get(p.customer_name || '') || 'Unknown',
-          'Sales Stage': p.sales_stage || '',
-          'Deal Value (USD)': Number(p.deal_value) || 0,
-          'Next Key Activity': p.next_key_activity || ''
-        });
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+
+    // Title + meta
+    aoa.push(['Projects by Presales']);
+    aoa.push([`Generated: ${yyyy}-${mm}-${dd}`]);
+    aoa.push([]);
+
+    projectsGroupedByPresales.forEach((group, idx) => {
+      aoa.push([`Presales: ${group.presales} (${group.items.length})`]);
+      aoa.push(COLS);
+
+      group.items.forEach((p) => {
+        aoa.push([
+          p.project_name || '—',
+          p.customer_name || '—',
+          p.sales_stage || '—',
+          p.next_key_activity || '—',
+          Number(p.deal_value) || 0
+        ]);
       });
+
+      if (idx < projectsGroupedByPresales.length - 1) aoa.push([]);
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // Column widths
+    ws['!cols'] = [
+      { wch: 28 }, // Project
+      { wch: 22 }, // Customer
+      { wch: 14 }, // Stage
+      { wch: 40 }, // Next key activity
+      { wch: 14 } // Value
+    ];
+
+    // Freeze title/meta rows
+    ws['!freeze'] = { xSplit: 0, ySplit: 3 };
+
+    // Merges for title + meta + each presales header row
+    const merges = [];
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }); // Title
+    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 4 } }); // Generated
+
+    const setCellStyle = (addr, style) => {
+      if (!ws[addr]) return;
+      ws[addr].s = style;
+    };
+
+    // Styles (note: some build setups may ignore styles; layout will still export correctly)
+    const titleStyle = {
+      font: { bold: true, sz: 16 },
+      alignment: { horizontal: 'left', vertical: 'center' }
+    };
+
+    const metaStyle = {
+      font: { italic: true, sz: 11 },
+      alignment: { horizontal: 'left', vertical: 'center' }
+    };
+
+    const presalesStyle = {
+      font: { bold: true, sz: 12 },
+      alignment: { horizontal: 'left', vertical: 'center' }
+    };
+
+    const headerStyle = {
+      font: { bold: true, sz: 11 },
+      alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+      border: {
+        top: { style: 'thin' },
+        bottom: { style: 'thin' },
+        left: { style: 'thin' },
+        right: { style: 'thin' }
+      }
+    };
+
+    const rowStyle = {
+      font: { sz: 11 },
+      alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
+      border: {
+        bottom: { style: 'thin' },
+        left: { style: 'thin' },
+        right: { style: 'thin' }
+      }
+    };
+
+    const moneyStyle = {
+      ...rowStyle,
+      numFmt: '$#,##0'
+    };
+
+    setCellStyle('A1', titleStyle);
+    setCellStyle('A2', metaStyle);
+
+    // Apply merges + styles for each group section
+    let r = 3; // 0-based row index in worksheet (after title/meta/blank)
+    projectsGroupedByPresales.forEach((group) => {
+      // Presales header row merged across A-E
+      merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
+      setCellStyle(`A${r + 1}`, presalesStyle);
+
+      // Header row is r + 1 (0-based), aka row number r+2 (1-based)
+      const headerRowNum = r + 2;
+      ['A', 'B', 'C', 'D', 'E'].forEach((col) => {
+        setCellStyle(`${col}${headerRowNum}`, headerStyle);
+      });
+
+      // Data rows begin after header row
+      for (let i = 0; i < group.items.length; i++) {
+        const rowNum = r + 3 + i; // 1-based row number
+        setCellStyle(`A${rowNum}`, rowStyle);
+        setCellStyle(`B${rowNum}`, rowStyle);
+        setCellStyle(`C${rowNum}`, rowStyle);
+        setCellStyle(`D${rowNum}`, rowStyle);
+        setCellStyle(`E${rowNum}`, moneyStyle);
+      }
+
+      // Move pointer: presales header (1) + table header (1) + data rows (N) + spacer (1)
+      r = r + 2 + group.items.length + 1;
+    });
+
+    ws['!merges'] = merges;
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Projects by Presales');
-
-    // filename with date
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
 
     XLSX.writeFile(wb, `projects_by_presales_${yyyy}-${mm}-${dd}.xlsx`);
   };
@@ -513,7 +617,7 @@ function ReportsDashboard() {
             All time
           </button>
 
-          {/* ✅ NEW: Export button */}
+          {/* ✅ Export button */}
           <button
             className="reports-filter-chip reports-export-chip"
             onClick={exportProjectsByPresalesToExcel}
@@ -617,7 +721,8 @@ function ReportsDashboard() {
               <h2>Win / Loss Overview</h2>
             </div>
             <p className="reports-section-subtitle">
-              Deals we won, lost, or closed in the selected period (by project stage).
+              Deals we won, lost, or closed in the selected period (by project
+              stage).
             </p>
           </div>
 
@@ -658,7 +763,8 @@ function ReportsDashboard() {
               <h2>Pipeline by Stage</h2>
             </div>
             <p className="reports-section-subtitle">
-              Distribution of opportunities across sales stages (current snapshot).
+              Distribution of opportunities across sales stages (current
+              snapshot).
             </p>
           </div>
 
@@ -694,7 +800,8 @@ function ReportsDashboard() {
               <h2>Activity by Task Type</h2>
             </div>
             <p className="reports-section-subtitle">
-              How presales time is used across demos, RFPs, PoCs, and internal work (selected period).
+              How presales time is used across demos, RFPs, PoCs, and internal
+              work (selected period).
             </p>
           </div>
 
@@ -770,7 +877,8 @@ function ReportsDashboard() {
               <h2>Projects by Presales</h2>
             </div>
             <p className="reports-section-subtitle">
-              All projects grouped by presales owner, including next key activity. Use Export Excel to download.
+              All projects grouped by presales owner, including next key
+              activity. Use Export Excel to download.
             </p>
           </div>
 
@@ -786,7 +894,8 @@ function ReportsDashboard() {
                 <div className="reports-presales-group-header">
                   <div className="reports-presales-name">{group.presales}</div>
                   <div className="reports-presales-count">
-                    {group.items.length} project{group.items.length !== 1 ? 's' : ''}
+                    {group.items.length} project
+                    {group.items.length !== 1 ? 's' : ''}
                   </div>
                 </div>
 
@@ -800,7 +909,10 @@ function ReportsDashboard() {
                   </div>
 
                   {group.items.map((p) => (
-                    <div key={p.id} className="reports-table-row reports-presales-table">
+                    <div
+                      key={p.id}
+                      className="reports-table-row reports-presales-table"
+                    >
                       <span>{p.project_name || '—'}</span>
                       <span>{p.customer_name || '—'}</span>
                       <span>{p.sales_stage || '—'}</span>
