@@ -6,10 +6,12 @@ import {
   FaDollarSign,
   FaTasks,
   FaFlag,
-  FaGlobeAsia
+  FaGlobeAsia,
+  FaFileExcel
 } from 'react-icons/fa';
 import { supabase } from './supabaseClient';
 import './ReportsDashboard.css';
+import * as XLSX from 'xlsx';
 
 // Treat these as "closed" for pipeline purposes
 const CLOSED_STAGES_FOR_PIPELINE = [
@@ -61,14 +63,15 @@ function ReportsDashboard() {
         const [projectsRes, tasksRes, customersRes] = await Promise.all([
           supabase
             .from('projects')
-            .select('id, project_name, customer_name, sales_stage, deal_value, created_at'),
+            // ✅ Added next_key_activity
+            .select('id, project_name, customer_name, sales_stage, deal_value, next_key_activity, created_at'),
           supabase
             .from('project_tasks')
             .select('id, task_type, status, due_date, created_at'),
-          // 🔧 FIX HERE: use `country` instead of `customer_country`
           supabase
             .from('customers')
-            .select('id, customer_name, country')
+            // ✅ Added primary_presales (for grouping)
+            .select('id, customer_name, country, primary_presales')
         ]);
 
         if (projectsRes.error) throw projectsRes.error;
@@ -139,10 +142,20 @@ function ReportsDashboard() {
     const map = new Map();
     customers.forEach((c) => {
       if (c.customer_name) {
-        // Use whichever field exists; your table has `country`
-        const country =
-          c.country || c.customer_country || 'Unknown';
+        const country = c.country || c.customer_country || 'Unknown';
         map.set(c.customer_name, country);
+      }
+    });
+    return map;
+  }, [customers]);
+
+  // ✅ Build customer -> presales map (for grouping)
+  const customerPresalesMap = useMemo(() => {
+    const map = new Map();
+    customers.forEach((c) => {
+      if (c.customer_name) {
+        const presales = c.primary_presales || 'Unassigned';
+        map.set(c.customer_name, presales);
       }
     });
     return map;
@@ -157,7 +170,6 @@ function ReportsDashboard() {
     demosPoCsCount,
     overduePercent
   } = useMemo(() => {
-    // Win / loss based on projectsInPeriod
     const wonProjects = projectsInPeriod.filter((p) =>
       WON_STAGES.includes(p.sales_stage || '')
     );
@@ -177,7 +189,6 @@ function ReportsDashboard() {
       return sum + v;
     }, 0);
 
-    // Active pipeline (all time): not in closed/cancelled/done list
     const activeProjects = projects.filter(
       (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage || '')
     );
@@ -186,7 +197,6 @@ function ReportsDashboard() {
       return sum + v;
     }, 0);
 
-    // RFP / Proposals (tasks)
     const rfpTypes = ['RFP / Proposal', 'RFI'];
     const rfpCountVal = tasksInPeriod.filter(
       (t) =>
@@ -194,7 +204,6 @@ function ReportsDashboard() {
         rfpTypes.includes(t.task_type || '')
     ).length;
 
-    // Demos & PoCs (tasks)
     const demoPoCTypes = ['Demo / Walkthrough', 'PoC / Sandbox'];
     const demosPoCsCountVal = tasksInPeriod.filter(
       (t) =>
@@ -202,7 +211,6 @@ function ReportsDashboard() {
         demoPoCTypes.includes(t.task_type || '')
     ).length;
 
-    // Overdue tasks % (all tasks, regardless of period)
     const now = new Date();
     const tasksWithDueDate = tasks.filter((t) => t.due_date);
     const overdueTasks = tasksWithDueDate.filter((t) => {
@@ -332,7 +340,6 @@ function ReportsDashboard() {
 
     projects.forEach((p) => {
       const stage = p.sales_stage || '';
-      // Only active pipeline by country
       if (CLOSED_STAGES_FOR_PIPELINE.includes(stage)) return;
 
       const customerName = p.customer_name || '';
@@ -359,6 +366,67 @@ function ReportsDashboard() {
   const getCountryShare = (value) => {
     if (!totalPipelineValueForCountry) return null;
     return (value / totalPipelineValueForCountry) * 100;
+  };
+
+  // ✅ NEW: Projects grouped by presales (current snapshot, not filtered by stage)
+  const projectsGroupedByPresales = useMemo(() => {
+    const map = new Map();
+
+    projects.forEach((p) => {
+      const customerName = p.customer_name || '';
+      const presales =
+        // if you later add a project-level presales column, prefer it here
+        p.primary_presales ||
+        customerPresalesMap.get(customerName) ||
+        'Unassigned';
+
+      if (!map.has(presales)) map.set(presales, []);
+      map.get(presales).push(p);
+    });
+
+    // sort presales names + sort projects inside each bucket
+    const groups = Array.from(map.entries()).map(([presales, items]) => {
+      const sorted = [...items].sort((a, b) => {
+        const aName = (a.project_name || '').toLowerCase();
+        const bName = (b.project_name || '').toLowerCase();
+        return aName.localeCompare(bName);
+      });
+      return { presales, items: sorted };
+    });
+
+    groups.sort((a, b) => a.presales.localeCompare(b.presales));
+    return groups;
+  }, [projects, customerPresalesMap]);
+
+  // ✅ NEW: Excel export for "Projects by Presales" report
+  const exportProjectsByPresalesToExcel = () => {
+    const rows = [];
+
+    projectsGroupedByPresales.forEach((g) => {
+      g.items.forEach((p) => {
+        rows.push({
+          Presales: g.presales,
+          'Project Name': p.project_name || '',
+          Customer: p.customer_name || '',
+          Country: customerCountryMap.get(p.customer_name || '') || 'Unknown',
+          'Sales Stage': p.sales_stage || '',
+          'Deal Value (USD)': Number(p.deal_value) || 0,
+          'Next Key Activity': p.next_key_activity || ''
+        });
+      });
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Projects by Presales');
+
+    // filename with date
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+
+    XLSX.writeFile(wb, `projects_by_presales_${yyyy}-${mm}-${dd}.xlsx`);
   };
 
   const handleFilterClick = (value) => {
@@ -444,6 +512,16 @@ function ReportsDashboard() {
           >
             All time
           </button>
+
+          {/* ✅ NEW: Export button */}
+          <button
+            className="reports-filter-chip reports-export-chip"
+            onClick={exportProjectsByPresalesToExcel}
+            title="Export Projects grouped by Presales"
+          >
+            <FaFileExcel style={{ marginRight: 6 }} />
+            Export Excel
+          </button>
         </div>
       </header>
 
@@ -466,9 +544,7 @@ function ReportsDashboard() {
                 <FaTrophy />
                 <span>Win rate</span>
               </div>
-              <div className="reports-kpi-value">
-                {formatPercent(winRate)}
-              </div>
+              <div className="reports-kpi-value">{formatPercent(winRate)}</div>
               <div className="reports-kpi-hint">
                 Closed-won vs closed-lost (selected period)
               </div>
@@ -482,9 +558,7 @@ function ReportsDashboard() {
               <div className="reports-kpi-value">
                 {formatCurrency(closedWonValue)}
               </div>
-              <div className="reports-kpi-hint">
-                Deals won in selected period
-              </div>
+              <div className="reports-kpi-hint">Deals won in selected period</div>
             </div>
 
             <div className="reports-kpi-card">
@@ -506,9 +580,7 @@ function ReportsDashboard() {
                 <span>RFP / Proposals</span>
               </div>
               <div className="reports-kpi-value">{rfpCount || 0}</div>
-              <div className="reports-kpi-hint">
-                Completed in selected period
-              </div>
+              <div className="reports-kpi-hint">Completed in selected period</div>
             </div>
 
             <div className="reports-kpi-card">
@@ -688,6 +760,58 @@ function ReportsDashboard() {
               ))
             )}
           </div>
+        </section>
+
+        {/* ✅ Section F: Projects grouped by Presales */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div className="reports-section-title">
+              <FaTasks className="reports-section-icon" />
+              <h2>Projects by Presales</h2>
+            </div>
+            <p className="reports-section-subtitle">
+              All projects grouped by presales owner, including next key activity. Use Export Excel to download.
+            </p>
+          </div>
+
+          {projectsGroupedByPresales.length === 0 ? (
+            <div className="reports-panel">
+              <div className="reports-table-row reports-row-muted">
+                <span>No projects found</span>
+              </div>
+            </div>
+          ) : (
+            projectsGroupedByPresales.map((group) => (
+              <div key={group.presales} className="reports-presales-group">
+                <div className="reports-presales-group-header">
+                  <div className="reports-presales-name">{group.presales}</div>
+                  <div className="reports-presales-count">
+                    {group.items.length} project{group.items.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+
+                <div className="reports-panel">
+                  <div className="reports-table-header reports-presales-table">
+                    <span>Project</span>
+                    <span>Customer</span>
+                    <span>Stage</span>
+                    <span>Next key activity</span>
+                    <span>Value</span>
+                  </div>
+
+                  {group.items.map((p) => (
+                    <div key={p.id} className="reports-table-row reports-presales-table">
+                      <span>{p.project_name || '—'}</span>
+                      <span>{p.customer_name || '—'}</span>
+                      <span>{p.sales_stage || '—'}</span>
+                      <span>{p.next_key_activity || '—'}</span>
+                      <span>{formatCurrency(p.deal_value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </section>
       </main>
     </div>
