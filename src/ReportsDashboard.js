@@ -47,7 +47,6 @@ const formatPercent = (value) => {
 function ReportsDashboard() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -59,27 +58,23 @@ function ReportsDashboard() {
         setLoading(true);
         setError(null);
 
-        const [projectsRes, tasksRes, customersRes] = await Promise.all([
+        const [projectsRes, tasksRes] = await Promise.all([
           supabase
             .from('projects')
+            // ✅ aligned with your projects table
             .select(
-              'id, project_name, customer_name, sales_stage, deal_value, next_key_activity, created_at'
+              'id, customer_name, account_manager, scope, deal_value, product, backup_presales, sales_stage, remarks, due_date, created_at, project_name, project_type, current_status, smartvista_modules, country, primary_presales, is_corporate, next_key_activity, bid_manager_required, bid_manager'
             ),
           supabase
             .from('project_tasks')
-            .select('id, task_type, status, due_date, created_at'),
-          supabase
-            .from('customers')
-            .select('id, customer_name, country, primary_presales')
+            .select('id, task_type, status, due_date, created_at')
         ]);
 
         if (projectsRes.error) throw projectsRes.error;
         if (tasksRes.error) throw tasksRes.error;
-        if (customersRes.error) throw customersRes.error;
 
         setProjects(projectsRes.data || []);
         setTasks(tasksRes.data || []);
-        setCustomers(customersRes.data || []);
       } catch (err) {
         console.error('Error loading reports data:', err);
         setError('Failed to load report data');
@@ -117,6 +112,7 @@ function ReportsDashboard() {
     return { periodStart: null, periodEnd: end };
   }, [period]);
 
+  // created_at is DATE in your schema, so parsing works fine
   const projectsInPeriod = useMemo(() => {
     if (!periodStart) return projects;
     return projects.filter((p) => {
@@ -134,30 +130,6 @@ function ReportsDashboard() {
       return created >= periodStart && created <= periodEnd;
     });
   }, [tasks, periodStart, periodEnd]);
-
-  // customer -> country
-  const customerCountryMap = useMemo(() => {
-    const map = new Map();
-    customers.forEach((c) => {
-      if (c.customer_name) {
-        const country = c.country || c.customer_country || 'Unknown';
-        map.set(c.customer_name, country);
-      }
-    });
-    return map;
-  }, [customers]);
-
-  // customer -> presales
-  const customerPresalesMap = useMemo(() => {
-    const map = new Map();
-    customers.forEach((c) => {
-      if (c.customer_name) {
-        const presales = c.primary_presales || 'Unassigned';
-        map.set(c.customer_name, presales);
-      }
-    });
-    return map;
-  }, [customers]);
 
   // ===== KPI SUMMARY =====
   const {
@@ -327,7 +299,7 @@ function ReportsDashboard() {
     return list;
   }, [tasksInPeriod]);
 
-  // ===== PIPELINE BY COUNTRY =====
+  // ===== PIPELINE BY COUNTRY (use projects.country directly) =====
   const pipelineByCountry = useMemo(() => {
     if (!projects || projects.length === 0) return [];
 
@@ -337,8 +309,7 @@ function ReportsDashboard() {
       const stage = p.sales_stage || '';
       if (CLOSED_STAGES_FOR_PIPELINE.includes(stage)) return;
 
-      const customerName = p.customer_name || '';
-      const country = customerCountryMap.get(customerName) || 'Unknown';
+      const country = p.country || 'Unknown';
       const value = Number(p.deal_value) || 0;
 
       if (!countryMap.has(country)) {
@@ -352,7 +323,7 @@ function ReportsDashboard() {
     const list = Array.from(countryMap.values());
     list.sort((a, b) => b.value - a.value);
     return list;
-  }, [projects, customerCountryMap]);
+  }, [projects]);
 
   const totalPipelineValueForCountry = useMemo(() => {
     return pipelineByCountry.reduce((sum, c) => sum + c.value, 0);
@@ -363,17 +334,12 @@ function ReportsDashboard() {
     return (value / totalPipelineValueForCountry) * 100;
   };
 
-  // Projects grouped by presales (current snapshot)
+  // ✅ Projects grouped by projects.primary_presales (TEXT)
   const projectsGroupedByPresales = useMemo(() => {
     const map = new Map();
 
     projects.forEach((p) => {
-      const customerName = p.customer_name || '';
-      const presales =
-        p.primary_presales ||
-        customerPresalesMap.get(customerName) ||
-        'Unassigned';
-
+      const presales = (p.primary_presales || '').trim() || 'Unassigned';
       if (!map.has(presales)) map.set(presales, []);
       map.get(presales).push(p);
     });
@@ -389,18 +355,25 @@ function ReportsDashboard() {
 
     groups.sort((a, b) => a.presales.localeCompare(b.presales));
     return groups;
-  }, [projects, customerPresalesMap]);
+  }, [projects]);
 
+  // Excel export (grouped + formatted layout)
   const exportProjectsByPresalesToExcel = () => {
     const aoa = [];
-    const COLS = ['Project', 'Customer', 'Stage', 'Next key activity', 'Value'];
+    const COLS = [
+      'Project',
+      'Customer',
+      'Country',
+      'Stage',
+      'Next key activity',
+      'Value'
+    ];
 
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
 
-    // Title + meta
     aoa.push(['Projects by Presales']);
     aoa.push([`Generated: ${yyyy}-${mm}-${dd}`]);
     aoa.push([]);
@@ -413,6 +386,7 @@ function ReportsDashboard() {
         aoa.push([
           p.project_name || '—',
           p.customer_name || '—',
+          p.country || 'Unknown',
           p.sales_stage || '—',
           p.next_key_activity || '—',
           Number(p.deal_value) || 0
@@ -425,24 +399,26 @@ function ReportsDashboard() {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
 
     ws['!cols'] = [
-      { wch: 28 },
-      { wch: 22 },
-      { wch: 14 },
-      { wch: 40 },
-      { wch: 14 }
+      { wch: 28 }, // Project
+      { wch: 22 }, // Customer
+      { wch: 16 }, // Country
+      { wch: 14 }, // Stage
+      { wch: 40 }, // Next key activity
+      { wch: 14 }  // Value
     ];
 
     ws['!freeze'] = { xSplit: 0, ySplit: 3 };
 
     const merges = [];
-    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } });
-    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 4 } });
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } });
+    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 5 } });
 
     const setCellStyle = (addr, style) => {
       if (!ws[addr]) return;
       ws[addr].s = style;
     };
 
+    // Styling note: some environments ignore .s styles. Layout still works.
     const titleStyle = {
       font: { bold: true, sz: 16 },
       alignment: { horizontal: 'left', vertical: 'center' }
@@ -487,13 +463,13 @@ function ReportsDashboard() {
     setCellStyle('A1', titleStyle);
     setCellStyle('A2', metaStyle);
 
-    let r = 3; // 0-based row index
+    let r = 3; // 0-based
     projectsGroupedByPresales.forEach((group) => {
-      merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
+      merges.push({ s: { r, c: 0 }, e: { r, c: 5 } });
       setCellStyle(`A${r + 1}`, presalesStyle);
 
-      const headerRowNum = r + 2;
-      ['A', 'B', 'C', 'D', 'E'].forEach((col) => {
+      const headerRowNum = r + 2; // 1-based row
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach((col) => {
         setCellStyle(`${col}${headerRowNum}`, headerStyle);
       });
 
@@ -503,7 +479,8 @@ function ReportsDashboard() {
         setCellStyle(`B${rowNum}`, rowStyle);
         setCellStyle(`C${rowNum}`, rowStyle);
         setCellStyle(`D${rowNum}`, rowStyle);
-        setCellStyle(`E${rowNum}`, moneyStyle);
+        setCellStyle(`E${rowNum}`, rowStyle);
+        setCellStyle(`F${rowNum}`, moneyStyle);
       }
 
       r = r + 2 + group.items.length + 1;
@@ -516,9 +493,7 @@ function ReportsDashboard() {
     XLSX.writeFile(wb, `projects_by_presales_${yyyy}-${mm}-${dd}.xlsx`);
   };
 
-  const handleFilterClick = (value) => {
-    setPeriod(value);
-  };
+  const handleFilterClick = (value) => setPeriod(value);
 
   if (loading) {
     return (
@@ -838,17 +813,25 @@ function ReportsDashboard() {
           </div>
         </section>
 
-        {/* ✅ Section F: Projects grouped by Presales (Export button moved here) */}
+        {/* ✅ Section F: Projects grouped by Presales */}
         <section className="reports-section">
           <div className="reports-section-header">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                width: '100%'
+              }}
+            >
               <div>
                 <div className="reports-section-title">
                   <FaTasks className="reports-section-icon" />
                   <h2>Projects by Presales</h2>
                 </div>
                 <p className="reports-section-subtitle" style={{ marginTop: 6 }}>
-                  All projects grouped by presales owner, including next key activity.
+                  Grouped by the primary presales assigned on each project.
                 </p>
               </div>
 
@@ -876,7 +859,8 @@ function ReportsDashboard() {
                 <div className="reports-presales-group-header">
                   <div className="reports-presales-name">{group.presales}</div>
                   <div className="reports-presales-count">
-                    {group.items.length} project{group.items.length !== 1 ? 's' : ''}
+                    {group.items.length} project
+                    {group.items.length !== 1 ? 's' : ''}
                   </div>
                 </div>
 
