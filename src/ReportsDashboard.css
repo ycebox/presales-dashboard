@@ -312,3 +312,39 @@
   box-shadow: 0 22px 50px rgba(15, 23, 42, 0.18);
   color: #0f172a;
 }
+/* Export button */
+.reports-export-chip {
+  border-color: rgba(22, 163, 74, 0.45);
+  background: rgba(22, 163, 74, 0.08);
+}
+
+.reports-export-chip:hover {
+  border-color: rgba(22, 163, 74, 0.65);
+}
+
+/* Presales grouping block */
+.reports-presales-group {
+  margin-top: 12px;
+}
+
+.reports-presales-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 4px 8px;
+}
+
+.reports-presales-name {
+  font-weight: 800;
+  color: #0b1220;
+}
+
+.reports-presales-count {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* 5-column table for presales report */
+.reports-presales-table {
+  grid-template-columns: 1.4fr 1fr 0.8fr 1.4fr 0.8fr;
+}
