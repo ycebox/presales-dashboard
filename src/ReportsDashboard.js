@@ -70,7 +70,9 @@ function ReportsDashboard() {
             .select(
               'id, customer_name, account_manager, scope, deal_value, product, backup_presales, sales_stage, remarks, due_date, created_at, project_name, project_type, current_status, smartvista_modules, country, primary_presales, is_corporate, next_key_activity, bid_manager_required, bid_manager'
             ),
-          supabase.from('project_tasks').select('id, task_type, status, due_date, created_at')
+          supabase
+            .from('project_tasks')
+            .select('id, task_type, status, due_date, created_at')
         ]);
 
         if (projectsRes.error) throw projectsRes.error;
@@ -175,7 +177,8 @@ function ReportsDashboard() {
 
     const demoPoCTypes = ['Demo / Walkthrough', 'PoC / Sandbox'];
     const demosPoCsCountVal = tasksInPeriod.filter(
-      (t) => t.status === 'Completed' && demoPoCTypes.includes(t.task_type || '')
+      (t) =>
+        t.status === 'Completed' && demoPoCTypes.includes(t.task_type || '')
     ).length;
 
     const now = new Date();
@@ -202,14 +205,21 @@ function ReportsDashboard() {
 
   // ===== WIN / LOSS OVERVIEW TABLE =====
   const winLossStats = useMemo(() => {
-    const won = projectsInPeriod.filter((p) => WON_STAGES.includes(p.sales_stage || ''));
-    const lost = projectsInPeriod.filter((p) => LOST_STAGES.includes(p.sales_stage || ''));
+    const won = projectsInPeriod.filter((p) =>
+      WON_STAGES.includes(p.sales_stage || '')
+    );
+    const lost = projectsInPeriod.filter((p) =>
+      LOST_STAGES.includes(p.sales_stage || '')
+    );
     const cancelled = projectsInPeriod.filter((p) =>
       CANCELLED_STAGES.includes(p.sales_stage || '')
     );
-    const doneGeneric = projectsInPeriod.filter((p) => (p.sales_stage || '') === 'Done');
+    const doneGeneric = projectsInPeriod.filter(
+      (p) => (p.sales_stage || '') === 'Done'
+    );
 
-    const sumValue = (arr) => arr.reduce((sum, p) => sum + (Number(p.deal_value) || 0), 0);
+    const sumValue = (arr) =>
+      arr.reduce((sum, p) => sum + (Number(p.deal_value) || 0), 0);
 
     return {
       wonCount: won.length,
@@ -447,9 +457,7 @@ function ReportsDashboard() {
     );
   }
 
-  // ✅ This ensures the left column label and row name always match the selected mode
-  const pipelineLeftColTitle =
-    pipelineGroupBy === 'account_manager' ? 'Account Manager' : 'Country';
+  const pipelineLeftColTitle = pipelineGroupBy === 'account_manager' ? 'Account Manager' : 'Country';
 
   return (
     <div className="reports-page">
@@ -482,9 +490,186 @@ function ReportsDashboard() {
       </header>
 
       <main className="reports-main">
-        {/* KPI / WinLoss / PipelineStage / Activity unchanged (same as before) */}
+        {/* Section A: KPI summary */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div className="reports-section-title">
+              <FaChartLine className="reports-section-icon" />
+              <h2>Performance KPIs</h2>
+            </div>
+            <p className="reports-section-subtitle">
+              Summary of wins, pipeline value, and presales activity.
+            </p>
+          </div>
 
-        {/* ✅ Pipeline panel with toggle */}
+          <div className="reports-kpi-grid">
+            <div className="reports-kpi-card">
+              <div className="reports-kpi-label">
+                <FaTrophy />
+                <span>Win rate</span>
+              </div>
+              <div className="reports-kpi-value">{formatPercent(winRate)}</div>
+              <div className="reports-kpi-hint">Closed-won vs closed-lost (selected period)</div>
+            </div>
+
+            <div className="reports-kpi-card">
+              <div className="reports-kpi-label">
+                <FaDollarSign />
+                <span>Closed-won value</span>
+              </div>
+              <div className="reports-kpi-value">{formatCurrency(closedWonValue)}</div>
+              <div className="reports-kpi-hint">Deals won in selected period</div>
+            </div>
+
+            <div className="reports-kpi-card">
+              <div className="reports-kpi-label">
+                <FaChartLine />
+                <span>Active pipeline</span>
+              </div>
+              <div className="reports-kpi-value">{formatCurrency(activePipelineValue)}</div>
+              <div className="reports-kpi-hint">Open opportunities by value (current)</div>
+            </div>
+
+            <div className="reports-kpi-card">
+              <div className="reports-kpi-label">
+                <FaTasks />
+                <span>RFP / Proposals</span>
+              </div>
+              <div className="reports-kpi-value">{rfpCount || 0}</div>
+              <div className="reports-kpi-hint">Completed in selected period</div>
+            </div>
+
+            <div className="reports-kpi-card">
+              <div className="reports-kpi-label">
+                <FaTasks />
+                <span>Demos & PoCs</span>
+              </div>
+              <div className="reports-kpi-value">{demosPoCsCount || 0}</div>
+              <div className="reports-kpi-hint">Delivered to customers (selected period)</div>
+            </div>
+
+            <div className="reports-kpi-card">
+              <div className="reports-kpi-label">
+                <FaFlag />
+                <span>Overdue tasks</span>
+              </div>
+              <div className="reports-kpi-value">{formatPercent(overduePercent)}</div>
+              <div className="reports-kpi-hint">Share of tasks beyond due date (all tasks)</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Section B: Win / loss breakdown */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div className="reports-section-title">
+              <FaTrophy className="reports-section-icon" />
+              <h2>Win / Loss Overview</h2>
+            </div>
+            <p className="reports-section-subtitle">
+              Deals we won, lost, or closed in the selected period (by project stage).
+            </p>
+          </div>
+
+          <div className="reports-panel">
+            <div className="reports-table-header">
+              <span>Result</span>
+              <span>Count</span>
+              <span>Total value</span>
+            </div>
+            <div className="reports-table-row">
+              <span>Won</span>
+              <span>{winLossStats.wonCount}</span>
+              <span>{formatCurrency(winLossStats.wonValue)}</span>
+            </div>
+            <div className="reports-table-row">
+              <span>Lost</span>
+              <span>{winLossStats.lostCount}</span>
+              <span>{formatCurrency(winLossStats.lostValue)}</span>
+            </div>
+            <div className="reports-table-row">
+              <span>Cancelled / On hold</span>
+              <span>{winLossStats.cancelledCount}</span>
+              <span>{formatCurrency(winLossStats.cancelledValue)}</span>
+            </div>
+            <div className="reports-table-row">
+              <span>Completed (Done)</span>
+              <span>{winLossStats.doneCount}</span>
+              <span>{formatCurrency(winLossStats.doneValue)}</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Section C: Pipeline by stage */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div className="reports-section-title">
+              <FaChartLine className="reports-section-icon" />
+              <h2>Pipeline by Stage</h2>
+            </div>
+            <p className="reports-section-subtitle">
+              Distribution of opportunities across sales stages (current snapshot).
+            </p>
+          </div>
+
+          <div className="reports-panel">
+            <div className="reports-table-header">
+              <span>Stage</span>
+              <span>Deals</span>
+              <span>Pipeline value</span>
+            </div>
+            {pipelineByStage.length === 0 ? (
+              <div className="reports-table-row reports-row-muted">
+                <span>No projects found</span>
+                <span>–</span>
+                <span>–</span>
+              </div>
+            ) : (
+              pipelineByStage.map((s) => (
+                <div key={s.stage} className="reports-table-row">
+                  <span>{s.stage}</span>
+                  <span>{s.count}</span>
+                  <span>{formatCurrency(s.value)}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        {/* Section D: Activity by task type */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div className="reports-section-title">
+              <FaTasks className="reports-section-icon" />
+              <h2>Activity by Task Type</h2>
+            </div>
+            <p className="reports-section-subtitle">
+              Completed tasks by type (selected period).
+            </p>
+          </div>
+
+          <div className="reports-panel">
+            <div className="reports-table-header">
+              <span>Task type</span>
+              <span>Completed (period)</span>
+            </div>
+            {activityByTaskType.length === 0 ? (
+              <div className="reports-table-row reports-row-muted">
+                <span>No tasks found for this period</span>
+                <span>–</span>
+              </div>
+            ) : (
+              activityByTaskType.map((t) => (
+                <div key={t.type} className="reports-table-row">
+                  <span>{t.type}</span>
+                  <span>{t.completed}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        {/* Section E: Pipeline by Country / Account Manager */}
         <section className="reports-section">
           <div className="reports-section-header">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%' }}>
@@ -535,7 +720,6 @@ function ReportsDashboard() {
             ) : (
               pipelineGrouped.map((r) => (
                 <div key={r.key} className="reports-table-row">
-                  {/* ✅ This is always the right name (AM or Country) because r.key is built from the selected mode */}
                   <span>
                     {r.key}
                     {(() => {
@@ -552,7 +736,7 @@ function ReportsDashboard() {
           </div>
         </section>
 
-        {/* ✅ Projects by Presales section (with filter + export) */}
+        {/* Section F: Projects by Presales */}
         <section className="reports-section">
           <div className="reports-section-header">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%' }}>
