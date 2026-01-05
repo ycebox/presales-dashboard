@@ -1,5 +1,5 @@
-// ProjectDetails.js  (updated: Sales Stage is now a dropdown)
-// Based on your latest uploaded ProjectDetails (1).js, with only the Sales Stage field changed.
+// ProjectDetails.js  (updated: Sales Stage dropdown values loaded from DB "sales_stages")
+// Based on your latest uploaded ProjectDetails (3).js, updated to read sales stages from Supabase.
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -102,8 +102,8 @@ const isTaskDoneOrHold = (status) => ["Completed", "Cancelled/On-hold"].includes
 
 const normalizeStatusKey = (s) => safeLower(s).replaceAll(" ", "-").replaceAll("/", "-");
 
-// ✅ Sales stage dropdown options
-const SALES_STAGE_OPTIONS = ["Lead", "Opportunity", "Proposal", "Contracting", "Done"];
+// Fallback in case table is empty / not yet created
+const DEFAULT_SALES_STAGES = ["Lead", "Opportunity", "Proposal", "Contracting", "Done"];
 
 // ---------- Log Modal ----------
 const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
@@ -264,7 +264,6 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
-  
   }, [projectId]);
 
   return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
@@ -300,6 +299,9 @@ function ProjectDetails() {
   const [taskTypes, setTaskTypes] = useState([]);
   const [taskTypeDefaultsMap, setTaskTypeDefaultsMap] = useState({});
 
+  // ✅ Sales stages from DB
+  const [salesStageOptions, setSalesStageOptions] = useState(DEFAULT_SALES_STAGES);
+
   // Bid manager load info
   const [bidManagerLoad, setBidManagerLoad] = useState(null);
   const [bidManagerLoadError, setBidManagerLoadError] = useState(null);
@@ -317,6 +319,7 @@ function ProjectDetails() {
           { data: pData, error: pErr },
           { data: tData, error: tErr },
           { data: mData, error: mErr },
+          { data: sData, error: sErr },
         ] = await Promise.all([
           supabase.from("presales_resources").select("name").order("name"),
           supabase
@@ -328,11 +331,20 @@ function ProjectDetails() {
             .order("sort_order", { ascending: true })
             .order("name", { ascending: true }),
           supabase.from("smartvista_modules_catalog").select("name").order("name"),
+
+          // ✅ load sales stages from DB
+          supabase
+            .from("sales_stages")
+            .select("name, sort_order, is_active")
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true })
+            .order("name", { ascending: true }),
         ]);
 
         if (pErr) console.warn("presales_resources load error:", pErr);
         if (tErr) console.warn("task_types load error:", tErr);
         if (mErr) console.warn("smartvista_modules_catalog load error:", mErr);
+        if (sErr) console.warn("sales_stages load error:", sErr);
 
         setPresalesResources((pData || []).map((x) => x.name).filter(Boolean));
 
@@ -352,6 +364,10 @@ function ProjectDetails() {
         setTaskTypeDefaultsMap(map);
 
         setModuleOptions((mData || []).map((x) => x.name).filter(Boolean));
+
+        // ✅ apply DB stages if available, else keep fallback
+        const dbStages = (sData || []).map((x) => x.name).filter(Boolean);
+        if (dbStages.length > 0) setSalesStageOptions(dbStages);
       } catch (e) {
         console.warn("Failed loading dropdown lists:", e);
       }
@@ -476,7 +492,8 @@ function ProjectDetails() {
 
     const projectDue = parseDate(project?.due_date);
     const isProjectOverdue = projectDue ? projectDue < today : false;
-    const isProjectDueSoon = projectDue ? projectDue <= addDays(today, 14) && projectDue >= today : false;
+    const isProjectDueSoon =
+      projectDue ? projectDue <= addDays(today, 14) && projectDue >= today : false;
 
     let health = "GREEN";
     if (isProjectOverdue || overdueCount > 0) health = "RED";
@@ -572,7 +589,8 @@ function ProjectDetails() {
 
   const healthMeta = useMemo(() => {
     const h = projectMonitor.health;
-    if (h === "RED") return { label: "At Risk", className: "health-red", Icon: FaExclamationTriangle };
+    if (h === "RED")
+      return { label: "At Risk", className: "health-red", Icon: FaExclamationTriangle };
     if (h === "AMBER") return { label: "Watch", className: "health-amber", Icon: FaClock };
     return { label: "Healthy", className: "health-green", Icon: FaCheckCircle };
   }, [projectMonitor.health]);
@@ -637,7 +655,7 @@ function ProjectDetails() {
         scope: editProject.scope || "",
         deal_value: editProject.deal_value === "" ? null : editProject.deal_value,
 
-        // ✅ saved from dropdown
+        // ✅ DB-backed dropdown value
         sales_stage: editProject.sales_stage || "",
 
         due_date: editProject.due_date || null,
@@ -1101,7 +1119,7 @@ function ProjectDetails() {
                 </label>
               </div>
 
-              {/* ✅ Sales Stage as dropdown */}
+              {/* ✅ Sales Stage as DB-backed dropdown */}
               <div className="form-group">
                 <label className="form-label">
                   <FaChartLine className="form-icon" />
@@ -1115,7 +1133,7 @@ function ProjectDetails() {
                   disabled={isReadOnly}
                 >
                   <option value="">-</option>
-                  {SALES_STAGE_OPTIONS.map((s) => (
+                  {salesStageOptions.map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
@@ -1210,7 +1228,11 @@ function ProjectDetails() {
                               const checked = selectedModules.includes(name);
                               return (
                                 <label key={name} className="modules-option">
-                                  <input type="checkbox" checked={checked} onChange={() => toggleModule(name)} />
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleModule(name)}
+                                  />
                                   <span>{name}</span>
                                 </label>
                               );
@@ -1236,7 +1258,8 @@ function ProjectDetails() {
                     )}
 
                     <div className="hint-text">
-                      Saved as a comma-separated list. You can also type and click Add to include a custom entry.
+                      Saved as a comma-separated list. You can also type and click Add to include a
+                      custom entry.
                     </div>
                   </div>
                 ) : (
@@ -1311,7 +1334,11 @@ function ProjectDetails() {
               </div>
 
               <div className="inline-actions">
-                <button className="filter-button" onClick={() => setShowCompleted((p) => !p)} type="button">
+                <button
+                  className="filter-button"
+                  onClick={() => setShowCompleted((p) => !p)}
+                  type="button"
+                >
                   {showCompleted ? <FaEyeSlash /> : <FaEye />}
                   <span>{showCompleted ? "Hide Done" : "Show All"}</span>
                 </button>
@@ -1340,7 +1367,12 @@ function ProjectDetails() {
                   return (
                     <div key={t.id} className={`list-group ${hasChildren ? "has-children" : ""}`}>
                       <div className={`list-item ${t.status === "Completed" ? "is-done" : ""}`}>
-                        <div className="list-item-main" onClick={() => openEditTask(t)} role="button" tabIndex={0}>
+                        <div
+                          className="list-item-main"
+                          onClick={() => openEditTask(t)}
+                          role="button"
+                          tabIndex={0}
+                        >
                           <div className="list-item-top">
                             {hasChildren ? (
                               <button
@@ -1358,7 +1390,9 @@ function ProjectDetails() {
                               </button>
                             ) : null}
 
-                            <span className={`status-tag status-${normalizeStatusKey(t.status)}`}>{t.status}</span>
+                            <span className={`status-tag status-${normalizeStatusKey(t.status)}`}>
+                              {t.status}
+                            </span>
 
                             {t.task_type && <span className="type-tag">{t.task_type}</span>}
                             {t.priority && <span className="type-tag">{t.priority}</span>}
@@ -1366,7 +1400,9 @@ function ProjectDetails() {
                             {!hasChildren &&
                               t.estimated_hours !== null &&
                               t.estimated_hours !== undefined &&
-                              t.estimated_hours !== "" && <span className="type-tag">{t.estimated_hours}h</span>}
+                              t.estimated_hours !== "" && (
+                                <span className="type-tag">{t.estimated_hours}h</span>
+                              )}
 
                             {hasChildren ? (
                               <span className="type-tag" title={`${prog.done}/${prog.total} completed`}>
@@ -1411,16 +1447,27 @@ function ProjectDetails() {
                             kidsVisible.map((k) => (
                               <div
                                 key={k.id}
-                                className={`list-item is-subtask ${k.status === "Completed" ? "is-done" : ""}`}
+                                className={`list-item is-subtask ${
+                                  k.status === "Completed" ? "is-done" : ""
+                                }`}
                               >
-                                <div className="list-item-main" onClick={() => openEditTask(k)} role="button" tabIndex={0}>
+                                <div
+                                  className="list-item-main"
+                                  onClick={() => openEditTask(k)}
+                                  role="button"
+                                  tabIndex={0}
+                                >
                                   <div className="list-item-top">
-                                    <span className={`status-tag status-${normalizeStatusKey(k.status)}`}>{k.status}</span>
+                                    <span className={`status-tag status-${normalizeStatusKey(k.status)}`}>
+                                      {k.status}
+                                    </span>
                                     {k.task_type && <span className="type-tag">{k.task_type}</span>}
                                     {k.priority && <span className="type-tag">{k.priority}</span>}
                                     {k.estimated_hours !== null &&
                                       k.estimated_hours !== undefined &&
-                                      k.estimated_hours !== "" && <span className="type-tag">{k.estimated_hours}h</span>}
+                                      k.estimated_hours !== "" && (
+                                        <span className="type-tag">{k.estimated_hours}h</span>
+                                      )}
                                   </div>
 
                                   <div className="list-item-title">{k.description}</div>
@@ -1519,7 +1566,10 @@ function ProjectDetails() {
           if (hasChildren) payload.estimated_hours = null;
 
           if (isEditingNow) {
-            const { error: qErr } = await supabase.from("project_tasks").update(payload).eq("id", editingTask.id);
+            const { error: qErr } = await supabase
+              .from("project_tasks")
+              .update(payload)
+              .eq("id", editingTask.id);
             if (qErr) throw qErr;
           } else {
             const { error: qErr } = await supabase
@@ -1548,10 +1598,15 @@ function ProjectDetails() {
           if (!project?.id) return;
 
           if (editingLog?.id) {
-            const { error: qErr } = await supabase.from("project_logs").update({ notes }).eq("id", editingLog.id);
+            const { error: qErr } = await supabase
+              .from("project_logs")
+              .update({ notes })
+              .eq("id", editingLog.id);
             if (qErr) throw qErr;
           } else {
-            const { error: qErr } = await supabase.from("project_logs").insert({ project_id: project.id, notes });
+            const { error: qErr } = await supabase
+              .from("project_logs")
+              .insert({ project_id: project.id, notes });
             if (qErr) throw qErr;
           }
 
