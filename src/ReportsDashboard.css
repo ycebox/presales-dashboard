@@ -1,12 +1,11 @@
-/* ReportsDashboard.css - Light theme aligned to PresalesOverview */
+/* ReportsDashboard.css - Light theme + colorful accents (still aligned to PresalesOverview) */
 
-/* Page + typography baseline */
+/* ===== Page + typography baseline ===== */
 .reports-page {
   padding: 16px 20px 24px;
   max-width: 1280px;
   margin: 0 auto;
 
-  /* keep all text dark for clarity */
   color: #0f172a;
 
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Arial, sans-serif;
@@ -15,14 +14,15 @@
 
   /* warm light background w/ subtle radial gradients */
   background:
-    radial-gradient(900px 420px at 16% -10%, rgba(59, 130, 246, 0.12), rgba(255, 255, 255, 0) 60%),
-    radial-gradient(900px 420px at 92% 0%, rgba(14, 165, 233, 0.10), rgba(255, 255, 255, 0) 60%),
-    radial-gradient(700px 340px at 55% 115%, rgba(99, 102, 241, 0.08), rgba(255, 255, 255, 0) 55%),
+    radial-gradient(900px 420px at 16% -10%, rgba(59, 130, 246, 0.13), rgba(255, 255, 255, 0) 60%),
+    radial-gradient(900px 420px at 92% 0%, rgba(14, 165, 233, 0.11), rgba(255, 255, 255, 0) 60%),
+    radial-gradient(700px 340px at 55% 115%, rgba(99, 102, 241, 0.09), rgba(255, 255, 255, 0) 55%),
+    radial-gradient(560px 280px at 5% 88%, rgba(34, 197, 94, 0.07), rgba(255, 255, 255, 0) 55%),
     #f6f8fc;
   border-radius: 16px;
 }
 
-/* Header */
+/* ===== Header ===== */
 .reports-header {
   display: flex;
   justify-content: space-between;
@@ -38,8 +38,8 @@
 }
 
 .reports-title {
-  font-size: 24px; /* page title ~24px */
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 800;
   margin: 0;
   letter-spacing: -0.2px;
   color: #0b1220;
@@ -51,7 +51,7 @@
   margin: 0;
 }
 
-/* Filters */
+/* ===== Filters ===== */
 .reports-filters {
   display: flex;
   gap: 8px;
@@ -63,48 +63,81 @@
 .reports-filter-chip {
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.75);
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   padding: 7px 12px;
   font-size: 12px;
   color: #0f172a;
   cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
 }
 
 .reports-filter-chip:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
-  border-color: rgba(100, 116, 139, 0.8);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  border-color: rgba(100, 116, 139, 0.85);
+  background: rgba(255, 255, 255, 0.98);
 }
 
 .reports-filter-chip:active {
   transform: translateY(0);
 }
 
+/* Active: light blue tint */
 .reports-filter-chip-active {
-  border-color: rgba(37, 99, 235, 0.65);
-  background: rgba(37, 99, 235, 0.10);
+  border-color: rgba(37, 99, 235, 0.55);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0.08));
   color: #0b1220;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.12);
 }
 
-/* Layout */
+/* Export button: light green tint */
+.reports-export-chip {
+  border-color: rgba(22, 163, 74, 0.45);
+  background: linear-gradient(180deg, rgba(22, 163, 74, 0.12), rgba(22, 163, 74, 0.06));
+}
+
+.reports-export-chip:hover {
+  border-color: rgba(22, 163, 74, 0.65);
+}
+
+/* ===== Layout ===== */
 .reports-main {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-/* White rounded panels w/ thin slate border + soft shadow */
+/* ===== Section cards (panels) ===== */
 .reports-section {
+  position: relative;
   background: rgba(255, 255, 255, 0.92);
   border-radius: 16px;
   padding: 14px 16px 12px;
   border: 1px solid rgba(148, 163, 184, 0.55);
   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
   backdrop-filter: blur(6px);
+  overflow: hidden;
 }
 
+/* soft top gradient strip per section (subtle “colorful” feel) */
+.reports-section::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 6px;
+  width: 100%;
+  background: linear-gradient(90deg,
+    rgba(37, 99, 235, 0.55),
+    rgba(14, 165, 233, 0.45),
+    rgba(99, 102, 241, 0.45),
+    rgba(34, 197, 94, 0.35),
+    rgba(245, 158, 11, 0.35)
+  );
+  opacity: 0.55;
+}
+
+/* Section header */
 .reports-section-header {
   display: flex;
   flex-direction: column;
@@ -121,11 +154,10 @@
 .reports-section-title h2 {
   font-size: 15px;
   margin: 0;
-  font-weight: 700;
+  font-weight: 800;
   color: #0b1220;
 }
 
-/* Subtle icon accent (keep it minimal) */
 .reports-section-icon {
   font-size: 16px;
   color: #2563eb;
@@ -137,7 +169,7 @@
   margin: 0;
 }
 
-/* KPI grid */
+/* ===== KPI grid ===== */
 .reports-kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -161,9 +193,10 @@
   }
 }
 
-/* KPI cards: white, thin border, soft shadow */
+/* KPI cards */
 .reports-kpi-card {
-  background: rgba(255, 255, 255, 0.95);
+  position: relative;
+  background: rgba(255, 255, 255, 0.97);
   border-radius: 14px;
   padding: 10px 12px;
   border: 1px solid rgba(148, 163, 184, 0.55);
@@ -171,6 +204,36 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow: hidden;
+}
+
+/* colorful top strip on KPI */
+.reports-kpi-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 5px;
+  width: 100%;
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.55), rgba(14, 165, 233, 0.45));
+  opacity: 0.65;
+}
+
+/* Give some variety without touching HTML: rotate colors by position */
+.reports-kpi-card:nth-child(2)::before {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.55), rgba(37, 99, 235, 0.45));
+}
+.reports-kpi-card:nth-child(3)::before {
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.55), rgba(34, 197, 94, 0.40));
+}
+.reports-kpi-card:nth-child(4)::before {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.55), rgba(14, 165, 233, 0.35));
+}
+.reports-kpi-card:nth-child(5)::before {
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0.55), rgba(22, 163, 74, 0.35));
+}
+.reports-kpi-card:nth-child(6)::before {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.40), rgba(245, 158, 11, 0.35));
 }
 
 .reports-kpi-label {
@@ -179,7 +242,7 @@
   gap: 8px;
   font-size: 12px;
   color: #475569;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .reports-kpi-label svg {
@@ -189,7 +252,7 @@
 
 .reports-kpi-value {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 900;
   margin-top: 2px;
   color: #0b1220;
 }
@@ -199,12 +262,12 @@
   color: #64748b;
 }
 
-/* Panels & tables */
+/* ===== Panels & tables ===== */
 .reports-panel {
   margin-top: 6px;
   border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.55);
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.97);
   overflow: hidden;
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
 }
@@ -215,16 +278,16 @@
   display: grid;
   grid-template-columns: 1.6fr 0.7fr 1fr;
   padding: 10px 12px;
-  font-size: 13px; /* body 12–14px */
+  font-size: 13px;
   column-gap: 10px;
   align-items: center;
   color: #0f172a;
 }
 
 .reports-table-header {
-  background: #f8fafc;
-  font-weight: 800;
-  font-size: 12px; /* minimalist headers */
+  background: linear-gradient(180deg, rgba(248, 250, 252, 1), rgba(248, 250, 252, 0.75));
+  font-weight: 900;
+  font-size: 12px;
   color: #334155;
   border-bottom: 1px solid rgba(148, 163, 184, 0.45);
 }
@@ -234,7 +297,11 @@
 }
 
 .reports-table-row:nth-child(even) {
-  background: rgba(248, 250, 252, 0.6);
+  background: rgba(248, 250, 252, 0.65);
+}
+
+.reports-table-row:hover {
+  background: rgba(219, 234, 254, 0.35); /* light blue hover */
 }
 
 .reports-table-row:last-child {
@@ -256,7 +323,22 @@
   grid-template-columns: 1.4fr 0.7fr 1fr;
 }
 
-/* Loading + error states */
+/* ===== Charts: make it feel like a “card inside card” ===== */
+/* This works with your inline style height container */
+.reports-panel .recharts-wrapper {
+  padding: 6px 8px 8px;
+}
+
+.reports-panel .recharts-cartesian-grid-horizontal line,
+.reports-panel .recharts-cartesian-grid-vertical line {
+  stroke: rgba(148, 163, 184, 0.35);
+}
+
+.reports-panel .recharts-tooltip-wrapper {
+  font-size: 12px;
+}
+
+/* ===== Loading + error states ===== */
 .reports-loading,
 .reports-error {
   margin-top: 10px;
@@ -289,12 +371,12 @@
   to { transform: rotate(360deg); }
 }
 
-/* Generic modal styling you can reuse across pages */
+/* ===== Generic modal styling ===== */
 .modal-overlay,
 .reports-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.35); /* soft overlay */
+  background: rgba(15, 23, 42, 0.35);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -312,17 +394,8 @@
   box-shadow: 0 22px 50px rgba(15, 23, 42, 0.18);
   color: #0f172a;
 }
-/* Export button */
-.reports-export-chip {
-  border-color: rgba(22, 163, 74, 0.45);
-  background: rgba(22, 163, 74, 0.08);
-}
 
-.reports-export-chip:hover {
-  border-color: rgba(22, 163, 74, 0.65);
-}
-
-/* Presales grouping block */
+/* ===== Presales grouping block ===== */
 .reports-presales-group {
   margin-top: 12px;
 }
@@ -335,7 +408,7 @@
 }
 
 .reports-presales-name {
-  font-weight: 800;
+  font-weight: 900;
   color: #0b1220;
 }
 
