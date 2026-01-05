@@ -1,10 +1,10 @@
 // src/CustomerDetails.js
-// Patch: prevent repeated presales_resources fetch (fix ERR_INSUFFICIENT_RESOURCES / Failed to fetch)
+// Updated: Sales Stage dropdown in Add Project pulls from DB table "sales_stages"
 
-import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import ReactDOM from 'react-dom';
-import { supabase } from './supabaseClient';
-import './CustomerDetails.css';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import ReactDOM from "react-dom";
+import { supabase } from "./supabaseClient";
+import "./CustomerDetails.css";
 
 import {
   Calendar,
@@ -17,18 +17,18 @@ import {
   X,
   AlertTriangle,
   BarChart3,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from "react-router-dom";
 
 const todayISODate = () => new Date().toISOString();
 
 const isValidUUID = (id) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    String(id || '')
+    String(id || "")
   );
 
-const safeStr = (v) => (v == null ? '' : String(v));
+const safeStr = (v) => (v == null ? "" : String(v));
 
 const copyToClipboard = async (text) => {
   try {
@@ -36,17 +36,17 @@ const copyToClipboard = async (text) => {
       await navigator.clipboard.writeText(text);
       return true;
     }
-    const el = document.createElement('textarea');
+    const el = document.createElement("textarea");
     el.value = text;
-    el.setAttribute('readonly', '');
-    el.style.position = 'absolute';
-    el.style.left = '-9999px';
+    el.setAttribute("readonly", "");
+    el.style.position = "absolute";
+    el.style.left = "-9999px";
     document.body.appendChild(el);
     el.select();
-    document.execCommand('copy');
+    document.execCommand("copy");
     document.body.removeChild(el);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 };
@@ -64,7 +64,7 @@ function Modal({ isOpen, onClose, title, children, footer }) {
       <div className="cd-modal">
         <div className="cd-modal-header">
           <div className="cd-modal-title">{title}</div>
-          <button className="cd-icon-btn" onClick={onClose} title="Close">
+          <button className="cd-icon-btn" onClick={onClose} title="Close" type="button">
             <X size={16} />
           </button>
         </div>
@@ -82,70 +82,81 @@ function Modal({ isOpen, onClose, title, children, footer }) {
 // NEW: name | role | email | phone
 // Backward compatible with OLD: name | role | contact
 const looksLikeEmail = (v) => {
-  const s = String(v || '').trim();
+  const s = String(v || "").trim();
   return !!s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 };
 
 const parseStakeholderEntry = (entry) => {
-  if (!entry) return { name: '', role: '', email: '', phone: '' };
+  if (!entry) return { name: "", role: "", email: "", phone: "" };
 
   const parts = String(entry)
-    .split('|')
-    .map((p) => (p ?? '').trim());
+    .split("|")
+    .map((p) => (p ?? "").trim());
 
   if (parts.length === 3) {
-    const contact = parts[2] || '';
+    const contact = parts[2] || "";
     return {
-      name: parts[0] || '',
-      role: parts[1] || '',
-      email: looksLikeEmail(contact) ? contact : '',
-      phone: looksLikeEmail(contact) ? '' : contact,
+      name: parts[0] || "",
+      role: parts[1] || "",
+      email: looksLikeEmail(contact) ? contact : "",
+      phone: looksLikeEmail(contact) ? "" : contact,
     };
   }
 
   return {
-    name: parts[0] || '',
-    role: parts[1] || '',
-    email: parts[2] || '',
-    phone: parts[3] || '',
+    name: parts[0] || "",
+    role: parts[1] || "",
+    email: parts[2] || "",
+    phone: parts[3] || "",
   };
 };
 
 const encodeStakeholderEntry = ({ name, role, email, phone }) => {
-  return `${String(name || '').trim()} | ${String(role || '').trim()} | ${String(
-    email || ''
-  ).trim()} | ${String(phone || '').trim()}`.trim();
+  return `${String(name || "").trim()} | ${String(role || "").trim()} | ${String(
+    email || ""
+  ).trim()} | ${String(phone || "").trim()}`.trim();
 };
 
-const customerTypes = ['New', 'Existing', 'Internal Initiative'];
+const customerTypes = ["New", "Existing", "Internal Initiative"];
 
-// Status logic (same idea as Projects.js)
+// Status logic
 const getCustomerStatus = (customerRow, statusList) => {
   const id = customerRow?.status_id;
-  if (id === null || id === undefined || id === '') return null;
+  if (id === null || id === undefined || id === "") return null;
   return (statusList || []).find((s) => String(s.id) === String(id)) || null;
 };
 
 const getStatusBadgeClass = (codeOrLabel) => {
-  const v = String(codeOrLabel || '').toLowerCase();
-  if (!v) return 'status-none';
+  const v = String(codeOrLabel || "").toLowerCase();
+  if (!v) return "status-none";
 
-  if (v.includes('active')) return 'status-active';
-  if (v.includes('prospect') || v.includes('lead')) return 'status-prospect';
-  if (v.includes('hold') || v.includes('on_hold') || v.includes('on-hold')) return 'status-onhold';
-  if (v.includes('dormant')) return 'status-dormant';
-  if (v.includes('inactive') || v.includes('archiv')) return 'status-inactive';
+  if (v.includes("active")) return "status-active";
+  if (v.includes("prospect") || v.includes("lead")) return "status-prospect";
+  if (v.includes("hold") || v.includes("on_hold") || v.includes("on-hold")) return "status-onhold";
+  if (v.includes("dormant")) return "status-dormant";
+  if (v.includes("inactive") || v.includes("archiv")) return "status-inactive";
 
-  return 'status-none';
+  return "status-none";
 };
 
 const toIntOrNull = (v) => {
-  const s = String(v ?? '').trim();
+  const s = String(v ?? "").trim();
   if (!s) return null;
   const n = Number(s);
   if (Number.isNaN(n)) return null;
   return Math.trunc(n);
 };
+
+// Fallback if sales_stages table is empty/unavailable
+const DEFAULT_SALES_STAGES = [
+  "Lead",
+  "Opportunity",
+  "Proposal",
+  "Contracting",
+  "Done",
+  "Closed - Won",
+  "Closed - Lost",
+];
 
 const CustomerDetails = () => {
   const { id, customerId } = useParams();
@@ -154,7 +165,7 @@ const CustomerDetails = () => {
   const resolvedCustomerId = id || customerId;
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const [customer, setCustomer] = useState(null);
 
@@ -176,30 +187,36 @@ const CustomerDetails = () => {
   const [metrics, setMetrics] = useState(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
 
-  // notesDraft -> customers.notes (My Notes)
-  const [notesDraft, setNotesDraft] = useState('');
+  // customers.notes
+  const [notesDraft, setNotesDraft] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
 
   const [metricsDraft, setMetricsDraft] = useState({
-    atms: '',
-    debit_cards: '',
-    credit_cards: '',
-    pos_terminals: '',
-    merchants: '',
-    tx_per_day: '',
+    atms: "",
+    debit_cards: "",
+    credit_cards: "",
+    pos_terminals: "",
+    merchants: "",
+    tx_per_day: "",
   });
   const [savingMetrics, setSavingMetrics] = useState(false);
 
   const [deletingProjectId, setDeletingProjectId] = useState(null);
 
-  // ✅ Presales resources for dropdowns
+  // Presales resources dropdown
   const [presalesOptions, setPresalesOptions] = useState([]);
   const [presalesLoading, setPresalesLoading] = useState(false);
-
-  // ✅ Guard so we don’t repeatedly fetch presales_resources
   const presalesFetchedRef = useRef(false);
 
-  const isValidCustomerId = useMemo(() => isValidUUID(resolvedCustomerId), [resolvedCustomerId]);
+  // ✅ Sales stages dropdown (DB-backed)
+  const [salesStageOptions, setSalesStageOptions] = useState(DEFAULT_SALES_STAGES);
+  const [salesStagesLoading, setSalesStagesLoading] = useState(false);
+  const salesStagesFetchedRef = useRef(false);
+
+  const isValidCustomerId = useMemo(
+    () => isValidUUID(resolvedCustomerId),
+    [resolvedCustomerId]
+  );
 
   const goToProjectDetails = (projectId) => {
     if (!projectId) return;
@@ -207,53 +224,53 @@ const CustomerDetails = () => {
   };
 
   const formatDate = (dateValue) => {
-    if (!dateValue) return '';
+    if (!dateValue) return "";
     const d = new Date(dateValue);
-    if (Number.isNaN(d.getTime())) return '';
+    if (Number.isNaN(d.getTime())) return "";
     return d.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
     });
   };
 
   const formatCurrency = (amount) => {
     const n = Number(amount);
-    if (amount == null || amount === '' || Number.isNaN(n)) return '$0';
+    if (amount == null || amount === "" || Number.isNaN(n)) return "$0";
     return n.toLocaleString(undefined, {
-      style: 'currency',
-      currency: 'USD',
+      style: "currency",
+      currency: "USD",
       maximumFractionDigits: 0,
     });
   };
 
   const formatCompact = (value) => {
     const n = Number(value);
-    if (value === null || value === undefined || value === '' || Number.isNaN(n)) return '—';
-    return n.toLocaleString(undefined, { notation: 'compact', maximumFractionDigits: 1 });
+    if (value === null || value === undefined || value === "" || Number.isNaN(n)) return "—";
+    return n.toLocaleString(undefined, { notation: "compact", maximumFractionDigits: 1 });
   };
 
-  const getProjectStage = (p) => String(p?.sales_stage || p?.current_status || '').trim();
+  const getProjectStage = (p) => String(p?.sales_stage || p?.current_status || "").trim();
 
   const isProjectCompleted = (stage) => {
-    const s = String(stage || '').trim().toLowerCase();
+    const s = String(stage || "").trim().toLowerCase();
     if (!s) return false;
-    if (s === 'done') return true;
-    if (s.includes('completed')) return true;
-    if (s.startsWith('closed')) return true;
-    if (s.includes('closed')) return true;
+    if (s === "done") return true;
+    if (s.includes("completed")) return true;
+    if (s.startsWith("closed")) return true;
+    if (s.includes("closed")) return true;
     return false;
   };
 
   const getStageRank = (stage) => {
-    const s = String(stage || '').toLowerCase();
+    const s = String(stage || "").toLowerCase();
     const rank = [
-      { k: 'contract', r: 60 },
-      { k: 'sow', r: 55 },
-      { k: 'rfp', r: 50 },
-      { k: 'proposal', r: 45 },
-      { k: 'opportunity', r: 40 },
-      { k: 'lead', r: 30 },
+      { k: "contract", r: 60 },
+      { k: "sow", r: 55 },
+      { k: "rfp", r: 50 },
+      { k: "proposal", r: 45 },
+      { k: "opportunity", r: 40 },
+      { k: "lead", r: 30 },
     ];
     for (const it of rank) {
       if (s.includes(it.k)) return it.r;
@@ -263,20 +280,20 @@ const CustomerDetails = () => {
 
   const syncMetricsDraftFromRecord = useCallback((rec) => {
     setMetricsDraft({
-      atms: rec?.atms ?? '',
-      debit_cards: rec?.debit_cards ?? '',
-      credit_cards: rec?.credit_cards ?? '',
-      pos_terminals: rec?.pos_terminals ?? '',
-      merchants: rec?.merchants ?? '',
-      tx_per_day: rec?.tx_per_day ?? '',
+      atms: rec?.atms ?? "",
+      debit_cards: rec?.debit_cards ?? "",
+      credit_cards: rec?.credit_cards ?? "",
+      pos_terminals: rec?.pos_terminals ?? "",
+      merchants: rec?.merchants ?? "",
+      tx_per_day: rec?.tx_per_day ?? "",
     });
   }, []);
 
-  // ✅ numeric-only validation for snapshot fields
+  // numeric-only validation for snapshot fields
   const setMetricNumber = useCallback(
     (field) => (e) => {
-      const raw = e.target.value ?? '';
-      const digitsOnly = String(raw).replace(/[^\d]/g, '');
+      const raw = e.target.value ?? "";
+      const digitsOnly = String(raw).replace(/[^\d]/g, "");
       setMetricsDraft((p) => ({ ...p, [field]: digitsOnly }));
     },
     []
@@ -285,30 +302,30 @@ const CustomerDetails = () => {
   const fetchCustomer = useCallback(async () => {
     try {
       setLoading(true);
-      setError('');
+      setError("");
 
       if (!isValidCustomerId) {
         setCustomer(null);
         setEditCustomer(null);
-        setNotesDraft('');
-        setError('Invalid or missing customer ID in the URL.');
+        setNotesDraft("");
+        setError("Invalid or missing customer ID in the URL.");
         return;
       }
 
       const { data, error: fetchError } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', resolvedCustomerId)
+        .from("customers")
+        .select("*")
+        .eq("id", resolvedCustomerId)
         .single();
 
       if (fetchError) throw fetchError;
 
       setCustomer(data);
       setEditCustomer(data);
-      setNotesDraft(data?.notes || '');
+      setNotesDraft(data?.notes || "");
     } catch (err) {
-      console.error('Error fetching customer:', err);
-      setError(err.message || 'Failed to load customer');
+      console.error("Error fetching customer:", err);
+      setError(err.message || "Failed to load customer");
     } finally {
       setLoading(false);
     }
@@ -317,25 +334,25 @@ const CustomerDetails = () => {
   const fetchStatusOptions = useCallback(async () => {
     try {
       const { data, error: sErr } = await supabase
-        .from('customer_statuses')
-        .select('*')
-        .order('id', { ascending: true });
+        .from("customer_statuses")
+        .select("*")
+        .order("id", { ascending: true });
 
       if (sErr) throw sErr;
       setStatusOptions(data || []);
     } catch (err) {
-      console.error('Error fetching status options:', err);
+      console.error("Error fetching status options:", err);
       setStatusOptions([]);
     }
   }, []);
 
   const fetchCountries = useCallback(async () => {
     try {
-      const { data, error } = await supabase.from('countries').select('name').order('name');
+      const { data, error } = await supabase.from("countries").select("name").order("name");
       if (error) throw error;
       setCountryOptions((data || []).map((x) => x.name).filter(Boolean));
     } catch (err) {
-      console.error('Error fetching countries:', err);
+      console.error("Error fetching countries:", err);
       setCountryOptions([]);
     }
   }, []);
@@ -343,19 +360,19 @@ const CustomerDetails = () => {
   const fetchAccountManagers = useCallback(async () => {
     try {
       const { data, error } = await supabase
-        .from('account_managers')
-        .select('id,name')
-        .order('name');
+        .from("account_managers")
+        .select("id,name")
+        .order("name");
 
       if (error) throw error;
       setAccountManagerOptions(data || []);
     } catch (err) {
-      console.error('Error fetching account managers:', err);
+      console.error("Error fetching account managers:", err);
       setAccountManagerOptions([]);
     }
   }, []);
 
-  // ✅ Presales resources (dropdown) - fetch ONCE only (unless forced)
+  // Presales resources - fetch ONCE
   const fetchPresalesResources = useCallback(async (force = false) => {
     if (!force && presalesFetchedRef.current) return;
 
@@ -364,20 +381,49 @@ const CustomerDetails = () => {
       setPresalesLoading(true);
 
       const { data, error: prErr } = await supabase
-        .from('presales_resources')
-        .select('id,name,is_active')
-        .eq('is_active', true)
-        .order('name', { ascending: true });
+        .from("presales_resources")
+        .select("id,name,is_active")
+        .eq("is_active", true)
+        .order("name", { ascending: true });
 
       if (prErr) throw prErr;
 
       setPresalesOptions(data || []);
     } catch (err) {
-      console.error('Error fetching presales resources:', err);
+      console.error("Error fetching presales resources:", err);
       presalesFetchedRef.current = false;
       setPresalesOptions([]);
     } finally {
       setPresalesLoading(false);
+    }
+  }, []);
+
+  // ✅ Sales stages - fetch ONCE
+  const fetchSalesStages = useCallback(async (force = false) => {
+    if (!force && salesStagesFetchedRef.current) return;
+
+    try {
+      salesStagesFetchedRef.current = true;
+      setSalesStagesLoading(true);
+
+      const { data, error: ssErr } = await supabase
+        .from("sales_stages")
+        .select("name, sort_order, is_active")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true });
+
+      if (ssErr) throw ssErr;
+
+      const names = (data || []).map((x) => x?.name).filter(Boolean);
+      if (names.length > 0) setSalesStageOptions(names);
+      else setSalesStageOptions(DEFAULT_SALES_STAGES);
+    } catch (err) {
+      console.error("Error fetching sales stages:", err);
+      salesStagesFetchedRef.current = false;
+      setSalesStageOptions(DEFAULT_SALES_STAGES);
+    } finally {
+      setSalesStagesLoading(false);
     }
   }, []);
 
@@ -387,9 +433,9 @@ const CustomerDetails = () => {
       setMetricsLoading(true);
 
       const { data, error: mErr } = await supabase
-        .from('customer_metrics')
-        .select('*')
-        .eq('customer_id', resolvedCustomerId)
+        .from("customer_metrics")
+        .select("*")
+        .eq("customer_id", resolvedCustomerId)
         .maybeSingle();
 
       if (mErr) throw mErr;
@@ -397,7 +443,7 @@ const CustomerDetails = () => {
       setMetrics(data || null);
       syncMetricsDraftFromRecord(data || null);
     } catch (err) {
-      console.error('Error fetching customer metrics:', err);
+      console.error("Error fetching customer metrics:", err);
       setMetrics(null);
       syncMetricsDraftFromRecord(null);
     } finally {
@@ -413,15 +459,15 @@ const CustomerDetails = () => {
       }
 
       const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('customer_name', customerName)
-        .order('due_date', { ascending: true, nullsFirst: false });
+        .from("projects")
+        .select("*")
+        .eq("customer_name", customerName)
+        .order("due_date", { ascending: true, nullsFirst: false });
 
       if (error) throw error;
       setProjects(data || []);
     } catch (err) {
-      console.error('Error fetching projects:', err);
+      console.error("Error fetching projects:", err);
       setProjects([]);
     }
   }, []);
@@ -433,6 +479,7 @@ const CustomerDetails = () => {
     fetchAccountManagers();
     fetchCustomerMetrics();
     fetchPresalesResources();
+    fetchSalesStages();
   }, [
     fetchCustomer,
     fetchStatusOptions,
@@ -440,6 +487,7 @@ const CustomerDetails = () => {
     fetchAccountManagers,
     fetchCustomerMetrics,
     fetchPresalesResources,
+    fetchSalesStages,
   ]);
 
   useEffect(() => {
@@ -495,39 +543,40 @@ const CustomerDetails = () => {
     try {
       const newName = safeStr(editCustomer?.customer_name).trim();
       if (!newName) {
-        alert('Customer name is required.');
+        alert("Customer name is required.");
         return;
       }
 
-      const oldName = customer?.customer_name || '';
+      const oldName = customer?.customer_name || "";
 
       const { error: updateError } = await supabase
-        .from('customers')
+        .from("customers")
         .update({
           customer_name: newName,
           account_manager: editCustomer?.account_manager || null,
           country: editCustomer?.country || null,
           customer_type: editCustomer?.customer_type || null,
           status_id:
-            editCustomer?.status_id === '' || editCustomer?.status_id == null
+            editCustomer?.status_id === "" || editCustomer?.status_id == null
               ? null
               : Number(editCustomer.status_id),
           company_profile: editCustomer?.company_profile ?? null,
         })
-        .eq('id', resolvedCustomerId);
+        .eq("id", resolvedCustomerId);
 
       if (updateError) throw updateError;
 
+      // If customer_name changed, update projects.customer_name
       if (oldName && newName && oldName !== newName) {
         const { error: projErr } = await supabase
-          .from('projects')
+          .from("projects")
           .update({ customer_name: newName })
-          .eq('customer_name', oldName);
+          .eq("customer_name", oldName);
 
         if (projErr) {
-          console.error('Failed to update projects customer_name:', projErr);
+          console.error("Failed to update projects customer_name:", projErr);
           alert(
-            'Customer updated, but project links were not updated. Please rename projects.customer_name manually in Supabase.'
+            "Customer updated, but project links were not updated. Please rename projects.customer_name manually in Supabase."
           );
         }
       }
@@ -539,7 +588,7 @@ const CustomerDetails = () => {
         country: editCustomer?.country || null,
         customer_type: editCustomer?.customer_type || null,
         status_id:
-          editCustomer?.status_id === '' || editCustomer?.status_id == null
+          editCustomer?.status_id === "" || editCustomer?.status_id == null
             ? null
             : Number(editCustomer.status_id),
         company_profile: editCustomer?.company_profile ?? null,
@@ -550,10 +599,10 @@ const CustomerDetails = () => {
       setIsEditing(false);
 
       await fetchProjects(newName);
-      alert('Customer updated successfully');
+      alert("Customer updated successfully");
     } catch (err) {
-      console.error('Error updating customer:', err);
-      alert('Failed to update customer: ' + (err.message || 'Unknown error'));
+      console.error("Error updating customer:", err);
+      alert("Failed to update customer: " + (err.message || "Unknown error"));
     }
   };
 
@@ -564,17 +613,17 @@ const CustomerDetails = () => {
       const nextNotes = safeStr(notesDraft);
 
       const { error: nErr } = await supabase
-        .from('customers')
+        .from("customers")
         .update({ notes: nextNotes })
-        .eq('id', resolvedCustomerId);
+        .eq("id", resolvedCustomerId);
 
       if (nErr) throw nErr;
 
       setCustomer((prev) => ({ ...prev, notes: nextNotes }));
-      alert('Notes saved.');
+      alert("Notes saved.");
     } catch (err) {
-      console.error('Error saving notes:', err);
-      alert('Failed to save notes: ' + (err.message || 'Unknown error'));
+      console.error("Error saving notes:", err);
+      alert("Failed to save notes: " + (err.message || "Unknown error"));
     } finally {
       setSavingNotes(false);
     }
@@ -595,17 +644,17 @@ const CustomerDetails = () => {
       };
 
       const { error: upErr } = await supabase
-        .from('customer_metrics')
-        .upsert(payload, { onConflict: 'customer_id' });
+        .from("customer_metrics")
+        .upsert(payload, { onConflict: "customer_id" });
 
       if (upErr) throw upErr;
 
       await fetchCustomerMetrics();
-      alert('Customer snapshot updated.');
+      alert("Customer snapshot updated.");
       setShowMetricsModal(false);
     } catch (err) {
-      console.error('Error saving metrics:', err);
-      alert('Failed to save metrics: ' + (err.message || 'Unknown error'));
+      console.error("Error saving metrics:", err);
+      alert("Failed to save metrics: " + (err.message || "Unknown error"));
     } finally {
       setSavingMetrics(false);
     }
@@ -617,16 +666,16 @@ const CustomerDetails = () => {
       const next = current.filter((_, idx) => idx !== indexToRemove);
 
       const { error: sErr } = await supabase
-        .from('customers')
+        .from("customers")
         .update({ key_stakeholders: next })
-        .eq('id', resolvedCustomerId);
+        .eq("id", resolvedCustomerId);
 
       if (sErr) throw sErr;
 
       setCustomer((prev) => ({ ...prev, key_stakeholders: next }));
     } catch (err) {
-      console.error('Error removing stakeholder:', err);
-      alert('Failed to remove stakeholder: ' + (err.message || 'Unknown error'));
+      console.error("Error removing stakeholder:", err);
+      alert("Failed to remove stakeholder: " + (err.message || "Unknown error"));
     }
   };
 
@@ -639,7 +688,7 @@ const CustomerDetails = () => {
       created_at: todayISODate(),
     };
 
-    const { error: pErr } = await supabase.from('projects').insert([insertPayload]);
+    const { error: pErr } = await supabase.from("projects").insert([insertPayload]);
     if (pErr) throw pErr;
 
     await fetchProjects(customer.customer_name);
@@ -648,7 +697,7 @@ const CustomerDetails = () => {
   const handleDeleteProject = async (project) => {
     if (!project?.id) return;
 
-    const name = project.project_name || 'this project';
+    const name = project.project_name || "this project";
 
     const ok = window.confirm(
       `Delete "${name}"?\n\nThis will delete the project record. This cannot be undone.`
@@ -658,34 +707,35 @@ const CustomerDetails = () => {
     try {
       setDeletingProjectId(project.id);
 
-      const { error: projDelErr } = await supabase.from('projects').delete().eq('id', project.id);
+      const { error: projDelErr } = await supabase.from("projects").delete().eq("id", project.id);
       if (projDelErr) throw projDelErr;
 
       await fetchProjects(customer.customer_name);
-      alert('Project deleted.');
+      alert("Project deleted.");
     } catch (err) {
-      console.error('Error deleting project:', err);
-      alert('Failed to delete project: ' + (err.message || 'Unknown error'));
+      console.error("Error deleting project:", err);
+      alert("Failed to delete project: " + (err.message || "Unknown error"));
     } finally {
       setDeletingProjectId(null);
     }
   };
 
+  // Keyboard shortcuts (optional)
   useEffect(() => {
     const handler = (e) => {
-      const tag = e.target?.tagName ? e.target.tagName.toLowerCase() : '';
+      const tag = e.target?.tagName ? e.target.tagName.toLowerCase() : "";
       const isTyping =
-        tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable;
+        tag === "input" || tag === "textarea" || tag === "select" || e.target?.isContentEditable;
       if (isTyping) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      const k = String(e.key || '').toLowerCase();
-      if (k === 'e') setIsEditing(true);
-      if (k === 'a') setShowStakeholdersModal(true);
+      const k = String(e.key || "").toLowerCase();
+      if (k === "e") setIsEditing(true);
+      if (k === "a") setShowStakeholdersModal(true);
     };
 
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, []);
 
   const StakeholdersModal = ({ isOpen, onClose }) => {
@@ -696,7 +746,7 @@ const CustomerDetails = () => {
       const parsed = Array.isArray(customer?.key_stakeholders)
         ? customer.key_stakeholders.map(parseStakeholderEntry)
         : [];
-      setRows(parsed.length ? parsed : [{ name: '', role: '', email: '', phone: '' }]);
+      setRows(parsed.length ? parsed : [{ name: "", role: "", email: "", phone: "" }]);
     }, [isOpen]);
 
     if (!isOpen) return null;
@@ -705,7 +755,7 @@ const CustomerDetails = () => {
       setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
     };
 
-    const addRow = () => setRows((prev) => [...prev, { name: '', role: '', email: '', phone: '' }]);
+    const addRow = () => setRows((prev) => [...prev, { name: "", role: "", email: "", phone: "" }]);
     const removeRow = (index) => setRows((prev) => prev.filter((_, i) => i !== index));
 
     const handleSave = async () => {
@@ -721,18 +771,18 @@ const CustomerDetails = () => {
           .map(encodeStakeholderEntry);
 
         const { error: sErr } = await supabase
-          .from('customers')
+          .from("customers")
           .update({ key_stakeholders: cleaned })
-          .eq('id', resolvedCustomerId);
+          .eq("id", resolvedCustomerId);
 
         if (sErr) throw sErr;
 
         setCustomer((prev) => ({ ...prev, key_stakeholders: cleaned }));
         onClose();
-        alert('Stakeholders updated successfully');
+        alert("Stakeholders updated successfully");
       } catch (err) {
-        console.error('Error saving stakeholders:', err);
-        alert('Failed to update stakeholders: ' + (err.message || 'Unknown error'));
+        console.error("Error saving stakeholders:", err);
+        alert("Failed to update stakeholders: " + (err.message || "Unknown error"));
       }
     };
 
@@ -743,10 +793,10 @@ const CustomerDetails = () => {
         title="Key Stakeholders"
         footer={
           <>
-            <button className="action-button ghost" onClick={onClose}>
+            <button className="action-button ghost" onClick={onClose} type="button">
               Cancel
             </button>
-            <button className="action-button primary" onClick={handleSave}>
+            <button className="action-button primary" onClick={handleSave} type="button">
               <Save size={14} />
               Save
             </button>
@@ -767,34 +817,39 @@ const CustomerDetails = () => {
               <input
                 className="cd-input"
                 value={r.name}
-                onChange={(e) => updateRow(idx, 'name', e.target.value)}
+                onChange={(e) => updateRow(idx, "name", e.target.value)}
                 placeholder="Contact name"
               />
               <input
                 className="cd-input"
                 value={r.role}
-                onChange={(e) => updateRow(idx, 'role', e.target.value)}
+                onChange={(e) => updateRow(idx, "role", e.target.value)}
                 placeholder="Role"
               />
               <input
                 className="cd-input"
                 value={r.email}
-                onChange={(e) => updateRow(idx, 'email', e.target.value)}
+                onChange={(e) => updateRow(idx, "email", e.target.value)}
                 placeholder="Email"
               />
               <input
                 className="cd-input"
                 value={r.phone}
-                onChange={(e) => updateRow(idx, 'phone', e.target.value)}
+                onChange={(e) => updateRow(idx, "phone", e.target.value)}
                 placeholder="Phone"
               />
-              <button className="cd-icon-btn danger" onClick={() => removeRow(idx)} title="Remove row">
+              <button
+                className="cd-icon-btn danger"
+                onClick={() => removeRow(idx)}
+                title="Remove row"
+                type="button"
+              >
                 <Trash2 size={14} />
               </button>
             </div>
           ))}
 
-          <button className="action-button" onClick={addRow}>
+          <button className="action-button" onClick={addRow} type="button">
             <Plus size={14} />
             Add another
           </button>
@@ -803,31 +858,43 @@ const CustomerDetails = () => {
     );
   };
 
-  // ✅ Updated Project Modal
+  // ✅ Add Project Modal (Sales Stage values from sales_stages)
   const ProjectModal = ({ isOpen, onClose }) => {
+    const defaultStage = salesStageOptions?.includes("Opportunity")
+      ? "Opportunity"
+      : (salesStageOptions?.[0] || "");
+
     const [form, setForm] = useState({
-      project_name: '',
-      scope: '',
-      sales_stage: 'Opportunity',
-      deal_value: '',
-      product: '',
-      due_date: '',
-      primary_presales: '',
-      backup_presales: '',
+      project_name: "",
+      scope: "",
+      sales_stage: defaultStage,
+      deal_value: "",
+      product: "",
+      due_date: "",
+      primary_presales: "",
+      backup_presales: "",
       is_corporate: false,
     });
+
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
       if (!isOpen) return;
       setSaving(false);
-    }, [isOpen]);
+
+      // Ensure a valid default stage whenever modal opens
+      setForm((p) => ({
+        ...p,
+        sales_stage: p.sales_stage || defaultStage,
+      }));
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, salesStageOptions]);
 
     if (!isOpen) return null;
 
     const handleSubmit = async () => {
       if (!safeStr(form.project_name).trim()) {
-        alert('Project name is required.');
+        alert("Project name is required.");
         return;
       }
 
@@ -841,10 +908,8 @@ const CustomerDetails = () => {
           deal_value: form.deal_value ? Number(form.deal_value) : null,
           product: safeStr(form.product).trim() || null,
           due_date: form.due_date || null,
-
           primary_presales: form.primary_presales ? form.primary_presales : null,
           backup_presales: form.backup_presales ? form.backup_presales : null,
-
           is_corporate: !!form.is_corporate,
         });
 
@@ -852,19 +917,19 @@ const CustomerDetails = () => {
         onClose();
 
         setForm({
-          project_name: '',
-          scope: '',
-          sales_stage: 'Opportunity',
-          deal_value: '',
-          product: '',
-          due_date: '',
-          primary_presales: '',
-          backup_presales: '',
+          project_name: "",
+          scope: "",
+          sales_stage: defaultStage,
+          deal_value: "",
+          product: "",
+          due_date: "",
+          primary_presales: "",
+          backup_presales: "",
           is_corporate: false,
         });
       } catch (err) {
         setSaving(false);
-        alert('Failed to create project: ' + (err.message || 'Unknown error'));
+        alert("Failed to create project: " + (err.message || "Unknown error"));
       }
     };
 
@@ -875,12 +940,17 @@ const CustomerDetails = () => {
         title="Add Project"
         footer={
           <>
-            <button className="action-button ghost" onClick={onClose}>
+            <button className="action-button ghost" onClick={onClose} type="button">
               Cancel
             </button>
-            <button className="action-button primary" onClick={handleSubmit} disabled={saving}>
+            <button
+              className="action-button primary"
+              onClick={handleSubmit}
+              disabled={saving}
+              type="button"
+            >
               <Save size={14} />
-              {saving ? 'Saving...' : 'Create'}
+              {saving ? "Saving..." : "Create"}
             </button>
           </>
         }
@@ -910,15 +980,28 @@ const CustomerDetails = () => {
                 className="cd-input"
                 value={form.sales_stage}
                 onChange={(e) => setForm((p) => ({ ...p, sales_stage: e.target.value }))}
+                disabled={salesStagesLoading}
               >
-                <option>Lead</option>
-                <option>Opportunity</option>
-                <option>Proposal</option>
-                <option>Contracting</option>
-                <option>Done</option>
-                <option>Closed - Won</option>
-                <option>Closed - Lost</option>
+                <option value="">
+                  {salesStagesLoading ? "Loading..." : salesStageOptions.length ? "Select" : "—"}
+                </option>
+                {salesStageOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
               </select>
+
+              {!salesStagesLoading && salesStageOptions.length === 0 ? (
+                <button
+                  type="button"
+                  className="action-button ghost"
+                  style={{ marginTop: 8 }}
+                  onClick={() => fetchSalesStages(true)}
+                >
+                  Retry loading sales stages
+                </button>
+              ) : null}
             </div>
 
             <div>
@@ -957,7 +1040,7 @@ const CustomerDetails = () => {
                 onChange={(e) => setForm((p) => ({ ...p, primary_presales: e.target.value }))}
                 disabled={presalesLoading}
               >
-                <option value="">{presalesLoading ? 'Loading...' : 'Select'}</option>
+                <option value="">{presalesLoading ? "Loading..." : "Select"}</option>
                 {presalesOptions.map((r) => (
                   <option key={r.id} value={r.name}>
                     {r.name}
@@ -985,7 +1068,7 @@ const CustomerDetails = () => {
                 onChange={(e) => setForm((p) => ({ ...p, backup_presales: e.target.value }))}
                 disabled={presalesLoading}
               >
-                <option value="">{presalesLoading ? 'Loading...' : 'Select'}</option>
+                <option value="">{presalesLoading ? "Loading..." : "Select"}</option>
                 {presalesOptions.map((r) => (
                   <option key={r.id} value={r.name}>
                     {r.name}
@@ -1027,14 +1110,14 @@ const CustomerDetails = () => {
             <AlertTriangle size={20} />
           </div>
           <h2 className="error-title">Could not load customer</h2>
-          <p className="error-message">{error || 'Customer not found'}</p>
+          <p className="error-message">{error || "Customer not found"}</p>
         </div>
       </div>
     );
   }
 
   const statusObj = getCustomerStatus(customer, statusOptions);
-  const statusLabel = statusObj?.label || statusObj?.status_name || statusObj?.name || 'Not Set';
+  const statusLabel = statusObj?.label || statusObj?.status_name || statusObj?.name || "Not Set";
   const statusClass = getStatusBadgeClass(
     statusObj?.code || statusObj?.label || statusObj?.status_name || statusObj?.name
   );
@@ -1046,11 +1129,11 @@ const CustomerDetails = () => {
       {/* Header */}
       <div className="cd-header">
         <div className="cd-header-main">
-          <div className="cd-title">{customer.customer_name || 'Customer'}</div>
+          <div className="cd-title">{customer.customer_name || "Customer"}</div>
 
           <div className="cd-subtitle">
             <span className="cd-sub-pill">
-              <Calendar size={14} /> Updated: {lastUpdatedDisplay || '—'}
+              <Calendar size={14} /> Updated: {lastUpdatedDisplay || "—"}
             </span>
           </div>
         </div>
@@ -1069,7 +1152,11 @@ const CustomerDetails = () => {
 
               <div className="section-actions">
                 {!isEditing ? (
-                  <button className="action-button primary" onClick={() => setIsEditing(true)}>
+                  <button
+                    className="action-button primary"
+                    onClick={() => setIsEditing(true)}
+                    type="button"
+                  >
                     <Edit3 size={14} />
                     Edit
                   </button>
@@ -1081,10 +1168,11 @@ const CustomerDetails = () => {
                         setEditCustomer(customer);
                         setIsEditing(false);
                       }}
+                      type="button"
                     >
                       Cancel
                     </button>
-                    <button className="action-button primary" onClick={handleUpdateCustomer}>
+                    <button className="action-button primary" onClick={handleUpdateCustomer} type="button">
                       <Save size={14} />
                       Save
                     </button>
@@ -1099,13 +1187,13 @@ const CustomerDetails = () => {
                 {isEditing ? (
                   <input
                     className="info-input"
-                    value={editCustomer?.customer_name || ''}
+                    value={editCustomer?.customer_name || ""}
                     onChange={(e) =>
                       setEditCustomer((prev) => ({ ...prev, customer_name: e.target.value }))
                     }
                   />
                 ) : (
-                  <div className="info-value">{customer.customer_name || '—'}</div>
+                  <div className="info-value">{customer.customer_name || "—"}</div>
                 )}
               </div>
 
@@ -1114,7 +1202,7 @@ const CustomerDetails = () => {
                 {isEditing ? (
                   <select
                     className="info-input"
-                    value={editCustomer?.customer_type || ''}
+                    value={editCustomer?.customer_type || ""}
                     onChange={(e) =>
                       setEditCustomer((prev) => ({ ...prev, customer_type: e.target.value }))
                     }
@@ -1127,7 +1215,7 @@ const CustomerDetails = () => {
                     ))}
                   </select>
                 ) : (
-                  <div className="info-value">{customer.customer_type || '—'}</div>
+                  <div className="info-value">{customer.customer_type || "—"}</div>
                 )}
               </div>
 
@@ -1136,7 +1224,7 @@ const CustomerDetails = () => {
                 {isEditing ? (
                   <select
                     className="info-input"
-                    value={editCustomer?.country || ''}
+                    value={editCustomer?.country || ""}
                     onChange={(e) => setEditCustomer((prev) => ({ ...prev, country: e.target.value }))}
                   >
                     <option value="">Select</option>
@@ -1147,7 +1235,7 @@ const CustomerDetails = () => {
                     ))}
                   </select>
                 ) : (
-                  <div className="info-value">{customer.country || '—'}</div>
+                  <div className="info-value">{customer.country || "—"}</div>
                 )}
               </div>
 
@@ -1156,7 +1244,7 @@ const CustomerDetails = () => {
                 {isEditing ? (
                   <select
                     className="info-input"
-                    value={editCustomer?.account_manager || ''}
+                    value={editCustomer?.account_manager || ""}
                     onChange={(e) =>
                       setEditCustomer((prev) => ({ ...prev, account_manager: e.target.value }))
                     }
@@ -1169,7 +1257,7 @@ const CustomerDetails = () => {
                     ))}
                   </select>
                 ) : (
-                  <div className="info-value">{customer.account_manager || '—'}</div>
+                  <div className="info-value">{customer.account_manager || "—"}</div>
                 )}
               </div>
 
@@ -1180,7 +1268,7 @@ const CustomerDetails = () => {
                     className="info-input"
                     value={
                       editCustomer?.status_id === null || editCustomer?.status_id === undefined
-                        ? ''
+                        ? ""
                         : String(editCustomer.status_id)
                     }
                     onChange={(e) =>
@@ -1204,12 +1292,12 @@ const CustomerDetails = () => {
                 )}
               </div>
 
-              <div className="info-item" style={{ gridColumn: '1 / -1' }}>
+              <div className="info-item" style={{ gridColumn: "1 / -1" }}>
                 <label>Company Profile</label>
                 {isEditing ? (
                   <textarea
                     className="info-textarea"
-                    value={editCustomer?.company_profile || ''}
+                    value={editCustomer?.company_profile || ""}
                     onChange={(e) =>
                       setEditCustomer((prev) => ({ ...prev, company_profile: e.target.value }))
                     }
@@ -1218,7 +1306,7 @@ const CustomerDetails = () => {
                   />
                 ) : (
                   <div className="info-value company-profile-value">
-                    {customer?.company_profile || '—'}
+                    {customer?.company_profile || "—"}
                   </div>
                 )}
               </div>
@@ -1233,7 +1321,11 @@ const CustomerDetails = () => {
                 <p className="section-subtitle">People you should keep close for this account.</p>
               </div>
 
-              <button className="action-button primary" onClick={() => setShowStakeholdersModal(true)}>
+              <button
+                className="action-button primary"
+                onClick={() => setShowStakeholdersModal(true)}
+                type="button"
+              >
                 <Plus size={14} />
                 Add stakeholder
               </button>
@@ -1250,7 +1342,7 @@ const CustomerDetails = () => {
                     <div className="stakeholder-simple-grid">
                       <div className="stake-row">
                         <div className="stake-label">Contact Name</div>
-                        <div className="stake-value">{s.name || '—'}</div>
+                        <div className="stake-value">{s.name || "—"}</div>
                       </div>
 
                       {s.role ? (
@@ -1283,7 +1375,7 @@ const CustomerDetails = () => {
                           title="Copy email"
                           onClick={async () => {
                             const ok = await copyToClipboard(s.email);
-                            if (ok) alert('Email copied');
+                            if (ok) alert("Email copied");
                           }}
                         >
                           <Mail size={16} />
@@ -1297,7 +1389,7 @@ const CustomerDetails = () => {
                           title="Copy phone"
                           onClick={async () => {
                             const ok = await copyToClipboard(s.phone);
-                            if (ok) alert('Phone copied');
+                            if (ok) alert("Phone copied");
                           }}
                         >
                           <Phone size={16} />
@@ -1308,6 +1400,7 @@ const CustomerDetails = () => {
                         className="stakeholder-icon-btn danger"
                         onClick={() => handleRemoveStakeholder(index)}
                         title="Remove stakeholder"
+                        type="button"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -1330,9 +1423,10 @@ const CustomerDetails = () => {
                 className="action-button primary"
                 onClick={handleSaveNotes}
                 disabled={savingNotes}
+                type="button"
               >
                 <Save size={14} />
-                {savingNotes ? 'Saving...' : 'Save'}
+                {savingNotes ? "Saving..." : "Save"}
               </button>
             </div>
 
@@ -1355,13 +1449,13 @@ const CustomerDetails = () => {
                 <p className="section-subtitle">Quick view of pipeline and footprint.</p>
               </div>
 
-              {/* ✅ make edit match other primary actions */}
               <button
                 className="action-button primary"
                 onClick={() => {
                   syncMetricsDraftFromRecord(metrics);
                   setShowMetricsModal(true);
                 }}
+                type="button"
               >
                 <Edit3 size={14} />
                 Edit
@@ -1370,14 +1464,14 @@ const CustomerDetails = () => {
 
             <div className="snapshot-grid">
               {[
-                { label: 'Total Pipeline', value: formatCurrency(summary.totalPipeline) },
-                { label: 'Active Projects', value: String(summary.activeProjects) },
-                { label: 'Number of ATMs', value: formatCompact(metrics?.atms) },
-                { label: 'Debit Cards', value: formatCompact(metrics?.debit_cards) },
-                { label: 'Credit Cards', value: formatCompact(metrics?.credit_cards) },
-                { label: 'POS Terminals', value: formatCompact(metrics?.pos_terminals) },
-                { label: 'Merchants', value: formatCompact(metrics?.merchants) },
-                { label: 'Txn per Day', value: formatCompact(metrics?.tx_per_day) },
+                { label: "Total Pipeline", value: formatCurrency(summary.totalPipeline) },
+                { label: "Active Projects", value: String(summary.activeProjects) },
+                { label: "Number of ATMs", value: formatCompact(metrics?.atms) },
+                { label: "Debit Cards", value: formatCompact(metrics?.debit_cards) },
+                { label: "Credit Cards", value: formatCompact(metrics?.credit_cards) },
+                { label: "POS Terminals", value: formatCompact(metrics?.pos_terminals) },
+                { label: "Merchants", value: formatCompact(metrics?.merchants) },
+                { label: "Txn per Day", value: formatCompact(metrics?.tx_per_day) },
               ].map((it) => (
                 <div className="snapshot-item" key={it.label}>
                   <div className="snapshot-label">{it.label}</div>
@@ -1395,7 +1489,11 @@ const CustomerDetails = () => {
                 <p className="section-subtitle">Deals and initiatives linked to this customer.</p>
               </div>
 
-              <button className="action-button primary" onClick={() => setShowProjectModal(true)}>
+              <button
+                className="action-button primary"
+                onClick={() => setShowProjectModal(true)}
+                type="button"
+              >
                 <Plus size={14} />
                 Add project
               </button>
@@ -1420,7 +1518,7 @@ const CustomerDetails = () => {
               <div className="project-list">
                 {visibleProjects.map((p) => {
                   const stage = getProjectStage(p);
-                  const due = p.due_date ? formatDate(p.due_date) : '';
+                  const due = p.due_date ? formatDate(p.due_date) : "";
 
                   return (
                     <div key={p.id} className="project-item">
@@ -1431,7 +1529,7 @@ const CustomerDetails = () => {
                           onClick={() => goToProjectDetails(p.id)}
                           title="Open project details"
                         >
-                          {p.project_name || '(Unnamed Project)'}
+                          {p.project_name || "(Unnamed Project)"}
                         </button>
 
                         {p.next_key_activity ? (
@@ -1462,6 +1560,7 @@ const CustomerDetails = () => {
                             e.stopPropagation();
                             handleDeleteProject(p);
                           }}
+                          type="button"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1489,16 +1588,17 @@ const CustomerDetails = () => {
         title="Edit Customer Snapshot"
         footer={
           <>
-            <button className="action-button ghost" onClick={() => setShowMetricsModal(false)}>
+            <button className="action-button ghost" onClick={() => setShowMetricsModal(false)} type="button">
               Cancel
             </button>
             <button
               className="action-button primary"
               onClick={handleSaveMetrics}
               disabled={savingMetrics}
+              type="button"
             >
               <Save size={14} />
-              {savingMetrics ? 'Saving...' : 'Save'}
+              {savingMetrics ? "Saving..." : "Save"}
             </button>
           </>
         }
@@ -1507,7 +1607,7 @@ const CustomerDetails = () => {
           <div className="cd-metric">
             <div className="cd-metric-label">Total Pipeline</div>
             <div className="cd-metric-value">
-              {projects && projects.length ? formatCurrency(summary.totalPipeline) : '$0'}
+              {projects && projects.length ? formatCurrency(summary.totalPipeline) : "$0"}
             </div>
           </div>
 
@@ -1522,7 +1622,7 @@ const CustomerDetails = () => {
               className="cd-input"
               inputMode="numeric"
               value={metricsDraft.atms}
-              onChange={setMetricNumber('atms')}
+              onChange={setMetricNumber("atms")}
               placeholder="e.g. 120"
             />
           </div>
@@ -1533,7 +1633,7 @@ const CustomerDetails = () => {
               className="cd-input"
               inputMode="numeric"
               value={metricsDraft.debit_cards}
-              onChange={setMetricNumber('debit_cards')}
+              onChange={setMetricNumber("debit_cards")}
               placeholder="e.g. 500000"
             />
           </div>
@@ -1544,7 +1644,7 @@ const CustomerDetails = () => {
               className="cd-input"
               inputMode="numeric"
               value={metricsDraft.credit_cards}
-              onChange={setMetricNumber('credit_cards')}
+              onChange={setMetricNumber("credit_cards")}
               placeholder="e.g. 200000"
             />
           </div>
@@ -1555,7 +1655,7 @@ const CustomerDetails = () => {
               className="cd-input"
               inputMode="numeric"
               value={metricsDraft.pos_terminals}
-              onChange={setMetricNumber('pos_terminals')}
+              onChange={setMetricNumber("pos_terminals")}
               placeholder="e.g. 15000"
             />
           </div>
@@ -1566,7 +1666,7 @@ const CustomerDetails = () => {
               className="cd-input"
               inputMode="numeric"
               value={metricsDraft.merchants}
-              onChange={setMetricNumber('merchants')}
+              onChange={setMetricNumber("merchants")}
               placeholder="e.g. 8000"
             />
           </div>
@@ -1577,13 +1677,13 @@ const CustomerDetails = () => {
               className="cd-input"
               inputMode="numeric"
               value={metricsDraft.tx_per_day}
-              onChange={setMetricNumber('tx_per_day')}
+              onChange={setMetricNumber("tx_per_day")}
               placeholder="e.g. 250000"
             />
           </div>
 
           {metricsLoading ? (
-            <div className="cd-metric" style={{ gridColumn: '1 / -1' }}>
+            <div className="cd-metric" style={{ gridColumn: "1 / -1" }}>
               <div className="cd-metric-value">Loading current metrics…</div>
             </div>
           ) : null}
