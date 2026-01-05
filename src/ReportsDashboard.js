@@ -13,7 +13,17 @@ import { supabase } from './supabaseClient';
 import './ReportsDashboard.css';
 import * as XLSX from 'xlsx';
 
-// Treat these as "closed" for pipeline purposes
+// ✅ charts
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip
+} from 'recharts';
+
 const CLOSED_STAGES_FOR_PIPELINE = [
   'Closed-Won',
   'Closed-Lost',
@@ -32,16 +42,13 @@ const formatCurrency = (value) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 0,
     maximumFractionDigits: 0
   }).format(num);
 };
 
 const formatPercent = (value) => {
   if (value === null || value === undefined) return '–';
-  const num = Number(value);
-  if (Number.isNaN(num)) return '–';
-  return `${num.toFixed(0)}%`;
+  return `${Number(value).toFixed(0)}%`;
 };
 
 function ReportsDashboard() {
@@ -50,29 +57,16 @@ function ReportsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [period, setPeriod] = useState('last90'); // 'last90' | 'ytd' | 'all'
-
-  // Projects by Presales filter
+  const [period, setPeriod] = useState('last90');
   const [presalesFilter, setPresalesFilter] = useState('All');
-
-  // Pipeline grouping toggle
-  const [pipelineGroupBy, setPipelineGroupBy] = useState('country'); // 'country' | 'account_manager'
+  const [pipelineGroupBy, setPipelineGroupBy] = useState('country');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
-        setError(null);
-
         const [projectsRes, tasksRes] = await Promise.all([
-          supabase
-            .from('projects')
-            .select(
-              'id, customer_name, account_manager, scope, deal_value, product, backup_presales, sales_stage, remarks, due_date, created_at, project_name, project_type, current_status, smartvista_modules, country, primary_presales, is_corporate, next_key_activity, bid_manager_required, bid_manager'
-            ),
-          supabase
-            .from('project_tasks')
-            .select('id, task_type, status, due_date, created_at')
+          supabase.from('projects').select('*'),
+          supabase.from('project_tasks').select('*')
         ]);
 
         if (projectsRes.error) throw projectsRes.error;
@@ -81,7 +75,7 @@ function ReportsDashboard() {
         setProjects(projectsRes.data || []);
         setTasks(tasksRes.data || []);
       } catch (err) {
-        console.error('Error loading reports data:', err);
+        console.error(err);
         setError('Failed to load report data');
       } finally {
         setLoading(false);
@@ -91,51 +85,29 @@ function ReportsDashboard() {
     fetchData();
   }, []);
 
-  // Time period boundaries
-  const { periodStart, periodEnd } = useMemo(() => {
-    const today = new Date();
-    const end = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-      23,
-      59,
-      59
-    );
-
+  const { periodStart } = useMemo(() => {
     if (period === 'last90') {
-      const start = new Date();
-      start.setDate(start.getDate() - 90);
-      return { periodStart: start, periodEnd: end };
+      const d = new Date();
+      d.setDate(d.getDate() - 90);
+      return { periodStart: d };
     }
-
     if (period === 'ytd') {
-      const start = new Date(today.getFullYear(), 0, 1);
-      return { periodStart: start, periodEnd: end };
+      return { periodStart: new Date(new Date().getFullYear(), 0, 1) };
     }
-
-    return { periodStart: null, periodEnd: end };
+    return { periodStart: null };
   }, [period]);
 
   const projectsInPeriod = useMemo(() => {
     if (!periodStart) return projects;
-    return projects.filter((p) => {
-      if (!p.created_at) return false;
-      const created = new Date(p.created_at);
-      return created >= periodStart && created <= periodEnd;
-    });
-  }, [projects, periodStart, periodEnd]);
+    return projects.filter((p) => new Date(p.created_at) >= periodStart);
+  }, [projects, periodStart]);
 
   const tasksInPeriod = useMemo(() => {
     if (!periodStart) return tasks;
-    return tasks.filter((t) => {
-      if (!t.created_at) return false;
-      const created = new Date(t.created_at);
-      return created >= periodStart && created <= periodEnd;
-    });
-  }, [tasks, periodStart, periodEnd]);
+    return tasks.filter((t) => new Date(t.created_at) >= periodStart);
+  }, [tasks, periodStart]);
 
-  // ===== KPI SUMMARY =====
+  /* ================= KPIs ================= */
   const {
     winRate,
     closedWonValue,
@@ -144,688 +116,204 @@ function ReportsDashboard() {
     demosPoCsCount,
     overduePercent
   } = useMemo(() => {
-    const wonProjects = projectsInPeriod.filter((p) =>
-      WON_STAGES.includes(p.sales_stage || '')
+    const won = projectsInPeriod.filter((p) => WON_STAGES.includes(p.sales_stage));
+    const lost = projectsInPeriod.filter((p) => LOST_STAGES.includes(p.sales_stage));
+    const active = projects.filter(
+      (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage)
     );
-    const lostProjects = projectsInPeriod.filter((p) =>
-      LOST_STAGES.includes(p.sales_stage || '')
+
+    const overdueTasks = tasks.filter(
+      (t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'Completed'
     );
-
-    const closedForWinRate = [...wonProjects, ...lostProjects];
-    const wonCount = wonProjects.length;
-    const closedCount = closedForWinRate.length;
-
-    const winRateVal = closedCount > 0 ? (wonCount / closedCount) * 100 : null;
-
-    const closedWonValueVal = wonProjects.reduce((sum, p) => {
-      const v = Number(p.deal_value) || 0;
-      return sum + v;
-    }, 0);
-
-    const activeProjects = projects.filter(
-      (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage || '')
-    );
-    const activePipelineValueVal = activeProjects.reduce((sum, p) => {
-      const v = Number(p.deal_value) || 0;
-      return sum + v;
-    }, 0);
-
-    const rfpTypes = ['RFP / Proposal', 'RFI'];
-    const rfpCountVal = tasksInPeriod.filter(
-      (t) => t.status === 'Completed' && rfpTypes.includes(t.task_type || '')
-    ).length;
-
-    const demoPoCTypes = ['Demo / Walkthrough', 'PoC / Sandbox'];
-    const demosPoCsCountVal = tasksInPeriod.filter(
-      (t) =>
-        t.status === 'Completed' && demoPoCTypes.includes(t.task_type || '')
-    ).length;
-
-    const now = new Date();
-    const tasksWithDueDate = tasks.filter((t) => t.due_date);
-    const overdueTasks = tasksWithDueDate.filter((t) => {
-      const due = new Date(t.due_date);
-      return due < now && t.status !== 'Completed';
-    });
-
-    const overduePct =
-      tasksWithDueDate.length > 0
-        ? (overdueTasks.length / tasksWithDueDate.length) * 100
-        : null;
 
     return {
-      winRate: winRateVal,
-      closedWonValue: closedWonValueVal,
-      activePipelineValue: activePipelineValueVal,
-      rfpCount: rfpCountVal,
-      demosPoCsCount: demosPoCsCountVal,
-      overduePercent: overduePct
+      winRate: won.length + lost.length ? (won.length / (won.length + lost.length)) * 100 : null,
+      closedWonValue: won.reduce((s, p) => s + (Number(p.deal_value) || 0), 0),
+      activePipelineValue: active.reduce((s, p) => s + (Number(p.deal_value) || 0), 0),
+      rfpCount: tasksInPeriod.filter((t) => t.task_type?.includes('RFP')).length,
+      demosPoCsCount: tasksInPeriod.filter((t) => t.task_type?.includes('Demo')).length,
+      overduePercent: tasks.length ? (overdueTasks.length / tasks.length) * 100 : null
     };
   }, [projects, projectsInPeriod, tasks, tasksInPeriod]);
 
-  // ===== WIN / LOSS OVERVIEW TABLE =====
-  const winLossStats = useMemo(() => {
-    const won = projectsInPeriod.filter((p) =>
-      WON_STAGES.includes(p.sales_stage || '')
-    );
-    const lost = projectsInPeriod.filter((p) =>
-      LOST_STAGES.includes(p.sales_stage || '')
-    );
-    const cancelled = projectsInPeriod.filter((p) =>
-      CANCELLED_STAGES.includes(p.sales_stage || '')
-    );
-    const doneGeneric = projectsInPeriod.filter(
-      (p) => (p.sales_stage || '') === 'Done'
-    );
-
-    const sumValue = (arr) =>
-      arr.reduce((sum, p) => sum + (Number(p.deal_value) || 0), 0);
-
-    return {
-      wonCount: won.length,
-      wonValue: sumValue(won),
-      lostCount: lost.length,
-      lostValue: sumValue(lost),
-      cancelledCount: cancelled.length,
-      cancelledValue: sumValue(cancelled),
-      doneCount: doneGeneric.length,
-      doneValue: sumValue(doneGeneric)
-    };
-  }, [projectsInPeriod]);
-
-  // ===== PIPELINE BY STAGE =====
-  const pipelineByStage = useMemo(() => {
-    if (!projects || projects.length === 0) return [];
-
-    const stageMap = new Map();
-
-    projects.forEach((p) => {
-      const stage = p.sales_stage || 'Unknown';
-      const value = Number(p.deal_value) || 0;
-
-      if (!stageMap.has(stage)) stageMap.set(stage, { stage, count: 0, value: 0 });
-
-      const entry = stageMap.get(stage);
-      entry.count += 1;
-      entry.value += value;
-    });
-
-    const list = Array.from(stageMap.values());
-
-    const ORDER = [
-      'Lead',
-      'Opportunity',
-      'Proposal',
-      'RFP',
-      'SoW',
-      'Contracting',
-      'Done',
-      'Closed-Won',
-      'Closed-Lost',
-      'Closed-Cancelled/Hold'
-    ];
-
-    list.sort((a, b) => {
-      const ia = ORDER.indexOf(a.stage);
-      const ib = ORDER.indexOf(b.stage);
-      if (ia === -1 && ib === -1) return a.stage.localeCompare(b.stage);
-      if (ia === -1) return 1;
-      if (ib === -1) return -1;
-      return ia - ib;
-    });
-
-    return list;
-  }, [projects]);
-
-  // ===== ACTIVITY BY TASK TYPE =====
-  const activityByTaskType = useMemo(() => {
-    if (!tasksInPeriod || tasksInPeriod.length === 0) return [];
-
-    const typeMap = new Map();
-    tasksInPeriod.forEach((t) => {
-      const type = t.task_type || 'Uncategorized';
-      if (!typeMap.has(type)) typeMap.set(type, { type, completed: 0 });
-      if (t.status === 'Completed') typeMap.get(type).completed += 1;
-    });
-
-    const list = Array.from(typeMap.values());
-    list.sort((a, b) => b.completed - a.completed);
-    return list;
-  }, [tasksInPeriod]);
-
-  // ===== Pipeline grouped (Country or Account Manager) =====
+  /* ================= PIPELINE GROUPING ================= */
   const pipelineGrouped = useMemo(() => {
-    if (!projects || projects.length === 0) return [];
-
     const map = new Map();
 
     projects.forEach((p) => {
-      const stage = p.sales_stage || '';
-      if (CLOSED_STAGES_FOR_PIPELINE.includes(stage)) return;
+      if (CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage)) return;
 
-      const groupKey =
+      const key =
         pipelineGroupBy === 'account_manager'
-          ? (p.account_manager || '').trim() || 'Unassigned'
-          : (p.country || '').trim() || 'Unknown';
+          ? p.account_manager || 'Unassigned'
+          : p.country || 'Unknown';
 
-      const value = Number(p.deal_value) || 0;
+      const val = Number(p.deal_value) || 0;
 
-      if (!map.has(groupKey)) map.set(groupKey, { key: groupKey, count: 0, value: 0 });
-
-      const entry = map.get(groupKey);
-      entry.count += 1;
-      entry.value += value;
+      if (!map.has(key)) map.set(key, { name: key, count: 0, value: 0 });
+      const row = map.get(key);
+      row.count += 1;
+      row.value += val;
     });
 
-    const list = Array.from(map.values());
-    list.sort((a, b) => b.value - a.value);
-    return list;
+    return Array.from(map.values()).sort((a, b) => b.value - a.value);
   }, [projects, pipelineGroupBy]);
 
-  const totalPipelineValueGrouped = useMemo(() => {
-    return pipelineGrouped.reduce((sum, r) => sum + r.value, 0);
-  }, [pipelineGrouped]);
+  const pipelineChartData = pipelineGrouped.slice(0, 10);
 
-  const getGroupShare = (value) => {
-    if (!totalPipelineValueGrouped) return null;
-    return (value / totalPipelineValueGrouped) * 100;
-  };
+  const pipelineLeftColTitle =
+    pipelineGroupBy === 'account_manager' ? 'Account Manager' : 'Country';
 
-  // ===== Projects grouped by Presales =====
-  const projectsGroupedByPresalesAll = useMemo(() => {
-    const map = new Map();
-
-    projects.forEach((p) => {
-      const presales = (p.primary_presales || '').trim() || 'Unassigned';
-      if (!map.has(presales)) map.set(presales, []);
-      map.get(presales).push(p);
-    });
-
-    const groups = Array.from(map.entries()).map(([presales, items]) => {
-      const sorted = [...items].sort((a, b) => {
-        const aName = (a.project_name || '').toLowerCase();
-        const bName = (b.project_name || '').toLowerCase();
-        return aName.localeCompare(bName);
-      });
-      return { presales, items: sorted };
-    });
-
-    groups.sort((a, b) => a.presales.localeCompare(b.presales));
-    return groups;
-  }, [projects]);
-
-  const presalesOptions = useMemo(() => {
-    const opts = projectsGroupedByPresalesAll.map((g) => g.presales);
-    return ['All', ...opts];
-  }, [projectsGroupedByPresalesAll]);
-
+  /* ================= PROJECTS BY PRESALES ================= */
   const projectsGroupedByPresales = useMemo(() => {
-    if (presalesFilter === 'All') return projectsGroupedByPresalesAll;
-    return projectsGroupedByPresalesAll.filter((g) => g.presales === presalesFilter);
-  }, [projectsGroupedByPresalesAll, presalesFilter]);
+    const map = new Map();
+    projects.forEach((p) => {
+      const key = p.primary_presales || 'Unassigned';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(p);
+    });
+    return Array.from(map.entries())
+      .map(([presales, items]) => ({ presales, items }))
+      .filter((g) => presalesFilter === 'All' || g.presales === presalesFilter);
+  }, [projects, presalesFilter]);
 
+  const presalesOptions = ['All', ...new Set(projects.map((p) => p.primary_presales || 'Unassigned'))];
+
+  /* ================= EXCEL EXPORT ================= */
   const exportProjectsByPresalesToExcel = () => {
-    const aoa = [];
-    const COLS = ['Project', 'Customer', 'Country', 'Account Manager', 'Stage', 'Next key activity', 'Value'];
-
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-
-    aoa.push(['Projects by Presales']);
-    aoa.push([`Generated: ${yyyy}-${mm}-${dd}`]);
-    aoa.push([`Filter: ${presalesFilter}`]);
-    aoa.push([]);
-
-    projectsGroupedByPresales.forEach((group, idx) => {
-      aoa.push([`Presales: ${group.presales} (${group.items.length})`]);
-      aoa.push(COLS);
-
-      group.items.forEach((p) => {
-        aoa.push([
-          p.project_name || '—',
-          p.customer_name || '—',
-          p.country || 'Unknown',
-          p.account_manager || 'Unassigned',
-          p.sales_stage || '—',
-          p.next_key_activity || '—',
-          Number(p.deal_value) || 0
+    const rows = [];
+    projectsGroupedByPresales.forEach((g) => {
+      rows.push([`Presales: ${g.presales}`]);
+      rows.push(['Project', 'Customer', 'Stage', 'Next key activity', 'Value']);
+      g.items.forEach((p) => {
+        rows.push([
+          p.project_name,
+          p.customer_name,
+          p.sales_stage,
+          p.next_key_activity,
+          p.deal_value
         ]);
       });
-
-      if (idx < projectsGroupedByPresales.length - 1) aoa.push([]);
+      rows.push([]);
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-    ws['!cols'] = [
-      { wch: 28 },
-      { wch: 22 },
-      { wch: 16 },
-      { wch: 20 },
-      { wch: 14 },
-      { wch: 40 },
-      { wch: 14 }
-    ];
-
-    ws['!freeze'] = { xSplit: 0, ySplit: 4 };
-
+    const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Projects by Presales');
-
-    const suffix =
-      presalesFilter === 'All'
-        ? 'all'
-        : presalesFilter.replace(/[^a-z0-9]+/gi, '_').toLowerCase();
-
-    XLSX.writeFile(wb, `projects_by_presales_${suffix}_${yyyy}-${mm}-${dd}.xlsx`);
+    XLSX.writeFile(wb, 'projects_by_presales.xlsx');
   };
 
-  const handleFilterClick = (value) => setPeriod(value);
-
-  if (loading) {
-    return (
-      <div className="reports-page">
-        <header className="reports-header">
-          <div className="reports-header-left">
-            <h1 className="reports-title">Presales Reports & Analytics</h1>
-            <p className="reports-subtitle">High-level view of presales performance, pipeline, and activity.</p>
-          </div>
-        </header>
-        <div className="reports-loading">
-          <div className="reports-loading-spinner" />
-          <span>Loading reports...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="reports-page">
-        <header className="reports-header">
-          <div className="reports-header-left">
-            <h1 className="reports-title">Presales Reports & Analytics</h1>
-            <p className="reports-subtitle">High-level view of presales performance, pipeline, and activity.</p>
-          </div>
-        </header>
-        <div className="reports-error">
-          <span>{error}</span>
-        </div>
-      </div>
-    );
-  }
-
-  const pipelineLeftColTitle = pipelineGroupBy === 'account_manager' ? 'Account Manager' : 'Country';
+  if (loading) return <div className="reports-loading">Loading reports…</div>;
+  if (error) return <div className="reports-error">{error}</div>;
 
   return (
     <div className="reports-page">
       <header className="reports-header">
-        <div className="reports-header-left">
-          <h1 className="reports-title">Presales Reports & Analytics</h1>
-          <p className="reports-subtitle">High-level view of presales performance, pipeline, and activity.</p>
-        </div>
-
-        <div className="reports-filters">
-          <button
-            className={period === 'last90' ? 'reports-filter-chip reports-filter-chip-active' : 'reports-filter-chip'}
-            onClick={() => handleFilterClick('last90')}
-          >
-            Last 90 days
-          </button>
-          <button
-            className={period === 'ytd' ? 'reports-filter-chip reports-filter-chip-active' : 'reports-filter-chip'}
-            onClick={() => handleFilterClick('ytd')}
-          >
-            Year to date
-          </button>
-          <button
-            className={period === 'all' ? 'reports-filter-chip reports-filter-chip-active' : 'reports-filter-chip'}
-            onClick={() => handleFilterClick('all')}
-          >
-            All time
-          </button>
-        </div>
+        <h1 className="reports-title">Presales Reports & Analytics</h1>
       </header>
 
-      <main className="reports-main">
-        {/* Section A: KPI summary */}
-        <section className="reports-section">
-          <div className="reports-section-header">
-            <div className="reports-section-title">
-              <FaChartLine className="reports-section-icon" />
-              <h2>Performance KPIs</h2>
-            </div>
-            <p className="reports-section-subtitle">
-              Summary of wins, pipeline value, and presales activity.
-            </p>
+      {/* KPIs */}
+      <section className="reports-section">
+        <div className="reports-kpi-grid">
+          <div className="reports-kpi-card">
+            <span>Win rate</span>
+            <strong>{formatPercent(winRate)}</strong>
           </div>
-
-          <div className="reports-kpi-grid">
-            <div className="reports-kpi-card">
-              <div className="reports-kpi-label">
-                <FaTrophy />
-                <span>Win rate</span>
-              </div>
-              <div className="reports-kpi-value">{formatPercent(winRate)}</div>
-              <div className="reports-kpi-hint">Closed-won vs closed-lost (selected period)</div>
-            </div>
-
-            <div className="reports-kpi-card">
-              <div className="reports-kpi-label">
-                <FaDollarSign />
-                <span>Closed-won value</span>
-              </div>
-              <div className="reports-kpi-value">{formatCurrency(closedWonValue)}</div>
-              <div className="reports-kpi-hint">Deals won in selected period</div>
-            </div>
-
-            <div className="reports-kpi-card">
-              <div className="reports-kpi-label">
-                <FaChartLine />
-                <span>Active pipeline</span>
-              </div>
-              <div className="reports-kpi-value">{formatCurrency(activePipelineValue)}</div>
-              <div className="reports-kpi-hint">Open opportunities by value (current)</div>
-            </div>
-
-            <div className="reports-kpi-card">
-              <div className="reports-kpi-label">
-                <FaTasks />
-                <span>RFP / Proposals</span>
-              </div>
-              <div className="reports-kpi-value">{rfpCount || 0}</div>
-              <div className="reports-kpi-hint">Completed in selected period</div>
-            </div>
-
-            <div className="reports-kpi-card">
-              <div className="reports-kpi-label">
-                <FaTasks />
-                <span>Demos & PoCs</span>
-              </div>
-              <div className="reports-kpi-value">{demosPoCsCount || 0}</div>
-              <div className="reports-kpi-hint">Delivered to customers (selected period)</div>
-            </div>
-
-            <div className="reports-kpi-card">
-              <div className="reports-kpi-label">
-                <FaFlag />
-                <span>Overdue tasks</span>
-              </div>
-              <div className="reports-kpi-value">{formatPercent(overduePercent)}</div>
-              <div className="reports-kpi-hint">Share of tasks beyond due date (all tasks)</div>
-            </div>
+          <div className="reports-kpi-card">
+            <span>Closed-won value</span>
+            <strong>{formatCurrency(closedWonValue)}</strong>
           </div>
-        </section>
-
-        {/* Section B: Win / loss breakdown */}
-        <section className="reports-section">
-          <div className="reports-section-header">
-            <div className="reports-section-title">
-              <FaTrophy className="reports-section-icon" />
-              <h2>Win / Loss Overview</h2>
-            </div>
-            <p className="reports-section-subtitle">
-              Deals we won, lost, or closed in the selected period (by project stage).
-            </p>
+          <div className="reports-kpi-card">
+            <span>Active pipeline</span>
+            <strong>{formatCurrency(activePipelineValue)}</strong>
           </div>
-
-          <div className="reports-panel">
-            <div className="reports-table-header">
-              <span>Result</span>
-              <span>Count</span>
-              <span>Total value</span>
-            </div>
-            <div className="reports-table-row">
-              <span>Won</span>
-              <span>{winLossStats.wonCount}</span>
-              <span>{formatCurrency(winLossStats.wonValue)}</span>
-            </div>
-            <div className="reports-table-row">
-              <span>Lost</span>
-              <span>{winLossStats.lostCount}</span>
-              <span>{formatCurrency(winLossStats.lostValue)}</span>
-            </div>
-            <div className="reports-table-row">
-              <span>Cancelled / On hold</span>
-              <span>{winLossStats.cancelledCount}</span>
-              <span>{formatCurrency(winLossStats.cancelledValue)}</span>
-            </div>
-            <div className="reports-table-row">
-              <span>Completed (Done)</span>
-              <span>{winLossStats.doneCount}</span>
-              <span>{formatCurrency(winLossStats.doneValue)}</span>
-            </div>
+          <div className="reports-kpi-card">
+            <span>RFPs</span>
+            <strong>{rfpCount}</strong>
           </div>
-        </section>
-
-        {/* Section C: Pipeline by stage */}
-        <section className="reports-section">
-          <div className="reports-section-header">
-            <div className="reports-section-title">
-              <FaChartLine className="reports-section-icon" />
-              <h2>Pipeline by Stage</h2>
-            </div>
-            <p className="reports-section-subtitle">
-              Distribution of opportunities across sales stages (current snapshot).
-            </p>
+          <div className="reports-kpi-card">
+            <span>Demos / PoCs</span>
+            <strong>{demosPoCsCount}</strong>
           </div>
-
-          <div className="reports-panel">
-            <div className="reports-table-header">
-              <span>Stage</span>
-              <span>Deals</span>
-              <span>Pipeline value</span>
-            </div>
-            {pipelineByStage.length === 0 ? (
-              <div className="reports-table-row reports-row-muted">
-                <span>No projects found</span>
-                <span>–</span>
-                <span>–</span>
-              </div>
-            ) : (
-              pipelineByStage.map((s) => (
-                <div key={s.stage} className="reports-table-row">
-                  <span>{s.stage}</span>
-                  <span>{s.count}</span>
-                  <span>{formatCurrency(s.value)}</span>
-                </div>
-              ))
-            )}
+          <div className="reports-kpi-card">
+            <span>Overdue tasks</span>
+            <strong>{formatPercent(overduePercent)}</strong>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Section D: Activity by task type */}
-        <section className="reports-section">
-          <div className="reports-section-header">
-            <div className="reports-section-title">
-              <FaTasks className="reports-section-icon" />
-              <h2>Activity by Task Type</h2>
-            </div>
-            <p className="reports-section-subtitle">
-              Completed tasks by type (selected period).
-            </p>
+      {/* Pipeline chart + table */}
+      <section className="reports-section">
+        <div className="reports-section-header">
+          <h2>
+            {pipelineGroupBy === 'account_manager'
+              ? 'Pipeline by Account Manager'
+              : 'Pipeline by Country'}
+          </h2>
+          <div>
+            <button onClick={() => setPipelineGroupBy('country')}>By Country</button>
+            <button onClick={() => setPipelineGroupBy('account_manager')}>
+              By Account Manager
+            </button>
           </div>
+        </div>
 
-          <div className="reports-panel">
-            <div className="reports-table-header">
-              <span>Task type</span>
-              <span>Completed (period)</span>
-            </div>
-            {activityByTaskType.length === 0 ? (
-              <div className="reports-table-row reports-row-muted">
-                <span>No tasks found for this period</span>
-                <span>–</span>
-              </div>
-            ) : (
-              activityByTaskType.map((t) => (
-                <div key={t.type} className="reports-table-row">
-                  <span>{t.type}</span>
-                  <span>{t.completed}</span>
-                </div>
-              ))
-            )}
+        <div className="reports-panel" style={{ height: 280 }}>
+          <ResponsiveContainer>
+            <BarChart data={pipelineChartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <YAxis />
+              <Tooltip formatter={(v) => formatCurrency(v)} />
+              <Bar dataKey="value" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="reports-panel">
+          <div className="reports-table-header">
+            <span>{pipelineLeftColTitle}</span>
+            <span>Deals</span>
+            <span>Value</span>
           </div>
-        </section>
-
-        {/* Section E: Pipeline by Country / Account Manager */}
-        <section className="reports-section">
-          <div className="reports-section-header">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%' }}>
-              <div>
-                <div className="reports-section-title">
-                  <FaGlobeAsia className="reports-section-icon" />
-                  <h2>
-                    {pipelineGroupBy === 'account_manager'
-                      ? 'Pipeline by Account Manager'
-                      : 'Pipeline by Country'}
-                  </h2>
-                </div>
-                <p className="reports-section-subtitle" style={{ marginTop: 6 }}>
-                  Active pipeline only (excludes closed stages).
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  className={pipelineGroupBy === 'country' ? 'reports-filter-chip reports-filter-chip-active' : 'reports-filter-chip'}
-                  onClick={() => setPipelineGroupBy('country')}
-                >
-                  By Country
-                </button>
-                <button
-                  className={pipelineGroupBy === 'account_manager' ? 'reports-filter-chip reports-filter-chip-active' : 'reports-filter-chip'}
-                  onClick={() => setPipelineGroupBy('account_manager')}
-                >
-                  By Account Manager
-                </button>
-              </div>
+          {pipelineGrouped.map((r) => (
+            <div key={r.name} className="reports-table-row">
+              <span>{r.name}</span>
+              <span>{r.count}</span>
+              <span>{formatCurrency(r.value)}</span>
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Projects by Presales */}
+      <section className="reports-section">
+        <div className="reports-section-header">
+          <h2>Projects by Presales</h2>
+          <select value={presalesFilter} onChange={(e) => setPresalesFilter(e.target.value)}>
+            {presalesOptions.map((p) => (
+              <option key={p}>{p}</option>
+            ))}
+          </select>
+          <button onClick={exportProjectsByPresalesToExcel}>
+            <FaFileExcel /> Export
+          </button>
+        </div>
+
+        {projectsGroupedByPresales.map((g) => (
+          <div key={g.presales} className="reports-panel">
+            <strong>{g.presales}</strong>
+            {g.items.map((p) => (
+              <div key={p.id} className="reports-table-row">
+                <span>{p.project_name}</span>
+                <span>{p.sales_stage}</span>
+                <span>{p.next_key_activity}</span>
+                <span>{formatCurrency(p.deal_value)}</span>
+              </div>
+            ))}
           </div>
-
-          <div className="reports-panel">
-            <div className="reports-table-header">
-              <span>{pipelineLeftColTitle}</span>
-              <span>Active deals</span>
-              <span>Pipeline value</span>
-            </div>
-
-            {pipelineGrouped.length === 0 ? (
-              <div className="reports-table-row reports-row-muted">
-                <span>No active pipeline</span>
-                <span>–</span>
-                <span>–</span>
-              </div>
-            ) : (
-              pipelineGrouped.map((r) => (
-                <div key={r.key} className="reports-table-row">
-                  <span>
-                    {r.key}
-                    {(() => {
-                      const share = getGroupShare(r.value);
-                      if (!share) return null;
-                      return ` (${share.toFixed(0)}%)`;
-                    })()}
-                  </span>
-                  <span>{r.count}</span>
-                  <span>{formatCurrency(r.value)}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        {/* Section F: Projects by Presales */}
-        <section className="reports-section">
-          <div className="reports-section-header">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%' }}>
-              <div>
-                <div className="reports-section-title">
-                  <FaTasks className="reports-section-icon" />
-                  <h2>Projects by Presales</h2>
-                </div>
-                <p className="reports-section-subtitle" style={{ marginTop: 6 }}>
-                  Grouped by the primary presales assigned on each project.
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontSize: 12, opacity: 0.8 }}>Presales:</span>
-                  <select
-                    value={presalesFilter}
-                    onChange={(e) => setPresalesFilter(e.target.value)}
-                    style={{
-                      height: 34,
-                      borderRadius: 10,
-                      border: '1px solid rgba(15, 23, 42, 0.12)',
-                      padding: '0 10px',
-                      background: '#fff',
-                      fontSize: 12
-                    }}
-                  >
-                    {presalesOptions.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <button
-                  className="reports-filter-chip reports-export-chip"
-                  onClick={exportProjectsByPresalesToExcel}
-                  title="Export Projects grouped by Presales"
-                  style={{ whiteSpace: 'nowrap' }}
-                >
-                  <FaFileExcel style={{ marginRight: 6 }} />
-                  Export Excel
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {projectsGroupedByPresales.length === 0 ? (
-            <div className="reports-panel">
-              <div className="reports-table-row reports-row-muted">
-                <span>No projects found</span>
-              </div>
-            </div>
-          ) : (
-            projectsGroupedByPresales.map((group) => (
-              <div key={group.presales} className="reports-presales-group">
-                <div className="reports-presales-group-header">
-                  <div className="reports-presales-name">{group.presales}</div>
-                  <div className="reports-presales-count">
-                    {group.items.length} project{group.items.length !== 1 ? 's' : ''}
-                  </div>
-                </div>
-
-                <div className="reports-panel">
-                  <div className="reports-table-header reports-presales-table">
-                    <span>Project</span>
-                    <span>Customer</span>
-                    <span>Stage</span>
-                    <span>Next key activity</span>
-                    <span>Value</span>
-                  </div>
-
-                  {group.items.map((p) => (
-                    <div key={p.id} className="reports-table-row reports-presales-table">
-                      <span>{p.project_name || '—'}</span>
-                      <span>{p.customer_name || '—'}</span>
-                      <span>{p.sales_stage || '—'}</span>
-                      <span>{p.next_key_activity || '—'}</span>
-                      <span>{formatCurrency(p.deal_value)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))
-          )}
-        </section>
-      </main>
+        ))}
+      </section>
     </div>
   );
 }
