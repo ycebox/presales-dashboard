@@ -1,4 +1,6 @@
-// ProjectDetails.js
+// ProjectDetails.js  (updated: Sales Stage is now a dropdown)
+// Based on your latest uploaded ProjectDetails (1).js, with only the Sales Stage field changed.
+
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
@@ -77,7 +79,6 @@ const getSalesStageClass = (stage) => {
   return "stage-active";
 };
 
-// smartvista_modules is VARCHAR in your schema, treat it as comma-separated
 const toModulesArray = (value) => {
   if (!value) return [];
   return String(value)
@@ -99,8 +100,10 @@ const isStageClosedOrDone = (stage) => {
 
 const isTaskDoneOrHold = (status) => ["Completed", "Cancelled/On-hold"].includes(status || "");
 
-const normalizeStatusKey = (s) =>
-  safeLower(s).replaceAll(" ", "-").replaceAll("/", "-");
+const normalizeStatusKey = (s) => safeLower(s).replaceAll(" ", "-").replaceAll("/", "-");
+
+// ✅ Sales stage dropdown options
+const SALES_STAGE_OPTIONS = ["Lead", "Opportunity", "Proposal", "Contracting", "Done"];
 
 // ---------- Log Modal ----------
 const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
@@ -123,7 +126,6 @@ const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
       await onSave(logText);
       onClose();
     } catch (err) {
-    
       console.error("Log save error:", err);
       alert(`Failed to save log: ${err?.message || "Unknown error"}`);
     } finally {
@@ -219,7 +221,6 @@ const useProjectData = (projectId) => {
       if (qErr) throw qErr;
       setTasks(data || []);
     } catch (err) {
-     
       console.error("Error fetching tasks:", err);
     }
   };
@@ -235,7 +236,6 @@ const useProjectData = (projectId) => {
       if (qErr) throw qErr;
       setLogs(data || []);
     } catch (err) {
-      
       console.error("Error fetching logs:", err);
     }
   };
@@ -255,7 +255,6 @@ const useProjectData = (projectId) => {
       setProject(data);
       await Promise.all([fetchTasks(), fetchLogs()]);
     } catch (err) {
-      
       console.error("Error fetching project:", err);
       setError(err.message || "Failed to load project");
     } finally {
@@ -265,7 +264,7 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
-    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
@@ -301,14 +300,14 @@ function ProjectDetails() {
   const [taskTypes, setTaskTypes] = useState([]);
   const [taskTypeDefaultsMap, setTaskTypeDefaultsMap] = useState({});
 
-  // ✅ Bid manager load info
+  // Bid manager load info
   const [bidManagerLoad, setBidManagerLoad] = useState(null);
   const [bidManagerLoadError, setBidManagerLoadError] = useState(null);
 
-  // ✅ UI state for expanding parent groups
+  // expanding parent groups
   const [expandedParents, setExpandedParents] = useState({});
 
-  // ✅ Customer UUID lookup (so /customer/:customerId works)
+  // Customer UUID lookup (so /customer/:customerId works)
   const [customerId, setCustomerId] = useState(null);
 
   useEffect(() => {
@@ -361,7 +360,7 @@ function ProjectDetails() {
     loadLists();
   }, []);
 
-  // ✅ Customer ID lookup based on project.customer_name
+  // Customer ID lookup based on project.customer_name
   useEffect(() => {
     const lookupCustomerId = async () => {
       setCustomerId(null);
@@ -387,7 +386,7 @@ function ProjectDetails() {
     lookupCustomerId();
   }, [project?.customer_name]);
 
-  // ✅ Load bid manager "active projects count"
+  // Load bid manager "active projects count"
   useEffect(() => {
     const loadBidManagerLoad = async () => {
       setBidManagerLoad(null);
@@ -506,10 +505,9 @@ function ProjectDetails() {
     }
   }, [project]);
 
-  // ✅ Group tasks into parent/children for display + logic
+  // Group tasks into parent/children
   const { groupedParents, childrenByParent } = useMemo(() => {
     const list = Array.isArray(tasks) ? tasks : [];
-
     const childrenMap = {};
     const parents = [];
 
@@ -535,7 +533,7 @@ function ProjectDetails() {
     };
   }, [tasks]);
 
-  // ✅ Ensure expand state auto-initializes for parents that have children
+  // Expand state initialize
   useEffect(() => {
     setExpandedParents((prev) => {
       const next = { ...prev };
@@ -565,7 +563,7 @@ function ProjectDetails() {
     return { done, total, pct };
   };
 
-  // Parent task options for TaskModal (top-level tasks only)
+  // Parent task options for TaskModal
   const parentTaskOptions = useMemo(() => {
     return groupedParents
       .map((p) => ({ id: p.id, description: p.description || "(Untitled task)" }))
@@ -591,9 +589,9 @@ function ProjectDetails() {
       const initialModules = toModulesArray(project?.smartvista_modules);
       setSelectedModules(initialModules);
       setModulesDraft(initialModules.join(", "));
+
       setModulesOpen(false);
       setModuleSearch("");
-
       setIsEditing(false);
     } else {
       setIsEditing(true);
@@ -638,18 +636,17 @@ function ProjectDetails() {
         country: editProject.country || "",
         scope: editProject.scope || "",
         deal_value: editProject.deal_value === "" ? null : editProject.deal_value,
+
+        // ✅ saved from dropdown
         sales_stage: editProject.sales_stage || "",
+
         due_date: editProject.due_date || null,
-
         smartvista_modules: (modulesDraft || "").trim() || null,
-
         next_key_activity: editProject.next_key_activity || "",
         remarks: editProject.remarks || "",
-
         primary_presales: (editProject.primary_presales || "").trim() || null,
         backup_presales: (editProject.backup_presales || "").trim() || null,
         is_corporate: !!editProject.is_corporate,
-
         bid_manager_required: requiresBM,
         bid_manager: bmValue ? bmValue : null,
       };
@@ -660,7 +657,6 @@ function ProjectDetails() {
       setProject((prev) => ({ ...prev, ...payload }));
       setIsEditing(false);
     } catch (err) {
-    
       console.error("Error saving project:", err);
       alert(`Failed to save project changes: ${err?.message || "Unknown error"}`);
     } finally {
@@ -732,7 +728,6 @@ function ProjectDetails() {
       if (qErr) throw qErr;
       await fetchTasks();
     } catch (err) {
-   
       console.error("Delete task error:", err);
       alert(`Failed to delete task: ${err?.message || "Unknown error"}`);
     }
@@ -755,7 +750,6 @@ function ProjectDetails() {
       if (qErr) throw qErr;
       await fetchLogs();
     } catch (err) {
-    
       console.error("Delete log error:", err);
       alert(`Failed to delete log: ${err?.message || "Unknown error"}`);
     }
@@ -782,7 +776,7 @@ function ProjectDetails() {
   const isReadOnly = !isEditing;
   const viewOrEdit = isEditing ? editProject : project;
 
-  // ✅ When editing a task, detect if it has children so TaskModal can lock hours
+  // When editing a task, detect if it has children so TaskModal can lock hours
   const editingHasChildren =
     !!editingTask?.id && (childrenByParent[editingTask.id] || []).length > 0;
 
@@ -806,7 +800,9 @@ function ProjectDetails() {
                       title={customerId ? "Open customer" : "Customer not found in customers table"}
                     >
                       <FaUsers className="subtitle-icon" />
-                      <span className="project-customer-text">{project.customer_name || "No customer"}</span>
+                      <span className="project-customer-text">
+                        {project.customer_name || "No customer"}
+                      </span>
                     </button>
 
                     <div className="hero-metrics-block">
@@ -1045,7 +1041,7 @@ function ProjectDetails() {
                 </select>
               </div>
 
-              {/* ✅ Bid manager section */}
+              {/* Bid manager section */}
               <div className="form-group form-group-full">
                 <label className="form-label" style={{ marginBottom: 8 }}>
                   Bid Manager
@@ -1105,20 +1101,26 @@ function ProjectDetails() {
                 </label>
               </div>
 
+              {/* ✅ Sales Stage as dropdown */}
               <div className="form-group">
                 <label className="form-label">
                   <FaChartLine className="form-icon" />
                   Sales Stage
                 </label>
-                <input
-                  type="text"
+                <select
+                  className="form-input"
                   name="sales_stage"
                   value={viewOrEdit.sales_stage || ""}
                   onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-input"
-                  readOnly={isReadOnly}
                   disabled={isReadOnly}
-                />
+                >
+                  <option value="">-</option>
+                  {SALES_STAGE_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group">
@@ -1333,19 +1335,12 @@ function ProjectDetails() {
 
                   const hasChildren = kidsAll.length > 0;
                   const isExpanded = !!expandedParents[t.id];
-
                   const prog = hasChildren ? getParentProgress(t.id) : null;
 
                   return (
                     <div key={t.id} className={`list-group ${hasChildren ? "has-children" : ""}`}>
-                      {/* Parent row */}
                       <div className={`list-item ${t.status === "Completed" ? "is-done" : ""}`}>
-                        <div
-                          className="list-item-main"
-                          onClick={() => openEditTask(t)}
-                          role="button"
-                          tabIndex={0}
-                        >
+                        <div className="list-item-main" onClick={() => openEditTask(t)} role="button" tabIndex={0}>
                           <div className="list-item-top">
                             {hasChildren ? (
                               <button
@@ -1406,7 +1401,6 @@ function ProjectDetails() {
                         </div>
                       </div>
 
-                      {/* Sub-tasks */}
                       {hasChildren && isExpanded ? (
                         <div className="subtask-list">
                           {kidsVisible.length === 0 ? (
@@ -1419,16 +1413,9 @@ function ProjectDetails() {
                                 key={k.id}
                                 className={`list-item is-subtask ${k.status === "Completed" ? "is-done" : ""}`}
                               >
-                                <div
-                                  className="list-item-main"
-                                  onClick={() => openEditTask(k)}
-                                  role="button"
-                                  tabIndex={0}
-                                >
+                                <div className="list-item-main" onClick={() => openEditTask(k)} role="button" tabIndex={0}>
                                   <div className="list-item-top">
-                                    <span className={`status-tag status-${normalizeStatusKey(k.status)}`}>
-                                      {k.status}
-                                    </span>
+                                    <span className={`status-tag status-${normalizeStatusKey(k.status)}`}>{k.status}</span>
                                     {k.task_type && <span className="type-tag">{k.task_type}</span>}
                                     {k.priority && <span className="type-tag">{k.priority}</span>}
                                     {k.estimated_hours !== null &&
@@ -1529,10 +1516,7 @@ function ProjectDetails() {
           const hasChildren = isEditingNow && (childrenByParent[editingTask.id] || []).length > 0;
 
           const payload = { ...taskData };
-
-          if (hasChildren) {
-            payload.estimated_hours = null;
-          }
+          if (hasChildren) payload.estimated_hours = null;
 
           if (isEditingNow) {
             const { error: qErr } = await supabase.from("project_tasks").update(payload).eq("id", editingTask.id);
