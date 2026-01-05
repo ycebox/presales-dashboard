@@ -887,7 +887,7 @@ const CustomerDetails = () => {
         ...p,
         sales_stage: p.sales_stage || defaultStage,
       }));
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+  
     }, [isOpen, salesStageOptions]);
 
     if (!isOpen) return null;
