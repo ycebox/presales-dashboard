@@ -1,18 +1,15 @@
-/* ReportsDashboard.css - Light theme + colorful accents (still aligned to PresalesOverview) */
+/* ReportsDashboard.css - Light theme + colorful accents (CEO-friendly) */
 
-/* ===== Page + typography baseline ===== */
 .reports-page {
   padding: 16px 20px 24px;
   max-width: 1280px;
   margin: 0 auto;
-
   color: #0f172a;
 
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.45;
 
-  /* warm light background w/ subtle radial gradients */
   background:
     radial-gradient(900px 420px at 16% -10%, rgba(59, 130, 246, 0.13), rgba(255, 255, 255, 0) 60%),
     radial-gradient(900px 420px at 92% 0%, rgba(14, 165, 233, 0.11), rgba(255, 255, 255, 0) 60%),
@@ -51,7 +48,7 @@
   margin: 0;
 }
 
-/* ===== Filters ===== */
+/* ===== Filters / chips ===== */
 .reports-filters {
   display: flex;
   gap: 8px;
@@ -59,7 +56,6 @@
   justify-content: flex-end;
 }
 
-/* Chip buttons: secondary by default, primary when active */
 .reports-filter-chip {
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.75);
@@ -82,7 +78,6 @@
   transform: translateY(0);
 }
 
-/* Active: light blue tint */
 .reports-filter-chip-active {
   border-color: rgba(37, 99, 235, 0.55);
   background: linear-gradient(180deg, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0.08));
@@ -90,7 +85,6 @@
   box-shadow: 0 12px 26px rgba(37, 99, 235, 0.12);
 }
 
-/* Export button: light green tint */
 .reports-export-chip {
   border-color: rgba(22, 163, 74, 0.45);
   background: linear-gradient(180deg, rgba(22, 163, 74, 0.12), rgba(22, 163, 74, 0.06));
@@ -107,7 +101,7 @@
   gap: 16px;
 }
 
-/* ===== Section cards (panels) ===== */
+/* ===== Section cards ===== */
 .reports-section {
   position: relative;
   background: rgba(255, 255, 255, 0.92);
@@ -119,7 +113,6 @@
   overflow: hidden;
 }
 
-/* soft top gradient strip per section (subtle “colorful” feel) */
 .reports-section::before {
   content: "";
   position: absolute;
@@ -137,7 +130,6 @@
   opacity: 0.55;
 }
 
-/* Section header */
 .reports-section-header {
   display: flex;
   flex-direction: column;
@@ -177,23 +169,14 @@
 }
 
 @media (max-width: 900px) {
-  .reports-kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  .reports-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
-  .reports-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .reports-kpi-grid {
-    grid-template-columns: 1fr;
-  }
+  .reports-header { flex-direction: column; align-items: flex-start; }
+  .reports-kpi-grid { grid-template-columns: 1fr; }
 }
 
-/* KPI cards */
 .reports-kpi-card {
   position: relative;
   background: rgba(255, 255, 255, 0.97);
@@ -207,7 +190,6 @@
   overflow: hidden;
 }
 
-/* colorful top strip on KPI */
 .reports-kpi-card::before {
   content: "";
   position: absolute;
@@ -219,7 +201,6 @@
   opacity: 0.65;
 }
 
-/* Give some variety without touching HTML: rotate colors by position */
 .reports-kpi-card:nth-child(2)::before {
   background: linear-gradient(90deg, rgba(99, 102, 241, 0.55), rgba(37, 99, 235, 0.45));
 }
@@ -272,7 +253,6 @@
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
 }
 
-/* Table rows */
 .reports-table-header,
 .reports-table-row {
   display: grid;
@@ -301,7 +281,7 @@
 }
 
 .reports-table-row:hover {
-  background: rgba(219, 234, 254, 0.35); /* light blue hover */
+  background: rgba(219, 234, 254, 0.35);
 }
 
 .reports-table-row:last-child {
@@ -312,19 +292,12 @@
   color: #64748b;
 }
 
-/* Activity (2 columns) and Country tables (3 columns) – preserve your layout intent */
-.reports-section:nth-of-type(4) .reports-table-header,
-.reports-section:nth-of-type(4) .reports-table-row {
-  grid-template-columns: 1.6fr 0.6fr;
+/* Chart panel: slightly different feel */
+.reports-chart-panel {
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.85), rgba(255, 255, 255, 0.97));
 }
 
-.reports-section:nth-of-type(5) .reports-table-header,
-.reports-section:nth-of-type(5) .reports-table-row {
-  grid-template-columns: 1.4fr 0.7fr 1fr;
-}
-
-/* ===== Charts: make it feel like a “card inside card” ===== */
-/* This works with your inline style height container */
+/* Recharts polishing */
 .reports-panel .recharts-wrapper {
   padding: 6px 8px 8px;
 }
@@ -338,7 +311,77 @@
   font-size: 12px;
 }
 
-/* ===== Loading + error states ===== */
+/* ===== Controls (select) ===== */
+.reports-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.reports-control {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.reports-control-label {
+  font-size: 12px;
+  color: #475569;
+  font-weight: 700;
+}
+
+.reports-select {
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.75);
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.95);
+  font-size: 12px;
+  color: #0f172a;
+  outline: none;
+}
+
+.reports-select:focus {
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
+}
+
+/* ===== Presales grouping block ===== */
+.reports-presales-group {
+  margin-top: 12px;
+}
+
+.reports-presales-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 4px 8px;
+}
+
+.reports-presales-name {
+  font-weight: 900;
+  color: #0b1220;
+}
+
+.reports-presales-count {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* 4-column layout for your presales table rows */
+.reports-presales-simple-table {
+  grid-template-columns: 1.2fr 0.8fr 1.6fr 0.8fr;
+}
+
+/* Nice wrapping for long “next key activity” text */
+.reports-wrap {
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* ===== Loading + error ===== */
 .reports-loading,
 .reports-error {
   margin-top: 10px;
@@ -369,55 +412,4 @@
 
 @keyframes reportsSpin {
   to { transform: rotate(360deg); }
-}
-
-/* ===== Generic modal styling ===== */
-.modal-overlay,
-.reports-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  z-index: 999;
-}
-
-.modal-card,
-.reports-modal-card {
-  width: min(720px, 100%);
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.55);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.18);
-  color: #0f172a;
-}
-
-/* ===== Presales grouping block ===== */
-.reports-presales-group {
-  margin-top: 12px;
-}
-
-.reports-presales-group-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 6px 4px 8px;
-}
-
-.reports-presales-name {
-  font-weight: 900;
-  color: #0b1220;
-}
-
-.reports-presales-count {
-  font-size: 12px;
-  color: #64748b;
-}
-
-/* 5-column table for presales report */
-.reports-presales-table {
-  grid-template-columns: 1.4fr 1fr 0.8fr 1.4fr 0.8fr;
 }
