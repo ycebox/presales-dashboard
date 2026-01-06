@@ -292,9 +292,14 @@
   color: #64748b;
 }
 
-/* Chart panel: slightly different feel */
+/* Chart panel */
 .reports-chart-panel {
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.85), rgba(255, 255, 255, 0.97));
+}
+
+/* Horizontal chart: a bit more padding and nicer feel */
+.reports-chart-panel-horizontal {
+  padding: 6px 6px 10px;
 }
 
 /* Recharts polishing */
@@ -309,6 +314,11 @@
 
 .reports-panel .recharts-tooltip-wrapper {
   font-size: 12px;
+}
+
+/* Soft shadow on bars (works nicely with pastel fills) */
+.reports-panel .recharts-bar-rectangle {
+  filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.08));
 }
 
 /* ===== Controls (select) ===== */
