@@ -34,18 +34,16 @@ const CLOSED_STAGES_FOR_PIPELINE = [
 
 const WON_STAGES = ['Closed-Won', 'Won'];
 const LOST_STAGES = ['Closed-Lost', 'Lost'];
-const CANCELLED_STAGES = ['Closed-Cancelled/Hold', 'Cancelled', 'On Hold'];
 
-// Light pastel palette (repeat if more than 8)
 const PASTEL_BAR_COLORS = [
-  'rgba(59, 130, 246, 0.45)',  // blue
-  'rgba(14, 165, 233, 0.45)',  // sky
-  'rgba(99, 102, 241, 0.42)',  // indigo
-  'rgba(34, 197, 94, 0.38)',   // green
-  'rgba(245, 158, 11, 0.35)',  // amber
-  'rgba(236, 72, 153, 0.30)',  // pink
-  'rgba(20, 184, 166, 0.36)',  // teal
-  'rgba(168, 85, 247, 0.30)'   // purple
+  'rgba(59, 130, 246, 0.45)',
+  'rgba(14, 165, 233, 0.45)',
+  'rgba(99, 102, 241, 0.42)',
+  'rgba(34, 197, 94, 0.38)',
+  'rgba(245, 158, 11, 0.35)',
+  'rgba(236, 72, 153, 0.30)',
+  'rgba(20, 184, 166, 0.36)',
+  'rgba(168, 85, 247, 0.30)'
 ];
 
 const formatCurrency = (value) => {
@@ -66,23 +64,13 @@ const formatPercent = (value) => {
   return `${n.toFixed(0)}%`;
 };
 
-const formatCompactNumber = (v) => {
-  const n = Number(v) || 0;
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return `${n}`;
-};
-
 function ReportsDashboard() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Period filter
   const [period, setPeriod] = useState('last90'); // last90 | ytd | all
-
   const [presalesFilter, setPresalesFilter] = useState('All');
   const [pipelineGroupBy, setPipelineGroupBy] = useState('country'); // country | account_manager
 
@@ -168,7 +156,7 @@ function ReportsDashboard() {
     };
   }, [projects, projectsInPeriod, tasks, tasksInPeriod]);
 
-  /* ================= PIPELINE GROUPING ================= */
+  /* ================= PIPELINE (COUNT opportunities) ================= */
   const pipelineGrouped = useMemo(() => {
     const map = new Map();
 
@@ -180,15 +168,12 @@ function ReportsDashboard() {
           ? (p.account_manager || 'Unassigned')
           : (p.country || 'Unknown');
 
-      const val = Number(p.deal_value) || 0;
-
-      if (!map.has(key)) map.set(key, { name: key, count: 0, value: 0 });
+      if (!map.has(key)) map.set(key, { name: key, opportunities: 0 });
       const row = map.get(key);
-      row.count += 1;
-      row.value += val;
+      row.opportunities += 1;
     });
 
-    return Array.from(map.values()).sort((a, b) => b.value - a.value);
+    return Array.from(map.values()).sort((a, b) => b.opportunities - a.opportunities);
   }, [projects, pipelineGroupBy]);
 
   const pipelineChartData = useMemo(() => pipelineGrouped.slice(0, 10), [pipelineGrouped]);
@@ -353,7 +338,7 @@ function ReportsDashboard() {
             </div>
 
             <div className="reports-kpi-card">
-              <div className="reports-kpi-label"><FaChartLine /><span>Active pipeline</span></div>
+              <div className="reports-kpi-label"><FaChartLine /><span>Active pipeline value</span></div>
               <div className="reports-kpi-value">{formatCurrency(activePipelineValue)}</div>
               <div className="reports-kpi-hint">Open only (current)</div>
             </div>
@@ -378,7 +363,7 @@ function ReportsDashboard() {
           </div>
         </section>
 
-        {/* Pipeline chart + table */}
+        {/* Pipeline (COUNT) chart + table */}
         <section className="reports-section">
           <div className="reports-section-header">
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -387,12 +372,12 @@ function ReportsDashboard() {
                   <FaGlobeAsia className="reports-section-icon" />
                   <h2>
                     {pipelineGroupBy === 'account_manager'
-                      ? 'Pipeline by Account Manager'
-                      : 'Pipeline by Country'}
+                      ? 'Opportunities by Account Manager'
+                      : 'Opportunities by Country'}
                   </h2>
                 </div>
                 <p className="reports-section-subtitle">
-                  Active pipeline only (excludes closed stages). Top 10 by value.
+                  Open opportunities only (excludes closed stages). Top 10 by count.
                 </p>
               </div>
 
@@ -416,7 +401,7 @@ function ReportsDashboard() {
           <div className="reports-panel reports-chart-panel reports-chart-panel-horizontal" style={{ height: 320 }}>
             {pipelineChartData.length === 0 ? (
               <div className="reports-table-row reports-row-muted">
-                <span>No active pipeline</span>
+                <span>No active opportunities</span>
                 <span>–</span>
                 <span>–</span>
               </div>
@@ -431,7 +416,7 @@ function ReportsDashboard() {
                   <XAxis
                     type="number"
                     tick={{ fontSize: 11 }}
-                    tickFormatter={formatCompactNumber}
+                    allowDecimals={false}
                   />
                   <YAxis
                     type="category"
@@ -439,8 +424,8 @@ function ReportsDashboard() {
                     width={160}
                     tick={{ fontSize: 11 }}
                   />
-                  <Tooltip formatter={(v) => formatCurrency(v)} />
-                  <Bar dataKey="value" radius={[10, 10, 10, 10]}>
+                  <Tooltip formatter={(v) => `${v} opportunities`} />
+                  <Bar dataKey="opportunities" radius={[10, 10, 10, 10]}>
                     {pipelineChartData.map((entry, idx) => (
                       <Cell
                         key={`cell-${entry.name}-${idx}`}
@@ -456,13 +441,13 @@ function ReportsDashboard() {
           <div className="reports-panel">
             <div className="reports-table-header">
               <span>{pipelineLeftColTitle}</span>
-              <span>Deals</span>
-              <span>Value</span>
+              <span>Opportunities</span>
+              <span>—</span>
             </div>
 
             {pipelineGrouped.length === 0 ? (
               <div className="reports-table-row reports-row-muted">
-                <span>No active pipeline</span>
+                <span>No active opportunities</span>
                 <span>–</span>
                 <span>–</span>
               </div>
@@ -470,8 +455,8 @@ function ReportsDashboard() {
               pipelineGrouped.map((r) => (
                 <div key={r.name} className="reports-table-row">
                   <span>{r.name}</span>
-                  <span>{r.count}</span>
-                  <span>{formatCurrency(r.value)}</span>
+                  <span>{r.opportunities}</span>
+                  <span> </span>
                 </div>
               ))
             )}
