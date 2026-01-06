@@ -156,7 +156,7 @@ function ReportsDashboard() {
     };
   }, [projects, projectsInPeriod, tasks, tasksInPeriod]);
 
-  /* ================= PIPELINE (COUNT opportunities) ================= */
+  /* ================= PIPELINE (COUNT opportunities, ALL active) ================= */
   const pipelineGrouped = useMemo(() => {
     const map = new Map();
 
@@ -169,17 +169,21 @@ function ReportsDashboard() {
           : (p.country || 'Unknown');
 
       if (!map.has(key)) map.set(key, { name: key, opportunities: 0 });
-      const row = map.get(key);
-      row.opportunities += 1;
+      map.get(key).opportunities += 1;
     });
 
-    return Array.from(map.values()).sort((a, b) => b.opportunities - a.opportunities);
+    // Only keep groups with active opportunities (non-zero)
+    return Array.from(map.values())
+      .filter((x) => x.opportunities > 0)
+      .sort((a, b) => b.opportunities - a.opportunities);
   }, [projects, pipelineGroupBy]);
 
-  const pipelineChartData = useMemo(() => pipelineGrouped.slice(0, 10), [pipelineGrouped]);
-
-  const pipelineLeftColTitle =
-    pipelineGroupBy === 'account_manager' ? 'Account Manager' : 'Country';
+  // Dynamic height so labels don’t get cramped; panel itself will scroll
+  const pipelineChartHeight = useMemo(() => {
+    const rowH = 34;
+    const base = 220;
+    return Math.max(280, base + pipelineGrouped.length * rowH);
+  }, [pipelineGrouped.length]);
 
   /* ================= PROJECTS BY PRESALES ================= */
   const projectsGroupedByPresales = useMemo(() => {
@@ -233,7 +237,6 @@ function ReportsDashboard() {
     });
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
-
     ws['!cols'] = [
       { wch: 28 },
       { wch: 22 },
@@ -363,7 +366,7 @@ function ReportsDashboard() {
           </div>
         </section>
 
-        {/* Pipeline (COUNT) chart + table */}
+        {/* Pipeline: chart only, ALL active, no table */}
         <section className="reports-section">
           <div className="reports-section-header">
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -372,12 +375,12 @@ function ReportsDashboard() {
                   <FaGlobeAsia className="reports-section-icon" />
                   <h2>
                     {pipelineGroupBy === 'account_manager'
-                      ? 'Opportunities by Account Manager'
-                      : 'Opportunities by Country'}
+                      ? 'Active Opportunities by Account Manager'
+                      : 'Active Opportunities by Country'}
                   </h2>
                 </div>
                 <p className="reports-section-subtitle">
-                  Open opportunities only (excludes closed stages). Top 10 by count.
+                  Open opportunities only (excludes closed stages). Showing all active groups.
                 </p>
               </div>
 
@@ -398,67 +401,39 @@ function ReportsDashboard() {
             </div>
           </div>
 
-          <div className="reports-panel reports-chart-panel reports-chart-panel-horizontal" style={{ height: 320 }}>
-            {pipelineChartData.length === 0 ? (
-              <div className="reports-table-row reports-row-muted">
-                <span>No active opportunities</span>
-                <span>–</span>
-                <span>–</span>
-              </div>
-            ) : (
-              <ResponsiveContainer>
-                <BarChart
-                  data={pipelineChartData}
-                  layout="vertical"
-                  margin={{ top: 10, right: 16, left: 10, bottom: 10 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    type="number"
-                    tick={{ fontSize: 11 }}
-                    allowDecimals={false}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={160}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <Tooltip formatter={(v) => `${v} opportunities`} />
-                  <Bar dataKey="opportunities" radius={[10, 10, 10, 10]}>
-                    {pipelineChartData.map((entry, idx) => (
-                      <Cell
-                        key={`cell-${entry.name}-${idx}`}
-                        fill={PASTEL_BAR_COLORS[idx % PASTEL_BAR_COLORS.length]}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          <div className="reports-panel">
-            <div className="reports-table-header">
-              <span>{pipelineLeftColTitle}</span>
-              <span>Opportunities</span>
-              <span>—</span>
-            </div>
-
+          <div className="reports-panel reports-chart-panel reports-chart-scroll">
             {pipelineGrouped.length === 0 ? (
-              <div className="reports-table-row reports-row-muted">
-                <span>No active opportunities</span>
-                <span>–</span>
-                <span>–</span>
+              <div className="reports-empty">
+                No active opportunities to show.
               </div>
             ) : (
-              pipelineGrouped.map((r) => (
-                <div key={r.name} className="reports-table-row">
-                  <span>{r.name}</span>
-                  <span>{r.opportunities}</span>
-                  <span> </span>
-                </div>
-              ))
+              <div style={{ height: pipelineChartHeight, minHeight: 320 }}>
+                <ResponsiveContainer>
+                  <BarChart
+                    data={pipelineGrouped}
+                    layout="vertical"
+                    margin={{ top: 10, right: 16, left: 10, bottom: 10 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={180}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <Tooltip formatter={(v) => `${v} opportunities`} />
+                    <Bar dataKey="opportunities" radius={[10, 10, 10, 10]}>
+                      {pipelineGrouped.map((entry, idx) => (
+                        <Cell
+                          key={`cell-${entry.name}-${idx}`}
+                          fill={PASTEL_BAR_COLORS[idx % PASTEL_BAR_COLORS.length]}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
         </section>
@@ -505,11 +480,7 @@ function ReportsDashboard() {
 
           {projectsGroupedByPresales.length === 0 ? (
             <div className="reports-panel">
-              <div className="reports-table-row reports-row-muted">
-                <span>No projects found</span>
-                <span>–</span>
-                <span>–</span>
-              </div>
+              <div className="reports-empty">No projects found.</div>
             </div>
           ) : (
             projectsGroupedByPresales.map((g) => (
