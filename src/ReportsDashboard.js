@@ -21,7 +21,8 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip
+  Tooltip,
+  Cell
 } from 'recharts';
 
 const CLOSED_STAGES_FOR_PIPELINE = [
@@ -34,6 +35,18 @@ const CLOSED_STAGES_FOR_PIPELINE = [
 const WON_STAGES = ['Closed-Won', 'Won'];
 const LOST_STAGES = ['Closed-Lost', 'Lost'];
 const CANCELLED_STAGES = ['Closed-Cancelled/Hold', 'Cancelled', 'On Hold'];
+
+// Light pastel palette (repeat if more than 8)
+const PASTEL_BAR_COLORS = [
+  'rgba(59, 130, 246, 0.45)',  // blue
+  'rgba(14, 165, 233, 0.45)',  // sky
+  'rgba(99, 102, 241, 0.42)',  // indigo
+  'rgba(34, 197, 94, 0.38)',   // green
+  'rgba(245, 158, 11, 0.35)',  // amber
+  'rgba(236, 72, 153, 0.30)',  // pink
+  'rgba(20, 184, 166, 0.36)',  // teal
+  'rgba(168, 85, 247, 0.30)'   // purple
+];
 
 const formatCurrency = (value) => {
   const num = Number(value);
@@ -53,13 +66,21 @@ const formatPercent = (value) => {
   return `${n.toFixed(0)}%`;
 };
 
+const formatCompactNumber = (v) => {
+  const n = Number(v) || 0;
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
+  return `${n}`;
+};
+
 function ReportsDashboard() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Period filter (added back for better UX)
+  // Period filter
   const [period, setPeriod] = useState('last90'); // last90 | ytd | all
 
   const [presalesFilter, setPresalesFilter] = useState('All');
@@ -228,7 +249,6 @@ function ReportsDashboard() {
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
 
-    // light formatting helpers (widths + freeze)
     ws['!cols'] = [
       { wch: 28 },
       { wch: 22 },
@@ -393,7 +413,7 @@ function ReportsDashboard() {
             </div>
           </div>
 
-          <div className="reports-panel reports-chart-panel" style={{ height: 300 }}>
+          <div className="reports-panel reports-chart-panel reports-chart-panel-horizontal" style={{ height: 320 }}>
             {pipelineChartData.length === 0 ? (
               <div className="reports-table-row reports-row-muted">
                 <span>No active pipeline</span>
@@ -402,12 +422,32 @@ function ReportsDashboard() {
               </div>
             ) : (
               <ResponsiveContainer>
-                <BarChart data={pipelineChartData} margin={{ top: 10, right: 16, left: 6, bottom: 10 }}>
+                <BarChart
+                  data={pipelineChartData}
+                  layout="vertical"
+                  margin={{ top: 10, right: 16, left: 10, bottom: 10 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-18} textAnchor="end" height={70} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={formatCompactNumber}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={160}
+                    tick={{ fontSize: 11 }}
+                  />
                   <Tooltip formatter={(v) => formatCurrency(v)} />
-                  <Bar dataKey="value" radius={[10, 10, 0, 0]} />
+                  <Bar dataKey="value" radius={[10, 10, 10, 10]}>
+                    {pipelineChartData.map((entry, idx) => (
+                      <Cell
+                        key={`cell-${entry.name}-${idx}`}
+                        fill={PASTEL_BAR_COLORS[idx % PASTEL_BAR_COLORS.length]}
+                      />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
