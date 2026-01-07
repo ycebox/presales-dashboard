@@ -7,7 +7,8 @@ import {
   FaFileExcel,
   FaGlobeAsia,
   FaTasks,
-  FaTrophy
+  FaTrophy,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 import { supabase } from './supabaseClient';
 import './ReportsDashboard.css';
@@ -22,7 +23,10 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Cell
+  Cell,
+  PieChart,
+  Pie,
+  Legend
 } from 'recharts';
 
 const CLOSED_STAGES_FOR_PIPELINE = [
@@ -46,6 +50,13 @@ const PASTEL_BAR_COLORS = [
   'rgba(168, 85, 247, 0.30)'
 ];
 
+// Deal health colors
+const DEAL_HEALTH_COLORS = {
+  Healthy: 'rgba(34, 197, 94, 0.45)',    // green
+  'At Risk': 'rgba(245, 158, 11, 0.42)', // amber
+  Critical: 'rgba(239, 68, 68, 0.40)'    // red
+};
+
 const formatCurrency = (value) => {
   const num = Number(value);
   if (value === null || value === undefined) return '–';
@@ -64,6 +75,24 @@ const formatPercent = (value) => {
   return `${n.toFixed(0)}%`;
 };
 
+const startOfToday = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const diffDays = (fromDate, toDate) => {
+  const ms = toDate.getTime() - fromDate.getTime();
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+};
+
+// Priority for "worst wins" when grouping by customer
+const healthPriority = (status) => {
+  if (status === 'Critical') return 3;
+  if (status === 'At Risk') return 2;
+  return 1; // Healthy
+};
+
 function ReportsDashboard() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -73,6 +102,9 @@ function ReportsDashboard() {
   const [period, setPeriod] = useState('last90'); // last90 | ytd | all
   const [presalesFilter, setPresalesFilter] = useState('All');
   const [pipelineGroupBy, setPipelineGroupBy] = useState('country'); // country | account_manager
+
+  // ✅ Deal health toggle: projects vs customers
+  const [dealHealthMode, setDealHealthMode] = useState('projects'); // 'projects' | 'customers'
 
   useEffect(() => {
     const fetchData = async () => {
@@ -172,18 +204,239 @@ function ReportsDashboard() {
       map.get(key).opportunities += 1;
     });
 
-    // Only keep groups with active opportunities (non-zero)
     return Array.from(map.values())
       .filter((x) => x.opportunities > 0)
       .sort((a, b) => b.opportunities - a.opportunities);
   }, [projects, pipelineGroupBy]);
 
-  // Dynamic height so labels don’t get cramped; panel itself will scroll
   const pipelineChartHeight = useMemo(() => {
     const rowH = 34;
     const base = 220;
     return Math.max(280, base + pipelineGrouped.length * rowH);
   }, [pipelineGrouped.length]);
+
+  /* ================= DEAL HEALTH DASHBOARD (30-day rule + toggle) ================= */
+  const {
+    dealHealthCounts,
+    dealHealthChartData,
+    criticalDeals,
+    scoredUnitsLabel
+  } = useMemo(() => {
+    const today = startOfToday();
+    const STUCK_DAYS = 30;
+
+    const activeProjects = projects.filter(
+      (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage)
+    );
+
+    // Helper to score a single project into a status + reason (for critical list)
+    const scoreProject = (p) => {
+      const nextActivity = (p.next_key_activity || '').trim();
+      const hasNextActivity = nextActivity.length > 0;
+
+      const due = p.due_date ? new Date(p.due_date) : null;
+      if (due) due.setHours(0, 0, 0, 0);
+      const isOverdue = !!(due && due < today);
+
+      const created = p.created_at ? new Date(p.created_at) : null;
+      if (created) created.setHours(0, 0, 0, 0);
+
+      const ageDays = created ? diffDays(created, today) : null;
+      const isStuck = ageDays !== null ? ageDays > STUCK_DAYS : true; // unknown => risk
+
+      // Critical
+      if (!hasNextActivity || isOverdue) {
+        let reason = '';
+        let severityScore = 0;
+
+        if (!hasNextActivity) {
+          reason = 'Missing next key activity';
+          severityScore += 50;
+        }
+
+        if (isOverdue) {
+          const overdueDays = diffDays(due, today);
+          reason = reason
+            ? `${reason} + overdue by ${overdueDays}d`
+            : `Overdue by ${overdueDays}d`;
+          severityScore += 100 + overdueDays;
+        }
+
+        return {
+          status: 'Critical',
+          reason,
+          severityScore,
+          ageDays
+        };
+      }
+
+      // At risk
+      if (isStuck) {
+        return {
+          status: 'At Risk',
+          reason: ageDays !== null ? `Stuck for ${ageDays}d` : 'Stuck (no created date)',
+          severityScore: 10 + (ageDays || 0),
+          ageDays
+        };
+      }
+
+      // Healthy
+      return {
+        status: 'Healthy',
+        reason: 'On track',
+        severityScore: 1,
+        ageDays
+      };
+    };
+
+    // If mode = projects: count each project
+    if (dealHealthMode === 'projects') {
+      let healthy = 0;
+      let atRisk = 0;
+      let critical = 0;
+
+      const criticalList = [];
+
+      activeProjects.forEach((p) => {
+        const scored = scoreProject(p);
+
+        if (scored.status === 'Critical') {
+          critical += 1;
+          criticalList.push({
+            id: p.id,
+            unitKey: p.id,
+            project_name: p.project_name || '—',
+            customer_name: p.customer_name || '—',
+            account_manager: p.account_manager || '—',
+            country: p.country || '—',
+            sales_stage: p.sales_stage || '—',
+            primary_presales: p.primary_presales || 'Unassigned',
+            next_key_activity: (p.next_key_activity || '—'),
+            due_date: p.due_date || null,
+            deal_value: Number(p.deal_value) || 0,
+            age_days: scored.ageDays,
+            reason: scored.reason,
+            severityScore: scored.severityScore
+          });
+        } else if (scored.status === 'At Risk') {
+          atRisk += 1;
+        } else {
+          healthy += 1;
+        }
+      });
+
+      const counts = { Healthy: healthy, 'At Risk': atRisk, Critical: critical };
+
+      const chartData = [
+        { name: 'Healthy', value: counts.Healthy },
+        { name: 'At Risk', value: counts['At Risk'] },
+        { name: 'Critical', value: counts.Critical }
+      ].filter((x) => x.value > 0);
+
+      criticalList.sort((a, b) => {
+        if (b.severityScore !== a.severityScore) return b.severityScore - a.severityScore;
+        if (b.deal_value !== a.deal_value) return b.deal_value - a.deal_value;
+        return (a.project_name || '').localeCompare(b.project_name || '');
+      });
+
+      return {
+        dealHealthCounts: counts,
+        dealHealthChartData: chartData,
+        criticalDeals: criticalList.slice(0, 8),
+        scoredUnitsLabel: 'projects'
+      };
+    }
+
+    // Else mode = customers: group projects by customer_name, take WORST status
+    const customerMap = new Map();
+    activeProjects.forEach((p) => {
+      const cust = (p.customer_name || 'Unknown Customer').trim() || 'Unknown Customer';
+      if (!customerMap.has(cust)) customerMap.set(cust, []);
+      customerMap.get(cust).push(p);
+    });
+
+    let healthy = 0;
+    let atRisk = 0;
+    let critical = 0;
+
+    const criticalCustomers = [];
+
+    customerMap.forEach((custProjects, customer_name) => {
+      // Find worst status among projects
+      let worst = { status: 'Healthy', severityScore: 0, reason: 'On track', ageDays: null };
+      let worstProject = custProjects[0];
+
+      custProjects.forEach((p) => {
+        const scored = scoreProject(p);
+        if (healthPriority(scored.status) > healthPriority(worst.status)) {
+          worst = scored;
+          worstProject = p;
+        } else if (healthPriority(scored.status) === healthPriority(worst.status)) {
+          // tie-break: higher severityScore then higher deal value
+          const curVal = Number(p.deal_value) || 0;
+          const bestVal = Number(worstProject?.deal_value) || 0;
+
+          if (scored.severityScore > worst.severityScore) {
+            worst = scored;
+            worstProject = p;
+          } else if (scored.severityScore === worst.severityScore && curVal > bestVal) {
+            worst = scored;
+            worstProject = p;
+          }
+        }
+      });
+
+      if (worst.status === 'Critical') {
+        critical += 1;
+
+        // aggregate some context
+        const totalValue = custProjects.reduce((s, p) => s + (Number(p.deal_value) || 0), 0);
+        const countries = [...new Set(custProjects.map((p) => p.country || '—'))].slice(0, 3);
+        const ams = [...new Set(custProjects.map((p) => p.account_manager || '—'))].slice(0, 2);
+
+        criticalCustomers.push({
+          id: customer_name,
+          unitKey: customer_name,
+          project_name: worstProject?.project_name || '—',
+          customer_name,
+          account_manager: ams.join(', '),
+          country: countries.join(', '),
+          sales_stage: worstProject?.sales_stage || '—',
+          primary_presales: worstProject?.primary_presales || 'Unassigned',
+          next_key_activity: (worstProject?.next_key_activity || '—'),
+          due_date: worstProject?.due_date || null,
+          deal_value: totalValue,
+          age_days: worst.ageDays,
+          reason: `Customer risk: ${worst.reason}`,
+          severityScore: worst.severityScore
+        });
+      } else if (worst.status === 'At Risk') {
+        atRisk += 1;
+      } else {
+        healthy += 1;
+      }
+    });
+
+    const counts = { Healthy: healthy, 'At Risk': atRisk, Critical: critical };
+    const chartData = [
+      { name: 'Healthy', value: counts.Healthy },
+      { name: 'At Risk', value: counts['At Risk'] },
+      { name: 'Critical', value: counts.Critical }
+    ].filter((x) => x.value > 0);
+
+    criticalCustomers.sort((a, b) => {
+      if (b.severityScore !== a.severityScore) return b.severityScore - a.severityScore;
+      if (b.deal_value !== a.deal_value) return b.deal_value - a.deal_value;
+      return (a.customer_name || '').localeCompare(b.customer_name || '');
+    });
+
+    return {
+      dealHealthCounts: counts,
+      dealHealthChartData: chartData,
+      criticalDeals: criticalCustomers.slice(0, 8),
+      scoredUnitsLabel: 'customers'
+    };
+  }, [projects, dealHealthMode]);
 
   /* ================= PROJECTS BY PRESALES ================= */
   const projectsGroupedByPresales = useMemo(() => {
@@ -228,7 +481,7 @@ function ReportsDashboard() {
           p.project_name || '—',
           p.customer_name || '—',
           p.sales_stage || '—',
-          p.next_key_activity || '—',
+          (p.next_key_activity || '—'),
           Number(p.deal_value) || 0
         ]);
       });
@@ -290,7 +543,7 @@ function ReportsDashboard() {
         <div className="reports-header-left">
           <h1 className="reports-title">Presales Reports & Analytics</h1>
           <p className="reports-subtitle">
-            Quick snapshot of performance, pipeline, and workload.
+            Quick snapshot of performance, pipeline, and deal health.
           </p>
         </div>
 
@@ -362,6 +615,163 @@ function ReportsDashboard() {
               <div className="reports-kpi-label"><FaFlag /><span>Overdue tasks</span></div>
               <div className="reports-kpi-value">{formatPercent(overduePercent)}</div>
               <div className="reports-kpi-hint">Share of overdue tasks</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Deal Health Dashboard */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div className="reports-section-title">
+              <FaExclamationTriangle className="reports-section-icon" />
+              <h2>Deal Health</h2>
+            </div>
+
+            <div className="reports-dealhealth-subrow">
+              <p className="reports-section-subtitle" style={{ margin: 0 }}>
+                Active only. Critical = overdue due date or missing next key activity. At Risk = stuck &gt; 30 days.
+              </p>
+
+              <div className="reports-mini-toggle">
+                <button
+                  className={`reports-mini-toggle-btn ${dealHealthMode === 'projects' ? 'active' : ''}`}
+                  onClick={() => setDealHealthMode('projects')}
+                  type="button"
+                >
+                  By Projects
+                </button>
+                <button
+                  className={`reports-mini-toggle-btn ${dealHealthMode === 'customers' ? 'active' : ''}`}
+                  onClick={() => setDealHealthMode('customers')}
+                  type="button"
+                >
+                  By Customers
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="reports-dealhealth-grid">
+            <div className="reports-panel reports-dealhealth-card">
+              {dealHealthChartData.length === 0 ? (
+                <div className="reports-empty">No active opportunities to score.</div>
+              ) : (
+                <div className="reports-dealhealth-chartWrap">
+                  <div className="reports-dealhealth-chart">
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie
+                          data={dealHealthChartData}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={58}
+                          outerRadius={88}
+                          paddingAngle={2}
+                        >
+                          {dealHealthChartData.map((entry) => (
+                            <Cell key={entry.name} fill={DEAL_HEALTH_COLORS[entry.name]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v, n) => [`${v}`, `${n}`]} />
+                        <Legend verticalAlign="bottom" height={24} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="reports-dealhealth-stats">
+                    <div className="reports-healthStat">
+                      <span className="reports-healthDot healthy" />
+                      <div>
+                        <div className="reports-healthNum">{dealHealthCounts.Healthy}</div>
+                        <div className="reports-healthLbl">Healthy</div>
+                      </div>
+                    </div>
+
+                    <div className="reports-healthStat">
+                      <span className="reports-healthDot risk" />
+                      <div>
+                        <div className="reports-healthNum">{dealHealthCounts['At Risk']}</div>
+                        <div className="reports-healthLbl">At Risk</div>
+                      </div>
+                    </div>
+
+                    <div className="reports-healthStat">
+                      <span className="reports-healthDot critical" />
+                      <div>
+                        <div className="reports-healthNum">{dealHealthCounts.Critical}</div>
+                        <div className="reports-healthLbl">Critical</div>
+                      </div>
+                    </div>
+
+                    <div className="reports-healthFootnote">
+                      Counting by <strong>{scoredUnitsLabel}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="reports-panel reports-dealhealth-card">
+              <div className="reports-dealhealth-listHeader">
+                <div>
+                  <div className="reports-dealhealth-listTitle">
+                    Critical {dealHealthMode === 'customers' ? 'customers' : 'deals'} needing attention
+                  </div>
+                  <div className="reports-dealhealth-listSub">Top 8 based on urgency</div>
+                </div>
+              </div>
+
+              {criticalDeals.length === 0 ? (
+                <div className="reports-empty">No critical items right now. 👍</div>
+              ) : (
+                <div className="reports-critical-list">
+                  {criticalDeals.map((d) => (
+                    <div key={d.unitKey} className="reports-critical-row">
+                      <div className="reports-critical-main">
+                        <div className="reports-critical-title">
+                          <span className="reports-critical-badge">CRITICAL</span>
+                          <span className="reports-critical-project">
+                            {dealHealthMode === 'customers' ? d.customer_name : d.project_name}
+                          </span>
+                        </div>
+
+                        <div className="reports-critical-meta">
+                          {dealHealthMode === 'customers' ? (
+                            <>
+                              <span>Example: {d.project_name}</span>
+                              <span className="reports-dotSep">•</span>
+                              <span>{d.sales_stage}</span>
+                              <span className="reports-dotSep">•</span>
+                              <span>{d.country}</span>
+                              <span className="reports-dotSep">•</span>
+                              <span>AM: {d.account_manager}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>{d.customer_name}</span>
+                              <span className="reports-dotSep">•</span>
+                              <span>{d.sales_stage}</span>
+                              <span className="reports-dotSep">•</span>
+                              <span>{d.country}</span>
+                              <span className="reports-dotSep">•</span>
+                              <span>AM: {d.account_manager}</span>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="reports-critical-reason">{d.reason}</div>
+                      </div>
+
+                      <div className="reports-critical-side">
+                        <div className="reports-critical-value">{formatCurrency(d.deal_value)}</div>
+                        <div className="reports-critical-small">
+                          Presales: <strong>{d.primary_presales}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -502,7 +912,7 @@ function ReportsDashboard() {
                     <div key={p.id} className="reports-table-row reports-presales-simple-table">
                       <span>{p.project_name || '—'}</span>
                       <span>{p.sales_stage || '—'}</span>
-                      <span className="reports-wrap">{p.next_key_activity || '—'}</span>
+                      <span className="reports-wrap">{(p.next_key_activity || '—')}</span>
                       <span>{formatCurrency(p.deal_value)}</span>
                     </div>
                   ))}
