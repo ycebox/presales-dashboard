@@ -26,7 +26,9 @@ import {
   Cell,
   PieChart,
   Pie,
-  Legend
+  Legend,
+  ComposedChart,
+  Line
 } from 'recharts';
 
 const CLOSED_STAGES_FOR_PIPELINE = [
@@ -52,9 +54,17 @@ const PASTEL_BAR_COLORS = [
 
 // Deal health colors
 const DEAL_HEALTH_COLORS = {
-  Healthy: 'rgba(34, 197, 94, 0.45)',    // green
-  'At Risk': 'rgba(245, 158, 11, 0.42)', // amber
-  Critical: 'rgba(239, 68, 68, 0.40)'    // red
+  Healthy: 'rgba(34, 197, 94, 0.45)',     // green
+  'At Risk': 'rgba(245, 158, 11, 0.42)',  // amber
+  Critical: 'rgba(239, 68, 68, 0.40)'     // red
+};
+
+// Trend colors (light, readable)
+const TREND_COLORS = {
+  opened: 'rgba(59, 130, 246, 0.35)',
+  won: 'rgba(34, 197, 94, 0.35)',
+  lost: 'rgba(239, 68, 68, 0.28)',
+  winRate: 'rgba(99, 102, 241, 0.85)'
 };
 
 const formatCurrency = (value) => {
@@ -93,6 +103,21 @@ const healthPriority = (status) => {
   return 1; // Healthy
 };
 
+const toMonthKey = (d) => {
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return null;
+  const y = dt.getFullYear();
+  const m = `${dt.getMonth() + 1}`.padStart(2, '0');
+  return `${y}-${m}`;
+};
+
+const monthKeyToLabel = (key) => {
+  // key: YYYY-MM
+  const [y, m] = key.split('-');
+  const dt = new Date(Number(y), Number(m) - 1, 1);
+  return dt.toLocaleString('en-US', { month: 'short', year: '2-digit' }); // e.g., Jan 26
+};
+
 function ReportsDashboard() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -103,7 +128,7 @@ function ReportsDashboard() {
   const [presalesFilter, setPresalesFilter] = useState('All');
   const [pipelineGroupBy, setPipelineGroupBy] = useState('country'); // country | account_manager
 
-  // ✅ Deal health toggle: projects vs customers
+  // Deal health toggle: projects vs customers
   const [dealHealthMode, setDealHealthMode] = useState('projects'); // 'projects' | 'customers'
 
   useEffect(() => {
@@ -229,7 +254,6 @@ function ReportsDashboard() {
       (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage)
     );
 
-    // Helper to score a single project into a status + reason (for critical list)
     const scoreProject = (p) => {
       const nextActivity = (p.next_key_activity || '').trim();
       const hasNextActivity = nextActivity.length > 0;
@@ -242,9 +266,8 @@ function ReportsDashboard() {
       if (created) created.setHours(0, 0, 0, 0);
 
       const ageDays = created ? diffDays(created, today) : null;
-      const isStuck = ageDays !== null ? ageDays > STUCK_DAYS : true; // unknown => risk
+      const isStuck = ageDays !== null ? ageDays > STUCK_DAYS : true;
 
-      // Critical
       if (!hasNextActivity || isOverdue) {
         let reason = '';
         let severityScore = 0;
@@ -262,15 +285,9 @@ function ReportsDashboard() {
           severityScore += 100 + overdueDays;
         }
 
-        return {
-          status: 'Critical',
-          reason,
-          severityScore,
-          ageDays
-        };
+        return { status: 'Critical', reason, severityScore, ageDays };
       }
 
-      // At risk
       if (isStuck) {
         return {
           status: 'At Risk',
@@ -280,16 +297,9 @@ function ReportsDashboard() {
         };
       }
 
-      // Healthy
-      return {
-        status: 'Healthy',
-        reason: 'On track',
-        severityScore: 1,
-        ageDays
-      };
+      return { status: 'Healthy', reason: 'On track', severityScore: 1, ageDays };
     };
 
-    // If mode = projects: count each project
     if (dealHealthMode === 'projects') {
       let healthy = 0;
       let atRisk = 0;
@@ -326,7 +336,6 @@ function ReportsDashboard() {
       });
 
       const counts = { Healthy: healthy, 'At Risk': atRisk, Critical: critical };
-
       const chartData = [
         { name: 'Healthy', value: counts.Healthy },
         { name: 'At Risk', value: counts['At Risk'] },
@@ -347,7 +356,6 @@ function ReportsDashboard() {
       };
     }
 
-    // Else mode = customers: group projects by customer_name, take WORST status
     const customerMap = new Map();
     activeProjects.forEach((p) => {
       const cust = (p.customer_name || 'Unknown Customer').trim() || 'Unknown Customer';
@@ -362,7 +370,6 @@ function ReportsDashboard() {
     const criticalCustomers = [];
 
     customerMap.forEach((custProjects, customer_name) => {
-      // Find worst status among projects
       let worst = { status: 'Healthy', severityScore: 0, reason: 'On track', ageDays: null };
       let worstProject = custProjects[0];
 
@@ -372,7 +379,6 @@ function ReportsDashboard() {
           worst = scored;
           worstProject = p;
         } else if (healthPriority(scored.status) === healthPriority(worst.status)) {
-          // tie-break: higher severityScore then higher deal value
           const curVal = Number(p.deal_value) || 0;
           const bestVal = Number(worstProject?.deal_value) || 0;
 
@@ -389,7 +395,6 @@ function ReportsDashboard() {
       if (worst.status === 'Critical') {
         critical += 1;
 
-        // aggregate some context
         const totalValue = custProjects.reduce((s, p) => s + (Number(p.deal_value) || 0), 0);
         const countries = [...new Set(custProjects.map((p) => p.country || '—'))].slice(0, 3);
         const ams = [...new Set(custProjects.map((p) => p.account_manager || '—'))].slice(0, 2);
@@ -437,6 +442,52 @@ function ReportsDashboard() {
       scoredUnitsLabel: 'customers'
     };
   }, [projects, dealHealthMode]);
+
+  /* ================= WIN / LOSS TREND (Over Time) =================
+     Note: uses created_at month (since no closed_date exists in schema)
+  */
+  const winLossTrend = useMemo(() => {
+    const dataSource = projectsInPeriod; // respects period filter
+    const map = new Map();
+
+    dataSource.forEach((p) => {
+      if (!p.created_at) return;
+      const key = toMonthKey(p.created_at);
+      if (!key) return;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          monthKey: key,
+          month: monthKeyToLabel(key),
+          opened: 0,
+          won: 0,
+          lost: 0,
+          winRate: 0
+        });
+      }
+
+      const row = map.get(key);
+      row.opened += 1;
+
+      if (WON_STAGES.includes(p.sales_stage)) row.won += 1;
+      if (LOST_STAGES.includes(p.sales_stage)) row.lost += 1;
+    });
+
+    const sorted = Array.from(map.values()).sort((a, b) =>
+      (a.monthKey || '').localeCompare(b.monthKey || '')
+    );
+
+    sorted.forEach((r) => {
+      const denom = r.won + r.lost;
+      r.winRate = denom ? Math.round((r.won / denom) * 100) : 0;
+    });
+
+    return sorted;
+  }, [projectsInPeriod]);
+
+  const trendChartHeight = useMemo(() => {
+    return winLossTrend.length > 8 ? 360 : 320;
+  }, [winLossTrend.length]);
 
   /* ================= PROJECTS BY PRESALES ================= */
   const projectsGroupedByPresales = useMemo(() => {
@@ -543,7 +594,7 @@ function ReportsDashboard() {
         <div className="reports-header-left">
           <h1 className="reports-title">Presales Reports & Analytics</h1>
           <p className="reports-subtitle">
-            Quick snapshot of performance, pipeline, and deal health.
+            Quick snapshot of performance, pipeline, deal health, and outcomes trend.
           </p>
         </div>
 
@@ -616,6 +667,67 @@ function ReportsDashboard() {
               <div className="reports-kpi-value">{formatPercent(overduePercent)}</div>
               <div className="reports-kpi-hint">Share of overdue tasks</div>
             </div>
+          </div>
+        </section>
+
+        {/* Win/Loss Trend */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div className="reports-section-title">
+              <FaChartLine className="reports-section-icon" />
+              <h2>Win / Loss Trend Over Time</h2>
+            </div>
+            <p className="reports-section-subtitle">
+              Based on project <strong>created_at</strong> month (close date is not stored). Win rate = Won / (Won + Lost).
+            </p>
+          </div>
+
+          <div className="reports-panel reports-chart-panel">
+            {winLossTrend.length === 0 ? (
+              <div className="reports-empty">No data in this period.</div>
+            ) : (
+              <div style={{ height: trendChartHeight, minHeight: 300 }}>
+                <ResponsiveContainer>
+                  <ComposedChart
+                    data={winLossTrend}
+                    margin={{ top: 14, right: 18, left: 10, bottom: 10 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis yAxisId="left" tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      tick={{ fontSize: 11 }}
+                      domain={[0, 100]}
+                      unit="%"
+                    />
+                    <Tooltip
+                      formatter={(v, name) => {
+                        if (name === 'winRate') return [`${v}%`, 'Win rate'];
+                        return [v, name];
+                      }}
+                    />
+                    <Legend />
+
+                    <Bar yAxisId="left" dataKey="opened" name="Opened" fill={TREND_COLORS.opened} radius={[8, 8, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="won" name="Won" fill={TREND_COLORS.won} radius={[8, 8, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="lost" name="Lost" fill={TREND_COLORS.lost} radius={[8, 8, 0, 0]} />
+
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="winRate"
+                      name="Win rate"
+                      stroke={TREND_COLORS.winRate}
+                      strokeWidth={3}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         </section>
 
@@ -776,7 +888,7 @@ function ReportsDashboard() {
           </div>
         </section>
 
-        {/* Pipeline: chart only, ALL active, no table */}
+        {/* Pipeline */}
         <section className="reports-section">
           <div className="reports-section-header">
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
