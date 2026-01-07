@@ -26,9 +26,9 @@ import {
   Cell,
   PieChart,
   Pie,
-  Legend,
   ComposedChart,
-  Line
+  Line,
+  Legend
 } from 'recharts';
 
 const CLOSED_STAGES_FOR_PIPELINE = [
@@ -112,10 +112,9 @@ const toMonthKey = (d) => {
 };
 
 const monthKeyToLabel = (key) => {
-  // key: YYYY-MM
   const [y, m] = key.split('-');
   const dt = new Date(Number(y), Number(m) - 1, 1);
-  return dt.toLocaleString('en-US', { month: 'short', year: '2-digit' }); // e.g., Jan 26
+  return dt.toLocaleString('en-US', { month: 'short', year: '2-digit' });
 };
 
 function ReportsDashboard() {
@@ -234,10 +233,12 @@ function ReportsDashboard() {
       .sort((a, b) => b.opportunities - a.opportunities);
   }, [projects, pipelineGroupBy]);
 
+  // Smaller + capped height so it doesn’t look massive
   const pipelineChartHeight = useMemo(() => {
-    const rowH = 34;
-    const base = 220;
-    return Math.max(280, base + pipelineGrouped.length * rowH);
+    const rowH = 28;     // smaller bar row height
+    const base = 140;    // smaller base padding
+    const h = base + pipelineGrouped.length * rowH;
+    return Math.min(Math.max(260, h), 420); // min 260, max 420
   }, [pipelineGrouped.length]);
 
   /* ================= DEAL HEALTH DASHBOARD (30-day rule + toggle) ================= */
@@ -443,11 +444,9 @@ function ReportsDashboard() {
     };
   }, [projects, dealHealthMode]);
 
-  /* ================= WIN / LOSS TREND (Over Time) =================
-     Note: uses created_at month (since no closed_date exists in schema)
-  */
+  /* ================= WIN / LOSS TREND (Over Time) ================= */
   const winLossTrend = useMemo(() => {
-    const dataSource = projectsInPeriod; // respects period filter
+    const dataSource = projectsInPeriod;
     const map = new Map();
 
     dataSource.forEach((p) => {
@@ -485,9 +484,8 @@ function ReportsDashboard() {
     return sorted;
   }, [projectsInPeriod]);
 
-  const trendChartHeight = useMemo(() => {
-    return winLossTrend.length > 8 ? 360 : 320;
-  }, [winLossTrend.length]);
+  // Smaller fixed height for CEO view
+  const trendChartHeight = useMemo(() => 260, []);
 
   /* ================= PROJECTS BY PRESALES ================= */
   const projectsGroupedByPresales = useMemo(() => {
@@ -686,11 +684,11 @@ function ReportsDashboard() {
             {winLossTrend.length === 0 ? (
               <div className="reports-empty">No data in this period.</div>
             ) : (
-              <div style={{ height: trendChartHeight, minHeight: 300 }}>
+              <div style={{ height: trendChartHeight }}>
                 <ResponsiveContainer>
                   <ComposedChart
                     data={winLossTrend}
-                    margin={{ top: 14, right: 18, left: 10, bottom: 10 }}
+                    margin={{ top: 8, right: 14, left: 8, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
@@ -710,9 +708,9 @@ function ReportsDashboard() {
                     />
                     <Legend />
 
-                    <Bar yAxisId="left" dataKey="opened" name="Opened" fill={TREND_COLORS.opened} radius={[8, 8, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="won" name="Won" fill={TREND_COLORS.won} radius={[8, 8, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="lost" name="Lost" fill={TREND_COLORS.lost} radius={[8, 8, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="opened" name="Opened" fill={TREND_COLORS.opened} radius={[7, 7, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="won" name="Won" fill={TREND_COLORS.won} radius={[7, 7, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="lost" name="Lost" fill={TREND_COLORS.lost} radius={[7, 7, 0, 0]} />
 
                     <Line
                       yAxisId="right"
@@ -721,8 +719,8 @@ function ReportsDashboard() {
                       name="Win rate"
                       stroke={TREND_COLORS.winRate}
                       strokeWidth={3}
-                      dot={{ r: 3 }}
-                      activeDot={{ r: 5 }}
+                      dot={{ r: 2 }}
+                      activeDot={{ r: 4 }}
                     />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -776,8 +774,8 @@ function ReportsDashboard() {
                           data={dealHealthChartData}
                           dataKey="value"
                           nameKey="name"
-                          innerRadius={58}
-                          outerRadius={88}
+                          innerRadius={50}
+                          outerRadius={74}
                           paddingAngle={2}
                         >
                           {dealHealthChartData.map((entry) => (
@@ -785,7 +783,7 @@ function ReportsDashboard() {
                           ))}
                         </Pie>
                         <Tooltip formatter={(v, n) => [`${v}`, `${n}`]} />
-                        <Legend verticalAlign="bottom" height={24} />
+                        {/* Removed Legend to avoid extra empty space */}
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -929,12 +927,13 @@ function ReportsDashboard() {
                 No active opportunities to show.
               </div>
             ) : (
-              <div style={{ height: pipelineChartHeight, minHeight: 320 }}>
+              <div style={{ height: pipelineChartHeight }}>
                 <ResponsiveContainer>
                   <BarChart
                     data={pipelineGrouped}
                     layout="vertical"
-                    margin={{ top: 10, right: 16, left: 10, bottom: 10 }}
+                    margin={{ top: 8, right: 14, left: 10, bottom: 8 }}
+                    barCategoryGap={6}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
@@ -945,7 +944,7 @@ function ReportsDashboard() {
                       tick={{ fontSize: 11 }}
                     />
                     <Tooltip formatter={(v) => `${v} opportunities`} />
-                    <Bar dataKey="opportunities" radius={[10, 10, 10, 10]}>
+                    <Bar dataKey="opportunities" radius={[9, 9, 9, 9]} barSize={14}>
                       {pipelineGrouped.map((entry, idx) => (
                         <Cell
                           key={`cell-${entry.name}-${idx}`}
