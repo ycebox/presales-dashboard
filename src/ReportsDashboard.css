@@ -133,7 +133,7 @@
 .reports-section-header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   margin-bottom: 10px;
 }
 
@@ -243,7 +243,7 @@
   color: #64748b;
 }
 
-/* ===== Panels & tables ===== */
+/* ===== Panels ===== */
 .reports-panel {
   margin-top: 6px;
   border-radius: 14px;
@@ -253,53 +253,15 @@
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
 }
 
-.reports-table-header,
-.reports-table-row {
-  display: grid;
-  grid-template-columns: 1.6fr 0.7fr 1fr;
-  padding: 10px 12px;
-  font-size: 13px;
-  column-gap: 10px;
-  align-items: center;
-  color: #0f172a;
-}
-
-.reports-table-header {
-  background: linear-gradient(180deg, rgba(248, 250, 252, 1), rgba(248, 250, 252, 0.75));
-  font-weight: 900;
-  font-size: 12px;
-  color: #334155;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.45);
-}
-
-.reports-table-row {
-  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
-}
-
-.reports-table-row:nth-child(even) {
-  background: rgba(248, 250, 252, 0.65);
-}
-
-.reports-table-row:hover {
-  background: rgba(219, 234, 254, 0.35);
-}
-
-.reports-table-row:last-child {
-  border-bottom: none;
-}
-
-.reports-row-muted span {
-  color: #64748b;
-}
-
 /* Chart panel */
 .reports-chart-panel {
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.85), rgba(255, 255, 255, 0.97));
 }
 
-/* Horizontal chart: a bit more padding and nicer feel */
-.reports-chart-panel-horizontal {
-  padding: 6px 6px 10px;
+/* Scroll container for long lists */
+.reports-chart-scroll {
+  max-height: 520px;
+  overflow-y: auto;
 }
 
 /* Recharts polishing */
@@ -316,9 +278,16 @@
   font-size: 12px;
 }
 
-/* Soft shadow on bars (works nicely with pastel fills) */
+/* Soft shadow on bars (nice with pastel fills) */
 .reports-panel .recharts-bar-rectangle {
   filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.08));
+}
+
+/* Empty state */
+.reports-empty {
+  padding: 14px 16px;
+  font-size: 13px;
+  color: #64748b;
 }
 
 /* ===== Controls (select) ===== */
@@ -380,12 +349,47 @@
   color: #64748b;
 }
 
-/* 4-column layout for your presales table rows */
+/* Table rows */
+.reports-table-header,
+.reports-table-row {
+  display: grid;
+  grid-template-columns: 1.6fr 0.7fr 1fr;
+  padding: 10px 12px;
+  font-size: 13px;
+  column-gap: 10px;
+  align-items: center;
+  color: #0f172a;
+}
+
+.reports-table-header {
+  background: linear-gradient(180deg, rgba(248, 250, 252, 1), rgba(248, 250, 252, 0.75));
+  font-weight: 900;
+  font-size: 12px;
+  color: #334155;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.45);
+}
+
+.reports-table-row {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.reports-table-row:nth-child(even) {
+  background: rgba(248, 250, 252, 0.65);
+}
+
+.reports-table-row:hover {
+  background: rgba(219, 234, 254, 0.35);
+}
+
+.reports-table-row:last-child {
+  border-bottom: none;
+}
+
+/* 4-column layout for presales table rows */
 .reports-presales-simple-table {
   grid-template-columns: 1.2fr 0.8fr 1.6fr 0.8fr;
 }
 
-/* Nice wrapping for long “next key activity” text */
 .reports-wrap {
   white-space: normal;
   word-break: break-word;
@@ -422,4 +426,242 @@
 
 @keyframes reportsSpin {
   to { transform: rotate(360deg); }
+}
+
+/* ===========================
+   Deal Health Dashboard
+   =========================== */
+
+.reports-dealhealth-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1.35fr;
+  gap: 12px;
+}
+
+@media (max-width: 980px) {
+  .reports-dealhealth-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reports-dealhealth-card {
+  padding: 10px 10px 12px;
+}
+
+/* Subtitle row with toggle */
+.reports-dealhealth-subrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Small toggle (CEO-friendly) */
+.reports-mini-toggle {
+  display: inline-flex;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.05);
+}
+
+.reports-mini-toggle-btn {
+  border: none;
+  background: transparent;
+  padding: 7px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.reports-mini-toggle-btn:hover {
+  background: rgba(219, 234, 254, 0.35);
+}
+
+.reports-mini-toggle-btn.active {
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0.08));
+  color: #0b1220;
+}
+
+.reports-dealhealth-chartWrap {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 8px 6px;
+}
+
+@media (max-width: 520px) {
+  .reports-dealhealth-chartWrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reports-dealhealth-chart {
+  height: 240px;
+  width: 100%;
+}
+
+.reports-dealhealth-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 6px 8px;
+}
+
+.reports-healthStat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(248, 250, 252, 0.75);
+}
+
+.reports-healthDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.reports-healthDot.healthy { background: rgba(34, 197, 94, 0.70); }
+.reports-healthDot.risk { background: rgba(245, 158, 11, 0.70); }
+.reports-healthDot.critical { background: rgba(239, 68, 68, 0.65); }
+
+.reports-healthNum {
+  font-size: 18px;
+  font-weight: 900;
+  color: #0b1220;
+  line-height: 1.1;
+}
+
+.reports-healthLbl {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  margin-top: 2px;
+}
+
+.reports-healthFootnote {
+  font-size: 12px;
+  color: #64748b;
+  padding-left: 2px;
+}
+
+.reports-dealhealth-listHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 1), rgba(248, 250, 252, 0.75));
+}
+
+.reports-dealhealth-listTitle {
+  font-weight: 900;
+  color: #0b1220;
+}
+
+.reports-dealhealth-listSub {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.reports-critical-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.reports-critical-row {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 10px;
+  padding: 12px 12px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+@media (max-width: 860px) {
+  .reports-critical-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reports-critical-row:nth-child(even) {
+  background: rgba(248, 250, 252, 0.65);
+}
+
+.reports-critical-row:hover {
+  background: rgba(254, 242, 242, 0.55);
+}
+
+.reports-critical-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.reports-critical-badge {
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.12);
+  color: #7f1d1d;
+}
+
+.reports-critical-project {
+  font-weight: 900;
+  color: #0b1220;
+}
+
+.reports-critical-meta {
+  font-size: 12px;
+  color: #475569;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.reports-dotSep {
+  color: rgba(100, 116, 139, 0.6);
+}
+
+.reports-critical-reason {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.reports-critical-side {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+
+@media (max-width: 860px) {
+  .reports-critical-side {
+    text-align: left;
+  }
+}
+
+.reports-critical-value {
+  font-weight: 900;
+  color: #0b1220;
+}
+
+.reports-critical-small {
+  font-size: 12px;
+  color: #475569;
 }
