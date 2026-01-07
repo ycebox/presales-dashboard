@@ -665,3 +665,10 @@
   font-size: 12px;
   color: #475569;
 }
+/* Win/Loss Trend chart polish */
+.reports-panel .recharts-legend-wrapper {
+  font-size: 12px;
+}
+.reports-panel .recharts-default-legend {
+  padding-top: 4px;
+}
