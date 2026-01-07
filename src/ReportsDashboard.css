@@ -258,15 +258,15 @@
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.85), rgba(255, 255, 255, 0.97));
 }
 
-/* Scroll container for long lists */
+/* Scroll container for long lists (smaller) */
 .reports-chart-scroll {
-  max-height: 520px;
+  max-height: 440px;
   overflow-y: auto;
 }
 
-/* Recharts polishing */
+/* Recharts polishing (tighter padding) */
 .reports-panel .recharts-wrapper {
-  padding: 6px 8px 8px;
+  padding: 4px 6px 6px;
 }
 
 .reports-panel .recharts-cartesian-grid-horizontal line,
@@ -488,10 +488,10 @@
 
 .reports-dealhealth-chartWrap {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 210px 1fr;
   gap: 10px;
-  align-items: center;
-  padding: 8px 8px 6px;
+  align-items: start;
+  padding: 6px 6px 4px;
 }
 
 @media (max-width: 520px) {
@@ -501,7 +501,7 @@
 }
 
 .reports-dealhealth-chart {
-  height: 240px;
+  height: 200px; /* smaller + less whitespace */
   width: 100%;
 }
 
@@ -509,7 +509,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
-  padding: 6px 8px;
+  padding: 2px 8px 6px;
 }
 
 .reports-healthStat {
@@ -665,6 +665,7 @@
   font-size: 12px;
   color: #475569;
 }
+
 /* Win/Loss Trend chart polish */
 .reports-panel .recharts-legend-wrapper {
   font-size: 12px;
