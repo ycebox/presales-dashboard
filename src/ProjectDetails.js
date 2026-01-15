@@ -514,6 +514,7 @@ function ProjectDetails() {
         is_corporate: !!project.is_corporate,
         bid_manager_required: !!project.bid_manager_required,
         bid_manager: project.bid_manager || "",
+        last_activity: project.last_activity || "",
       });
 
       const initialModules = toModulesArray(project.smartvista_modules);
@@ -602,6 +603,7 @@ function ProjectDetails() {
         is_corporate: !!project?.is_corporate,
         bid_manager_required: !!project?.bid_manager_required,
         bid_manager: project?.bid_manager || "",
+        last_activity: project?.last_activity || "",
       });
 
       const initialModules = toModulesArray(project?.smartvista_modules);
@@ -660,6 +662,7 @@ function ProjectDetails() {
 
         due_date: editProject.due_date || null,
         smartvista_modules: (modulesDraft || "").trim() || null,
+        last_activity: editProject.last_activity || "",
         next_key_activity: editProject.next_key_activity || "",
         remarks: editProject.remarks || "",
         primary_presales: (editProject.primary_presales || "").trim() || null,
@@ -1280,6 +1283,19 @@ function ProjectDetails() {
               </div>
 
               <div className="form-group form-group-full">
+                <label className="form-label">Last Activity</label>
+                <textarea
+                  name="last_activity"
+                  value={viewOrEdit.last_activity || ""}
+                  onChange={isReadOnly ? undefined : handleEditChange}
+                  className="form-textarea"
+                  placeholder="e.g. Clarification call done, demo completed, RFP submitted"
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
+              </div>
+
+              <div className="form-group form-group-full">
                 <label className="form-label">Next Key Activity</label>
                 <input
                   type="text"
@@ -1528,7 +1544,12 @@ function ProjectDetails() {
               ) : (
                 logs.map((l) => (
                   <div key={l.id} className="list-item">
-                    <div className="list-item-main" onClick={() => openEditLog(l)} role="button" tabIndex={0}>
+                    <div
+                      className="list-item-main"
+                      onClick={() => openEditLog(l)}
+                      role="button"
+                      tabIndex={0}
+                    >
                       <div className="list-item-notes">{l.notes}</div>
                     </div>
 
