@@ -8,7 +8,9 @@ import {
   FaGlobeAsia,
   FaTasks,
   FaTrophy,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaSyncAlt,
+  FaListAlt
 } from 'react-icons/fa';
 import { supabase } from './supabaseClient';
 import './ReportsDashboard.css';
@@ -117,6 +119,13 @@ const monthKeyToLabel = (key) => {
   return dt.toLocaleString('en-US', { month: 'short', year: '2-digit' });
 };
 
+const fmtDate = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return '—';
+  return dt.toISOString().slice(0, 10);
+};
+
 function ReportsDashboard() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -129,6 +138,9 @@ function ReportsDashboard() {
 
   // Deal health toggle: projects vs customers
   const [dealHealthMode, setDealHealthMode] = useState('projects'); // 'projects' | 'customers'
+
+  // Active Projects report
+  const [refreshingProjects, setRefreshingProjects] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -156,6 +168,20 @@ function ReportsDashboard() {
 
     fetchData();
   }, []);
+
+  const refreshProjectsFromDB = async () => {
+    try {
+      setRefreshingProjects(true);
+      const res = await supabase.from('projects').select('*');
+      if (res.error) throw res.error;
+      setProjects(res.data || []);
+    } catch (e) {
+      console.error(e);
+      alert(`Failed to extract projects: ${e?.message || 'Unknown error'}`);
+    } finally {
+      setRefreshingProjects(false);
+    }
+  };
 
   const { periodStart } = useMemo(() => {
     if (period === 'last90') {
@@ -240,6 +266,90 @@ function ReportsDashboard() {
     const h = base + pipelineGrouped.length * rowH;
     return Math.min(Math.max(260, h), 420); // min 260, max 420
   }, [pipelineGrouped.length]);
+
+  /* ================= ACTIVE PROJECTS (NEW REPORT) ================= */
+  const activeProjectsList = useMemo(() => {
+    const list = (projects || []).filter(
+      (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage)
+    );
+
+    // Sort: due date soonest first, then project name
+    return list.slice().sort((a, b) => {
+      const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
+      const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
+      if (ad !== bd) return ad - bd;
+      return (a.project_name || '').localeCompare(b.project_name || '');
+    });
+  }, [projects]);
+
+  const exportActiveProjectsToExcel = async () => {
+    try {
+      // Pull fresh from DB (as requested: extract from projects table)
+      const res = await supabase.from('projects').select('*');
+      if (res.error) throw res.error;
+
+      const all = res.data || [];
+      const active = all.filter(
+        (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage)
+      );
+
+      const rows = [];
+      rows.push(['Active Projects (Not Closed)']);
+      rows.push([`Generated: ${new Date().toISOString().slice(0, 10)}`]);
+      rows.push([`Total active projects: ${active.length}`]);
+      rows.push([]);
+
+      rows.push([
+        'Project',
+        'Customer',
+        'Country',
+        'Account Manager',
+        'Primary Presales',
+        'Stage',
+        'Deal Value',
+        'Due Date',
+        'Last Activity',
+        'Next Key Activity'
+      ]);
+
+      active.forEach((p) => {
+        rows.push([
+          p.project_name || '—',
+          p.customer_name || '—',
+          p.country || '—',
+          p.account_manager || '—',
+          p.primary_presales || 'Unassigned',
+          p.sales_stage || '—',
+          Number(p.deal_value) || 0,
+          p.due_date || '',
+          p.last_activity || '',
+          p.next_key_activity || ''
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [
+        { wch: 28 },
+        { wch: 22 },
+        { wch: 14 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 14 },
+        { wch: 12 },
+        { wch: 34 },
+        { wch: 34 }
+      ];
+      ws['!freeze'] = { xSplit: 0, ySplit: 4 };
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Active Projects');
+      XLSX.writeFile(wb, 'active_projects.xlsx');
+    } catch (e) {
+      console.error(e);
+      alert(`Export failed: ${e?.message || 'Unknown error'}`);
+    }
+  };
 
   /* ================= DEAL HEALTH DASHBOARD (30-day rule + toggle) ================= */
   const {
@@ -955,6 +1065,95 @@ function ReportsDashboard() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+            )}
+          </div>
+        </section>
+
+        {/* Active Projects List */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <div className="reports-section-title">
+                  <FaListAlt className="reports-section-icon" />
+                  <h2>Active Projects (Not Closed)</h2>
+                </div>
+                <p className="reports-section-subtitle">
+                  Projects where sales_stage is not Closed-Won, Closed-Lost, Closed-Cancelled/Hold, or Done.
+                </p>
+              </div>
+
+              <div className="reports-controls">
+                <button
+                  className="reports-filter-chip"
+                  onClick={refreshProjectsFromDB}
+                  disabled={refreshingProjects}
+                  title="Pull latest projects from DB"
+                >
+                  <FaSyncAlt style={{ marginRight: 6 }} />
+                  {refreshingProjects ? 'Extracting…' : 'Extract from DB'}
+                </button>
+
+                <button
+                  className="reports-filter-chip reports-export-chip"
+                  onClick={exportActiveProjectsToExcel}
+                  title="Export active projects to Excel"
+                >
+                  <FaFileExcel style={{ marginRight: 6 }} />
+                  Export Excel
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="reports-panel">
+            {activeProjectsList.length === 0 ? (
+              <div className="reports-empty">No active projects found.</div>
+            ) : (
+              <>
+                {/* Inline grid so we don’t need CSS changes */}
+                <div
+                  className="reports-table-header"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1.1fr 0.9fr 0.7fr 0.9fr 0.85fr 0.7fr 0.8fr 1.2fr 1.2fr',
+                    gap: 10
+                  }}
+                >
+                  <span>Project</span>
+                  <span>Customer</span>
+                  <span>Country</span>
+                  <span>AM</span>
+                  <span>Presales</span>
+                  <span>Stage</span>
+                  <span>Due</span>
+                  <span>Last activity</span>
+                  <span>Next key activity</span>
+                </div>
+
+                {activeProjectsList.map((p) => (
+                  <div
+                    key={p.id}
+                    className="reports-table-row"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1.1fr 0.9fr 0.7fr 0.9fr 0.85fr 0.7fr 0.8fr 1.2fr 1.2fr',
+                      gap: 10,
+                      alignItems: 'start'
+                    }}
+                  >
+                    <span>{p.project_name || '—'}</span>
+                    <span>{p.customer_name || '—'}</span>
+                    <span>{p.country || '—'}</span>
+                    <span>{p.account_manager || '—'}</span>
+                    <span>{p.primary_presales || 'Unassigned'}</span>
+                    <span>{p.sales_stage || '—'}</span>
+                    <span>{fmtDate(p.due_date)}</span>
+                    <span className="reports-wrap">{p.last_activity || '—'}</span>
+                    <span className="reports-wrap">{p.next_key_activity || '—'}</span>
+                  </div>
+                ))}
+              </>
             )}
           </div>
         </section>
