@@ -16,6 +16,10 @@ import { supabase } from './supabaseClient';
 import './ReportsDashboard.css';
 import * as XLSX from 'xlsx';
 
+// NEW: formatted excel export
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+
 // Charts
 import {
   ResponsiveContainer,
@@ -118,13 +122,13 @@ const monthKeyToLabel = (key) => {
   const dt = new Date(Number(y), Number(m) - 1, 1);
   return dt.toLocaleString('en-US', { month: 'short', year: '2-digit' });
 };
+
 const fmtDate = (d) => {
   if (!d) return '—';
   const dt = new Date(d);
   if (Number.isNaN(dt.getTime())) return '—';
   return dt.toISOString().slice(0, 10);
 };
-
 
 function ReportsDashboard() {
   const [projects, setProjects] = useState([]);
@@ -139,10 +143,10 @@ function ReportsDashboard() {
   // Deal health toggle: projects vs customers
   const [dealHealthMode, setDealHealthMode] = useState('projects'); // 'projects' | 'customers'
 
-  // Active projects report (hidden by default)
+  // NEW: Active Projects report is hidden by default
   const [showActiveProjects, setShowActiveProjects] = useState(false);
-  const [refreshingActiveExport, setRefreshingActiveExport] = useState(false);
   const [refreshingProjects, setRefreshingProjects] = useState(false);
+  const [exportingActive, setExportingActive] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -170,6 +174,20 @@ function ReportsDashboard() {
 
     fetchData();
   }, []);
+
+  const refreshProjectsFromDB = async () => {
+    try {
+      setRefreshingProjects(true);
+      const res = await supabase.from('projects').select('*');
+      if (res.error) throw res.error;
+      setProjects(res.data || []);
+    } catch (e) {
+      console.error(e);
+      alert(`Failed to refresh projects: ${e?.message || 'Unknown error'}`);
+    } finally {
+      setRefreshingProjects(false);
+    }
+  };
 
   const { periodStart } = useMemo(() => {
     if (period === 'last90') {
@@ -255,13 +273,12 @@ function ReportsDashboard() {
     return Math.min(Math.max(260, h), 420); // min 260, max 420
   }, [pipelineGrouped.length]);
 
-  /* ================= ACTIVE PROJECTS (EXPORT-FIRST, OPTIONAL VIEW) ================= */
+  /* ================= ACTIVE PROJECTS (HIDDEN BY DEFAULT) ================= */
   const activeProjectsList = useMemo(() => {
     const list = (projects || []).filter(
       (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage)
     );
 
-    // Sort: due date soonest, then project name
     return list.slice().sort((a, b) => {
       const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
       const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
@@ -270,16 +287,18 @@ function ReportsDashboard() {
     });
   }, [projects]);
 
-  const exportActiveProjectsToExcel = async () => {
+  const exportActiveProjectsByPresalesFormatted = async () => {
     try {
-      // Pull fresh from DB (so export always reflects latest)
+      setExportingActive(true);
+
+      // always pull fresh from DB for export
       const res = await supabase.from('projects').select('*');
       if (res.error) throw res.error;
 
       const all = res.data || [];
       const active = all.filter((p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage));
 
-      // Group by primary presales
+      // group by primary presales
       const groupMap = new Map();
       active.forEach((p) => {
         const key = p.primary_presales || 'Unassigned';
@@ -294,34 +313,81 @@ function ReportsDashboard() {
         }))
         .sort((a, b) => a.presales.localeCompare(b.presales));
 
-      const rows = [];
-      rows.push(['Active Projects (Not Closed) - Grouped by Presales']);
-      rows.push([`Generated: ${new Date().toISOString().slice(0, 10)}`]);
-      rows.push([`Total active projects: ${active.length}`]);
-      rows.push([]);
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Presales Dashboard';
 
-      const headers = [
-        'Project',
-        'Customer',
-        'Country',
-        'Account Manager',
-        'Primary Presales',
-        'Stage',
-        'Deal Value',
-        'Due Date',
-        'Last Activity',
-        'Next Key Activity'
+      const ws = wb.addWorksheet('Active Projects', {
+        views: [{ state: 'frozen', ySplit: 4 }]
+      });
+
+      ws.columns = [
+        { header: 'Project', key: 'project_name', width: 28 },
+        { header: 'Customer', key: 'customer_name', width: 22 },
+        { header: 'Country', key: 'country', width: 14 },
+        { header: 'Account Manager', key: 'account_manager', width: 18 },
+        { header: 'Primary Presales', key: 'primary_presales', width: 16 },
+        { header: 'Stage', key: 'sales_stage', width: 16 },
+        { header: 'Deal Value', key: 'deal_value', width: 14 },
+        { header: 'Due Date', key: 'due_date', width: 12 },
+        { header: 'Last Activity', key: 'last_activity', width: 34 },
+        { header: 'Next Key Activity', key: 'next_key_activity', width: 34 }
       ];
 
+      // title block
+      ws.addRow(['Active Projects (Not Closed) - Grouped by Presales']);
+      ws.addRow([`Generated: ${new Date().toISOString().slice(0, 10)}`]);
+      ws.addRow([`Total active projects: ${active.length}`]);
+      ws.addRow([]);
+
+      ws.getRow(1).font = { size: 14, bold: true };
+      ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'left' };
+
+      const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
+      const headerFont = { bold: true, color: { argb: 'FFFFFFFF' } };
+      const sectionFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+
+      const border = {
+        top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+        left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+        bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+        right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+      };
+
+      const today = startOfToday();
+
+      const applyBorderWrap = (row) => {
+        row.eachCell((cell) => {
+          cell.border = border;
+          cell.alignment = { vertical: 'top', wrapText: true };
+        });
+      };
+
       groups.forEach((g) => {
+        // presales band
+        const groupHeaderRow = ws.addRow([`Presales: ${g.presales}`]);
+        groupHeaderRow.font = { bold: true };
+        groupHeaderRow.fill = sectionFill;
+        applyBorderWrap(groupHeaderRow);
+
         const totalValue = g.items.reduce((s, p) => s + (Number(p.deal_value) || 0), 0);
+        const summaryRow = ws.addRow([`Projects: ${g.items.length}`, `Total Value: ${totalValue}`]);
+        summaryRow.font = { italic: true, color: { argb: 'FF374151' } };
 
-        rows.push([`Presales: ${g.presales}`]);
-        rows.push([`Projects: ${g.items.length}`, `Total Value: ${totalValue}`]);
-        rows.push(headers);
+        // headers per group
+        const hdr = ws.addRow(ws.columns.map((c) => c.header));
+        hdr.eachCell((cell) => {
+          cell.fill = headerFill;
+          cell.font = headerFont;
+          cell.alignment = { vertical: 'middle', horizontal: 'left' };
+          cell.border = border;
+        });
 
+        // data rows
         g.items.forEach((p) => {
-          rows.push([
+          const due = p.due_date ? new Date(p.due_date) : null;
+          if (due) due.setHours(0, 0, 0, 0);
+
+          const row = ws.addRow([
             p.project_name || '—',
             p.customer_name || '—',
             p.country || '—',
@@ -329,36 +395,35 @@ function ReportsDashboard() {
             p.primary_presales || 'Unassigned',
             p.sales_stage || '—',
             Number(p.deal_value) || 0,
-            p.due_date || '',
+            p.due_date ? new Date(p.due_date) : '',
             p.last_activity || '',
             p.next_key_activity || ''
           ]);
+
+          applyBorderWrap(row);
+
+          // formats
+          row.getCell(7).numFmt = '"$"#,##0';
+          if (p.due_date) row.getCell(8).numFmt = 'yyyy-mm-dd';
+
+          // overdue highlight
+          if (due && due < today) {
+            const dueCell = row.getCell(8);
+            dueCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+            dueCell.font = { color: { argb: 'FF991B1B' }, bold: true };
+          }
         });
 
-        rows.push([]);
+        ws.addRow([]);
       });
 
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols'] = [
-        { wch: 28 },
-        { wch: 22 },
-        { wch: 14 },
-        { wch: 18 },
-        { wch: 16 },
-        { wch: 16 },
-        { wch: 14 },
-        { wch: 12 },
-        { wch: 34 },
-        { wch: 34 }
-      ];
-      ws['!freeze'] = { xSplit: 0, ySplit: 4 };
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Active Projects');
-      XLSX.writeFile(wb, 'active_projects_grouped_by_presales.xlsx');
+      const buf = await wb.xlsx.writeBuffer();
+      saveAs(new Blob([buf]), 'active_projects_by_presales_formatted.xlsx');
     } catch (e) {
       console.error(e);
       alert(`Export failed: ${e?.message || 'Unknown error'}`);
+    } finally {
+      setExportingActive(false);
     }
   };
 
@@ -1075,61 +1140,55 @@ function ReportsDashboard() {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-          
-        {/* Active Projects (export-first, hidden by default) */}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Active Projects (Export-first, hidden by default) */}
         <section className="reports-section">
           <div className="reports-section-header">
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div>
                 <div className="reports-section-title">
                   <FaListAlt className="reports-section-icon" />
-                  <h2>Active Projects (Not Closed)</h2>
+                  <h2>Active Projects Export</h2>
                 </div>
-                <p className="reports-section-subtitle" style={{ marginBottom: 0 }}>
-                  Most of the time you can just export. If you need to view, click “Show list”.
+                <p className="reports-section-subtitle">
+                  Most of the time you only need the Excel. You can optionally expand the list.
                 </p>
               </div>
 
               <div className="reports-controls">
                 <button
                   className="reports-filter-chip reports-export-chip"
-                  onClick={exportActiveProjectsToExcel}
-                  disabled={refreshingActiveExport}
-                  title="Export active projects grouped by presales"
+                  onClick={exportActiveProjectsByPresalesFormatted}
+                  disabled={exportingActive}
+                  title="Export active projects grouped by presales (formatted)"
                 >
                   <FaFileExcel style={{ marginRight: 6 }} />
-                  {refreshingActiveExport ? 'Preparing…' : 'Download Excel'}
+                  {exportingActive ? 'Exporting…' : 'Download Excel (Grouped)'}
                 </button>
 
                 <button
                   className="reports-filter-chip"
                   onClick={() => setShowActiveProjects((v) => !v)}
-                  title="Show or hide the list on screen"
+                  title="Show/hide the active projects list"
                 >
-                  {showActiveProjects ? 'Hide list' : 'Show list'}
+                  {showActiveProjects ? 'Hide List' : 'View List'}
                 </button>
 
-                <button
-                  className="reports-filter-chip"
-                  onClick={async () => {
-                    try {
-                      setRefreshingProjects(true);
-                      const res = await supabase.from('projects').select('*');
-                      if (res.error) throw res.error;
-                      setProjects(res.data || []);
-                    } catch (e) {
-                      console.error(e);
-                      alert(`Failed to extract projects: ${e?.message || 'Unknown error'}`);
-                    } finally {
-                      setRefreshingProjects(false);
-                    }
-                  }}
-                  disabled={refreshingProjects}
-                  title="Refresh the data on screen from DB"
-                >
-                  <FaSyncAlt style={{ marginRight: 6 }} />
-                  {refreshingProjects ? 'Refreshing…' : 'Refresh'}
-                </button>
+                {showActiveProjects && (
+                  <button
+                    className="reports-filter-chip"
+                    onClick={refreshProjectsFromDB}
+                    disabled={refreshingProjects}
+                    title="Refresh projects list from DB"
+                  >
+                    <FaSyncAlt style={{ marginRight: 6 }} />
+                    {refreshingProjects ? 'Refreshing…' : 'Refresh'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1185,11 +1244,6 @@ function ReportsDashboard() {
               )}
             </div>
           )}
-        </section>
-
-    </div>
-            )}
-          </div>
         </section>
 
         {/* Projects by Presales */}
