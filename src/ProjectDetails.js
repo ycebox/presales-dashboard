@@ -302,6 +302,10 @@ function ProjectDetails() {
   // ✅ Sales stages from DB
   const [salesStageOptions, setSalesStageOptions] = useState(DEFAULT_SALES_STAGES);
 
+  // ✅ Country + Account Manager dropdown options
+  const [countryOptions, setCountryOptions] = useState([]);
+  const [accountManagerOptions, setAccountManagerOptions] = useState([]);
+
   // Bid manager load info
   const [bidManagerLoad, setBidManagerLoad] = useState(null);
   const [bidManagerLoadError, setBidManagerLoadError] = useState(null);
@@ -319,6 +323,8 @@ function ProjectDetails() {
           { data: pData, error: pErr },
           { data: tData, error: tErr },
           { data: mData, error: mErr },
+          { data: cData, error: cErr },
+          { data: aData, error: aErr },
           { data: sData, error: sErr },
         ] = await Promise.all([
           supabase.from("presales_resources").select("name").order("name"),
@@ -332,6 +338,10 @@ function ProjectDetails() {
             .order("name", { ascending: true }),
           supabase.from("smartvista_modules_catalog").select("name").order("name"),
 
+          // ✅ load countries + account managers for dropdowns
+          supabase.from("countries").select("name").order("name"),
+          supabase.from("account_managers").select("id, name").order("name"),
+
           // ✅ load sales stages from DB
           supabase
             .from("sales_stages")
@@ -344,6 +354,8 @@ function ProjectDetails() {
         if (pErr) console.warn("presales_resources load error:", pErr);
         if (tErr) console.warn("task_types load error:", tErr);
         if (mErr) console.warn("smartvista_modules_catalog load error:", mErr);
+        if (cErr) console.warn("countries load error:", cErr);
+        if (aErr) console.warn("account_managers load error:", aErr);
         if (sErr) console.warn("sales_stages load error:", sErr);
 
         setPresalesResources((pData || []).map((x) => x.name).filter(Boolean));
@@ -364,6 +376,10 @@ function ProjectDetails() {
         setTaskTypeDefaultsMap(map);
 
         setModuleOptions((mData || []).map((x) => x.name).filter(Boolean));
+
+        // ✅ countries + account managers
+        setCountryOptions((cData || []).map((x) => x.name).filter(Boolean));
+        setAccountManagerOptions((aData || []).map((x) => ({ id: x.id, name: x.name })).filter((x) => x.id && x.name));
 
         // ✅ apply DB stages if available, else keep fallback
         const dbStages = (sData || []).map((x) => x.name).filter(Boolean);
@@ -1002,28 +1018,38 @@ function ProjectDetails() {
 
               <div className="form-group">
                 <label className="form-label">Account Manager</label>
-                <input
-                  type="text"
+                <select
                   name="account_manager"
                   value={viewOrEdit.account_manager || ""}
                   onChange={isReadOnly ? undefined : handleEditChange}
                   className="form-input"
-                  readOnly={isReadOnly}
                   disabled={isReadOnly}
-                />
+                >
+                  <option value="">-</option>
+                  {accountManagerOptions.map((am) => (
+                    <option key={`am-${am.id}`} value={am.name}>
+                      {am.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group">
                 <label className="form-label">Country</label>
-                <input
-                  type="text"
+                <select
                   name="country"
                   value={viewOrEdit.country || ""}
                   onChange={isReadOnly ? undefined : handleEditChange}
                   className="form-input"
-                  readOnly={isReadOnly}
                   disabled={isReadOnly}
-                />
+                >
+                  <option value="">-</option>
+                  {countryOptions.map((c) => (
+                    <option key={`cty-${c}`} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group">
