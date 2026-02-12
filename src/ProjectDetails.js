@@ -1,1668 +1,1784 @@
-// ProjectDetails.js  (updated: Sales Stage dropdown values loaded from DB "sales_stages")
-// Based on your latest uploaded ProjectDetails (3).js, updated to read sales stages from Supabase.
-
-import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "./supabaseClient";
-import "./ProjectDetails.css";
-import TaskModal from "./TaskModal";
+import React, { useEffect, useMemo, useState } from 'react';
+import { supabase } from './supabaseClient';
 import {
-  FaTasks,
-  FaBookOpen,
-  FaEdit,
-  FaSave,
-  FaTimes,
-  FaPlus,
-  FaInfo,
-  FaTrash,
-  FaUsers,
-  FaCalendarAlt,
-  FaDollarSign,
-  FaChartLine,
-  FaCheckCircle,
-  FaClock,
-  FaExclamationTriangle,
-  FaEye,
-  FaEyeSlash,
-  FaBullseye,
-  FaRocket,
-  FaFileAlt,
-  FaChevronRight,
-  FaChevronDown,
-} from "react-icons/fa";
+  Users,
+  AlertTriangle,
+  CalendarDays,
+  Filter,
+  Plane,
+  X,
+  Edit3,
+  Trash2,
+  ListChecks,
+  Save,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import './PresalesOverview.css';
+import TaskModal from './TaskModal';
+
+const HOURS_PER_DAY = 8;
+const DEFAULT_TASK_HOURS = 4;
+
+// ---- Task type fallback (if task_types table is empty/unavailable) ----
+const DEFAULT_TASK_TYPES = [
+  { id: 'rfp', name: 'RFP / Proposal' },
+  { id: 'poc', name: 'PoC / Integration / Workshop' },
+  { id: 'demo', name: 'Demo' },
+  { id: 'meeting', name: 'Meeting / Call' },
+  { id: 'admin', name: 'Admin / Internal' },
+  { id: 'other', name: 'Other' },
+];
+
+// Multipliers apply to estimated_hours to reflect “effort”
+const CANONICAL_TYPE_MULTIPLIERS = {
+  'rfp / proposal': 1.6,
+  'poc / integration / workshop': 1.4,
+  demo: 1.2,
+  'meeting / call': 0.8,
+  'admin / internal': 0.7,
+  other: 1.0,
+};
 
 // ---------- Helpers ----------
-const safeLower = (v) => (typeof v === "string" ? v.toLowerCase() : "");
-
-const formatDate = (dateString) => {
-  if (!dateString) return "-";
-  try {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return "-";
-  }
+const toMidnight = (d) => {
+  if (!d) return null;
+  const nd = new Date(d);
+  nd.setHours(0, 0, 0, 0);
+  return nd;
 };
 
-const formatCurrency = (value) => {
-  if (value === null || value === undefined || value === "") return "-";
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(Number(value));
-  } catch {
-    return value;
-  }
+const parseDate = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return toMidnight(value);
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return toMidnight(d);
 };
 
-const getSalesStageIcon = (stage) => {
-  const s = safeLower(stage);
-  if (s.includes("lead")) return <FaBullseye />;
-  if (s.includes("opportunity")) return <FaRocket />;
-  if (s.includes("proposal")) return <FaFileAlt />;
-  if (s.includes("contract")) return <FaChartLine />;
-  if (s.includes("done") || s.includes("closed-won")) return <FaCheckCircle />;
-  return <FaBullseye />;
+const validateDateRange = (start, end) => {
+  if (!start || !end) return '';
+  const s = parseDate(start);
+  const e = parseDate(end);
+  if (!s || !e) return '';
+  if (s.getTime() > e.getTime()) return 'Start date cannot be later than end date.';
+  return '';
 };
 
-const getSalesStageClass = (stage) => {
-  if (!stage) return "stage-active";
-  const s = stage.toLowerCase();
-  if (s.includes("closed-won")) return "stage-won";
-  if (s.includes("closed-lost")) return "stage-lost";
-  if (s.includes("closed-cancelled")) return "stage-cancelled";
-  return "stage-active";
+const isWithinRange = (d, start, end) => {
+  if (!d) return false;
+  const day = toMidnight(d);
+  const s = parseDate(start);
+  const e = parseDate(end) || s;
+  if (!s || !day) return false;
+  return day.getTime() >= s.getTime() && day.getTime() <= e.getTime();
 };
 
-const toModulesArray = (value) => {
-  if (!value) return [];
-  return String(value)
-    .split(/[,\n;]+/g)
-    .map((x) => x.trim())
-    .filter(Boolean);
+const isTaskOnDay = (task, day) => {
+  if (!day) return false;
+  const d = toMidnight(day);
+
+  const start = parseDate(task.start_date) || parseDate(task.due_date) || parseDate(task.end_date);
+  const end = parseDate(task.end_date) || parseDate(task.due_date) || parseDate(task.start_date);
+
+  if (!start && !end) return false;
+
+  const s = start || end;
+  const e = end || start;
+
+  return d.getTime() >= s.getTime() && d.getTime() <= e.getTime();
 };
 
-const isStageClosedOrDone = (stage) => {
-  const s = safeLower(stage);
-  if (!s) return false;
-  return (
-    s.includes("done") ||
-    s.includes("closed-won") ||
-    s.includes("closed-lost") ||
-    s.includes("closed-cancelled")
-  );
-};
+const getWeekRanges = () => {
+  const today = toMidnight(new Date());
 
-const isTaskDoneOrHold = (status) => ["Completed", "Cancelled/On-hold"].includes(status || "");
+  const thisWeekStart = new Date(today);
+  const day = thisWeekStart.getDay(); // 0=Sun
+  const diff = (day === 0 ? -6 : 1) - day; // move to Monday
+  thisWeekStart.setDate(thisWeekStart.getDate() + diff);
 
-const normalizeStatusKey = (s) => safeLower(s).replaceAll(" ", "-").replaceAll("/", "-");
+  const thisWeekEnd = new Date(thisWeekStart);
+  thisWeekEnd.setDate(thisWeekStart.getDate() + 4); // Mon–Fri
 
-// Fallback in case table is empty / not yet created
-const DEFAULT_SALES_STAGES = ["Lead", "Opportunity", "Proposal", "Contracting", "Done"];
+  const nextWeekStart = new Date(thisWeekStart);
+  nextWeekStart.setDate(thisWeekStart.getDate() + 7);
+  const nextWeekEnd = new Date(nextWeekStart);
+  nextWeekEnd.setDate(nextWeekEnd.getDate() + 4);
 
-// ---------- Log Modal ----------
-const LogModal = ({ isOpen, onClose, onSave, editingLog = null }) => {
-  const [logText, setLogText] = useState("");
-  const [loading, setLoading] = useState(false);
+  const last30Start = new Date(today);
+  last30Start.setDate(today.getDate() - 30);
+  const last30End = new Date(today);
 
-  useEffect(() => {
-    if (isOpen) setLogText(editingLog?.notes || "");
-  }, [editingLog, isOpen]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!logText.trim()) {
-      alert("Log notes are required");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await onSave(logText);
-      onClose();
-    } catch (err) {
-      console.error("Log save error:", err);
-      alert(`Failed to save log: ${err?.message || "Unknown error"}`);
-    } finally {
-      setLoading(false);
-    }
+  return {
+    thisWeek: { start: thisWeekStart, end: thisWeekEnd },
+    nextWeek: { start: nextWeekStart, end: nextWeekEnd },
+    last30: { start: last30Start, end: last30End },
   };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-overlay" role="dialog" aria-modal="true">
-      <div className="modal">
-        <div className="modal-header">
-          <div className="modal-title">
-            <FaBookOpen />
-            <span>{editingLog ? "Edit Log" : "Add Log"}</span>
-          </div>
-          <button className="icon-button" onClick={onClose} aria-label="Close" type="button">
-            <FaTimes />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="modal-body">
-          <div className="form-group">
-            <label className="form-label">Notes</label>
-            <textarea
-              className="form-textarea"
-              value={logText}
-              onChange={(e) => setLogText(e.target.value)}
-              placeholder="Add progress update, decisions, meeting notes, etc."
-            />
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" className="action-button secondary" onClick={onClose}>
-              <FaTimes />
-              <span>Cancel</span>
-            </button>
-            <button type="submit" className="action-button primary" disabled={loading}>
-              <FaSave />
-              <span>{loading ? "Saving..." : "Save Log"}</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
 };
 
-// ---------- Loading/Error ----------
-const LoadingState = () => (
-  <div className="project-details-container theme-light">
-    <div className="loading-state">
-      <div className="spinner" />
-      <div className="loading-text">
-        <h2>Loading project...</h2>
-        <p>Please wait a moment.</p>
-      </div>
-    </div>
-  </div>
-);
+const getOverlapDays = (range, start, end) => {
+  if (!range || !range.start || !range.end) return 0;
+  const rs = toMidnight(range.start);
+  const re = toMidnight(range.end);
+  const ts = parseDate(start) || rs;
+  const te = parseDate(end) || ts;
 
-const ErrorState = ({ error, onBack }) => (
-  <div className="project-details-container theme-light">
-    <div className="error-state">
-      <div className="error-icon-wrapper">
-        <FaExclamationTriangle className="error-icon" />
-      </div>
-      <h2 className="error-title">Something went wrong</h2>
-      <p className="error-message">{error || "Project not found"}</p>
-      <button onClick={onBack} className="action-button primary" type="button">
-        <span>Back</span>
-      </button>
-    </div>
-  </div>
-);
+  const overlapStart = ts.getTime() > rs.getTime() ? ts : rs;
+  const overlapEnd = te.getTime() < re.getTime() ? te : re;
 
-const useProjectData = (projectId) => {
-  const [project, setProject] = useState(null);
+  if (overlapEnd.getTime() < overlapStart.getTime()) return 0;
+
+  const ms = overlapEnd.getTime() - overlapStart.getTime();
+  return Math.floor(ms / (1000 * 60 * 60 * 24)) + 1;
+};
+
+const getUtilLabel = (pct) => {
+  if (!pct || Number.isNaN(pct)) return '';
+  if (pct >= 120) return 'Over capacity';
+  if (pct >= 90) return 'Near capacity';
+  if (pct <= 40) return 'Light load';
+  return 'Healthy';
+};
+
+const priorityScore = (priority) => {
+  const p = (priority || '').toLowerCase();
+  if (p === 'high') return 1;
+  if (p === 'normal' || p === 'medium') return 2;
+  if (p === 'low') return 3;
+  return 4;
+};
+
+const isCompletedStatus = (status) => {
+  const s = (status || '').toLowerCase();
+  return s === 'completed' || s === 'done' || s === 'closed';
+};
+
+const normalizeStatusGroup = (status) => {
+  const s = (status || '').toLowerCase().trim();
+  if (s.includes('progress')) return 'In Progress';
+  if (s.includes('not started') || s === 'open' || s === 'new') return 'Not Started';
+  return 'Other';
+};
+
+// ✅ Align “active project” logic with what you use elsewhere
+const isProjectActive = (salesStage) => {
+  const s = (salesStage || '').toLowerCase();
+  if (!s) return true;
+  if (s.includes('done')) return false;
+  if (s.includes('closed-won')) return false;
+  if (s.includes('closed-lost')) return false;
+  if (s.includes('closed-cancelled')) return false;
+  return true;
+};
+
+// ---------- Task type multiplier ----------
+const legacyKeywordMultiplier = (taskType) => {
+  const s = (taskType || '').toLowerCase().trim();
+  if (!s) return 1.0;
+
+  if (s.includes('rfp') || s.includes('rfi') || s.includes('proposal') || s.includes('tender')) return 1.6;
+  if (s.includes('poc') || s.includes('integration') || s.includes('workshop') || s.includes('discovery')) return 1.4;
+  if (s.includes('demo')) return 1.2;
+  if (s.includes('meeting') || s.includes('call') || s.includes('sync')) return 0.8;
+  if (s.includes('admin') || s.includes('internal')) return 0.7;
+
+  return 1.0;
+};
+
+const buildTaskTypeMultiplierMap = (taskTypes) => {
+  const map = new Map();
+
+  Object.entries(CANONICAL_TYPE_MULTIPLIERS).forEach(([nameLower, mult]) => {
+    map.set(nameLower, mult);
+  });
+
+  (taskTypes || []).forEach((t) => {
+    const key = (t?.name || '').toLowerCase().trim();
+    if (!key) return;
+
+    if (CANONICAL_TYPE_MULTIPLIERS[key] !== undefined) {
+      map.set(key, CANONICAL_TYPE_MULTIPLIERS[key]);
+    } else {
+      if (!map.has(key)) map.set(key, 1.0);
+    }
+  });
+
+  return map;
+};
+
+const getEffectiveTaskHours = (task, taskTypeMultiplierMap) => {
+  const base =
+    typeof task?.estimated_hours === 'number' && !Number.isNaN(task.estimated_hours)
+      ? task.estimated_hours
+      : DEFAULT_TASK_HOURS;
+
+  const typeNameLower = (task?.task_type || '').toLowerCase().trim();
+
+  let mult = 1.0;
+
+  if (typeNameLower && taskTypeMultiplierMap?.has(typeNameLower)) {
+    mult = taskTypeMultiplierMap.get(typeNameLower);
+  } else {
+    mult = legacyKeywordMultiplier(task?.task_type);
+  }
+
+  const effective = Math.max(0, base * (mult ?? 1.0));
+  return Math.min(effective, 80);
+};
+
+// ---------- Partial-day schedule blocking ----------
+const toNumberOrNull = (v) => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isNaN(n) ? null : n;
+};
+
+const getDefaultBlockHoursByType = (type, dailyCapacity) => {
+  const t = (type || '').toLowerCase();
+  if (t === 'leave' || t === 'travel') return dailyCapacity;
+  if (t === 'training') return Math.min(6, dailyCapacity);
+  if (t === 'internal') return Math.min(3, dailyCapacity);
+  return Math.min(2, dailyCapacity);
+};
+
+const getScheduleBlockHours = (event, dailyCapacity) => {
+  const explicit = toNumberOrNull(event?.block_hours);
+  if (explicit !== null) return Math.max(0, Math.min(explicit, dailyCapacity));
+  return getDefaultBlockHoursByType(event?.type, dailyCapacity);
+};
+
+const isFullDayBlocked = (blockedHours, dailyCapacity) => {
+  if (!dailyCapacity) return false;
+  return blockedHours >= dailyCapacity * 0.95;
+};
+
+const getPriorityMinFreeHours = (priority) => {
+  const p = (priority || '').toLowerCase();
+  if (p === 'high') return 4;
+  if (p === 'low') return 2;
+  return 3;
+};
+
+// ---------- Kanban ----------
+function ActivitiesKanban({ groups, parseDateFn, today, formatShortDate, onClickTask, onDeleteTask }) {
+  const [limits, setLimits] = useState({
+    Overdue: 6,
+    'In Progress': 6,
+    'Not Started': 6,
+  });
+
+  const columns = [
+    { key: 'Not Started', title: 'Not Started' },
+    { key: 'In Progress', title: 'In Progress' },
+    { key: 'Overdue', title: 'Overdue' },
+  ];
+
+  const incLimit = (key) => setLimits((p) => ({ ...p, [key]: (p[key] || 6) + 6 }));
+  const countLabel = (key) => groups?.[key]?.length || 0;
+
+  return (
+    <div className="activities-kanban">
+      {columns.map((col) => {
+        const list = groups?.[col.key] || [];
+        const visible = list.slice(0, limits[col.key] || 6);
+        const hasMore = list.length > visible.length;
+
+        return (
+          <div key={col.key} className={`activities-col ${col.key === 'Overdue' ? 'is-overdue' : ''}`}>
+            <div className="activities-col-header">
+              <div className="activities-col-title">{col.title}</div>
+              <div className="activities-col-count">{countLabel(col.key)}</div>
+            </div>
+
+            {visible.length === 0 ? (
+              <div className="activities-empty">No tasks</div>
+            ) : (
+              <div className="activities-cards">
+                {visible.map((t) => {
+                  const due = parseDateFn(t.due_date);
+                  const isOverdue = due && due.getTime() < today.getTime();
+
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={`activity-card ${isOverdue ? 'is-overdue' : ''}`}
+                      onClick={() => onClickTask(t)}
+                      title="Click to edit"
+                    >
+                      <div className="activity-card-top">
+                        <div className="activity-card-title">{t.description || 'Untitled task'}</div>
+
+                        <div className="activity-card-actions">
+                          <button
+                            type="button"
+                            className="activity-card-iconbtn danger"
+                            title="Delete task"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteTask?.(t.id);
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="activity-card-sub">
+                        <span className="truncate">{t.customerName || 'Unknown customer'}</span>
+                        <span className="dot">•</span>
+                        <span className="truncate">{t.projectName || 'Unknown project'}</span>
+                      </div>
+
+                      <div className="activity-card-meta">
+                        <div className={`meta-chip ${isOverdue ? 'chip-overdue' : ''}`}>
+                          Due: {formatShortDate(t.due_date) || '-'}
+                        </div>
+                        <div className="meta-chip">{t.assignee || 'Unassigned'}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {hasMore && (
+              <button type="button" className="activities-more" onClick={() => incLimit(col.key)}>
+                Show more
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PresalesOverview() {
+  const navigate = useNavigate();
+
+  const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [logs, setLogs] = useState([]);
+  const [scheduleEvents, setScheduleEvents] = useState([]);
+  const [presalesResources, setPresalesResources] = useState([]);
+  const [taskTypes, setTaskTypes] = useState([]); // rows from DB (or fallback)
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchTasks = async () => {
-    try {
-      const { data, error: qErr } = await supabase
-        .from("project_tasks")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false });
+  // Assignment helper
+  const [assignPriority, setAssignPriority] = useState('Normal');
+  const [assignStart, setAssignStart] = useState('');
+  const [assignEnd, setAssignEnd] = useState('');
+  const [assignDateError, setAssignDateError] = useState('');
 
-      if (qErr) throw qErr;
-      setTasks(data || []);
-    } catch (err) {
-      console.error("Error fetching tasks:", err);
-    }
-  };
+  // Calendar view
+  const [calendarView, setCalendarView] = useState('14');
 
-  const fetchLogs = async () => {
-    try {
-      const { data, error: qErr } = await supabase
-        .from("project_logs")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false });
+  // Schedule modal
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleAssignee, setScheduleAssignee] = useState('');
+  const [scheduleType, setScheduleType] = useState('Leave');
+  const [scheduleStart, setScheduleStart] = useState('');
+  const [scheduleEnd, setScheduleEnd] = useState('');
+  const [scheduleNote, setScheduleNote] = useState('');
+  const [scheduleBlockHours, setScheduleBlockHours] = useState('');
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState(null);
+  const [scheduleMode, setScheduleMode] = useState('create');
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
+  const [scheduleDateError, setScheduleDateError] = useState('');
 
-      if (qErr) throw qErr;
-      setLogs(data || []);
-    } catch (err) {
-      console.error("Error fetching logs:", err);
-    }
-  };
+  // Day detail modal
+  const [dayDetailOpen, setDayDetailOpen] = useState(false);
+  const [dayDetail, setDayDetail] = useState({ assignee: '', date: null, tasks: [], schedules: [] });
 
-  const fetchProjectDetails = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data, error: qErr } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("id", projectId)
-        .single();
-
-      if (qErr) throw qErr;
-
-      setProject(data);
-      await Promise.all([fetchTasks(), fetchLogs()]);
-    } catch (err) {
-      console.error("Error fetching project:", err);
-      setError(err.message || "Failed to load project");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (projectId) fetchProjectDetails();
-  }, [projectId]);
-
-  return { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs };
-};
-
-function ProjectDetails() {
-  const { projectId } = useParams();
-  const navigate = useNavigate();
-
-  const { project, setProject, tasks, logs, loading, error, fetchTasks, fetchLogs } =
-    useProjectData(projectId);
-
-  const [isEditing, setIsEditing] = useState(false);
-  const [editProject, setEditProject] = useState({});
-  const [saving, setSaving] = useState(false);
-
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [showLogModal, setShowLogModal] = useState(false);
+  // ✅ Shared TaskModal state
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [editingLog, setEditingLog] = useState(null);
-  const [showCompleted, setShowCompleted] = useState(false);
 
-  const [modulesDraft, setModulesDraft] = useState("");
-
-  // SmartVista Modules catalog (multi-select)
-  const [moduleOptions, setModuleOptions] = useState([]);
-  const [selectedModules, setSelectedModules] = useState([]);
-  const [modulesOpen, setModulesOpen] = useState(false);
-  const [moduleSearch, setModuleSearch] = useState("");
-
-  // dropdown options
-  const [presalesResources, setPresalesResources] = useState([]);
-  const [taskTypes, setTaskTypes] = useState([]);
-  const [taskTypeDefaultsMap, setTaskTypeDefaultsMap] = useState({});
-
-  // ✅ Sales stages from DB
-  const [salesStageOptions, setSalesStageOptions] = useState(DEFAULT_SALES_STAGES);
-
-  // ✅ Country + Account Manager dropdown options
-  const [countryOptions, setCountryOptions] = useState([]);
-  const [accountManagerOptions, setAccountManagerOptions] = useState([]);
-
-  // Bid manager load info
-  const [bidManagerLoad, setBidManagerLoad] = useState(null);
-  const [bidManagerLoadError, setBidManagerLoadError] = useState(null);
-
-  // expanding parent groups
-  const [expandedParents, setExpandedParents] = useState({});
-
-  // Customer UUID lookup (so /customer/:customerId works)
-  const [customerId, setCustomerId] = useState(null);
-
+  // ---------- Load data ----------
   useEffect(() => {
-    const loadLists = async () => {
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+
       try {
-        const [
-          { data: pData, error: pErr },
-          { data: tData, error: tErr },
-          { data: mData, error: mErr },
-          { data: cData, error: cErr },
-          { data: aData, error: aErr },
-          { data: sData, error: sErr },
-        ] = await Promise.all([
-          supabase.from("presales_resources").select("name").order("name"),
+        const [projRes, taskRes, scheduleRes, presalesRes, taskTypesRes] = await Promise.all([
+          // ✅ include primary_presales + backup_presales so the board works even with 0 tasks
           supabase
-            .from("task_types")
+            .from('projects')
+            .select('id, customer_name, project_name, sales_stage, deal_value, primary_presales, backup_presales')
+            .order('customer_name', { ascending: true }),
+          supabase
+            .from('project_tasks')
             .select(
-              "name, base_hours, buffer_pct, focus_hours_per_day, review_buffer_days, is_active, sort_order"
-            )
-            .eq("is_active", true)
-            .order("sort_order", { ascending: true })
-            .order("name", { ascending: true }),
-          supabase.from("smartvista_modules_catalog").select("name").order("name"),
-
-          // ✅ load countries + account managers for dropdowns
-          supabase.from("countries").select("name").order("name"),
-          supabase.from("account_managers").select("id, name").order("name"),
-
-          // ✅ load sales stages from DB
+              'id, project_id, assignee, status, due_date, start_date, end_date, estimated_hours, priority, task_type, description, notes, created_at'
+            ),
+          supabase.from('presales_schedule').select('id, assignee, type, start_date, end_date, note, block_hours'),
           supabase
-            .from("sales_stages")
-            .select("name, sort_order, is_active")
-            .eq("is_active", true)
-            .order("sort_order", { ascending: true })
-            .order("name", { ascending: true }),
+            .from('presales_resources')
+            .select('id, name, email, region, is_active, daily_capacity_hours, target_hours, max_tasks_per_day')
+            .order('name', { ascending: true }),
+          supabase
+            .from('task_types')
+            .select('id, name, is_active, sort_order, base_hours, buffer_pct, focus_hours_per_day, review_buffer_days')
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true })
+            .order('name', { ascending: true }),
         ]);
 
-        if (pErr) console.warn("presales_resources load error:", pErr);
-        if (tErr) console.warn("task_types load error:", tErr);
-        if (mErr) console.warn("smartvista_modules_catalog load error:", mErr);
-        if (cErr) console.warn("countries load error:", cErr);
-        if (aErr) console.warn("account_managers load error:", aErr);
-        if (sErr) console.warn("sales_stages load error:", sErr);
+        if (projRes.error) throw projRes.error;
+        if (taskRes.error) throw taskRes.error;
+        if (scheduleRes.error) throw scheduleRes.error;
+        if (presalesRes.error) throw presalesRes.error;
+        if (taskTypesRes.error) throw taskTypesRes.error;
 
-        setPresalesResources((pData || []).map((x) => x.name).filter(Boolean));
+        setProjects(projRes.data || []);
+        setTasks(taskRes.data || []);
+        setScheduleEvents(scheduleRes.data || []);
+        setPresalesResources((presalesRes.data || []).filter((p) => p.is_active !== false));
 
-        const typeNames = (tData || []).map((x) => x.name).filter(Boolean);
-        setTaskTypes(typeNames);
-
-        const map = {};
-        (tData || []).forEach((row) => {
-          if (!row?.name) return;
-          map[row.name] = {
-            base_hours: row.base_hours ?? 4,
-            buffer_pct: row.buffer_pct ?? 0.25,
-            focus_hours_per_day: row.focus_hours_per_day ?? 3,
-            review_buffer_days: row.review_buffer_days ?? 0,
-          };
-        });
-        setTaskTypeDefaultsMap(map);
-
-        setModuleOptions((mData || []).map((x) => x.name).filter(Boolean));
-
-        // ✅ countries + account managers
-        setCountryOptions((cData || []).map((x) => x.name).filter(Boolean));
-        setAccountManagerOptions((aData || []).map((x) => ({ id: x.id, name: x.name })).filter((x) => x.id && x.name));
-
-        // ✅ apply DB stages if available, else keep fallback
-        const dbStages = (sData || []).map((x) => x.name).filter(Boolean);
-        if (dbStages.length > 0) setSalesStageOptions(dbStages);
-      } catch (e) {
-        console.warn("Failed loading dropdown lists:", e);
+        const typesFromDb = taskTypesRes.data || [];
+        setTaskTypes(typesFromDb.length > 0 ? typesFromDb : DEFAULT_TASK_TYPES);
+      } catch (err) {
+        console.error('Error loading presales overview data:', err);
+        setError('Failed to load presales overview data.');
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadLists();
+    loadData();
   }, []);
 
-  // Customer ID lookup based on project.customer_name
-  useEffect(() => {
-    const lookupCustomerId = async () => {
-      setCustomerId(null);
-      const name = (project?.customer_name || "").trim();
-      if (!name) return;
+  // ✅ for TaskModal props
+  const presalesResourceNames = useMemo(() => {
+    return (presalesResources || [])
+      .map((p) => p.name || p.email || 'Unknown')
+      .filter(Boolean);
+  }, [presalesResources]);
 
-      try {
-        const { data, error: qErr } = await supabase
-          .from("customers")
-          .select("id, customer_name")
-          .eq("is_archived", false)
-          .eq("customer_name", name)
-          .maybeSingle();
+  const taskTypeNames = useMemo(() => {
+    return (taskTypes || [])
+      .map((t) => t?.name)
+      .filter(Boolean);
+  }, [taskTypes]);
 
-        if (qErr) throw qErr;
-        setCustomerId(data?.id || null);
-      } catch (e) {
-        console.warn("Customer ID lookup failed:", e);
-        setCustomerId(null);
-      }
-    };
-
-    lookupCustomerId();
-  }, [project?.customer_name]);
-
-  // Load bid manager "active projects count"
-  useEffect(() => {
-    const loadBidManagerLoad = async () => {
-      setBidManagerLoad(null);
-      setBidManagerLoadError(null);
-
-      const bm = (project?.bid_manager || "").trim();
-      const required = !!project?.bid_manager_required;
-
-      if (!bm || !required) return;
-
-      try {
-        const { data, error: qErr } = await supabase
-          .from("projects")
-          .select("id, sales_stage, bid_manager, bid_manager_required")
-          .eq("bid_manager_required", true)
-          .eq("bid_manager", bm);
-
-        if (qErr) throw qErr;
-
-        const list = data || [];
-        const active = list.filter((p) => !isStageClosedOrDone(p.sales_stage)).length;
-
-        setBidManagerLoad({
-          bid_manager: bm,
-          total: list.length,
-          active,
-        });
-      } catch (e) {
-        console.warn("Failed to load bid manager load:", e);
-        setBidManagerLoadError("Failed to compute bid manager load.");
-      }
-    };
-
-    loadBidManagerLoad();
-  }, [project?.bid_manager, project?.bid_manager_required, project?.id]);
-
-  const projectMonitor = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const addDays = (base, days) => {
-      const d = new Date(base);
-      d.setDate(d.getDate() + days);
-      d.setHours(0, 0, 0, 0);
-      return d;
-    };
-
-    const parseDate = (value) => {
-      if (!value) return null;
-      const d = new Date(value);
-      if (Number.isNaN(d.getTime())) return null;
-      d.setHours(0, 0, 0, 0);
-      return d;
-    };
-
-    const isOpenTask = (t) => t?.status !== "Completed" && t?.status !== "Cancelled/On-hold";
-    const openTasks = (tasks || []).filter(isOpenTask);
-
-    const overdueCount = openTasks.filter((t) => {
-      const due = parseDate(t?.due_date);
-      return due && due < today;
-    }).length;
-
-    const dueNext7Count = openTasks.filter((t) => {
-      const due = parseDate(t?.due_date);
-      if (!due) return false;
-      const limit = addDays(today, 7);
-      return due >= today && due <= limit;
-    }).length;
-
-    const unassignedCount = openTasks.filter((t) => {
-      const a = (t?.assignee || "").trim();
-      return !a;
-    }).length;
-
-    const lastLogDate = (() => {
-      const dates = (logs || [])
-        .map((l) => (l?.created_at ? new Date(l.created_at) : null))
-        .filter((d) => d && !Number.isNaN(d.getTime()))
-        .sort((a, b) => b.getTime() - a.getTime());
-      return dates[0] || null;
-    })();
-
-    const daysSinceLastLog = lastLogDate
-      ? Math.floor((new Date().getTime() - lastLogDate.getTime()) / (1000 * 60 * 60 * 24))
-      : null;
-
-    const projectDue = parseDate(project?.due_date);
-    const isProjectOverdue = projectDue ? projectDue < today : false;
-    const isProjectDueSoon =
-      projectDue ? projectDue <= addDays(today, 14) && projectDue >= today : false;
-
-    let health = "GREEN";
-    if (isProjectOverdue || overdueCount > 0) health = "RED";
-    else if (
-      isProjectDueSoon ||
-      dueNext7Count > 0 ||
-      (daysSinceLastLog !== null && daysSinceLastLog > 14)
-    )
-      health = "AMBER";
-
-    return { overdueCount, dueNext7Count, unassignedCount, lastLogDate, daysSinceLastLog, health };
-  }, [project, tasks, logs]);
-
-  useEffect(() => {
-    if (project) {
-      setEditProject({
-        ...project,
-        is_corporate: !!project.is_corporate,
-        bid_manager_required: !!project.bid_manager_required,
-        bid_manager: project.bid_manager || "",
-        last_activity: project.last_activity || "",
-      });
-
-      const initialModules = toModulesArray(project.smartvista_modules);
-      setSelectedModules(initialModules);
-      setModulesDraft(initialModules.join(", "));
-    }
-  }, [project]);
-
-  // Group tasks into parent/children
-  const { groupedParents, childrenByParent } = useMemo(() => {
-    const list = Array.isArray(tasks) ? tasks : [];
-    const childrenMap = {};
-    const parents = [];
-
-    list.forEach((t) => {
-      const pid = t?.parent_task_id;
-      if (pid) {
-        if (!childrenMap[pid]) childrenMap[pid] = [];
-        childrenMap[pid].push(t);
-      } else {
-        parents.push(t);
-      }
-    });
-
-    parents.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-
-    Object.keys(childrenMap).forEach((pid) => {
-      childrenMap[pid].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-    });
-
-    return {
-      groupedParents: parents,
-      childrenByParent: childrenMap,
-    };
-  }, [tasks]);
-
-  // Expand state initialize
-  useEffect(() => {
-    setExpandedParents((prev) => {
-      const next = { ...prev };
-      groupedParents.forEach((p) => {
-        const hasKids = (childrenByParent[p.id] || []).length > 0;
-        if (hasKids && typeof next[p.id] === "undefined") next[p.id] = true;
-      });
-      return next;
-    });
-  }, [groupedParents, childrenByParent]);
-
-  const activeTasksCount = tasks.filter((t) => !isTaskDoneOrHold(t.status)).length;
-  const completedTasksCount = tasks.filter((t) => (t.status || "") === "Completed").length;
-
-  const isVisible = (t) => (showCompleted ? true : !isTaskDoneOrHold(t.status));
-
-  const filteredParentList = useMemo(() => {
-    return groupedParents.filter(isVisible);
-  }, [groupedParents, showCompleted]);
-
-  const getParentProgress = (parentId) => {
-    const kids = (childrenByParent[parentId] || []).filter(isVisible);
-    const total = kids.length;
-    if (!total) return { done: 0, total: 0, pct: 0 };
-    const done = kids.filter((k) => (k.status || "") === "Completed").length;
-    const pct = Math.round((done / total) * 100);
-    return { done, total, pct };
-  };
-
-  // Parent task options for TaskModal
-  const parentTaskOptions = useMemo(() => {
-    return groupedParents
-      .map((p) => ({ id: p.id, description: p.description || "(Untitled task)" }))
-      .filter((x) => x.id);
-  }, [groupedParents]);
-
-  const healthMeta = useMemo(() => {
-    const h = projectMonitor.health;
-    if (h === "RED")
-      return { label: "At Risk", className: "health-red", Icon: FaExclamationTriangle };
-    if (h === "AMBER") return { label: "Watch", className: "health-amber", Icon: FaClock };
-    return { label: "Healthy", className: "health-green", Icon: FaCheckCircle };
-  }, [projectMonitor.health]);
-
-  const handleEditToggle = () => {
-    if (isEditing) {
-      setEditProject({
-        ...project,
-        is_corporate: !!project?.is_corporate,
-        bid_manager_required: !!project?.bid_manager_required,
-        bid_manager: project?.bid_manager || "",
-        last_activity: project?.last_activity || "",
-      });
-
-      const initialModules = toModulesArray(project?.smartvista_modules);
-      setSelectedModules(initialModules);
-      setModulesDraft(initialModules.join(", "));
-
-      setModulesOpen(false);
-      setModuleSearch("");
-      setIsEditing(false);
-    } else {
-      setIsEditing(true);
-    }
-  };
-
-  const handleEditChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
-    if (type === "checkbox") {
-      if (name === "bid_manager_required") {
-        setEditProject((prev) => ({
-          ...prev,
-          bid_manager_required: !!checked,
-          bid_manager: checked ? prev.bid_manager || "" : "",
-        }));
-        return;
-      }
-
-      setEditProject((prev) => ({ ...prev, [name]: !!checked }));
-      return;
-    }
-
-    setEditProject((prev) => ({
-      ...prev,
-      [name]: type === "number" ? (value === "" ? "" : Number(value)) : value,
-    }));
-  };
-
-  const saveProjectEdits = async () => {
-    if (!project?.id) return;
-    setSaving(true);
-
-    try {
-      const requiresBM = !!editProject.bid_manager_required;
-      const bmValue = requiresBM ? (editProject.bid_manager || "").trim() : "";
-
-      const payload = {
-        project_name: editProject.project_name || "",
-        customer_name: editProject.customer_name || "",
-        account_manager: editProject.account_manager || "",
-        country: editProject.country || "",
-        scope: editProject.scope || "",
-        deal_value: editProject.deal_value === "" ? null : editProject.deal_value,
-
-        // ✅ DB-backed dropdown value
-        sales_stage: editProject.sales_stage || "",
-
-        due_date: editProject.due_date || null,
-        smartvista_modules: (modulesDraft || "").trim() || null,
-        last_activity: editProject.last_activity || "",
-        next_key_activity: editProject.next_key_activity || "",
-        remarks: editProject.remarks || "",
-        primary_presales: (editProject.primary_presales || "").trim() || null,
-        backup_presales: (editProject.backup_presales || "").trim() || null,
-        is_corporate: !!editProject.is_corporate,
-        bid_manager_required: requiresBM,
-        bid_manager: bmValue ? bmValue : null,
+  const taskTypeDefaultsMap = useMemo(() => {
+    const map = {};
+    (taskTypes || []).forEach((t) => {
+      if (!t?.name) return;
+      map[t.name] = {
+        base_hours: t.base_hours ?? 4,
+        buffer_pct: t.buffer_pct ?? 0.25,
+        focus_hours_per_day: t.focus_hours_per_day ?? 3,
+        review_buffer_days: t.review_buffer_days ?? 0,
       };
+    });
+    return map;
+  }, [taskTypes]);
 
-      const { error: qErr } = await supabase.from("projects").update(payload).eq("id", project.id);
-      if (qErr) throw qErr;
+  // ---------- DB-driven multiplier map ----------
+  const taskTypeMultiplierMap = useMemo(() => buildTaskTypeMultiplierMap(taskTypes), [taskTypes]);
 
-      setProject((prev) => ({ ...prev, ...payload }));
-      setIsEditing(false);
-    } catch (err) {
-      console.error("Error saving project:", err);
-      alert(`Failed to save project changes: ${err?.message || "Unknown error"}`);
-    } finally {
-      setSaving(false);
-    }
+  // ---------- Base maps ----------
+  const projectInfoMap = useMemo(() => {
+    const map = new Map();
+    (projects || []).forEach((p) => {
+      map.set(p.id, {
+        customerName: p.customer_name || 'Unknown customer',
+        projectName: p.project_name || p.customer_name || 'Unknown project',
+      });
+    });
+    return map;
+  }, [projects]);
+
+  const projectMap = useMemo(() => {
+    const map = new Map();
+    (projects || []).forEach((p) => {
+      map.set(p.id, p.project_name || p.customer_name || 'Unknown project');
+    });
+    return map;
+  }, [projects]);
+
+  const { thisWeek, nextWeek, last30 } = useMemo(() => getWeekRanges(), []);
+  const today = useMemo(() => toMidnight(new Date()), []);
+  const thisWeekRange = thisWeek;
+  const nextWeekRange = nextWeek;
+  const last30DaysRange = last30;
+
+  // ✅ hide past schedules from Schedules table (keep in DB)
+  const scheduleEventsForTable = useMemo(() => {
+    const t = toMidnight(new Date());
+    return (scheduleEvents || []).filter((ev) => {
+      const end = parseDate(ev.end_date || ev.start_date);
+      if (!end) return true;
+      return end.getTime() >= t.getTime();
+    });
+  }, [scheduleEvents]);
+
+  // ---------- Presales Activities grouping ----------
+  const ongoingUpcomingGrouped = useMemo(() => {
+    const groups = { Overdue: [], 'In Progress': [], 'Not Started': [] };
+
+    (tasks || [])
+      .filter((t) => !isCompletedStatus(t.status))
+      .forEach((t) => {
+        const info =
+          projectInfoMap.get(t.project_id) || { customerName: 'Unknown customer', projectName: 'Unknown project' };
+        const row = { ...t, customerName: info.customerName, projectName: info.projectName };
+
+        const due = parseDate(row.due_date);
+        const isOverdue = due && due.getTime() < today.getTime();
+
+        if (isOverdue) groups.Overdue.push(row);
+        else {
+          const g = normalizeStatusGroup(row.status);
+          if (g === 'In Progress') groups['In Progress'].push(row);
+          else if (g === 'Not Started') groups['Not Started'].push(row);
+        }
+      });
+
+    Object.keys(groups).forEach((k) => {
+      groups[k].sort((a, b) => {
+        const ad = parseDate(a.due_date) || parseDate(a.end_date) || parseDate(a.start_date) || today;
+        const bd = parseDate(b.due_date) || parseDate(b.end_date) || parseDate(b.start_date) || today;
+        if (ad.getTime() !== bd.getTime()) return ad - bd;
+        return priorityScore(a.priority) - priorityScore(b.priority);
+      });
+    });
+
+    return groups;
+  }, [tasks, projectInfoMap, today]);
+
+  // ---------- Shared TaskModal handlers ----------
+  const openTaskModal = (task) => {
+    setEditingTask(task || null);
+    setTaskModalOpen(true);
   };
 
-  // ---- SmartVista Modules multi-select helpers ----
-  const updateSelectedModules = (next) => {
-    const unique = Array.from(new Set((next || []).map((x) => String(x).trim()).filter(Boolean)));
-    unique.sort((a, b) => a.localeCompare(b));
-    setSelectedModules(unique);
-    setModulesDraft(unique.join(", "));
-  };
-
-  const toggleModule = (name) => {
-    const n = String(name || "").trim();
-    if (!n) return;
-    if (selectedModules.includes(n)) {
-      updateSelectedModules(selectedModules.filter((x) => x !== n));
-    } else {
-      updateSelectedModules([...selectedModules, n]);
-    }
-  };
-
-  const addCustomModule = (name) => {
-    const n = String(name || "").trim();
-    if (!n) return;
-    if (!selectedModules.includes(n)) updateSelectedModules([...selectedModules, n]);
-    setModuleSearch("");
-  };
-
-  useEffect(() => {
-    if (!modulesOpen) return;
-
-    const onMouseDown = (e) => {
-      if (!e.target.closest(".modules-select")) setModulesOpen(false);
-    };
-
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, [modulesOpen, selectedModules]);
-
-  const openAddTask = () => {
+  const closeTaskModal = () => {
+    setTaskModalOpen(false);
     setEditingTask(null);
-    setShowTaskModal(true);
-  };
-
-  const openEditTask = (task) => {
-    setEditingTask(task);
-    setShowTaskModal(true);
-  };
-
-  const toggleParentExpand = (parentId) => {
-    setExpandedParents((prev) => ({ ...prev, [parentId]: !prev[parentId] }));
   };
 
   const deleteTask = async (taskId) => {
-    const hasKids = (childrenByParent[taskId] || []).length > 0;
-
-    const msg = hasKids
-      ? "This is a parent task with sub-tasks. Deleting it will NOT delete sub-tasks. Sub-tasks will become top-level tasks.\n\nContinue?"
-      : "Delete this task?";
-
-    if (!window.confirm(msg)) return;
+    const ok = window.confirm('Delete this task? This cannot be undone.');
+    if (!ok) return;
 
     try {
-      const { error: qErr } = await supabase.from("project_tasks").delete().eq("id", taskId);
-      if (qErr) throw qErr;
-      await fetchTasks();
+      const { error: delErr } = await supabase.from('project_tasks').delete().eq('id', taskId);
+
+      if (delErr) {
+        console.error('Error deleting task:', delErr);
+        alert('Failed to delete task.');
+        return;
+      }
+
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      if (taskModalOpen && editingTask?.id === taskId) closeTaskModal();
     } catch (err) {
-      console.error("Delete task error:", err);
-      alert(`Failed to delete task: ${err?.message || "Unknown error"}`);
+      console.error('Unexpected error deleting task:', err);
+      alert('Unexpected error while deleting task.');
     }
   };
 
-  const openAddLog = () => {
-    setEditingLog(null);
-    setShowLogModal(true);
-  };
+  // ---------- Workload by assignee ----------
+  const workloadByAssignee = useMemo(() => {
+    const map = new Map();
 
-  const openEditLog = (log) => {
-    setEditingLog(log);
-    setShowLogModal(true);
-  };
+    const getCapacityFor = (name) => {
+      const res = (presalesResources || []).find((p) => (p.name || p.email || 'Unknown') === name);
 
-  const deleteLog = async (logId) => {
-    if (!window.confirm("Delete this log entry?")) return;
-    try {
-      const { error: qErr } = await supabase.from("project_logs").delete().eq("id", logId);
-      if (qErr) throw qErr;
-      await fetchLogs();
-    } catch (err) {
-      console.error("Delete log error:", err);
-      alert(`Failed to delete log: ${err?.message || "Unknown error"}`);
+      const dailyCapacity =
+        res && typeof res.daily_capacity_hours === 'number' && !Number.isNaN(res.daily_capacity_hours)
+          ? res.daily_capacity_hours
+          : HOURS_PER_DAY;
+
+      const targetHours =
+        res && typeof res.target_hours === 'number' && !Number.isNaN(res.target_hours) ? res.target_hours : 6;
+
+      const safeMaxTasksPerDay = res && Number.isInteger(res.max_tasks_per_day) ? res.max_tasks_per_day : 3;
+
+      return { dailyCapacity, targetHours, maxTasksPerDay: safeMaxTasksPerDay };
+    };
+
+    const addHoursToRange = (range, task, hours) => {
+      if (!range?.start || !range?.end) return 0;
+
+      const effHours = typeof hours === 'number' && !Number.isNaN(hours) ? hours : DEFAULT_TASK_HOURS;
+
+      const taskStart = parseDate(task.start_date) || parseDate(task.due_date) || parseDate(task.end_date);
+      const taskEnd = parseDate(task.end_date) || parseDate(task.due_date) || parseDate(task.start_date);
+
+      const days = getOverlapDays(range, taskStart || task.due_date, taskEnd || task.due_date);
+      if (days <= 0) return 0;
+      return (effHours / days) * days;
+    };
+
+    // Seed map ONLY with actual presales resources (no "Unassigned")
+    (presalesResources || []).forEach((p) => {
+      const name = p.name || p.email || 'Unknown';
+      if (!map.has(name)) {
+        const { dailyCapacity, targetHours, maxTasksPerDay } = getCapacityFor(name);
+        map.set(name, {
+          assignee: name,
+          total: 0,
+          open: 0,
+          overdue: 0,
+          thisWeekHours: 0,
+          nextWeekHours: 0,
+          overdueLast30: 0,
+          overdueTotalLast30: 0,
+          dailyCapacity,
+          targetHours,
+          maxTasksPerDay,
+        });
+      }
+    });
+
+    (tasks || []).forEach((t) => {
+      // ✅ skip unassigned tasks in the workload list
+      const assigneeRaw = (t.assignee || '').trim();
+      if (!assigneeRaw) return;
+
+      const assignee = assigneeRaw;
+
+      // If a task is assigned to a name not in presales_resources,
+      // we still show it as a row (but NOT "Unassigned").
+      if (!map.has(assignee)) {
+        const { dailyCapacity, targetHours, maxTasksPerDay } = getCapacityFor(assignee);
+        map.set(assignee, {
+          assignee,
+          total: 0,
+          open: 0,
+          overdue: 0,
+          thisWeekHours: 0,
+          nextWeekHours: 0,
+          overdueLast30: 0,
+          overdueTotalLast30: 0,
+          dailyCapacity,
+          targetHours,
+          maxTasksPerDay,
+        });
+      }
+
+      const entry = map.get(assignee);
+      entry.total += 1;
+
+      const due = parseDate(t.due_date);
+      const isCompleted = isCompletedStatus(t.status);
+      const isOpen = !isCompleted;
+      const isOverdue = due && isOpen && due.getTime() < today.getTime();
+
+      if (isOpen) entry.open += 1;
+      if (isOverdue) entry.overdue += 1;
+
+      if (due && isWithinRange(due, last30DaysRange.start, last30DaysRange.end)) {
+        entry.overdueTotalLast30 += 1;
+        if (isOverdue) entry.overdueLast30 += 1;
+      }
+
+      if (isOpen) {
+        const taskEffort = getEffectiveTaskHours(t, taskTypeMultiplierMap);
+        entry.thisWeekHours += addHoursToRange(thisWeekRange, t, taskEffort);
+        entry.nextWeekHours += addHoursToRange(nextWeekRange, t, taskEffort);
+      }
+    });
+
+    // ✅ hide rows that are totally empty (0 tasks)
+    const arr = Array.from(map.values())
+      .filter((e) => e.total > 0)
+      .map((e) => {
+        const capacityWeekHours = (e.dailyCapacity || HOURS_PER_DAY) * 5;
+
+        const utilThisWeek = capacityWeekHours ? Math.min((e.thisWeekHours / capacityWeekHours) * 100, 999) : 0;
+        const utilNextWeek = capacityWeekHours ? Math.min((e.nextWeekHours / capacityWeekHours) * 100, 999) : 0;
+
+        const overdueRateLast30 = e.overdueTotalLast30 > 0 ? (e.overdueLast30 / e.overdueTotalLast30) * 100 : 0;
+
+        return {
+          ...e,
+          utilThisWeek,
+          utilNextWeek,
+          overdueRateLast30,
+        };
+      });
+
+    arr.sort((a, b) => b.open - a.open);
+    return arr;
+  }, [tasks, presalesResources, thisWeekRange, nextWeekRange, last30DaysRange, today, taskTypeMultiplierMap]);
+
+  // ✅ Unassigned tasks only
+  const unassignedOnly = useMemo(() => {
+    const unassigned = [];
+    (tasks || []).forEach((t) => {
+      if (isCompletedStatus(t.status)) return;
+      if (!t.assignee) unassigned.push(t);
+    });
+    return unassigned;
+  }, [tasks]);
+
+  // ✅ Active projects board grouped by presales:
+  //    show active projects even if activeTaskCount = 0, as long as project is active (stage not done/closed)
+  //    grouped by project.primary_presales
+  const activeProjectsByPresales = useMemo(() => {
+    // active task count per project (regardless of who the assignee is)
+    const activeTaskCountByProject = new Map();
+    (tasks || []).forEach((t) => {
+      if (isCompletedStatus(t.status)) return;
+      const pid = t.project_id;
+      if (!pid) return;
+      activeTaskCountByProject.set(pid, (activeTaskCountByProject.get(pid) || 0) + 1);
+    });
+
+    const grouped = new Map();
+
+    (projects || [])
+      .filter((p) => isProjectActive(p.sales_stage))
+      .forEach((p) => {
+        const presales = (p.primary_presales || '').trim();
+        if (!presales) return; // only show projects assigned to presales
+
+        if (!grouped.has(presales)) grouped.set(presales, []);
+
+        grouped.get(presales).push({
+          projectId: p.id,
+          customerName: p.customer_name || 'Unknown customer',
+          projectName: p.project_name || p.customer_name || 'Unknown project',
+          activeTaskCount: activeTaskCountByProject.get(p.id) || 0,
+        });
+      });
+
+    return Array.from(grouped.entries())
+      .map(([assignee, list]) => ({
+        assignee,
+        projects: list.sort((a, b) => {
+          // higher task count first, then alphabetical
+          if ((b.activeTaskCount || 0) !== (a.activeTaskCount || 0)) return (b.activeTaskCount || 0) - (a.activeTaskCount || 0);
+          return (a.projectName || '').localeCompare(b.projectName || '');
+        }),
+      }))
+      .sort((a, b) => (a.assignee || '').localeCompare(b.assignee || ''));
+  }, [projects, tasks]);
+
+  // ---------- Assignment helper ----------
+  const assignmentSuggestions = useMemo(() => {
+    if (!assignStart || !assignEnd || !presalesResources) return [];
+
+    const start = parseDate(assignStart);
+    const end = parseDate(assignEnd);
+    if (!start || !end || end.getTime() < start.getTime()) return [];
+
+    const minFreeHours = getPriorityMinFreeHours(assignPriority);
+
+    const days = [];
+    const cur = new Date(start);
+    while (cur.getTime() <= end.getTime()) {
+      days.push(toMidnight(cur));
+      cur.setDate(cur.getDate() + 1);
     }
+
+    const getCapacityFor = (name) => {
+      const res = (presalesResources || []).find((p) => (p.name || p.email || 'Unknown') === name) || {};
+      const dailyCapacity =
+        typeof res.daily_capacity_hours === 'number' && !Number.isNaN(res.daily_capacity_hours)
+          ? res.daily_capacity_hours
+          : HOURS_PER_DAY;
+      return { dailyCapacity };
+    };
+
+    return (presalesResources || [])
+      .map((res) => {
+        const name = res.name || res.email || 'Unknown';
+        const { dailyCapacity } = getCapacityFor(name);
+
+        let freeDays = 0;
+
+        days.forEach((d) => {
+          const daySchedules = (scheduleEvents || []).filter(
+            (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
+          );
+
+          const blockedHours = daySchedules.reduce((sum, s) => sum + getScheduleBlockHours(s, dailyCapacity), 0);
+          const effectiveCapacity = Math.max(0, dailyCapacity - blockedHours);
+          const fullyBlocked = isFullDayBlocked(blockedHours, dailyCapacity);
+
+          if (fullyBlocked) return;
+
+          const dayTasks = (tasks || []).filter(
+            (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
+          );
+          const taskHours = dayTasks.reduce((sum, t) => sum + getEffectiveTaskHours(t, taskTypeMultiplierMap), 0);
+
+          const remaining = effectiveCapacity - taskHours;
+          if (remaining >= minFreeHours) freeDays += 1;
+        });
+
+        const work = workloadByAssignee.find((w) => w.assignee === name);
+        const nextLoad = work ? work.utilNextWeek : 0;
+
+        return { assignee: name, freeDays, nextWeekLoad: nextLoad };
+      })
+      .filter((s) => s.freeDays > 0)
+      .sort((a, b) => {
+        if (b.freeDays !== a.freeDays) return b.freeDays - a.freeDays;
+        return a.nextWeekLoad - b.nextWeekLoad;
+      });
+  }, [
+    assignStart,
+    assignEnd,
+    assignPriority,
+    presalesResources,
+    tasks,
+    scheduleEvents,
+    workloadByAssignee,
+    taskTypeMultiplierMap,
+  ]);
+
+  // ---------- Availability grid ----------
+  const availabilityGrid = useMemo(() => {
+    if (!presalesResources || presalesResources.length === 0) return { days: [], rows: [] };
+
+    const totalDays = calendarView === '14' ? 14 : 30;
+    const base = toMidnight(new Date());
+    const days = [];
+    for (let i = 0; i < totalDays; i += 1) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      days.push(d);
+    }
+
+    const getCapacityFor = (name) => {
+      const res = (presalesResources || []).find((p) => (p.name || p.email || 'Unknown') === name) || {};
+      const dailyCapacity =
+        typeof res.daily_capacity_hours === 'number' && !Number.isNaN(res.daily_capacity_hours)
+          ? res.daily_capacity_hours
+          : HOURS_PER_DAY;
+
+      const maxTasksPerDay =
+        Number.isInteger(res.max_tasks_per_day) && res.max_tasks_per_day > 0 ? res.max_tasks_per_day : 3;
+
+      return { dailyCapacity, maxTasksPerDay };
+    };
+
+    const pickPrimaryScheduleType = (typesLower) => {
+      if (!typesLower || typesLower.length === 0) return null;
+      if (typesLower.includes('leave')) return 'leave';
+      if (typesLower.includes('travel')) return 'travel';
+      if (typesLower.includes('training')) return 'training';
+      if (typesLower.includes('internal')) return 'internal';
+      return 'other';
+    };
+
+    const formatTypeLabel = (t) => {
+      if (!t) return 'Scheduled';
+      if (t === 'leave') return 'Leave';
+      if (t === 'travel') return 'Travel';
+      if (t === 'training') return 'Training';
+      if (t === 'internal') return 'Internal';
+      if (t === 'other') return 'Other';
+      return 'Scheduled';
+    };
+
+    const rows = (presalesResources || []).map((res) => {
+      const name = res.name || res.email || 'Unknown';
+      const { dailyCapacity, maxTasksPerDay } = getCapacityFor(name);
+
+      const cells = days.map((d) => {
+        const dayTasks = (tasks || []).filter(
+          (t) => t.assignee === name && !isCompletedStatus(t.status) && isTaskOnDay(t, d)
+        );
+
+        const daySchedules = (scheduleEvents || []).filter(
+          (s) => s.assignee === name && isWithinRange(d, s.start_date, s.end_date)
+        );
+
+        const taskCount = dayTasks.length;
+        const totalHours = dayTasks.reduce((sum, t) => sum + getEffectiveTaskHours(t, taskTypeMultiplierMap), 0);
+
+        const blockedHours = daySchedules.reduce((sum, s) => sum + getScheduleBlockHours(s, dailyCapacity), 0);
+        const effectiveCapacity = Math.max(0, dailyCapacity - blockedHours);
+
+        const utilization =
+          effectiveCapacity > 0 ? Math.round((totalHours / effectiveCapacity) * 100) : totalHours > 0 ? 999 : 0;
+
+        const typesLower = daySchedules.map((s) => (s.type || '').toLowerCase().trim()).filter(Boolean);
+        const primaryScheduleType = pickPrimaryScheduleType(typesLower);
+
+        let status = 'free';
+        let label = 'Free';
+
+        if (daySchedules.length > 0) {
+          const fullBlocked = isFullDayBlocked(blockedHours, dailyCapacity);
+
+          if (fullBlocked) {
+            status = primaryScheduleType || 'other';
+            label = `${formatTypeLabel(status)} (full day)`;
+          } else {
+            if (taskCount === 0 && primaryScheduleType) {
+              status = primaryScheduleType;
+              label = `${formatTypeLabel(primaryScheduleType)} · Blocked ${blockedHours.toFixed(
+                1
+              )}h · Left ${effectiveCapacity.toFixed(1)}h`;
+            } else {
+              status = 'busy';
+              label = blockedHours > 0 ? `Scheduled · Blocked ${blockedHours.toFixed(1)}h` : 'Scheduled';
+            }
+          }
+        }
+
+        if (taskCount > 0) {
+          if (status !== 'busy') status = 'busy';
+
+          const baseLabel = `${taskCount} task${taskCount > 1 ? 's' : ''}`;
+          const capText = ` · Tasks ${totalHours.toFixed(1)}h · Blocked ${blockedHours.toFixed(
+            1
+          )}h · Left ${effectiveCapacity.toFixed(1)}h`;
+
+          let prefix = '';
+          if (utilization > 120 || taskCount > maxTasksPerDay) prefix = 'Over capacity: ';
+          else if (utilization >= 90) prefix = 'Near capacity: ';
+
+          label = `${prefix}${baseLabel}${capText}`;
+        } else if (blockedHours > 0 && status === 'busy') {
+          label = `Scheduled · Blocked ${blockedHours.toFixed(1)}h · Left ${effectiveCapacity.toFixed(1)}h`;
+        }
+
+        return {
+          date: d,
+          status,
+          label,
+          tasks: dayTasks,
+          schedules: daySchedules,
+          blockedHours,
+          effectiveCapacity,
+          taskHours: totalHours,
+          markerType: status === 'busy' && primaryScheduleType ? primaryScheduleType : null,
+        };
+      });
+
+      return { assignee: name, cells };
+    });
+
+    return { days, rows };
+  }, [presalesResources, tasks, scheduleEvents, calendarView, taskTypeMultiplierMap]);
+
+  // ---------- Schedule modal handlers ----------
+  const openScheduleModalForCreate = () => {
+    setScheduleMode('create');
+    setEditingScheduleId(null);
+    setScheduleAssignee('');
+    setScheduleType('Leave');
+    setScheduleStart('');
+    setScheduleEnd('');
+    setScheduleNote('');
+    setScheduleBlockHours('');
+    setScheduleError(null);
+    setScheduleDateError('');
+    setShowScheduleModal(true);
   };
 
-  const openCustomer = () => {
-    const name = (project?.customer_name || "").trim();
-    if (!name) return;
+  const openScheduleModalForEdit = (event) => {
+    setScheduleMode('edit');
+    setEditingScheduleId(event.id);
+    setScheduleAssignee(event.assignee || '');
+    setScheduleType(event.type || 'Leave');
+    setScheduleStart(event.start_date || '');
+    setScheduleEnd(event.end_date || event.start_date || '');
+    setScheduleNote(event.note || '');
+    setScheduleBlockHours(event.block_hours === null || event.block_hours === undefined ? '' : String(event.block_hours));
+    setScheduleError(null);
+    setScheduleDateError(validateDateRange(event.start_date || '', event.end_date || event.start_date || ''));
+    setShowScheduleModal(true);
+  };
 
-    if (!customerId) {
-      alert(
-        "I can’t open the CustomerDetails page because I can’t find this customer in the customers table.\n\n" +
-          `Customer name: ${name}`
-      );
+  const closeScheduleModal = () => setShowScheduleModal(false);
+
+  const handleScheduleSubmit = async (e) => {
+    e.preventDefault();
+    setScheduleError(null);
+
+    if (!scheduleAssignee || !scheduleStart) {
+      setScheduleError('Assignee and start date are required.');
       return;
     }
 
-    navigate(`/customer/${customerId}`);
+    const dateErr = validateDateRange(scheduleStart, scheduleEnd || scheduleStart);
+    if (dateErr) {
+      setScheduleDateError(dateErr);
+      setScheduleError(dateErr);
+      return;
+    }
+
+    const payload = {
+      assignee: scheduleAssignee,
+      type: scheduleType,
+      start_date: scheduleStart,
+      end_date: scheduleEnd || scheduleStart,
+      note: scheduleNote || null,
+      block_hours: toNumberOrNull(scheduleBlockHours),
+    };
+
+    setScheduleSaving(true);
+
+    try {
+      if (scheduleMode === 'create') {
+        const { data, error: insertError } = await supabase.from('presales_schedule').insert([payload]).select();
+        if (insertError) setScheduleError('Failed to create schedule entry.');
+        else if (data?.[0]) {
+          setScheduleEvents((prev) => [...prev, data[0]]);
+          closeScheduleModal();
+        }
+      } else if (scheduleMode === 'edit' && editingScheduleId) {
+        const { data, error: updateError } = await supabase
+          .from('presales_schedule')
+          .update(payload)
+          .eq('id', editingScheduleId)
+          .select();
+
+        if (updateError) setScheduleError('Failed to update schedule entry.');
+        else if (data?.[0]) {
+          const updated = data[0];
+          setScheduleEvents((prev) => prev.map((ev) => (ev.id === updated.id ? updated : ev)));
+          closeScheduleModal();
+        }
+      }
+    } catch (err) {
+      console.error('Error saving schedule:', err);
+      setScheduleError('Unexpected error while saving schedule.');
+    } finally {
+      setScheduleSaving(false);
+    }
   };
 
-  if (loading) return <LoadingState />;
-  if (error || !project) return <ErrorState error={error} onBack={() => navigate(-1)} />;
+  const handleDeleteSchedule = async (id) => {
+    if (!window.confirm('Delete this schedule entry?')) return;
 
-  const isReadOnly = !isEditing;
-  const viewOrEdit = isEditing ? editProject : project;
+    try {
+      const { error: deleteError } = await supabase.from('presales_schedule').delete().eq('id', id);
+      if (deleteError) alert('Failed to delete schedule entry.');
+      else setScheduleEvents((prev) => prev.filter((ev) => ev.id !== id));
+    } catch (err) {
+      console.error('Error deleting schedule entry:', err);
+      alert('Unexpected error while deleting schedule entry.');
+    }
+  };
 
-  // When editing a task, detect if it has children so TaskModal can lock hours
-  const editingHasChildren =
-    !!editingTask?.id && (childrenByParent[editingTask.id] || []).length > 0;
+  // ---------- Day detail ----------
+  const openDayDetail = (assignee, date) => {
+    const day = toMidnight(date);
 
+    const dayTasks = (tasks || [])
+      .filter((t) => t.assignee === assignee && !isCompletedStatus(t.status) && isTaskOnDay(t, day))
+      .map((t) => ({ ...t, projectName: projectMap.get(t.project_id) || 'Unknown project' }));
+
+    const daySchedules = (scheduleEvents || []).filter((ev) =>
+      ev.assignee === assignee && isWithinRange(day, ev.start_date, ev.end_date)
+    );
+
+    setDayDetail({ assignee, date: day, tasks: dayTasks, schedules: daySchedules });
+    setDayDetailOpen(true);
+  };
+
+  // ---------- Loading / error ----------
+  if (loading) {
+    return (
+      <div className="presales-page-container">
+        <div className="presales-loading">
+          <div className="presales-spinner" />
+          <p>Loading presales overview…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="presales-page-container">
+        <div className="presales-error">
+          <AlertTriangle size={24} />
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- Render ----------
   return (
-    <div className="project-details-container theme-light">
-      <section className="project-header">
-        <div className="project-hero">
-          <div className="project-title-content">
-            <div className="project-hero-row">
-              <div className="project-hero-right hero-consolidated">
-                <div className="hero-main-row">
-                  <div className="hero-title-block">
-                    <div className="hero-title-line">
-                      <h1 className="project-title">{project.project_name || "Unnamed Project"}</h1>
-                    </div>
+    <div className="presales-page-container">
+      <header className="presales-header">
+        <div className="presales-header-main">
+          <div>
+            <h2>Presales Overview</h2>
+            <p>Central view of workload, availability, and task focus.</p>
+          </div>
+        </div>
+      </header>
 
-                    <button
-                      className="hero-customer-link"
-                      onClick={openCustomer}
-                      type="button"
-                      title={customerId ? "Open customer" : "Customer not found in customers table"}
-                    >
-                      <FaUsers className="subtitle-icon" />
-                      <span className="project-customer-text">
-                        {project.customer_name || "No customer"}
+      {/* ✅ ACTIVE PROJECTS BOARD */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Users size={18} className="panel-icon" />
+                Active projects by presales
+              </h3>
+              <p>Grouped by primary presales. Projects remain visible even with 0 active tasks.</p>
+            </div>
+          </div>
+
+          {activeProjectsByPresales.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No active projects assigned to presales found.</p>
+            </div>
+          ) : (
+            <div className="presales-board-wrapper">
+              {activeProjectsByPresales.map((g) => (
+                <div key={g.assignee} className="presales-board-column">
+                  <div className="presales-board-header">
+                    <div className="presales-board-header-left">
+                      <span className="td-ellipsis" title={g.assignee}>
+                        {g.assignee}
                       </span>
-                    </button>
 
-                    <div className="hero-metrics-block">
-                      <div className="hero-badges">
-                        <span className={`stage-badge ${getSalesStageClass(project.sales_stage)}`}>
-                          {getSalesStageIcon(project.sales_stage)}
-                          <span>{project.sales_stage || "No Stage"}</span>
-                        </span>
-
-                        <span className={`health-badge ${healthMeta.className}`}>
-                          <healthMeta.Icon />
-                          <span>{healthMeta.label}</span>
-                        </span>
-
-                        {project.is_corporate ? (
-                          <span className="metric-badge metric-muted">
-                            <FaUsers />
-                            <span>Corporate</span>
-                          </span>
-                        ) : null}
-
-                        <span
-                          className={`metric-badge ${
-                            projectMonitor.overdueCount > 0 ? "metric-danger" : "metric-muted"
-                          }`}
-                        >
-                          <FaExclamationTriangle />
-                          <span>Overdue: {projectMonitor.overdueCount}</span>
-                        </span>
-
-                        <span
-                          className={`metric-badge ${
-                            projectMonitor.dueNext7Count > 0 ? "metric-warn" : "metric-muted"
-                          }`}
-                        >
-                          <FaClock />
-                          <span>Next 7d: {projectMonitor.dueNext7Count}</span>
-                        </span>
-
-                        <span
-                          className={`metric-badge ${
-                            projectMonitor.unassignedCount > 0 ? "metric-neutral" : "metric-muted"
-                          }`}
-                        >
-                          <FaUsers />
-                          <span>Unassigned: {projectMonitor.unassignedCount}</span>
-                        </span>
-
-                        <span className="metric-badge metric-muted">
-                          <FaFileAlt />
-                          <span>
-                            Last update:{" "}
-                            {projectMonitor.lastLogDate ? formatDate(projectMonitor.lastLogDate) : "-"}
-                          </span>
-                        </span>
-
-                        {project.bid_manager_required ? (
-                          <span className="metric-badge metric-muted" title="Bid manager assignment">
-                            <FaUsers />
-                            <span>Bid: {project.bid_manager ? project.bid_manager : "Unassigned"}</span>
-                          </span>
-                        ) : null}
-
-                        {project.bid_manager_required && project.bid_manager ? (
-                          <span
-                            className="metric-badge metric-muted"
-                            title={
-                              bidManagerLoadError
-                                ? bidManagerLoadError
-                                : "Active projects assigned to this bid manager"
-                            }
-                          >
-                            <FaTasks />
-                            <span>
-                              BM load:{" "}
-                              {bidManagerLoad
-                                ? `${bidManagerLoad.active} active`
-                                : bidManagerLoadError
-                                ? "N/A"
-                                : "…"}
-                            </span>
-                          </span>
-                        ) : null}
-
-                        {project.deal_value !== null && project.deal_value !== undefined && (
-                          <span className="deal-badge">
-                            <FaDollarSign />
-                            <span>{formatCurrency(project.deal_value)}</span>
-                          </span>
-                        )}
-                      </div>
+                      <span className="presales-board-meta">
+                        {g.projects.length} project{g.projects.length !== 1 ? 's' : ''}
+                      </span>
                     </div>
+
+                    <span className="presales-board-count">
+                      {g.projects.reduce((sum, p) => sum + (p.activeTaskCount || 0), 0)} tasks
+                    </span>
                   </div>
+
+                  {g.projects.length === 0 ? (
+                    <div className="presales-empty small">
+                      <p>No active projects.</p>
+                    </div>
+                  ) : (
+                    <div className="presales-board-cards">
+                      {g.projects.map((p) => (
+                        <div key={p.projectId} className="presales-board-card">
+                          <button
+                            type="button"
+                            className="table-link-btn project-link board-project-link"
+                            onClick={() => navigate(`/project/${p.projectId}`)}
+                            title="Open project details"
+                          >
+                            {p.projectName}
+                          </button>
+
+                          <div className="board-card-sub">
+                            <span className="td-ellipsis" title={p.customerName}>
+                              {p.customerName}
+                            </span>
+                            <span className="dot">•</span>
+                            <span className="board-task-count">
+                              {p.activeTaskCount} active task{p.activeTaskCount !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {/* project-stage-row removed */}
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* PRESALES ACTIVITIES */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <ListChecks size={20} className="panel-icon" />
+                Presales activities
+              </h3>
+              <p>Overdue, In Progress, and Not Started tasks. Click a card to edit.</p>
+            </div>
+          </div>
+
+          <ActivitiesKanban
+            groups={ongoingUpcomingGrouped}
+            parseDateFn={parseDate}
+            today={today}
+            formatShortDate={(d) =>
+              d ? new Date(d).toLocaleDateString('en-SG', { day: '2-digit', month: 'short' }) : ''
+            }
+            onClickTask={(t) => openTaskModal(t)}
+            onDeleteTask={deleteTask}
+          />
+        </div>
+      </section>
+
+      {/* UNASSIGNED TASKS */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <AlertTriangle size={18} className="panel-icon" />
+                Unassigned tasks
+              </h3>
+              <p>Tasks without an owner. Click a task to assign it.</p>
+            </div>
+          </div>
+
+          {unassignedOnly.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No unassigned tasks detected right now.</p>
+            </div>
+          ) : (
+            <div className="unassigned-tasks-table-wrapper">
+              <table className="unassigned-tasks-table">
+                <thead>
+                  <tr>
+                    <th>Task</th>
+                    <th>Project</th>
+                    <th>Due</th>
+                    <th>Priority</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {unassignedOnly.slice(0, 10).map((t) => (
+                    <tr key={t.id}>
+                      <td className="td-ellipsis">
+                        <button
+                          type="button"
+                          className="unassigned-task-link"
+                          onClick={() => openTaskModal(t)}
+                          title="Open task"
+                        >
+                          {t.description || 'Untitled task'}
+                        </button>
+                      </td>
+
+                      <td className="td-ellipsis">
+                        {projectInfoMap.get(t.project_id)?.projectName || 'Unknown project'}
+                      </td>
+
+                      <td>{(t.due_date && new Date(t.due_date).toLocaleDateString('en-SG')) || '-'}</td>
+
+                      <td>{t.priority || 'Normal'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ASSIGNMENT HELPER */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Filter size={18} className="panel-icon" />
+                Assignment helper
+              </h3>
+              <p>Pick a date range and priority. We’ll suggest who has breathing room.</p>
+            </div>
+          </div>
+
+          <div className="assignment-content">
+            <div className="assignment-filters">
+              <div className="assignment-field">
+                <label>Priority</label>
+                <select value={assignPriority} onChange={(e) => setAssignPriority(e.target.value)}>
+                  <option value="High">High — needs ≥ 4 free hours/day</option>
+                  <option value="Normal">Normal — needs ≥ 3 free hours/day</option>
+                  <option value="Low">Low — needs ≥ 2 free hours/day</option>
+                </select>
+              </div>
+
+              <div className="assignment-field">
+                <label>Start date</label>
+                <input
+                  type="date"
+                  value={assignStart}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setAssignStart(v);
+                    setAssignDateError(validateDateRange(v, assignEnd));
+                  }}
+                />
+              </div>
+
+              <div className="assignment-field">
+                <label>End date</label>
+                <input
+                  type="date"
+                  value={assignEnd}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setAssignEnd(v);
+                    setAssignDateError(validateDateRange(assignStart, v));
+                  }}
+                />
               </div>
             </div>
+
+            {assignDateError ? (
+              <div className="presales-empty small">
+                <p>{assignDateError}</p>
+              </div>
+            ) : !assignStart || !assignEnd ? (
+              <div className="presales-empty small">
+                <p>Select start + end dates to see suggestions.</p>
+              </div>
+            ) : assignmentSuggestions.length === 0 ? (
+              <div className="presales-empty small">
+                <p>No good matches in that range (based on current schedule + tasks).</p>
+              </div>
+            ) : (
+              <div className="assignment-table-wrapper">
+                <table className="assignment-table">
+                  <thead>
+                    <tr>
+                      <th>Presales</th>
+                      <th>Free days</th>
+                      <th>Next week load</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assignmentSuggestions.slice(0, 8).map((s) => (
+                      <tr key={s.assignee}>
+                        <td>{s.assignee}</td>
+                        <td>{s.freeDays}</td>
+                        <td>{Math.round(s.nextWeekLoad)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      <div className="main-content-grid">
-        <div className="main-column">
-          {/* Project Details */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="card-title">
-                <FaInfo />
-                <span>Project Details</span>
-              </div>
-
-              <div className="inline-actions">
-                {!isEditing ? (
-                  <button className="action-button secondary" onClick={handleEditToggle} type="button">
-                    <FaEdit />
-                    <span>Edit Project</span>
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      className="action-button secondary"
-                      onClick={handleEditToggle}
-                      disabled={saving}
-                      type="button"
-                    >
-                      <FaTimes />
-                      <span>Cancel</span>
-                    </button>
-
-                    <button
-                      className="action-button primary"
-                      onClick={saveProjectEdits}
-                      disabled={saving}
-                      type="button"
-                    >
-                      <FaSave />
-                      <span>{saving ? "Saving..." : "Save"}</span>
-                    </button>
-                  </>
-                )}
-              </div>
+      {/* WORKLOAD */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Users size={18} className="panel-icon" />
+                Presales workload
+              </h3>
+              <p>Open tasks, overdue risk, and weekly utilization (based on estimated hours + task type).</p>
             </div>
+          </div>
 
-            <div className={`project-edit-grid ${isReadOnly ? "is-readonly" : ""}`}>
-              <div className="form-group">
-                <label className="form-label">
-                  <FaBullseye className="form-icon" />
-                  Project Name
-                </label>
-                <input
-                  type="text"
-                  name="project_name"
-                  value={viewOrEdit.project_name || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-input"
-                  readOnly={isReadOnly}
-                  disabled={isReadOnly}
-                />
+          <div className="workload-table-wrapper">
+            <table className="workload-table">
+              <thead>
+                <tr>
+                  <th>Presales</th>
+                  <th>Open</th>
+                  <th>Overdue</th>
+                  <th>This week (hrs)</th>
+                  <th>This week (%)</th>
+                  <th>Next week (hrs)</th>
+                  <th>Next week (%)</th>
+                  <th>Overdue rate (30d)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {workloadByAssignee.map((w) => (
+                  <tr key={w.assignee}>
+                    <td className="td-ellipsis">{w.assignee}</td>
+                    <td>{w.open}</td>
+                    <td className={w.overdue > 0 ? 'overdue' : ''}>{w.overdue}</td>
+                    <td className="td-right">{w.thisWeekHours.toFixed(1)}</td>
+                    <td>
+                      {Math.round(w.utilThisWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilThisWeek)})</span>
+                    </td>
+                    <td className="td-right">{w.nextWeekHours.toFixed(1)}</td>
+                    <td>
+                      {Math.round(w.utilNextWeek)}% <span style={{ opacity: 0.7 }}>({getUtilLabel(w.utilNextWeek)})</span>
+                    </td>
+                    <td>{Math.round(w.overdueRateLast30)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {workloadByAssignee.length === 0 ? (
+              <div className="presales-empty small" style={{ marginTop: 10 }}>
+                <p>No assigned tasks found. (Unassigned tasks are shown in the section above.)</p>
               </div>
-
-              <div className="form-group">
-                <label className="form-label">
-                  <FaUsers className="form-icon" />
-                  Customer
-                </label>
-                <input
-                  type="text"
-                  name="customer_name"
-                  value={viewOrEdit.customer_name || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-input"
-                  readOnly={isReadOnly}
-                  disabled={isReadOnly}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Account Manager</label>
-                <select
-                  name="account_manager"
-                  value={viewOrEdit.account_manager || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-input"
-                  disabled={isReadOnly}
-                >
-                  <option value="">-</option>
-                  {accountManagerOptions.map((am) => (
-                    <option key={`am-${am.id}`} value={am.name}>
-                      {am.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Country</label>
-                <select
-                  name="country"
-                  value={viewOrEdit.country || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-input"
-                  disabled={isReadOnly}
-                >
-                  <option value="">-</option>
-                  {countryOptions.map((c) => (
-                    <option key={`cty-${c}`} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Primary Presales</label>
-                <select
-                  className="form-input"
-                  name="primary_presales"
-                  value={viewOrEdit.primary_presales || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  disabled={isReadOnly}
-                >
-                  <option value="">-</option>
-                  {presalesResources.map((p) => (
-                    <option key={`pp-${p}`} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Backup Presales</label>
-                <select
-                  className="form-input"
-                  name="backup_presales"
-                  value={viewOrEdit.backup_presales || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  disabled={isReadOnly}
-                >
-                  <option value="">-</option>
-                  {presalesResources.map((p) => (
-                    <option key={`bp-${p}`} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Bid manager section */}
-              <div className="form-group form-group-full">
-                <label className="form-label" style={{ marginBottom: 8 }}>
-                  Bid Manager
-                </label>
-
-                <label className="checkbox-row" style={{ marginBottom: 10 }}>
-                  <input
-                    type="checkbox"
-                    name="bid_manager_required"
-                    checked={!!viewOrEdit.bid_manager_required}
-                    onChange={isReadOnly ? undefined : handleEditChange}
-                    disabled={isReadOnly}
-                  />
-                  Requires bid manager
-                </label>
-
-                <div className="hint-text" style={{ marginBottom: 8 }}>
-                  If enabled, you can assign a bid manager so you can track involvement and load.
-                </div>
-
-                <input
-                  type="text"
-                  name="bid_manager"
-                  value={viewOrEdit.bid_manager || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-input"
-                  placeholder="Enter bid manager name (e.g. Juan Dela Cruz)"
-                  readOnly={isReadOnly}
-                  disabled={isReadOnly || !viewOrEdit.bid_manager_required}
-                />
-
-                {!isEditing && viewOrEdit.bid_manager_required && viewOrEdit.bid_manager ? (
-                  <div className="hint-text" style={{ marginTop: 8 }}>
-                    Current BM load:{" "}
-                    {bidManagerLoad
-                      ? `${bidManagerLoad.active} active project(s)`
-                      : bidManagerLoadError
-                      ? "N/A"
-                      : "…"}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="form-group form-group-full">
-                <label className="form-label" style={{ marginBottom: 8 }}>
-                  Corporate
-                </label>
-                <label className="checkbox-row">
-                  <input
-                    type="checkbox"
-                    name="is_corporate"
-                    checked={!!viewOrEdit.is_corporate}
-                    onChange={isReadOnly ? undefined : handleEditChange}
-                    disabled={isReadOnly}
-                  />
-                  Corporate project
-                </label>
-              </div>
-
-              {/* ✅ Sales Stage as DB-backed dropdown */}
-              <div className="form-group">
-                <label className="form-label">
-                  <FaChartLine className="form-icon" />
-                  Sales Stage
-                </label>
-                <select
-                  className="form-input"
-                  name="sales_stage"
-                  value={viewOrEdit.sales_stage || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  disabled={isReadOnly}
-                >
-                  <option value="">-</option>
-                  {salesStageOptions.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">
-                  <FaDollarSign className="form-icon" />
-                  Deal Value (USD)
-                </label>
-                <input
-                  type="number"
-                  name="deal_value"
-                  value={viewOrEdit.deal_value ?? ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-input"
-                  readOnly={isReadOnly}
-                  disabled={isReadOnly}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">
-                  <FaCalendarAlt className="form-icon" />
-                  Due Date
-                </label>
-                <input
-                  type="date"
-                  name="due_date"
-                  value={viewOrEdit.due_date || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-input"
-                  readOnly={isReadOnly}
-                  disabled={isReadOnly}
-                />
-              </div>
-
-              <div className="form-group form-group-full">
-                <label className="form-label">SmartVista Modules</label>
-
-                {isEditing ? (
-                  <div className="modules-select">
-                    <button
-                      type="button"
-                      className="form-input modules-select-trigger"
-                      onClick={() => setModulesOpen((v) => !v)}
-                    >
-                      {selectedModules.length > 0 ? (
-                        <span className="modules-trigger-text">{selectedModules.length} selected</span>
-                      ) : (
-                        <span className="modules-trigger-placeholder">Select modules…</span>
-                      )}
-                      <span className={`modules-caret ${modulesOpen ? "open" : ""}`}>▾</span>
-                    </button>
-
-                    {modulesOpen ? (
-                      <div className="modules-select-menu">
-                        <div className="modules-search-row">
-                          <input
-                            className="form-input modules-search"
-                            value={moduleSearch}
-                            onChange={(e) => setModuleSearch(e.target.value)}
-                            placeholder="Search or type to add…"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                addCustomModule(moduleSearch);
-                              }
-                            }}
-                          />
-                          <button
-                            type="button"
-                            className="action-button secondary modules-add-btn"
-                            onClick={() => addCustomModule(moduleSearch)}
-                            disabled={!moduleSearch.trim()}
-                          >
-                            Add
-                          </button>
-                        </div>
-
-                        <div className="modules-options">
-                          {(moduleOptions || [])
-                            .filter((m) => {
-                              const q = moduleSearch.trim().toLowerCase();
-                              if (!q) return true;
-                              return String(m).toLowerCase().includes(q);
-                            })
-                            .map((m) => {
-                              const name = String(m);
-                              const checked = selectedModules.includes(name);
-                              return (
-                                <label key={name} className="modules-option">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => toggleModule(name)}
-                                  />
-                                  <span>{name}</span>
-                                </label>
-                              );
-                            })}
-                        </div>
-
-                        {moduleOptions.length === 0 ? (
-                          <div className="modules-empty">No modules loaded from database.</div>
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    {selectedModules.length > 0 ? (
-                      <div className="chip-row modules-chip-row">
-                        {selectedModules.map((m) => (
-                          <span key={m} className="chip">
-                            {m}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="muted">-</div>
-                    )}
-
-                    <div className="hint-text">
-                      Saved as a comma-separated list. You can also type and click Add to include a
-                      custom entry.
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {toModulesArray(project.smartvista_modules).length > 0 ? (
-                      <div className="chip-row">
-                        {toModulesArray(project.smartvista_modules).map((m) => (
-                          <span key={m} className="chip">
-                            {m}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="muted">-</div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              <div className="form-group form-group-full">
-                <label className="form-label">Last Activity</label>
-                <textarea
-                  name="last_activity"
-                  value={viewOrEdit.last_activity || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-textarea"
-                  placeholder="e.g. Clarification call done, demo completed, RFP submitted"
-                  readOnly={isReadOnly}
-                  disabled={isReadOnly}
-                />
-              </div>
-
-              <div className="form-group form-group-full">
-                <label className="form-label">Next Key Activity</label>
-                <input
-                  type="text"
-                  name="next_key_activity"
-                  className="form-input"
-                  value={viewOrEdit.next_key_activity || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  placeholder="e.g. RFP due on Jan 15, Meeting on Jan 10, Demo on Jan 12"
-                  readOnly={isReadOnly}
-                  disabled={isReadOnly}
-                />
-              </div>
-
-              <div className="form-group form-group-full">
-                <label className="form-label">Project Background</label>
-                <textarea
-                  name="remarks"
-                  value={viewOrEdit.remarks || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-textarea"
-                  placeholder="Capture project context, timeline, constraints, dependencies, etc."
-                  readOnly={isReadOnly}
-                  disabled={isReadOnly}
-                />
-              </div>
-
-              <div className="form-group form-group-full">
-                <label className="form-label">Scope</label>
-                <textarea
-                  name="scope"
-                  value={viewOrEdit.scope || ""}
-                  onChange={isReadOnly ? undefined : handleEditChange}
-                  className="form-textarea"
-                  readOnly={isReadOnly}
-                  disabled={isReadOnly}
-                />
-              </div>
-            </div>
-          </section>
+            ) : null}
+          </div>
         </div>
+      </section>
 
-        <div className="side-column">
-          {/* Tasks */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="card-title">
-                <FaTasks />
-                <span>Tasks</span>
-                <span className="pill">
-                  {activeTasksCount} Active / {completedTasksCount} Done
-                </span>
-              </div>
+      {/* AVAILABILITY */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <CalendarDays size={18} className="panel-icon" />
+                Presales availability
+              </h3>
+              <p>Click a cell to see task + schedule details for that day.</p>
+            </div>
 
-              <div className="inline-actions">
+            <div className="schedule-actions">
+              <div className="schedule-view-toggle toggle-wrap availability-toggle">
                 <button
-                  className="filter-button"
-                  onClick={() => setShowCompleted((p) => !p)}
                   type="button"
+                  className={`toggle-btn ${calendarView === '14' ? 'active' : ''}`}
+                  onClick={() => setCalendarView('14')}
                 >
-                  {showCompleted ? <FaEyeSlash /> : <FaEye />}
-                  <span>{showCompleted ? "Hide Done" : "Show All"}</span>
+                  14 days
                 </button>
-
-                <button className="action-button primary" onClick={openAddTask} type="button">
-                  <FaPlus />
-                  <span>Add</span>
+                <button
+                  type="button"
+                  className={`toggle-btn ${calendarView === '30' ? 'active' : ''}`}
+                  onClick={() => setCalendarView('30')}
+                >
+                  30 days
                 </button>
               </div>
-            </div>
 
-            <div className="list">
-              {filteredParentList.length === 0 ? (
-                <div className="empty-state">
-                  <p>No tasks yet.</p>
+              <div className="availability-legend" aria-label="Availability legend">
+                <div className="legend-item">
+                  <span className="legend-swatch sw-free" /> Free
                 </div>
-              ) : (
-                filteredParentList.map((t) => {
-                  const kidsAll = childrenByParent[t.id] || [];
-                  const kidsVisible = kidsAll.filter(isVisible);
-
-                  const hasChildren = kidsAll.length > 0;
-                  const isExpanded = !!expandedParents[t.id];
-                  const prog = hasChildren ? getParentProgress(t.id) : null;
-
-                  return (
-                    <div key={t.id} className={`list-group ${hasChildren ? "has-children" : ""}`}>
-                      <div className={`list-item ${t.status === "Completed" ? "is-done" : ""}`}>
-                        <div
-                          className="list-item-main"
-                          onClick={() => openEditTask(t)}
-                          role="button"
-                          tabIndex={0}
-                        >
-                          <div className="list-item-top">
-                            {hasChildren ? (
-                              <button
-                                type="button"
-                                className="icon-button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleParentExpand(t.id);
-                                }}
-                                aria-label={isExpanded ? "Collapse" : "Expand"}
-                                title={isExpanded ? "Collapse" : "Expand"}
-                                style={{ marginRight: 6 }}
-                              >
-                                {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
-                              </button>
-                            ) : null}
-
-                            <span className={`status-tag status-${normalizeStatusKey(t.status)}`}>
-                              {t.status}
-                            </span>
-
-                            {t.task_type && <span className="type-tag">{t.task_type}</span>}
-                            {t.priority && <span className="type-tag">{t.priority}</span>}
-
-                            {!hasChildren &&
-                              t.estimated_hours !== null &&
-                              t.estimated_hours !== undefined &&
-                              t.estimated_hours !== "" && (
-                                <span className="type-tag">{t.estimated_hours}h</span>
-                              )}
-
-                            {hasChildren ? (
-                              <span className="type-tag" title={`${prog.done}/${prog.total} completed`}>
-                                {prog.done}/{prog.total} done
-                              </span>
-                            ) : null}
-                          </div>
-
-                          <div className="list-item-title">{t.description}</div>
-
-                          <div className="list-item-meta">
-                            <span>
-                              <FaUsers /> {t.assignee || "Unassigned"}
-                            </span>
-                            <span>
-                              <FaCalendarAlt /> {formatDate(t.due_date)}
-                            </span>
-                          </div>
-
-                          {t.notes && <div className="list-item-notes">{t.notes}</div>}
-                        </div>
-
-                        <div className="list-item-actions">
-                          <button
-                            className="icon-button danger"
-                            onClick={() => deleteTask(t.id)}
-                            aria-label="Delete task"
-                            type="button"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </div>
-
-                      {hasChildren && isExpanded ? (
-                        <div className="subtask-list">
-                          {kidsVisible.length === 0 ? (
-                            <div className="empty-state" style={{ paddingLeft: 18 }}>
-                              <p>No visible sub-tasks.</p>
-                            </div>
-                          ) : (
-                            kidsVisible.map((k) => (
-                              <div
-                                key={k.id}
-                                className={`list-item is-subtask ${
-                                  k.status === "Completed" ? "is-done" : ""
-                                }`}
-                              >
-                                <div
-                                  className="list-item-main"
-                                  onClick={() => openEditTask(k)}
-                                  role="button"
-                                  tabIndex={0}
-                                >
-                                  <div className="list-item-top">
-                                    <span className={`status-tag status-${normalizeStatusKey(k.status)}`}>
-                                      {k.status}
-                                    </span>
-                                    {k.task_type && <span className="type-tag">{k.task_type}</span>}
-                                    {k.priority && <span className="type-tag">{k.priority}</span>}
-                                    {k.estimated_hours !== null &&
-                                      k.estimated_hours !== undefined &&
-                                      k.estimated_hours !== "" && (
-                                        <span className="type-tag">{k.estimated_hours}h</span>
-                                      )}
-                                  </div>
-
-                                  <div className="list-item-title">{k.description}</div>
-
-                                  <div className="list-item-meta">
-                                    <span>
-                                      <FaUsers /> {k.assignee || "Unassigned"}
-                                    </span>
-                                    <span>
-                                      <FaCalendarAlt /> {formatDate(k.due_date)}
-                                    </span>
-                                  </div>
-
-                                  {k.notes && <div className="list-item-notes">{k.notes}</div>}
-                                </div>
-
-                                <div className="list-item-actions">
-                                  <button
-                                    className="icon-button danger"
-                                    onClick={() => deleteTask(k.id)}
-                                    aria-label="Delete task"
-                                    type="button"
-                                  >
-                                    <FaTrash />
-                                  </button>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </section>
-
-          {/* Logs */}
-          <section className="content-card">
-            <div className="card-header">
-              <div className="card-title">
-                <FaBookOpen />
-                <span>Project Logs</span>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-busy" /> Busy
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-leave" /> Leave
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-travel" /> Travel
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-training" /> Training
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-internal" /> Internal
+                </div>
+                <div className="legend-item">
+                  <span className="legend-swatch sw-other" /> Other
+                </div>
               </div>
 
-              <button className="action-button primary" onClick={openAddLog} type="button">
-                <FaPlus />
-                <span>Add</span>
+              <button type="button" className="btn-secondary" onClick={openScheduleModalForCreate}>
+                <Plane size={16} /> Add schedule
+              </button>
+            </div>
+          </div>
+
+          <div className={`heatmap-table ${calendarView === '14' ? 'heatmap-view-14' : 'heatmap-view-30'}`}>
+            <div className="heatmap-header">
+              <div className="heatmap-presales-name heatmap-header-cell">Presales</div>
+              {availabilityGrid.days.map((d) => (
+                <div key={d.toISOString()} className="heatmap-day-col heatmap-header-cell">
+                  {d.toLocaleDateString('en-SG', { day: '2-digit', month: 'short' })}
+                </div>
+              ))}
+            </div>
+
+            {availabilityGrid.rows.map((row) => (
+              <div key={row.assignee} className="heatmap-row">
+                <div className="heatmap-presales-name">{row.assignee}</div>
+
+                {row.cells.map((cell) => (
+                  <button
+                    key={`${row.assignee}-${cell.date.toISOString()}`}
+                    type="button"
+                    className={`heatmap-cell status-${cell.status} ${cell.markerType ? `marker-${cell.markerType}` : ''}`}
+                    title={cell.label}
+                    onClick={() => openDayDetail(row.assignee, cell.date)}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SCHEDULE LIST */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="schedule-list-header">
+            <div>
+              <h3>
+                <Plane size={18} className="panel-icon" />
+                Schedules
+              </h3>
+              <p>Leaves, travel, training, and other blockers (full day or partial).</p>
+            </div>
+          </div>
+
+          {scheduleEventsForTable.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No schedule entries yet.</p>
+            </div>
+          ) : (
+            <div className="schedule-list-table-wrapper">
+              <table className="schedule-list-table">
+                <thead>
+                  <tr>
+                    <th>Presales</th>
+                    <th>Type</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Note</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...scheduleEventsForTable]
+                    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
+                    .map((ev) => (
+                      <tr key={ev.id}>
+                        <td className="td-ellipsis schedule-presales-name">{ev.assignee}</td>
+                        <td>
+                          <span className="schedule-type-chip">{ev.type}</span>
+                        </td>
+                        <td>{ev.start_date ? new Date(ev.start_date).toLocaleDateString('en-SG') : '-'}</td>
+                        <td>{ev.end_date ? new Date(ev.end_date).toLocaleDateString('en-SG') : '-'}</td>
+                        <td className="td-ellipsis">{ev.note || '-'}</td>
+                        <td className="td-right">
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            onClick={() => openScheduleModalForEdit(ev)}
+                            title="Edit"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-btn danger"
+                            onClick={() => handleDeleteSchedule(ev.id)}
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* DAY DETAIL MODAL */}
+      {dayDetailOpen && (
+        <div className="schedule-modal-backdrop modal-backdrop" onMouseDown={() => setDayDetailOpen(false)}>
+          <div className="schedule-modal modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="schedule-modal-header modal-header">
+              <div>
+                <div className="schedule-modal-title">Day details</div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  {dayDetail.assignee} •{' '}
+                  {dayDetail.date
+                    ? dayDetail.date.toLocaleDateString('en-SG', {
+                        weekday: 'short',
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      })
+                    : ''}
+                </div>
+              </div>
+              <button type="button" className="schedule-modal-close modal-close" onClick={() => setDayDetailOpen(false)}>
+                <X size={18} />
               </button>
             </div>
 
-            <div className="list">
-              {logs.length === 0 ? (
-                <div className="empty-state">
-                  <p>No logs yet.</p>
-                </div>
-              ) : (
-                logs.map((l) => (
-                  <div key={l.id} className="list-item">
-                    <div
-                      className="list-item-main"
-                      onClick={() => openEditLog(l)}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <div className="list-item-notes">{l.notes}</div>
-                    </div>
-
-                    <div className="list-item-actions">
-                      <button
-                        className="icon-button danger"
-                        onClick={() => deleteLog(l.id)}
-                        aria-label="Delete log"
-                        type="button"
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
+            <div className="day-detail-body modal-body">
+              <div className="day-detail-section">
+                <h4>Schedules</h4>
+                {dayDetail.schedules.length === 0 ? (
+                  <div className="day-detail-empty">No schedules</div>
+                ) : (
+                  <div className="day-detail-list">
+                    {dayDetail.schedules.map((s) => (
+                      <div key={s.id} className="day-detail-task-item">
+                        <div className="day-detail-task-desc">
+                          {s.type} {s.note ? `• ${s.note}` : ''}
+                        </div>
+                        <div style={{ fontSize: 12, opacity: 0.75 }}>
+                          {s.start_date ? new Date(s.start_date).toLocaleDateString('en-SG') : '-'} to{' '}
+                          {s.end_date ? new Date(s.end_date).toLocaleDateString('en-SG') : '-'}
+                          {s.block_hours != null ? ` • block ${s.block_hours}h` : ''}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))
-              )}
+                )}
+              </div>
+
+              <div className="day-detail-section">
+                <h4>Tasks</h4>
+                {dayDetail.tasks.length === 0 ? (
+                  <div className="day-detail-empty">No tasks</div>
+                ) : (
+                  <div className="day-detail-list">
+                    {dayDetail.tasks.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className="day-detail-task-item"
+                        onClick={() => {
+                          setDayDetailOpen(false);
+                          openTaskModal(t);
+                        }}
+                      >
+                        <div className="day-detail-task-desc">{t.description || 'Untitled task'}</div>
+                        <div style={{ fontSize: 12, opacity: 0.75 }}>
+                          {t.projectName || 'Unknown project'} • Due{' '}
+                          {t.due_date ? new Date(t.due_date).toLocaleDateString('en-SG') : '-'}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </section>
+          </div>
         </div>
-      </div>
+      )}
 
+      {/* SCHEDULE MODAL */}
+      {showScheduleModal && (
+        <div className="schedule-modal-backdrop modal-backdrop" onMouseDown={closeScheduleModal}>
+          <div className="schedule-modal modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="schedule-modal-header modal-header">
+              <div className="schedule-modal-title">{scheduleMode === 'create' ? 'Add schedule' : 'Edit schedule'}</div>
+              <button type="button" className="schedule-modal-close modal-close" onClick={closeScheduleModal}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleScheduleSubmit} className="schedule-form modal-body">
+              {(scheduleError || scheduleDateError) && <div className="form-error">{scheduleError || scheduleDateError}</div>}
+
+              <div className="schedule-field">
+                <label>Assignee</label>
+                <select value={scheduleAssignee} onChange={(e) => setScheduleAssignee(e.target.value)}>
+                  <option value="">Select</option>
+                  {presalesResources.map((p) => {
+                    const name = p.name || p.email || 'Unknown';
+                    return (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Type</label>
+                <select value={scheduleType} onChange={(e) => setScheduleType(e.target.value)}>
+                  <option value="Leave">Leave</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Training">Training</option>
+                  <option value="Internal">Internal</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div className="schedule-field">
+                <label>Start</label>
+                <input
+                  type="date"
+                  value={scheduleStart}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setScheduleStart(v);
+                    setScheduleDateError(validateDateRange(v, scheduleEnd || v));
+                  }}
+                />
+              </div>
+
+              <div className="schedule-field">
+                <label>End</label>
+                <input
+                  type="date"
+                  value={scheduleEnd}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setScheduleEnd(v);
+                    setScheduleDateError(validateDateRange(scheduleStart, v || scheduleStart));
+                  }}
+                />
+              </div>
+
+              <div className="schedule-field">
+                <label>Block hours (optional)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={scheduleBlockHours}
+                  onChange={(e) => setScheduleBlockHours(e.target.value)}
+                  placeholder="Leave blank to use defaults"
+                />
+              </div>
+
+              <div className="schedule-field-full">
+                <label>Note</label>
+                <input value={scheduleNote} onChange={(e) => setScheduleNote(e.target.value)} placeholder="Optional" />
+              </div>
+
+              <div className="schedule-actions modal-footer">
+                <button type="button" className="btn-secondary" onClick={closeScheduleModal} disabled={scheduleSaving}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={scheduleSaving || !!scheduleDateError}>
+                  <Save size={16} /> {scheduleSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ SHARED TASK MODAL */}
       <TaskModal
-        isOpen={showTaskModal}
-        onClose={() => {
-          setShowTaskModal(false);
-          setEditingTask(null);
-        }}
-        onSave={async (taskData) => {
-          if (!project?.id) return;
-
-          const isEditingNow = !!editingTask?.id;
-          const hasChildren = isEditingNow && (childrenByParent[editingTask.id] || []).length > 0;
-
-          const payload = { ...taskData };
-          if (hasChildren) payload.estimated_hours = null;
-
-          if (isEditingNow) {
-            const { error: qErr } = await supabase
-              .from("project_tasks")
-              .update(payload)
-              .eq("id", editingTask.id);
-            if (qErr) throw qErr;
-          } else {
-            const { error: qErr } = await supabase
-              .from("project_tasks")
-              .insert({ ...payload, project_id: project.id });
-            if (qErr) throw qErr;
-          }
-
-          await fetchTasks();
-        }}
+        isOpen={taskModalOpen}
+        onClose={closeTaskModal}
         editingTask={editingTask}
-        presalesResources={presalesResources}
-        taskTypes={taskTypes}
+        presalesResources={presalesResourceNames}
+        taskTypes={taskTypeNames}
         taskTypeDefaultsMap={taskTypeDefaultsMap}
-        parentTaskOptions={parentTaskOptions}
-        editingHasChildren={editingHasChildren}
-      />
+        onSave={async (taskData) => {
+          if (!editingTask?.id) return;
 
-      <LogModal
-        isOpen={showLogModal}
-        onClose={() => {
-          setShowLogModal(false);
-          setEditingLog(null);
+          const { data, error: updErr } = await supabase
+            .from('project_tasks')
+            .update(taskData)
+            .eq('id', editingTask.id)
+            .select();
+
+          if (updErr) throw updErr;
+
+          const updated = data && data[0] ? data[0] : null;
+          if (updated) setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+
+          closeTaskModal();
         }}
-        onSave={async (notes) => {
-          if (!project?.id) return;
-
-          if (editingLog?.id) {
-            const { error: qErr } = await supabase
-              .from("project_logs")
-              .update({ notes })
-              .eq("id", editingLog.id);
-            if (qErr) throw qErr;
-          } else {
-            const { error: qErr } = await supabase
-              .from("project_logs")
-              .insert({ project_id: project.id, notes });
-            if (qErr) throw qErr;
-          }
-
-          await fetchLogs();
-        }}
-        editingLog={editingLog}
       />
     </div>
   );
 }
 
-export default ProjectDetails;
+export default PresalesOverview;
