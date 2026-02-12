@@ -1100,45 +1100,8 @@
   font-size: 12px;
 }
 
-/* ===== NEXT KEY ACTIVITIES PANEL (NEW) ===== */
-
-.next-activities-panel .presales-panel-header {
-  margin-bottom: 12px;
-}
-
-.next-activities-count {
-  font-size: 12px;
-  color: rgba(15, 23, 42, 0.65);
-  background: rgba(15, 23, 42, 0.04);
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  border-radius: 999px;
-  padding: 3px 10px;
-  white-space: nowrap;
-}
-
-.next-activities-table-wrap {
-  margin-top: 2px;
-}
-
-.next-activity-customer {
-  font-weight: 700;
-}
-
-.next-activity-cell {
-  vertical-align: top;
-}
-
-.next-activity-text {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.35;
-}
-
 /* =========================================================
    ✅ PATCH: clickable customer/project links + bold rules
-   (added for your Next Key Activities + Schedules update)
    ========================================================= */
 
 .table-link-btn {
@@ -1166,13 +1129,128 @@
   font-weight: 500;
 }
 
-/* Also cover the customer cell if it renders as plain text fallback */
-.next-activity-customer {
-  font-weight: 700;
-}
-
 /* Schedule panel: presales name bold (stronger override) */
 .schedule-list-table tbody td.schedule-presales-name,
 .schedule-presales-name {
   font-weight: 700 !important;
+}
+
+/* =========================================================
+   ✅ NEW: Active projects by presales board
+   ========================================================= */
+
+.presales-board-wrapper {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+/* Each presales column */
+.presales-board-column {
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.92);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
+}
+
+/* Column header */
+.presales-board-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.presales-board-header-left {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.presales-board-meta {
+  font-size: 12px;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.presales-board-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.70);
+  background: rgba(15, 23, 42, 0.05);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* Cards list */
+.presales-board-cards {
+  padding: 10px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+/* Single project card */
+.presales-board-card {
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.98);
+  padding: 10px 10px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+}
+
+.presales-board-card:hover {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.board-project-link {
+  display: inline-block;
+  max-width: 100%;
+  font-weight: 700;
+}
+
+.board-card-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.70);
+  margin-top: 6px;
+}
+
+.board-card-sub .dot {
+  opacity: 0.6;
+}
+
+.board-task-count {
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* Make ellipsis work inside board rows */
+.presales-board-card .td-ellipsis {
+  max-width: 220px;
+}
+
+/* Mobile: keep board readable */
+@media (max-width: 768px) {
+  .presales-board-wrapper {
+    grid-template-columns: 1fr;
+  }
+
+  .presales-board-cards {
+    max-height: 420px;
+  }
 }
