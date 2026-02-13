@@ -19,7 +19,6 @@ import TaskModal from './TaskModal';
 const HOURS_PER_DAY = 8;
 const DEFAULT_TASK_HOURS = 4;
 
-// ---- Task type fallback (if task_types table is empty/unavailable) ----
 const DEFAULT_TASK_TYPES = [
   { id: 'rfp', name: 'RFP / Proposal' },
   { id: 'poc', name: 'PoC / Integration / Workshop' },
@@ -29,7 +28,6 @@ const DEFAULT_TASK_TYPES = [
   { id: 'other', name: 'Other' },
 ];
 
-// Multipliers apply to estimated_hours to reflect “effort”
 const CANONICAL_TYPE_MULTIPLIERS = {
   'rfp / proposal': 1.6,
   'poc / integration / workshop': 1.4,
@@ -39,7 +37,6 @@ const CANONICAL_TYPE_MULTIPLIERS = {
   other: 1.0,
 };
 
-// ---------- Helpers ----------
 const toMidnight = (d) => {
   if (!d) return null;
   const nd = new Date(d);
@@ -110,12 +107,12 @@ const getWeekRanges = () => {
   const today = toMidnight(new Date());
 
   const thisWeekStart = new Date(today);
-  const day = thisWeekStart.getDay(); // 0=Sun
-  const diff = (day === 0 ? -6 : 1) - day; // Monday
+  const day = thisWeekStart.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
   thisWeekStart.setDate(thisWeekStart.getDate() + diff);
 
   const thisWeekEnd = new Date(thisWeekStart);
-  thisWeekEnd.setDate(thisWeekStart.getDate() + 4); // Mon–Fri
+  thisWeekEnd.setDate(thisWeekStart.getDate() + 4);
 
   const nextWeekStart = new Date(thisWeekStart);
   nextWeekStart.setDate(thisWeekStart.getDate() + 7);
@@ -133,7 +130,6 @@ const getWeekRanges = () => {
   };
 };
 
-// overlap days between [rangeStart, rangeEnd] and [taskStart, taskEnd]
 const getOverlapDays = (rangeStart, rangeEnd, taskStart, taskEnd) => {
   const rs = parseDate(rangeStart);
   const re = parseDate(rangeEnd);
@@ -177,7 +173,6 @@ const isTaskOnDay = (task, day) => {
   return d.getTime() >= s.getTime() && d.getTime() <= e.getTime();
 };
 
-// ✅ ACTIVE PROJECT RULE
 const isProjectActive = (project) => {
   const cs = (project?.current_status || '').toLowerCase().trim();
   const ss = (project?.sales_stage || '').toLowerCase().trim();
@@ -188,7 +183,6 @@ const isProjectActive = (project) => {
   return !inactiveKeywords.some((k) => signal.includes(k));
 };
 
-// ---------- Task type multiplier ----------
 const legacyKeywordMultiplier = (taskType) => {
   const s = (taskType || '').toLowerCase().trim();
   if (!s) return 1.0;
@@ -209,7 +203,6 @@ const canonicalTypeMultiplier = (taskType) => {
   return legacyKeywordMultiplier(taskType);
 };
 
-// --------- Presales Schedule mapping (your table: presales_schedule) ----------
 const normalizeScheduleTypeToStatus = (type, blockHours) => {
   const t = (type || '').toLowerCase().trim();
 
@@ -231,20 +224,18 @@ const statusPriority = (status) => {
   if (s === 'busy') return 3;
   if (s === 'internal') return 2;
   if (s === 'other') return 1;
-  return 0; // free
+  return 0;
 };
 
-// Convert schedule status to available hours for that day (simple model)
 const statusToAvailableHours = (status) => {
   const s = (status || 'free').toLowerCase();
   if (s === 'leave' || s === 'travel' || s === 'training') return 0;
   if (s === 'busy') return 2;
   if (s === 'internal') return 4;
   if (s === 'other') return 4;
-  return HOURS_PER_DAY; // free
+  return HOURS_PER_DAY;
 };
 
-// ---------- Component: Activities Kanban ----------
 const ActivitiesKanban = ({ tasks, today, onEditTask }) => {
   const columns = useMemo(() => {
     const overdue = [];
@@ -324,45 +315,35 @@ function PresalesOverview() {
   const today = useMemo(() => toMidnight(new Date()), []);
   const weeks = useMemo(() => getWeekRanges(), []);
 
-  // Data
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [presales, setPresales] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
-
-  // Schedule (your table)
   const [scheduleRows, setScheduleRows] = useState([]);
 
-  // UI state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Range
   const [selectedRangeKey, setSelectedRangeKey] = useState('thisWeek');
   const [rangeStart, setRangeStart] = useState(weeks.thisWeek.start);
   const [rangeEnd, setRangeEnd] = useState(weeks.thisWeek.end);
   const [rangeError, setRangeError] = useState('');
 
-  // Modals
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
 
-  // Day detail modal
   const [dayDetailOpen, setDayDetailOpen] = useState(false);
   const [dayDetailAssignee, setDayDetailAssignee] = useState('');
   const [dayDetailDay, setDayDetailDay] = useState(null);
 
-  // Inline edit (unassigned tasks)
   const [inlineEditingTaskId, setInlineEditingTaskId] = useState(null);
   const [inlineDraft, setInlineDraft] = useState({});
 
-  // ✅ Assignment Helper state (updated)
+  // ✅ Assignment Helper state (no presales filter)
   const [helperStartDate, setHelperStartDate] = useState(ymd(new Date()));
   const [helperRequiredHours, setHelperRequiredHours] = useState(DEFAULT_TASK_HOURS);
   const [helperTaskType, setHelperTaskType] = useState('');
-  const [helperAssigneeFilter, setHelperAssigneeFilter] = useState('');
 
-  // ---------- Load initial data ----------
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -425,7 +406,6 @@ function PresalesOverview() {
     load();
   }, []);
 
-  // ---------- Range controls ----------
   useEffect(() => {
     if (selectedRangeKey === 'thisWeek') {
       setRangeStart(weeks.thisWeek.start);
@@ -443,10 +423,8 @@ function PresalesOverview() {
     setRangeError(validateDateRange(rangeStart, rangeEnd));
   }, [rangeStart, rangeEnd]);
 
-  // ---------- Derived: active projects ----------
   const activeProjects = useMemo(() => (projects || []).filter(isProjectActive), [projects]);
 
-  // ✅ Active Projects by Presales (PRIMARY presales only)
   const activeProjectsByPresales = useMemo(() => {
     const by = {};
     (activeProjects || []).forEach((p) => {
@@ -487,16 +465,11 @@ function PresalesOverview() {
       });
   }, [activeProjects, tasks]);
 
-  // Presales activities = all open tasks (not archived, not completed)
   const openTasks = useMemo(() => (tasks || []).filter((t) => !isCompletedStatus(t?.status)), [tasks]);
-
-  // Unassigned open tasks
   const unassignedOpenTasks = useMemo(() => openTasks.filter((t) => !(t?.assignee || '').trim()), [openTasks]);
 
-  // Range days for grid
   const rangeDays = useMemo(() => buildDayRange(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
-  // Build list of presales names: resources OR from tasks/schedule
   const allPresalesNames = useMemo(() => {
     const set = new Set();
 
@@ -518,7 +491,6 @@ function PresalesOverview() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [presales, tasks, scheduleRows]);
 
-  // --- Build schedule lookup: assignee -> date -> {status, entries[]} ---
   const scheduleLookup = useMemo(() => {
     const map = {};
 
@@ -566,7 +538,6 @@ function PresalesOverview() {
     return scheduleLookup?.[a]?.[key]?.status || 'free';
   };
 
-  // ✅ UTILIZATION (load) per presales: derived from project_tasks in selected range
   const utilizationByPresales = useMemo(() => {
     const by = {};
     (allPresalesNames || []).forEach((name) => {
@@ -591,7 +562,6 @@ function PresalesOverview() {
       const mult = canonicalTypeMultiplier(t?.task_type);
       const effort = est * mult;
 
-      // allocate effort across its full span
       const fullSpanDays = getOverlapDays(taskStart, taskEnd, taskStart, taskEnd) || overlapDays;
       const perDay = effort / Math.max(1, fullSpanDays);
       by[a].hours += perDay * overlapDays;
@@ -608,9 +578,7 @@ function PresalesOverview() {
     });
   }, [tasks, allPresalesNames, rangeStart, rangeEnd, rangeDays.length]);
 
-  // ✅ Daily load for helper (for a specific start date)
   const getDailyLoadHours = useMemo(() => {
-    // returns function(assignee, date) => hours
     return (assignee, dateValue) => {
       const a = (assignee || '').trim();
       const day = parseDate(dateValue);
@@ -639,7 +607,7 @@ function PresalesOverview() {
     };
   }, [tasks]);
 
-  // ✅ Assignment Helper table (no cards, uses helperStartDate)
+  // ✅ Assignment Helper: show only available presales (remaining >= required)
   const helperTable = useMemo(() => {
     const startDay = parseDate(helperStartDate);
     const requiredBase = safeNumber(helperRequiredHours, DEFAULT_TASK_HOURS);
@@ -647,10 +615,7 @@ function PresalesOverview() {
 
     if (!startDay) return { required, rows: [] };
 
-    const filter = (helperAssigneeFilter || '').trim().toLowerCase();
-
     const rows = (allPresalesNames || [])
-      .filter((n) => (filter ? n.toLowerCase().includes(filter) : true))
       .map((name) => {
         const status = getScheduleStatusForDay(name, startDay);
         const capacity = statusToAvailableHours(status);
@@ -666,24 +631,15 @@ function PresalesOverview() {
           ok: remaining >= required,
         };
       })
+      .filter((r) => r.ok) // ✅ only show available
       .sort((a, b) => {
-        if (a.ok !== b.ok) return a.ok ? -1 : 1;
         if (b.remaining !== a.remaining) return b.remaining - a.remaining;
         return a.name.localeCompare(b.name);
       });
 
     return { required, rows };
-  }, [
-    helperStartDate,
-    helperRequiredHours,
-    helperTaskType,
-    helperAssigneeFilter,
-    allPresalesNames,
-    scheduleLookup,
-    getDailyLoadHours,
-  ]);
+  }, [helperStartDate, helperRequiredHours, helperTaskType, allPresalesNames, scheduleLookup, getDailyLoadHours]);
 
-  // ---------- Day detail ----------
   const tasksForDayAndAssignee = useMemo(() => {
     if (!dayDetailOpen || !dayDetailAssignee || !dayDetailDay) return [];
     const list = (tasks || []).filter((t) => (t?.assignee || '').trim() === dayDetailAssignee);
@@ -702,7 +658,6 @@ function PresalesOverview() {
     setDayDetailDay(null);
   };
 
-  // ---------- Task Modal ----------
   const openEditTask = (t) => {
     setEditingTask(t);
     setShowTaskModal(true);
@@ -725,7 +680,6 @@ function PresalesOverview() {
     setTasks((prev) => (prev || []).map((t) => (t.id === editingTask.id ? { ...t, ...payload } : t)));
   };
 
-  // ---------- Inline edit (unassigned) ----------
   const startInlineEdit = (t) => {
     setInlineEditingTaskId(t.id);
     setInlineDraft({
@@ -785,7 +739,6 @@ function PresalesOverview() {
     }
   };
 
-  // ---------- Render ----------
   if (loading) {
     return (
       <div className="presales-page-container">
@@ -819,7 +772,7 @@ function PresalesOverview() {
         </div>
       </header>
 
-      {/* ✅ ACTIVE PROJECTS BOARD */}
+      {/* ACTIVE PROJECTS BOARD */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
@@ -858,7 +811,6 @@ function PresalesOverview() {
                   <div className="presales-board-cards">
                     {g.projects.map((p) => (
                       <div key={p.projectId} className="presales-board-card">
-                        {/* ✅ FIXED: route is /project/:projectId (based on CustomerDetails.js) */}
                         <button
                           type="button"
                           className="table-link-btn project-link board-project-link"
@@ -955,7 +907,6 @@ function PresalesOverview() {
             </div>
           ) : (
             <>
-              {/* Availability grid */}
               <div className="unassigned-tasks-table-wrapper">
                 <div className="availability-grid-wrapper">
                   <table className="availability-grid">
@@ -973,38 +924,33 @@ function PresalesOverview() {
                     </thead>
 
                     <tbody>
-                      {utilizationByPresales.map((u) => {
-                        const name = u.name;
-                        return (
-                          <tr key={name}>
-                            <td className="sticky-col assignee-cell">{name}</td>
-
-                            {rangeDays.map((d) => {
-                              const status = getScheduleStatusForDay(name, d);
-                              return (
-                                <td
-                                  key={`${name}-${ymd(d)}`}
-                                  className={`avail-cell ${status}`}
-                                  onClick={() => openDayDetail(name, d)}
-                                  title="Click to view tasks"
-                                >
-                                  <div className="avail-dot" />
-                                </td>
-                              );
-                            })}
-
-                            <td title={getUtilLabel(u.pct)}>
-                              {Math.round(safeNumber(u.hours, 0))}h ({u.pct}%)
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {utilizationByPresales.map((u) => (
+                        <tr key={u.name}>
+                          <td className="sticky-col assignee-cell">{u.name}</td>
+                          {rangeDays.map((d) => {
+                            const status = getScheduleStatusForDay(u.name, d);
+                            return (
+                              <td
+                                key={`${u.name}-${ymd(d)}`}
+                                className={`avail-cell ${status}`}
+                                onClick={() => openDayDetail(u.name, d)}
+                                title="Click to view tasks"
+                              >
+                                <div className="avail-dot" />
+                              </td>
+                            );
+                          })}
+                          <td title={getUtilLabel(u.pct)}>
+                            {Math.round(safeNumber(u.hours, 0))}h ({u.pct}%)
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              {/* ✅ Assignment Helper (updated: start date + table list) */}
+              {/* ✅ Assignment Helper: show ONLY available presales */}
               <div className="assignment-helper">
                 <div className="presales-panel-header" style={{ borderTop: '1px solid rgba(15,23,42,0.08)' }}>
                   <div>
@@ -1012,18 +958,14 @@ function PresalesOverview() {
                       <Users size={18} className="panel-icon" />
                       Assignment Helper
                     </h3>
-                    <p>Pick a start date and task type. We’ll list who has enough capacity on that day (schedule minus task load).</p>
+                    <p>Shows only presales who can take the task on the selected start date.</p>
                   </div>
                 </div>
 
                 <div className="assignment-helper-controls">
                   <div className="field">
                     <label>Start date</label>
-                    <input
-                      type="date"
-                      value={helperStartDate || ''}
-                      onChange={(e) => setHelperStartDate(e.target.value)}
-                    />
+                    <input type="date" value={helperStartDate || ''} onChange={(e) => setHelperStartDate(e.target.value)} />
                   </div>
 
                   <div className="field">
@@ -1048,15 +990,6 @@ function PresalesOverview() {
                       ))}
                     </select>
                   </div>
-
-                  <div className="field">
-                    <label>Filter presales</label>
-                    <input
-                      value={helperAssigneeFilter}
-                      onChange={(e) => setHelperAssigneeFilter(e.target.value)}
-                      placeholder="Type a name..."
-                    />
-                  </div>
                 </div>
 
                 <div className="assignment-helper-results">
@@ -1066,7 +999,7 @@ function PresalesOverview() {
 
                   {helperTable.rows.length === 0 ? (
                     <div className="presales-empty small">
-                      <p>No presales found.</p>
+                      <p>No available presales found for that date.</p>
                     </div>
                   ) : (
                     <div className="unassigned-tasks-table-wrapper">
@@ -1078,7 +1011,6 @@ function PresalesOverview() {
                             <th>Capacity (hrs)</th>
                             <th>Load (hrs)</th>
                             <th>Remaining (hrs)</th>
-                            <th>Available</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1089,7 +1021,6 @@ function PresalesOverview() {
                               <td>{r.capacity}</td>
                               <td>{r.load}</td>
                               <td>{r.remaining}</td>
-                              <td>{r.ok ? 'Yes' : 'No'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1298,7 +1229,6 @@ function PresalesOverview() {
         </div>
       ) : null}
 
-      {/* Task modal */}
       <TaskModal
         isOpen={showTaskModal}
         onClose={closeTaskModal}
