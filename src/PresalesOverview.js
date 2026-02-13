@@ -55,6 +55,12 @@ const parseDate = (value) => {
   return toMidnight(d);
 };
 
+const ymd = (d) => {
+  const dd = parseDate(d);
+  if (!dd) return '';
+  return dd.toISOString().slice(0, 10);
+};
+
 const validateDateRange = (start, end) => {
   if (!start || !end) return '';
   const s = parseDate(start);
@@ -62,15 +68,6 @@ const validateDateRange = (start, end) => {
   if (!s || !e) return '';
   if (s.getTime() > e.getTime()) return 'Start date cannot be later than end date.';
   return '';
-};
-
-const isWithinRange = (d, start, end) => {
-  if (!d) return false;
-  const day = toMidnight(d);
-  const s = parseDate(start);
-  const e = parseDate(end) || s;
-  if (!s || !day) return false;
-  return day.getTime() >= s.getTime() && day.getTime() <= e.getTime();
 };
 
 const isTaskOnDay = (task, day) => {
@@ -159,16 +156,11 @@ const normalizeStatusGroup = (status) => {
   return 'Other';
 };
 
-// ✅ ACTIVE PROJECT RULE:
-// Use current_status first (more reliable), fallback to sales_stage.
-// Treat these as NOT active: archived, inactive, closed, done, cancelled, completed.
-// Everything else is active.
+// ✅ ACTIVE PROJECT RULE
 const isProjectActive = (project) => {
   const cs = (project?.current_status || '').toLowerCase().trim();
   const ss = (project?.sales_stage || '').toLowerCase().trim();
-
   const signal = cs || ss;
-
   if (!signal) return true;
 
   const inactiveKeywords = [
@@ -230,14 +222,44 @@ const buildWorkdayRange = (start, days) => {
   return arr;
 };
 
-// ---------- Components ----------
-const StatPill = ({ icon, label, value }) => (
-  <div className="stat-pill">
-    <span className="stat-icon">{icon}</span>
-    <span className="stat-label">{label}</span>
-    <span className="stat-value">{value}</span>
-  </div>
-);
+// --------- Presales Schedule mapping (YOUR table) ----------
+const normalizeScheduleTypeToStatus = (type, blockHours) => {
+  const t = (type || '').toLowerCase().trim();
+
+  // explicit types
+  if (t.includes('leave') || t.includes('pto') || t.includes('vacation') || t.includes('holiday'))
+    return 'leave';
+
+  if (t.includes('travel') || t.includes('trip') || t.includes('flight'))
+    return 'travel';
+
+  if (t.includes('training') || t.includes('workshop') || t.includes('bootcamp'))
+    return 'training';
+
+  if (t.includes('internal') || t.includes('office') || t.includes('admin'))
+    return 'internal';
+
+  if (t.includes('busy') || t.includes('blocked') || t.includes('block'))
+    return 'busy';
+
+  // if no clear keyword but block_hours exists, treat as busy
+  if (safeNumber(blockHours, 0) > 0) return 'busy';
+
+  // fallback
+  return 'other';
+};
+
+// Higher number = stronger priority
+const statusPriority = (status) => {
+  const s = (status || '').toLowerCase();
+  if (s === 'leave') return 6;
+  if (s === 'travel') return 5;
+  if (s === 'training') return 4;
+  if (s === 'busy') return 3;
+  if (s === 'internal') return 2;
+  if (s === 'other') return 1;
+  return 0; // free
+};
 
 const ActivitiesKanban = ({ groups, parseDateFn, today, onEditTask }) => {
   const columns = useMemo(() => {
@@ -308,15 +330,6 @@ const ActivitiesKanban = ({ groups, parseDateFn, today, onEditTask }) => {
                     <span className="dot">•</span>
                     <span>Due: {formatShortDate(t.due_date)}</span>
                   </div>
-
-                  <div className="activity-card-meta">
-                    {t.project_name ? <span className="meta-chip">{t.project_name}</span> : null}
-                    {t.task_type ? <span className="meta-chip">{t.task_type}</span> : null}
-                    {t.priority ? <span className="meta-chip">{t.priority}</span> : null}
-                    {t.status ? (
-                      <span className={`meta-chip ${col.danger ? 'chip-overdue' : ''}`}>{t.status}</span>
-                    ) : null}
-                  </div>
                 </button>
               ))}
             </div>
@@ -339,12 +352,14 @@ function PresalesOverview() {
   const [presales, setPresales] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
 
+  // Schedule (YOUR table)
+  const [scheduleRows, setScheduleRows] = useState([]);
+
   // UI state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Availability
-  const [availability, setAvailability] = useState([]);
+  // Range
   const [selectedRangeKey, setSelectedRangeKey] = useState('thisWeek');
   const [rangeStart, setRangeStart] = useState(weeks.thisWeek.start);
   const [rangeEnd, setRangeEnd] = useState(weeks.thisWeek.end);
@@ -370,26 +385,9 @@ function PresalesOverview() {
       setError('');
 
       try {
-        const [
-          { data: pData, error: pErr },
-          { data: tData, error: tErr },
-          { data: rData, error: rErr },
-          { data: ttData, error: ttErr },
-          { data: avData, error: avErr },
-        ] = await Promise.all([
+        const [{ data: pData, error: pErr }, { data: tData, error: tErr }] = await Promise.all([
           supabase.from('projects').select('*'),
-          supabase
-            .from('project_tasks')
-            .select('*')
-            .eq('is_archived', false),
-          supabase.from('presales_resources').select('name').order('name'),
-          supabase
-            .from('task_types')
-            .select('name, is_active, sort_order')
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true })
-            .order('name', { ascending: true }),
-          supabase.from('presales_availability').select('*').order('date', { ascending: true }),
+          supabase.from('project_tasks').select('*').eq('is_archived', false),
         ]);
 
         if (pErr) throw pErr;
@@ -398,15 +396,46 @@ function PresalesOverview() {
         setProjects(pData || []);
         setTasks(tData || []);
 
-        setPresales((rData || []).map((x) => x.name).filter(Boolean));
+        // presales list (optional table)
+        const { data: rData, error: rErr } = await supabase
+          .from('presales_resources')
+          .select('name')
+          .order('name');
 
-        const tt = (ttData || []).map((x) => x.name).filter(Boolean);
-        setTaskTypes(tt.length ? tt : DEFAULT_TASK_TYPES.map((x) => x.name));
+        if (rErr) {
+          console.warn('presales_resources load error:', rErr);
+          setPresales([]);
+        } else {
+          setPresales((rData || []).map((x) => x.name).filter(Boolean));
+        }
 
-        setAvailability(avData || []);
-        if (rErr) console.warn('presales_resources load error:', rErr);
-        if (ttErr) console.warn('task_types load error:', ttErr);
-        if (avErr) console.warn('presales_availability load error:', avErr);
+        // task types (optional table)
+        const { data: ttData, error: ttErr } = await supabase
+          .from('task_types')
+          .select('name, is_active, sort_order')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .order('name', { ascending: true });
+
+        if (ttErr) {
+          console.warn('task_types load error:', ttErr);
+          setTaskTypes(DEFAULT_TASK_TYPES.map((x) => x.name));
+        } else {
+          const tt = (ttData || []).map((x) => x.name).filter(Boolean);
+          setTaskTypes(tt.length ? tt : DEFAULT_TASK_TYPES.map((x) => x.name));
+        }
+
+        // ✅ presales_schedule (your table)
+        const { data: sData, error: sErr } = await supabase
+          .from('presales_schedule')
+          .select('*');
+
+        if (sErr) {
+          console.warn('presales_schedule load error:', sErr);
+          setScheduleRows([]);
+        } else {
+          setScheduleRows(sData || []);
+        }
       } catch (e) {
         console.error('Load error:', e);
         setError(e?.message || 'Failed to load data');
@@ -440,14 +469,12 @@ function PresalesOverview() {
   const activeProjects = useMemo(() => (projects || []).filter(isProjectActive), [projects]);
 
   // ✅ Active Projects by Presales (PRIMARY presales only)
-  // Show active projects even if they have 0 active tasks
   const activeProjectsByPresales = useMemo(() => {
     const by = {};
 
     (activeProjects || []).forEach((p) => {
       const primary = (p?.primary_presales || '').trim();
       if (!primary) return;
-
       if (!by[primary]) by[primary] = [];
       by[primary].push(p);
     });
@@ -456,19 +483,17 @@ function PresalesOverview() {
     (tasks || []).forEach((t) => {
       const pid = t?.project_id;
       if (!pid) return;
-
       if (!tasksByProject[pid]) tasksByProject[pid] = [];
       tasksByProject[pid].push(t);
     });
 
-    const result = Object.keys(by)
+    return Object.keys(by)
       .sort((a, b) => a.localeCompare(b))
       .map((assignee) => {
         const projList = by[assignee]
           .map((p) => {
             const projTasks = tasksByProject[p.id] || [];
             const activeTaskCount = projTasks.filter((x) => !isCompletedStatus(x?.status)).length;
-
             return {
               projectId: p.id,
               projectName: p.project_name || '(Unnamed Project)',
@@ -484,23 +509,17 @@ function PresalesOverview() {
 
         return { assignee, projects: projList };
       });
-
-    return result;
   }, [activeProjects, tasks]);
 
-  // Flatten tasks for Kanban view (exclude completed)
   const ongoingUpcomingGrouped = useMemo(() => {
-    const list = (tasks || []).filter((t) => !isCompletedStatus(t?.status));
-    return list;
+    return (tasks || []).filter((t) => !isCompletedStatus(t?.status));
   }, [tasks]);
 
-  // Unassigned tasks table (open tasks only)
   const unassignedOpenTasks = useMemo(() => {
     const open = (tasks || []).filter((t) => !isCompletedStatus(t?.status));
     return open.filter((t) => !(t?.assignee || '').trim());
   }, [tasks]);
 
-  // Availability: days in selected range
   const rangeDays = useMemo(() => {
     const s = parseDate(rangeStart);
     const e = parseDate(rangeEnd) || s;
@@ -509,7 +528,6 @@ function PresalesOverview() {
     return buildWorkdayRange(s, daysCount);
   }, [rangeStart, rangeEnd]);
 
-  // Utilization summary per presales (based on tasks overlap in selected range)
   const utilizationByPresales = useMemo(() => {
     const by = {};
     (presales || []).forEach((name) => {
@@ -540,9 +558,67 @@ function PresalesOverview() {
       by[k].pct = totalCapacityHours ? Math.round((by[k].hours / totalCapacityHours) * 100) : 0;
     });
 
-    return Object.values(by)
-      .sort((a, b) => (b.pct || 0) - (a.pct || 0));
+    return Object.values(by).sort((a, b) => (b.pct || 0) - (a.pct || 0));
   }, [tasks, presales, rangeStart, rangeEnd]);
+
+  // --- Build schedule lookup: assignee -> date -> {status, entries[]} ---
+  const scheduleLookup = useMemo(() => {
+    const map = {};
+
+    (scheduleRows || []).forEach((row) => {
+      const assignee = (row?.assignee || '').trim();
+      if (!assignee) return;
+
+      const s = parseDate(row.start_date);
+      const e = parseDate(row.end_date) || s;
+      if (!s) return;
+
+      // iterate each day in range
+      const cur = new Date(s);
+      while (cur.getTime() <= e.getTime()) {
+        const key = ymd(cur);
+        if (!key) break;
+
+        if (!map[assignee]) map[assignee] = {};
+        if (!map[assignee][key]) map[assignee][key] = { status: 'free', entries: [] };
+
+        const derived = normalizeScheduleTypeToStatus(row.type, row.block_hours);
+        map[assignee][key].entries.push({
+          type: row.type,
+          note: row.note,
+          block_hours: row.block_hours,
+          start_date: row.start_date,
+          end_date: row.end_date,
+          derivedStatus: derived,
+        });
+
+        // pick strongest status for the day
+        const currentStatus = map[assignee][key].status || 'free';
+        const best =
+          statusPriority(derived) > statusPriority(currentStatus) ? derived : currentStatus;
+
+        map[assignee][key].status = best;
+
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+
+    return map;
+  }, [scheduleRows]);
+
+  const getScheduleStatusForDay = (assignee, day) => {
+    const a = (assignee || '').trim();
+    const key = ymd(day);
+    if (!a || !key) return 'free';
+    return scheduleLookup?.[a]?.[key]?.status || 'free';
+  };
+
+  const getScheduleEntriesForDay = (assignee, day) => {
+    const a = (assignee || '').trim();
+    const key = ymd(day);
+    if (!a || !key) return [];
+    return scheduleLookup?.[a]?.[key]?.entries || [];
+  };
 
   // ---------- Inline edit (unassigned) ----------
   const startInlineEdit = (t) => {
@@ -584,10 +660,7 @@ function PresalesOverview() {
       const { error: qErr } = await supabase.from('project_tasks').update(payload).eq('id', taskId);
       if (qErr) throw qErr;
 
-      // refresh local tasks
-      const next = (tasks || []).map((t) => (t.id === taskId ? { ...t, ...payload } : t));
-      setTasks(next);
-
+      setTasks((prev) => (prev || []).map((t) => (t.id === taskId ? { ...t, ...payload } : t)));
       cancelInlineEdit();
     } catch (e) {
       console.error('Inline save error:', e);
@@ -613,6 +686,11 @@ function PresalesOverview() {
     const list = (tasks || []).filter((t) => (t?.assignee || '').trim() === dayDetailAssignee);
     return list.filter((t) => isTaskOnDay(t, dayDetailDay));
   }, [dayDetailOpen, dayDetailAssignee, dayDetailDay, tasks]);
+
+  const scheduleForDayAndAssignee = useMemo(() => {
+    if (!dayDetailOpen || !dayDetailAssignee || !dayDetailDay) return [];
+    return getScheduleEntriesForDay(dayDetailAssignee, dayDetailDay);
+  }, [dayDetailOpen, dayDetailAssignee, dayDetailDay, scheduleLookup]);
 
   const openDayDetail = (assignee, day) => {
     setDayDetailAssignee(assignee);
@@ -643,12 +721,9 @@ function PresalesOverview() {
   };
 
   const onSaveTaskModal = async (payload) => {
-    // supports update existing task; insert is handled in TaskModal normally
     if (!editingTask?.id) return;
-
     const { error: qErr } = await supabase.from('project_tasks').update(payload).eq('id', editingTask.id);
     if (qErr) throw qErr;
-
     setTasks((prev) => (prev || []).map((t) => (t.id === editingTask.id ? { ...t, ...payload } : t)));
   };
 
@@ -782,7 +857,7 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* UTILIZATION + RANGE */}
+      {/* AVAILABILITY + RANGE */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
@@ -791,7 +866,7 @@ function PresalesOverview() {
                 <Filter size={18} className="panel-icon" />
                 Availability and load
               </h3>
-              <p>Pick a date range to compute workload. Click a cell to see tasks on that day.</p>
+              <p>Dot colors come from presales_schedule. Click a day to see tasks and schedule notes.</p>
             </div>
 
             <div className="panel-actions">
@@ -832,227 +907,53 @@ function PresalesOverview() {
               <p>{rangeError}</p>
             </div>
           ) : (
-            <>
-              <div className="unassigned-tasks-table-wrapper">
-                <div className="availability-grid-wrapper">
-                  <table className="availability-grid">
-                    <thead>
-                      <tr>
-                        <th className="sticky-col">Presales</th>
-                        {rangeDays.map((d) => (
-                          <th key={d.toISOString()}>
-                            <div>{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                            <div>{d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                          </th>
-                        ))}
-                        <th>Load</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {utilizationByPresales.map((u) => {
-                        const name = u.name;
-                        return (
-                          <tr key={name}>
-                            <td className="sticky-col assignee-cell">{name}</td>
+            <div className="unassigned-tasks-table-wrapper">
+              <div className="availability-grid-wrapper">
+                <table className="availability-grid">
+                  <thead>
+                    <tr>
+                      <th className="sticky-col">Presales</th>
+                      {rangeDays.map((d) => (
+                        <th key={d.toISOString()}>
+                          <div>{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                          <div>{d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                        </th>
+                      ))}
+                      <th>Load</th>
+                    </tr>
+                  </thead>
 
-                            {rangeDays.map((d) => {
-                              const dayKey = d.toISOString().slice(0, 10);
+                  <tbody>
+                    {utilizationByPresales.map((u) => {
+                      const name = u.name;
+                      return (
+                        <tr key={name}>
+                          <td className="sticky-col assignee-cell">{name}</td>
 
-                              const av = (availability || []).find(
-                                (x) => (x?.assignee || '').trim() === name && (x?.date || '').slice(0, 10) === dayKey
-                              );
+                          {rangeDays.map((d) => {
+                            const status = getScheduleStatusForDay(name, d); // ✅ from presales_schedule
+                            return (
+                              <td
+                                key={`${name}-${ymd(d)}`}
+                                className={`avail-cell ${status}`}
+                                onClick={() => openDayDetail(name, d)}
+                                title="Click to view tasks and schedule notes"
+                              >
+                                <div className="avail-dot" />
+                              </td>
+                            );
+                          })}
 
-                              const status = (av?.status || 'free').toLowerCase().trim();
-                              return (
-                                <td
-                                  key={`${name}-${dayKey}`}
-                                  className={`avail-cell ${status}`}
-                                  onClick={() => openDayDetail(name, d)}
-                                  title="Click to view tasks"
-                                >
-                                  <div className="avail-dot" />
-                                </td>
-                              );
-                            })}
-
-                            <td title={getUtilLabel(u.pct)}>
-                              {Math.round(u.hours)}h ({u.pct}%)
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                          <td title={getUtilLabel(u.pct)}>
+                            {Math.round(u.hours)}h ({u.pct}%)
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-
-              {/* Unassigned tasks */}
-              <div className="presales-panel-header" style={{ borderTop: '1px solid rgba(15,23,42,0.08)' }}>
-                <div>
-                  <h3>
-                    <CalendarDays size={18} className="panel-icon" />
-                    Unassigned open tasks
-                  </h3>
-                  <p>Assign these to a presales so they appear in the workload view.</p>
-                </div>
-
-                <button type="button" className="btn-primary" onClick={openNewTask}>
-                  + Add task
-                </button>
-              </div>
-
-              {unassignedOpenTasks.length === 0 ? (
-                <div className="presales-empty">
-                  <p>No unassigned open tasks.</p>
-                </div>
-              ) : (
-                <div className="unassigned-tasks-table-wrapper">
-                  <table className="unassigned-tasks-table">
-                    <thead>
-                      <tr>
-                        <th>Task</th>
-                        <th>Project</th>
-                        <th>Status</th>
-                        <th>Type</th>
-                        <th>Priority</th>
-                        <th>Due</th>
-                        <th className="actions-cell">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unassignedOpenTasks.map((t) => {
-                        const isEditing = inlineEditingTaskId === t.id;
-                        const project = (projects || []).find((p) => p.id === t.project_id);
-
-                        return (
-                          <tr key={t.id}>
-                            <td>
-                              {isEditing ? (
-                                <input
-                                  value={inlineDraft.description || ''}
-                                  onChange={(e) => setInlineDraft((p) => ({ ...p, description: e.target.value }))}
-                                />
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="unassigned-task-link"
-                                  onClick={() => openEditTask(t)}
-                                >
-                                  {t.description || '(Untitled task)'}
-                                </button>
-                              )}
-                            </td>
-
-                            <td className="td-ellipsis" title={project?.project_name || '-'}>
-                              {project?.project_name || '-'}
-                            </td>
-
-                            <td>
-                              {isEditing ? (
-                                <input
-                                  value={inlineDraft.status || ''}
-                                  onChange={(e) => setInlineDraft((p) => ({ ...p, status: e.target.value }))}
-                                />
-                              ) : (
-                                t.status || '-'
-                              )}
-                            </td>
-
-                            <td>
-                              {isEditing ? (
-                                <select
-                                  value={inlineDraft.task_type || ''}
-                                  onChange={(e) => setInlineDraft((p) => ({ ...p, task_type: e.target.value }))}
-                                >
-                                  <option value="">-</option>
-                                  {(taskTypes || []).map((x) => (
-                                    <option key={x} value={x}>
-                                      {x}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                t.task_type || '-'
-                              )}
-                            </td>
-
-                            <td>
-                              {isEditing ? (
-                                <select
-                                  value={inlineDraft.priority || ''}
-                                  onChange={(e) => setInlineDraft((p) => ({ ...p, priority: e.target.value }))}
-                                >
-                                  <option value="">-</option>
-                                  <option value="High">High</option>
-                                  <option value="Normal">Normal</option>
-                                  <option value="Low">Low</option>
-                                </select>
-                              ) : (
-                                t.priority || '-'
-                              )}
-                            </td>
-
-                            <td>
-                              {isEditing ? (
-                                <input
-                                  type="date"
-                                  value={inlineDraft.due_date || ''}
-                                  onChange={(e) => setInlineDraft((p) => ({ ...p, due_date: e.target.value }))}
-                                />
-                              ) : (
-                                formatShortDate(t.due_date)
-                              )}
-                            </td>
-
-                            <td className="actions-cell">
-                              {isEditing ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    className="icon-btn"
-                                    title="Save"
-                                    onClick={() => saveInlineEdit(t.id)}
-                                  >
-                                    <Save size={16} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="icon-btn"
-                                    title="Cancel"
-                                    onClick={cancelInlineEdit}
-                                  >
-                                    <X size={16} />
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button
-                                    type="button"
-                                    className="icon-btn"
-                                    title="Edit"
-                                    onClick={() => startInlineEdit(t)}
-                                  >
-                                    <Edit3 size={16} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="icon-btn danger"
-                                    title="Delete"
-                                    onClick={() => deleteTask(t.id)}
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
+            </div>
           )}
         </div>
       </section>
@@ -1064,7 +965,14 @@ function PresalesOverview() {
             <div className="modal-header">
               <h3>
                 <Plane size={16} />
-                {dayDetailAssignee} • {dayDetailDay ? dayDetailDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                {dayDetailAssignee} •{' '}
+                {dayDetailDay
+                  ? dayDetailDay.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
+                  : ''}
               </h3>
               <button type="button" className="icon-btn" onClick={closeDayDetail} aria-label="Close">
                 <X size={16} />
@@ -1104,12 +1012,28 @@ function PresalesOverview() {
                 </div>
 
                 <div>
-                  <div className="daydetail-title">Notes</div>
-                  <div className="daydetail-schedule">
-                    <p style={{ margin: 0, color: 'rgba(15, 23, 42, 0.70)', fontSize: 13 }}>
-                      This is a quick drill-down from the availability grid. You can click a task to edit.
-                    </p>
-                  </div>
+                  <div className="daydetail-title">Schedule (from presales_schedule)</div>
+
+                  {scheduleForDayAndAssignee.length === 0 ? (
+                    <div className="daydetail-schedule">
+                      <p style={{ margin: 0, color: 'rgba(15, 23, 42, 0.70)', fontSize: 13 }}>
+                        No schedule entries for this day. Default is “free”.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="daydetail-schedule">
+                      {scheduleForDayAndAssignee.map((s, idx) => (
+                        <div key={`${idx}-${s.type}`} style={{ marginBottom: 10 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: 'rgba(15,23,42,0.88)' }}>
+                            {s.type} {s.block_hours ? `(${s.block_hours}h)` : ''}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'rgba(15,23,42,0.70)' }}>
+                            {s.note || '—'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
