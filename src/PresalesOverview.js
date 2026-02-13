@@ -1,7 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { Users, AlertTriangle, Filter, Plane, X, ListChecks, Edit3, Trash2, Save, CalendarDays } from 'lucide-react';
+import {
+  Users,
+  AlertTriangle,
+  Filter,
+  Plane,
+  X,
+  ListChecks,
+  Edit3,
+  Trash2,
+  Save,
+  CalendarDays,
+} from 'lucide-react';
 import './PresalesOverview.css';
 import TaskModal from './TaskModal';
 
@@ -122,7 +133,7 @@ const getWeekRanges = () => {
   };
 };
 
-// Overlap days between [rangeStart, rangeEnd] and [taskStart, taskEnd]
+// overlap days between [rangeStart, rangeEnd] and [taskStart, taskEnd]
 const getOverlapDays = (rangeStart, rangeEnd, taskStart, taskEnd) => {
   const rs = parseDate(rangeStart);
   const re = parseDate(rangeEnd);
@@ -345,7 +356,8 @@ function PresalesOverview() {
   const [inlineEditingTaskId, setInlineEditingTaskId] = useState(null);
   const [inlineDraft, setInlineDraft] = useState({});
 
-  // ✅ Assignment Helper state
+  // ✅ Assignment Helper state (updated)
+  const [helperStartDate, setHelperStartDate] = useState(ymd(new Date()));
   const [helperRequiredHours, setHelperRequiredHours] = useState(DEFAULT_TASK_HOURS);
   const [helperTaskType, setHelperTaskType] = useState('');
   const [helperAssigneeFilter, setHelperAssigneeFilter] = useState('');
@@ -357,7 +369,6 @@ function PresalesOverview() {
       setError('');
 
       try {
-        // ✅ projects + tasks
         const [{ data: pData, error: pErr }, { data: tData, error: tErr }] = await Promise.all([
           supabase.from('projects').select('*'),
           supabase.from('project_tasks').select('*').eq('is_archived', false),
@@ -369,7 +380,6 @@ function PresalesOverview() {
         setProjects(pData || []);
         setTasks(tData || []);
 
-        // presales list (optional table)
         const { data: rData, error: rErr } = await supabase
           .from('presales_resources')
           .select('name')
@@ -382,7 +392,6 @@ function PresalesOverview() {
           setPresales((rData || []).map((x) => x.name).filter(Boolean));
         }
 
-        // task types (optional table)
         const { data: ttData, error: ttErr } = await supabase
           .from('task_types')
           .select('name, is_active, sort_order')
@@ -398,7 +407,6 @@ function PresalesOverview() {
           setTaskTypes(tt.length ? tt : DEFAULT_TASK_TYPES.map((x) => x.name));
         }
 
-        // ✅ presales_schedule (your table)
         const { data: sData, error: sErr } = await supabase.from('presales_schedule').select('*');
         if (sErr) {
           console.warn('presales_schedule load error:', sErr);
@@ -488,8 +496,7 @@ function PresalesOverview() {
   // Range days for grid
   const rangeDays = useMemo(() => buildDayRange(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
-  // Build list of presales names:
-  // If presales_resources table is empty, fallback to unique assignees from tasks + schedule
+  // Build list of presales names: resources OR from tasks/schedule
   const allPresalesNames = useMemo(() => {
     const set = new Set();
 
@@ -559,16 +566,12 @@ function PresalesOverview() {
     return scheduleLookup?.[a]?.[key]?.status || 'free';
   };
 
-  // ✅ UTILIZATION (load) per presales: derived from project_tasks
+  // ✅ UTILIZATION (load) per presales: derived from project_tasks in selected range
   const utilizationByPresales = useMemo(() => {
     const by = {};
     (allPresalesNames || []).forEach((name) => {
       by[name] = { name, hours: 0, pct: 0 };
     });
-
-    const rs = parseDate(rangeStart);
-    const re = parseDate(rangeEnd);
-    if (!rs || !re) return Object.values(by);
 
     const totalCapacityHours = (rangeDays.length || 0) * HOURS_PER_DAY;
 
@@ -584,12 +587,11 @@ function PresalesOverview() {
       const overlapDays = getOverlapDays(rangeStart, rangeEnd, taskStart, taskEnd);
       if (!overlapDays) return;
 
-      // distribute effort by overlap days (so longer tasks don't spike unfairly)
       const est = safeNumber(t?.estimated_hours, DEFAULT_TASK_HOURS);
       const mult = canonicalTypeMultiplier(t?.task_type);
       const effort = est * mult;
 
-      // If task has explicit span, allocate evenly across its span
+      // allocate effort across its full span
       const fullSpanDays = getOverlapDays(taskStart, taskEnd, taskStart, taskEnd) || overlapDays;
       const perDay = effort / Math.max(1, fullSpanDays);
       by[a].hours += perDay * overlapDays;
@@ -606,49 +608,60 @@ function PresalesOverview() {
     });
   }, [tasks, allPresalesNames, rangeStart, rangeEnd, rangeDays.length]);
 
-  // ✅ Assignment Helper recommendations (schedule capacity - task load)
-  const helperRecommendations = useMemo(() => {
+  // ✅ Daily load for helper (for a specific start date)
+  const getDailyLoadHours = useMemo(() => {
+    // returns function(assignee, date) => hours
+    return (assignee, dateValue) => {
+      const a = (assignee || '').trim();
+      const day = parseDate(dateValue);
+      if (!a || !day) return 0;
+
+      let sum = 0;
+
+      (tasks || []).forEach((t) => {
+        if (isCompletedStatus(t?.status)) return;
+        if ((t?.assignee || '').trim() !== a) return;
+        if (!isTaskOnDay(t, day)) return;
+
+        const taskStart = t?.start_date || t?.due_date || t?.end_date || day;
+        const taskEnd = t?.end_date || t?.due_date || t?.start_date || day;
+
+        const est = safeNumber(t?.estimated_hours, DEFAULT_TASK_HOURS);
+        const mult = canonicalTypeMultiplier(t?.task_type);
+        const effort = est * mult;
+
+        const spanDays = getOverlapDays(taskStart, taskEnd, taskStart, taskEnd) || 1;
+        const perDay = effort / Math.max(1, spanDays);
+        sum += perDay;
+      });
+
+      return Math.round(sum * 10) / 10;
+    };
+  }, [tasks]);
+
+  // ✅ Assignment Helper table (no cards, uses helperStartDate)
+  const helperTable = useMemo(() => {
+    const startDay = parseDate(helperStartDate);
     const requiredBase = safeNumber(helperRequiredHours, DEFAULT_TASK_HOURS);
     const required = Math.round(requiredBase * canonicalTypeMultiplier(helperTaskType) * 10) / 10;
 
-    const rs = parseDate(rangeStart);
-    const re = parseDate(rangeEnd);
-    if (!rs || !re) return { required, list: [] };
+    if (!startDay) return { required, rows: [] };
 
-    // capacity from schedule within range
-    const capacityByAssignee = {};
-    (allPresalesNames || []).forEach((name) => {
-      let cap = 0;
-      const cur = new Date(rs);
-      while (cur.getTime() <= re.getTime()) {
-        const status = getScheduleStatusForDay(name, cur);
-        cap += statusToAvailableHours(status);
-        cur.setDate(cur.getDate() + 1);
-      }
-      capacityByAssignee[name] = cap;
-    });
+    const filter = (helperAssigneeFilter || '').trim().toLowerCase();
 
-    // load from utilizationByPresales
-    const loadByAssignee = {};
-    (utilizationByPresales || []).forEach((u) => {
-      loadByAssignee[u.name] = safeNumber(u.hours, 0);
-    });
-
-    const list = (allPresalesNames || [])
-      .filter((n) => {
-        const f = (helperAssigneeFilter || '').trim().toLowerCase();
-        if (!f) return true;
-        return n.toLowerCase().includes(f);
-      })
+    const rows = (allPresalesNames || [])
+      .filter((n) => (filter ? n.toLowerCase().includes(filter) : true))
       .map((name) => {
-        const capacity = safeNumber(capacityByAssignee[name], rangeDays.length * HOURS_PER_DAY);
-        const load = safeNumber(loadByAssignee[name], 0);
+        const status = getScheduleStatusForDay(name, startDay);
+        const capacity = statusToAvailableHours(status);
+        const load = getDailyLoadHours(name, startDay);
         const remaining = Math.round((capacity - load) * 10) / 10;
 
         return {
           name,
+          status,
           capacity: Math.round(capacity * 10) / 10,
-          load: Math.round(load * 10) / 10,
+          load,
           remaining,
           ok: remaining >= required,
         };
@@ -659,17 +672,15 @@ function PresalesOverview() {
         return a.name.localeCompare(b.name);
       });
 
-    return { required, list };
+    return { required, rows };
   }, [
+    helperStartDate,
     helperRequiredHours,
     helperTaskType,
     helperAssigneeFilter,
-    rangeStart,
-    rangeEnd,
-    rangeDays.length,
     allPresalesNames,
-    utilizationByPresales,
     scheduleLookup,
+    getDailyLoadHours,
   ]);
 
   // ---------- Day detail ----------
@@ -847,10 +858,11 @@ function PresalesOverview() {
                   <div className="presales-board-cards">
                     {g.projects.map((p) => (
                       <div key={p.projectId} className="presales-board-card">
+                        {/* ✅ FIXED: route is /project/:projectId (based on CustomerDetails.js) */}
                         <button
                           type="button"
                           className="table-link-btn project-link board-project-link"
-                          onClick={() => navigate(`/projectdetails/${p.projectId}`)}
+                          onClick={() => navigate(`/project/${p.projectId}`)}
                           title="Open project details"
                         >
                           {p.projectName}
@@ -992,7 +1004,7 @@ function PresalesOverview() {
                 </div>
               </div>
 
-              {/* ✅ Assignment Helper */}
+              {/* ✅ Assignment Helper (updated: start date + table list) */}
               <div className="assignment-helper">
                 <div className="presales-panel-header" style={{ borderTop: '1px solid rgba(15,23,42,0.08)' }}>
                   <div>
@@ -1000,11 +1012,20 @@ function PresalesOverview() {
                       <Users size={18} className="panel-icon" />
                       Assignment Helper
                     </h3>
-                    <p>Suggest who can take a new task based on schedule capacity minus current assigned load.</p>
+                    <p>Pick a start date and task type. We’ll list who has enough capacity on that day (schedule minus task load).</p>
                   </div>
                 </div>
 
                 <div className="assignment-helper-controls">
+                  <div className="field">
+                    <label>Start date</label>
+                    <input
+                      type="date"
+                      value={helperStartDate || ''}
+                      onChange={(e) => setHelperStartDate(e.target.value)}
+                    />
+                  </div>
+
                   <div className="field">
                     <label>Required hours (base)</label>
                     <input
@@ -1017,7 +1038,7 @@ function PresalesOverview() {
                   </div>
 
                   <div className="field">
-                    <label>Task type (affects effort)</label>
+                    <label>Task type</label>
                     <select value={helperTaskType} onChange={(e) => setHelperTaskType(e.target.value)}>
                       <option value="">(No type)</option>
                       {(taskTypes || []).map((x) => (
@@ -1040,24 +1061,41 @@ function PresalesOverview() {
 
                 <div className="assignment-helper-results">
                   <div className="helper-note">
-                    Required effort (after multiplier): <b>{helperRecommendations.required}h</b>
+                    Required effort (after multiplier): <b>{helperTable.required}h</b>
                   </div>
 
-                  <div className="helper-grid">
-                    {helperRecommendations.list.map((r) => (
-                      <div key={r.name} className={`helper-card ${r.ok ? 'ok' : ''}`}>
-                        <div className="helper-card-top">
-                          <div className="helper-name">{r.name}</div>
-                          <div className="helper-free">Remaining: {r.remaining}h</div>
-                        </div>
-
-                        <div className="helper-meta">
-                          <span>Capacity: {r.capacity}h</span>
-                          <span>Load: {r.load}h</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {helperTable.rows.length === 0 ? (
+                    <div className="presales-empty small">
+                      <p>No presales found.</p>
+                    </div>
+                  ) : (
+                    <div className="unassigned-tasks-table-wrapper">
+                      <table className="unassigned-tasks-table">
+                        <thead>
+                          <tr>
+                            <th>Presales</th>
+                            <th>Status</th>
+                            <th>Capacity (hrs)</th>
+                            <th>Load (hrs)</th>
+                            <th>Remaining (hrs)</th>
+                            <th>Available</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {helperTable.rows.map((r) => (
+                            <tr key={r.name}>
+                              <td className="td-ellipsis" title={r.name}>{r.name}</td>
+                              <td className="td-ellipsis" title={r.status}>{r.status}</td>
+                              <td>{r.capacity}</td>
+                              <td>{r.load}</td>
+                              <td>{r.remaining}</td>
+                              <td>{r.ok ? 'Yes' : 'No'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
 
