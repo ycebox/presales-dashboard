@@ -85,6 +85,14 @@
   opacity: 0.85;
 }
 
+/* ---- Right side actions in panel header ---- */
+.panel-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* ===== LOADING / ERROR ===== */
 
 .presales-loading,
@@ -204,6 +212,29 @@
   background: rgba(220, 38, 38, 0.06);
 }
 
+/* ===== FORMS / FIELDS ===== */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.72);
+}
+
+.field.compact select,
+.field.compact input {
+  min-width: 150px;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
 /* ===== SMALL UTILITIES ===== */
 
 .truncate,
@@ -218,7 +249,7 @@
   opacity: 0.55;
 }
 
-/* ===== ACTIVE PROJECTS BOARD (existing in your file) ===== */
+/* ===== ACTIVE PROJECTS BOARD ===== */
 
 .presales-board-wrapper {
   display: grid;
@@ -536,154 +567,112 @@
   text-decoration: underline;
 }
 
-/* ===== MODAL BACKDROP (already used in your JS) ===== */
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: grid;
-  place-items: center;
-  background: rgba(15, 23, 42, 0.45);
-  padding: 16px;
+.actions-cell {
+  white-space: nowrap;
+  text-align: right;
 }
 
-.modal-header {
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.96);
-}
+/* ===== ASSIGNMENT HELPER (UPDATED) ===== */
 
-.modal-header h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 750;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: rgba(15, 23, 42, 0.92);
-}
-
-.modal-body {
-  padding: 14px 16px 10px;
-}
-
-.modal-footer {
-  padding: 12px 16px 16px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.form-error {
-  margin-top: 10px;
-  font-size: 12px;
-  color: rgba(185, 28, 28, 0.95);
-  background: rgba(220, 38, 38, 0.08);
-  border: 1px solid rgba(220, 38, 38, 0.20);
-  padding: 8px 10px;
-  border-radius: 12px;
-}
-
-/* =========================================================
-   PATCH: Styles required by latest PresalesOverview.js
-   ========================================================= */
-
-/* ---- Panel actions (right side of header) ---- */
-.panel-actions {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.field {
+.assignment-helper {
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-
-.field label {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(15, 23, 42, 0.72);
-}
-
-.field.compact select,
-.field.compact input {
-  min-width: 150px;
-}
-
-.field-wide {
-  grid-column: 1 / -1;
-}
-
-/* ---- Assignment helper (cards layout) ---- */
-.assignment-helper {
-  margin-top: 10px;
+  gap: 16px;
+  padding: 12px 16px 16px;
 }
 
 .assignment-helper-controls {
   display: grid;
-  grid-template-columns: 1fr 1fr 180px;
-  gap: 10px;
+  grid-template-columns: 1fr 1fr 200px;
+  gap: 14px;
   align-items: end;
 }
 
+.assignment-helper-controls .field input,
+.assignment-helper-controls .field select {
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.98);
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.assignment-helper-controls .field input:focus,
+.assignment-helper-controls .field select:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
 .assignment-helper-results {
-  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .helper-note {
   font-size: 13px;
-  color: rgba(15, 23, 42, 0.70);
-  margin-bottom: 10px;
+  color: rgba(15, 23, 42, 0.75);
+  padding: 0 2px;
 }
 
 .helper-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
 }
 
 .helper-card {
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid rgba(15, 23, 42, 0.10);
   background: rgba(255, 255, 255, 0.98);
-  padding: 10px 12px;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+  padding: 14px 14px 12px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+}
+
+.helper-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.10);
 }
 
 .helper-card.ok {
-  border-color: rgba(34, 197, 94, 0.28);
-  background: rgba(34, 197, 94, 0.06);
+  border-color: rgba(34, 197, 94, 0.30);
+  background: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.08),
+    rgba(255, 255, 255, 0.98)
+  );
 }
 
 .helper-card-top {
   display: flex;
-  align-items: baseline;
   justify-content: space-between;
+  align-items: baseline;
   gap: 10px;
 }
 
 .helper-name {
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 750;
   color: rgba(15, 23, 42, 0.92);
 }
 
 .helper-free {
   font-size: 12px;
-  color: rgba(15, 23, 42, 0.70);
+  font-weight: 600;
+  color: rgba(37, 99, 235, 0.85);
   white-space: nowrap;
 }
 
 .helper-meta {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 12px;
-  color: rgba(15, 23, 42, 0.70);
+  color: rgba(15, 23, 42, 0.68);
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 @media (max-width: 768px) {
@@ -692,7 +681,12 @@
   }
 }
 
-/* ---- Availability grid (table version) ---- */
+/* ===== AVAILABILITY GRID (TABLE) ===== */
+
+.availability-grid-wrapper {
+  padding: 12px 16px 16px;
+}
+
 .availability-grid-wrapper {
   border-radius: 14px;
   border: 1px solid rgba(15, 23, 42, 0.10);
@@ -775,7 +769,18 @@
     );
 }
 
-/* ---- Modal class compatibility (JS uses modal-card / modal-wide) ---- */
+/* ===== MODALS ===== */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.45);
+  padding: 16px;
+}
+
 .modal-card {
   width: min(920px, 96vw);
   border-radius: 16px;
@@ -787,6 +792,36 @@
 
 .modal-wide {
   width: min(980px, 96vw);
+}
+
+.modal-header {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 750;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.modal-body {
+  padding: 14px 16px 10px;
+}
+
+.modal-footer {
+  padding: 12px 16px 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .modal-error {
@@ -802,6 +837,16 @@
   font-size: 12px;
 }
 
+.form-error {
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(185, 28, 28, 0.95);
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.20);
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -814,7 +859,8 @@
   }
 }
 
-/* ---- Day detail modal layout (JS uses daydetail-*) ---- */
+/* ===== DAY DETAIL MODAL ===== */
+
 .daydetail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -880,9 +926,4 @@
   border: 1px solid rgba(15, 23, 42, 0.10);
   background: rgba(255, 255, 255, 0.98);
   padding: 10px 10px;
-}
-
-.actions-cell {
-  white-space: nowrap;
-  text-align: right;
 }
