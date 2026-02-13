@@ -108,7 +108,7 @@ const getWeekRanges = () => {
 
   const thisWeekStart = new Date(today);
   const day = thisWeekStart.getDay();
-  const diff = (day === 0 ? -6 : 1) - day;
+  const diff = (day === 0 ? -6 : 1) - day; // Monday
   thisWeekStart.setDate(thisWeekStart.getDate() + diff);
 
   const thisWeekEnd = new Date(thisWeekStart);
@@ -173,6 +173,7 @@ const isTaskOnDay = (task, day) => {
   return d.getTime() >= s.getTime() && d.getTime() <= e.getTime();
 };
 
+// General “active” guard (used for other sections)
 const isProjectActive = (project) => {
   const cs = (project?.current_status || '').toLowerCase().trim();
   const ss = (project?.sales_stage || '').toLowerCase().trim();
@@ -181,6 +182,17 @@ const isProjectActive = (project) => {
 
   const inactiveKeywords = ['archiv', 'inactive', 'closed', 'done', 'cancel', 'completed', 'on-hold', 'hold'];
   return !inactiveKeywords.some((k) => signal.includes(k));
+};
+
+// ✅ Specific filter for "Active projects by presales" based on SALES STAGE
+const isStageAllowedForBoard = (project) => {
+  const stage = (project?.sales_stage || '').toLowerCase().trim();
+
+  // normalize common variants
+  const s = stage.replace(/\s+/g, '-'); // "close won" -> "close-won"
+
+  const blocked = new Set(['closed-lost', 'close-won', 'closed-won', 'on-hold', 'cancelled', 'canceled']);
+  return !blocked.has(s);
 };
 
 const legacyKeywordMultiplier = (taskType) => {
@@ -339,7 +351,7 @@ function PresalesOverview() {
   const [inlineEditingTaskId, setInlineEditingTaskId] = useState(null);
   const [inlineDraft, setInlineDraft] = useState({});
 
-  // ✅ Assignment Helper state (no presales filter)
+  // Assignment Helper (no presales filter)
   const [helperStartDate, setHelperStartDate] = useState(ymd(new Date()));
   const [helperRequiredHours, setHelperRequiredHours] = useState(DEFAULT_TASK_HOURS);
   const [helperTaskType, setHelperTaskType] = useState('');
@@ -423,16 +435,21 @@ function PresalesOverview() {
     setRangeError(validateDateRange(rangeStart, rangeEnd));
   }, [rangeStart, rangeEnd]);
 
+  // General active projects (still used elsewhere)
   const activeProjects = useMemo(() => (projects || []).filter(isProjectActive), [projects]);
 
+  // ✅ Board projects: primary presales AND sales_stage not in blocked list
   const activeProjectsByPresales = useMemo(() => {
     const by = {};
-    (activeProjects || []).forEach((p) => {
-      const primary = (p?.primary_presales || '').trim();
-      if (!primary) return;
-      if (!by[primary]) by[primary] = [];
-      by[primary].push(p);
-    });
+
+    (activeProjects || [])
+      .filter(isStageAllowedForBoard) // ✅ NEW RULE HERE
+      .forEach((p) => {
+        const primary = (p?.primary_presales || '').trim();
+        if (!primary) return;
+        if (!by[primary]) by[primary] = [];
+        by[primary].push(p);
+      });
 
     const tasksByProject = {};
     (tasks || []).forEach((t) => {
@@ -607,7 +624,6 @@ function PresalesOverview() {
     };
   }, [tasks]);
 
-  // ✅ Assignment Helper: show only available presales (remaining >= required)
   const helperTable = useMemo(() => {
     const startDay = parseDate(helperStartDate);
     const requiredBase = safeNumber(helperRequiredHours, DEFAULT_TASK_HOURS);
@@ -631,7 +647,7 @@ function PresalesOverview() {
           ok: remaining >= required,
         };
       })
-      .filter((r) => r.ok) // ✅ only show available
+      .filter((r) => r.ok)
       .sort((a, b) => {
         if (b.remaining !== a.remaining) return b.remaining - a.remaining;
         return a.name.localeCompare(b.name);
@@ -781,13 +797,13 @@ function PresalesOverview() {
                 <Users size={18} className="panel-icon" />
                 Active projects by presales
               </h3>
-              <p>Grouped by primary presales. Includes active projects even if there are 0 active tasks.</p>
+              <p>Grouped by primary presales. Excludes sales stages: closed-lost, close-won, on-hold, cancelled.</p>
             </div>
           </div>
 
           {activeProjectsByPresales.length === 0 ? (
             <div className="presales-empty small">
-              <p>No active projects assigned to primary presales found.</p>
+              <p>No matching projects found.</p>
             </div>
           ) : (
             <div className="presales-board-wrapper">
@@ -950,7 +966,7 @@ function PresalesOverview() {
                 </div>
               </div>
 
-              {/* ✅ Assignment Helper: show ONLY available presales */}
+              {/* Assignment Helper */}
               <div className="assignment-helper">
                 <div className="presales-panel-header" style={{ borderTop: '1px solid rgba(15,23,42,0.08)' }}>
                   <div>
@@ -965,7 +981,11 @@ function PresalesOverview() {
                 <div className="assignment-helper-controls">
                   <div className="field">
                     <label>Start date</label>
-                    <input type="date" value={helperStartDate || ''} onChange={(e) => setHelperStartDate(e.target.value)} />
+                    <input
+                      type="date"
+                      value={helperStartDate || ''}
+                      onChange={(e) => setHelperStartDate(e.target.value)}
+                    />
                   </div>
 
                   <div className="field">
@@ -1016,8 +1036,12 @@ function PresalesOverview() {
                         <tbody>
                           {helperTable.rows.map((r) => (
                             <tr key={r.name}>
-                              <td className="td-ellipsis" title={r.name}>{r.name}</td>
-                              <td className="td-ellipsis" title={r.status}>{r.status}</td>
+                              <td className="td-ellipsis" title={r.name}>
+                                {r.name}
+                              </td>
+                              <td className="td-ellipsis" title={r.status}>
+                                {r.status}
+                              </td>
                               <td>{r.capacity}</td>
                               <td>{r.load}</td>
                               <td>{r.remaining}</td>
@@ -1130,7 +1154,12 @@ function PresalesOverview() {
                             <td className="actions-cell">
                               {isEditing ? (
                                 <>
-                                  <button type="button" className="icon-btn" title="Save" onClick={() => saveInlineEdit(t.id)}>
+                                  <button
+                                    type="button"
+                                    className="icon-btn"
+                                    title="Save"
+                                    onClick={() => saveInlineEdit(t.id)}
+                                  >
                                     <Save size={16} />
                                   </button>
                                   <button type="button" className="icon-btn" title="Cancel" onClick={cancelInlineEdit}>
@@ -1142,7 +1171,12 @@ function PresalesOverview() {
                                   <button type="button" className="icon-btn" title="Edit" onClick={() => startInlineEdit(t)}>
                                     <Edit3 size={16} />
                                   </button>
-                                  <button type="button" className="icon-btn danger" title="Delete" onClick={() => deleteTask(t.id)}>
+                                  <button
+                                    type="button"
+                                    className="icon-btn danger"
+                                    title="Delete"
+                                    onClick={() => deleteTask(t.id)}
+                                  >
                                     <Trash2 size={16} />
                                   </button>
                                 </>
