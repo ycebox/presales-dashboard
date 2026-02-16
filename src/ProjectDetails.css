@@ -1,11 +1,10 @@
-/* ProjectDetails.css - clean light theme, aligned with updated ProjectDetails.js */
+/* ProjectDetails.css - aligned with the new minimal header + read-only Project info */
 
 .project-details-container {
   --bg: #f6f9ff;
   --card: #ffffff;
   --text: #0f172a;
   --muted: #475569;
-  --muted-2: #64748b;
   --border: rgba(15, 23, 42, 0.10);
   --primary: #1d4ed8;
   --primary-strong: #1e3a8a;
@@ -26,13 +25,8 @@
     radial-gradient(circle at 15% 90%, rgba(245, 158, 11, 0.06), transparent 50%);
 }
 
-/* Basic resets inside container */
 .project-details-container * {
   box-sizing: border-box;
-}
-
-.project-details-container button {
-  font-family: inherit;
 }
 
 /* ---------- Loading / Error ---------- */
@@ -164,7 +158,7 @@
   color: #7f1d1d;
 }
 
-/* ---------- Header / Hero ---------- */
+/* ---------- Header / Hero (minimal) ---------- */
 .project-header {
   margin-bottom: 18px;
 }
@@ -208,7 +202,6 @@
   color: var(--text);
 }
 
-/* action buttons in header */
 .inline-actions {
   display: inline-flex;
   gap: 10px;
@@ -216,7 +209,6 @@
   flex-wrap: wrap;
 }
 
-/* pills */
 .pill {
   display: inline-flex;
   align-items: center;
@@ -228,7 +220,7 @@
   color: var(--muted);
 }
 
-/* badges */
+/* Header badges */
 .hero-badges {
   display: flex;
   flex-wrap: wrap;
@@ -238,8 +230,7 @@
 
 .stage-badge,
 .health-badge,
-.metric-badge,
-.deal-badge {
+.metric-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -263,12 +254,6 @@
   background: var(--ok-soft);
   border-color: rgba(16, 185, 129, 0.28);
   color: #065f46;
-}
-
-.health-badge.health-amber {
-  background: var(--warn-soft);
-  border-color: rgba(245, 158, 11, 0.30);
-  color: #7c2d12;
 }
 
 .health-badge.health-red {
@@ -301,43 +286,7 @@
   color: var(--primary-strong);
 }
 
-.deal-badge {
-  background: var(--primary-soft);
-  border-color: rgba(29, 78, 216, 0.22);
-  color: var(--primary-strong);
-}
-
-/* ---------- Overview Grid (this was missing in your file) ---------- */
-.overview-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.overview-item {
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.02);
-  padding: 10px 12px;
-}
-
-.overview-label {
-  font-size: 12px;
-  font-weight: 900;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-
-.overview-value {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--text);
-  white-space: pre-wrap;
-  line-height: 1.35;
-}
-
-/* ---------- Layout Grid ---------- */
+/* ---------- Layout ---------- */
 .main-content-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -377,6 +326,108 @@
   letter-spacing: -0.01em;
 }
 
+/* ---------- Read-only Project Info (NEW) ---------- */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.info-block {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.02);
+  padding: 12px;
+  min-width: 0;
+}
+
+.info-title {
+  font-size: 13px;
+  font-weight: 950;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.info-row:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.info-row-full {
+  grid-template-columns: 160px 1fr;
+}
+
+.info-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--muted);
+}
+
+.info-value {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  min-width: 0;
+}
+
+.info-text {
+  font-weight: 700;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.tag-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(29, 78, 216, 0.08);
+  color: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.flag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(15, 23, 42, 0.04);
+  margin-right: 8px;
+}
+
+.flag-pill.good {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.26);
+  color: #065f46;
+}
+
+.flag-pill.bad {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.26);
+  color: #7f1d1d;
+}
+
 /* ---------- Forms ---------- */
 .project-edit-grid {
   display: grid;
@@ -398,9 +449,6 @@
   font-size: 12px;
   font-weight: 900;
   color: var(--muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .form-input,
@@ -425,13 +473,6 @@
   resize: vertical;
 }
 
-.muted {
-  color: var(--muted);
-  margin: 0;
-  line-height: 1.4;
-}
-
-/* ---------- Modules selector ---------- */
 .modules-box {
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -469,7 +510,6 @@
   border-radius: 12px;
   cursor: pointer;
   font-weight: 800;
-  color: var(--text);
 }
 
 .module-row:hover {
@@ -487,7 +527,7 @@
   justify-content: flex-end;
 }
 
-/* ---------- Lists / Tasks ---------- */
+/* ---------- Tasks list ---------- */
 .list {
   display: flex;
   flex-direction: column;
@@ -557,10 +597,9 @@
 .list-item-actions {
   display: flex;
   align-items: flex-start;
-  gap: 8px; /* this gap was missing */
+  gap: 8px;
 }
 
-/* Subtasks */
 .subtask-list {
   margin-left: 18px;
   padding-left: 14px;
@@ -576,7 +615,7 @@
   padding: 10px 12px;
 }
 
-/* Tags */
+/* tags */
 .status-tag,
 .type-tag {
   display: inline-flex;
@@ -614,22 +653,14 @@
   color: #334155;
 }
 
-/* Task stats row (missing before) */
-.task-stats-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-/* Divider */
+/* divider */
 .divider-line {
   height: 1px;
   background: rgba(15, 23, 42, 0.08);
   margin: 6px 0;
 }
 
-/* ---------- Empty state ---------- */
+/* empty state */
 .empty-state {
   padding: 16px;
   border: 1px dashed var(--border);
@@ -639,7 +670,7 @@
   background: rgba(255, 255, 255, 0.6);
 }
 
-/* ---------- Activity timeline (missing before) ---------- */
+/* ---------- Activity timeline ---------- */
 .activity-timeline {
   display: flex;
   flex-direction: column;
@@ -698,7 +729,6 @@
 
 .activity-type {
   font-weight: 900;
-  color: var(--text);
 }
 
 .activity-date {
@@ -723,12 +753,11 @@
 .activity-notes {
   margin-top: 8px;
   font-size: 13px;
-  color: var(--text);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-/* ---------- Quick flags (missing before) ---------- */
+/* ---------- Quick flags ---------- */
 .quick-flags {
   display: flex;
   flex-direction: column;
@@ -754,7 +783,6 @@
 .flag-value {
   font-size: 12px;
   font-weight: 900;
-  color: var(--text);
 }
 
 .flag-value.good { color: #065f46; }
@@ -808,17 +836,29 @@
 }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 980px) {
-  .main-content-grid {
+@media (max-width: 1100px) {
+  .info-grid {
     grid-template-columns: 1fr;
   }
 
-  .overview-grid {
+  .info-row {
+    grid-template-columns: 140px 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .main-content-grid {
     grid-template-columns: 1fr;
   }
 
   .subtask-list {
     margin-left: 10px;
     padding-left: 10px;
+  }
+}
+
+@media (max-width: 520px) {
+  .info-row {
+    grid-template-columns: 1fr;
   }
 }
