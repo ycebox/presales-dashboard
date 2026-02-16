@@ -1,50 +1,35 @@
-// ProjectDetails.js
-// Updated to support:
-// - projects table new columns: foreseen_closing_date, contract_signed_date, is_inactive, last_activity_at
-// - project_activities table for activity history
-// - v_projects_status view for computed inactive flag (is_inactive_computed)
-
-import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 import "./ProjectDetails.css";
 import TaskModal from "./TaskModal";
 import {
-  FaTasks,
-  FaBookOpen,
-  FaEdit,
-  FaSave,
-  FaTimes,
-  FaPlus,
-  FaInfo,
-  FaTrash,
-  FaUsers,
   FaCalendarAlt,
-  FaDollarSign,
-  FaChartLine,
   FaCheckCircle,
+  FaChevronDown,
+  FaChevronRight,
   FaClock,
+  FaDollarSign,
+  FaEdit,
   FaExclamationTriangle,
   FaEye,
   FaEyeSlash,
-  FaBullseye,
-  FaChevronRight,
-  FaChevronDown,
   FaHistory,
+  FaInfo,
+  FaPlus,
+  FaSave,
+  FaTasks,
+  FaTimes,
+  FaTrash,
+  FaUsers,
+  FaChartLine,
 } from "react-icons/fa";
 
-// ---------- Helpers ----------
+/* ---------------- Helpers ---------------- */
 const safeLower = (v) => (v ?? "").toString().trim().toLowerCase();
-
-const formatMoney = (v) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "-";
-  return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-};
 
 const asDateInput = (value) => {
   if (!value) return "";
-  // Supabase date may come as "YYYY-MM-DD"
   if (typeof value === "string" && value.length >= 10) return value.slice(0, 10);
   try {
     const d = new Date(value);
@@ -60,30 +45,28 @@ const asDateTimeInput = (value) => {
   try {
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "";
-    // datetime-local wants "YYYY-MM-DDTHH:mm"
-    const iso = d.toISOString();
-    return iso.slice(0, 16);
+    return d.toISOString().slice(0, 16);
   } catch {
     return "";
   }
 };
 
 const formatNiceDate = (value) => {
-  if (!value) return "-";
+  if (!value) return "—";
   try {
     const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "-";
+    if (Number.isNaN(d.getTime())) return "—";
     return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   } catch {
-    return "-";
+    return "—";
   }
 };
 
 const formatNiceDateTime = (value) => {
-  if (!value) return "-";
+  if (!value) return "—";
   try {
     const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "-";
+    if (Number.isNaN(d.getTime())) return "—";
     return d.toLocaleString(undefined, {
       year: "numeric",
       month: "short",
@@ -92,8 +75,14 @@ const formatNiceDateTime = (value) => {
       minute: "2-digit",
     });
   } catch {
-    return "-";
+    return "—";
   }
+};
+
+const formatMoney = (v) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 };
 
 const isCompletedStatus = (status) => {
@@ -118,16 +107,18 @@ const stageIsClosedLike = (stage) => {
 };
 
 const computeHealth = ({ is_inactive, is_inactive_computed, sales_stage, current_status }) => {
-  // Manual override wins
   if (is_inactive === true) return { label: "Inactive (manual)", cls: "health-red" };
   if (is_inactive_computed === true) return { label: "Inactive", cls: "health-red" };
-
-  // fallback heuristics (in case view isn't used)
   if (stageIsClosedLike(sales_stage)) return { label: "Inactive", cls: "health-red" };
   if (safeLower(current_status).includes("inactive")) return { label: "Inactive", cls: "health-red" };
-
   return { label: "Active", cls: "health-green" };
 };
+
+const parseModules = (raw) =>
+  (raw || "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
 
 const groupTasks = (tasks) => {
   const parents = [];
@@ -148,7 +139,6 @@ const groupTasks = (tasks) => {
     childrenByParent[k].sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
   });
 
-  // Detect "child whose parent isn't in list" -> show as orphan
   const parentIds = new Set(parents.map((p) => p.id));
   Object.keys(childrenByParent).forEach((pid) => {
     if (!parentIds.has(pid)) {
@@ -160,7 +150,7 @@ const groupTasks = (tasks) => {
   return { parents, childrenByParent, orphans };
 };
 
-// ---------- Activity Modal ----------
+/* ---------------- Activity Modal ---------------- */
 const ActivityModal = ({ isOpen, onClose, onSave, editingActivity }) => {
   const [activityDate, setActivityDate] = useState("");
   const [activityType, setActivityType] = useState("");
@@ -178,7 +168,7 @@ const ActivityModal = ({ isOpen, onClose, onSave, editingActivity }) => {
     setCreatedBy(editingActivity?.created_by || "");
   }, [isOpen, editingActivity]);
 
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!notes.trim()) {
       alert("Notes are required.");
@@ -216,7 +206,7 @@ const ActivityModal = ({ isOpen, onClose, onSave, editingActivity }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-body">
+        <form className="modal-body" onSubmit={submit}>
           <div className="project-edit-grid">
             <div className="form-group">
               <label className="form-label">Activity date</label>
@@ -275,9 +265,9 @@ const ActivityModal = ({ isOpen, onClose, onSave, editingActivity }) => {
   );
 };
 
-// ---------- Loading/Error ----------
+/* ---------------- Page States ---------------- */
 const LoadingState = () => (
-  <div className="project-details-container theme-light">
+  <div className="project-details-container">
     <div className="loading-state">
       <div className="spinner" />
       <div className="loading-text">
@@ -289,14 +279,13 @@ const LoadingState = () => (
 );
 
 const ErrorState = ({ message, onBack }) => (
-  <div className="project-details-container theme-light">
+  <div className="project-details-container">
     <div className="error-state">
       <FaExclamationTriangle />
       <div>
         <h2>Something went wrong</h2>
         <p>{message || "Failed to load project."}</p>
         <button className="action-button secondary" onClick={onBack} type="button">
-          <FaChevronRight />
           <span>Back</span>
         </button>
       </div>
@@ -304,142 +293,61 @@ const ErrorState = ({ message, onBack }) => (
   </div>
 );
 
-// ---------- Data Hook ----------
-const useProjectData = (projectId) => {
+/* ---------------- Main Component ---------------- */
+export default function ProjectDetails() {
+  const { projectId } = useParams();
+  const navigate = useNavigate();
+
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loadError, setLoadError] = useState(null);
 
-  const fetchTasks = async () => {
-    try {
-      const { data, error: qErr } = await supabase
-        .from("project_tasks")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: false });
-
-      if (qErr) throw qErr;
-      setTasks(data || []);
-    } catch (err) {
-      console.error("Error fetching tasks:", err);
-    }
-  };
-
-  const fetchActivities = async () => {
-    try {
-      const { data, error: qErr } = await supabase
-        .from("project_activities")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("activity_date", { ascending: false });
-
-      if (qErr) throw qErr;
-      setActivities(data || []);
-    } catch (err) {
-      console.error("Error fetching activities:", err);
-    }
-  };
-
-  const fetchProjectDetails = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Prefer view for computed status
-      let data = null;
-      let qErr = null;
-
-      const viewResp = await supabase.from("v_projects_status").select("*").eq("id", projectId).single();
-      data = viewResp.data;
-      qErr = viewResp.error;
-
-      // fallback to projects if view not available / permission issues
-      if (qErr) {
-        const fallbackResp = await supabase.from("projects").select("*").eq("id", projectId).single();
-        if (fallbackResp.error) throw fallbackResp.error;
-        data = fallbackResp.data;
-      }
-
-      setProject(data);
-      await Promise.all([fetchTasks(), fetchActivities()]);
-    } catch (err) {
-      console.error("Error fetching project:", err);
-      setError(err.message || "Failed to load project");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (projectId) fetchProjectDetails();
-   }, [projectId]);
-
-  return {
-    project,
-    setProject,
-    tasks,
-    activities,
-    loading,
-    error,
-    fetchTasks,
-    fetchActivities,
-    refresh: fetchProjectDetails,
-  };
-};
-
-function ProjectDetails() {
-  const { projectId } = useParams();
-  const navigate = useNavigate();
-
-  const { project, setProject, tasks, activities, loading, error, fetchTasks, fetchActivities, refresh } =
-    useProjectData(projectId);
-
-  const [isEditing, setIsEditing] = useState(false);
+  // Project info edit mode
+  const [isEditingProject, setIsEditingProject] = useState(false);
   const [editProject, setEditProject] = useState({});
-  const [saving, setSaving] = useState(false);
+  const [savingProject, setSavingProject] = useState(false);
 
+  // Task modal
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [expandedParents, setExpandedParents] = useState({});
 
+  // Activity modal
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
 
-  const [showCompleted, setShowCompleted] = useState(false);
-
-  const [modulesDraft, setModulesDraft] = useState("");
-
-  // SmartVista Modules catalog (multi-select)
-  const [moduleOptions, setModuleOptions] = useState([]);
-  const [selectedModules, setSelectedModules] = useState([]);
-  const [modulesOpen, setModulesOpen] = useState(false);
-  const [moduleSearch, setModuleSearch] = useState("");
-
-  // dropdown options
+  // Dropdown options
   const [presalesResources, setPresalesResources] = useState([]);
   const [taskTypes, setTaskTypes] = useState([]);
   const [taskTypeDefaultsMap, setTaskTypeDefaultsMap] = useState({});
-
   const [countryOptions, setCountryOptions] = useState([]);
   const [accountManagerOptions, setAccountManagerOptions] = useState([]);
   const [salesStageOptions, setSalesStageOptions] = useState([]);
+  const [moduleOptions, setModuleOptions] = useState([]);
 
-  const [expandedParents, setExpandedParents] = useState({});
+  // Modules editor state
+  const [modulesOpen, setModulesOpen] = useState(false);
+  const [moduleSearch, setModuleSearch] = useState("");
+  const [selectedModules, setSelectedModules] = useState([]);
+  const [modulesDraft, setModulesDraft] = useState("");
 
-  // Customer UUID lookup (so /customer/:customerId works)
+  // Customer id lookup
   const [customerId, setCustomerId] = useState(null);
 
-  // Load dropdown lists
+  /* ---------- Load dropdown lists ---------- */
   useEffect(() => {
     const loadLists = async () => {
       try {
         const [
-          { data: pData, error: pErr },
-          { data: tData, error: tErr },
-          { data: mData, error: mErr },
-          { data: cData, error: cErr },
-          { data: aData, error: aErr },
-          { data: sData, error: sErr },
+          pRes,
+          tRes,
+          mRes,
+          cRes,
+          aRes,
+          sRes,
         ] = await Promise.all([
           supabase.from("presales_resources").select("name").order("name"),
           supabase
@@ -450,7 +358,7 @@ function ProjectDetails() {
             .order("name", { ascending: true }),
           supabase.from("smartvista_modules_catalog").select("name").order("name"),
           supabase.from("countries").select("name").order("name"),
-          supabase.from("account_managers").select("id, name").order("name"),
+          supabase.from("account_managers").select("name").order("name"),
           supabase
             .from("sales_stages")
             .select("name, sort_order, is_active")
@@ -459,84 +367,137 @@ function ProjectDetails() {
             .order("name", { ascending: true }),
         ]);
 
-        if (pErr) console.warn("presales_resources load error:", pErr);
-        if (tErr) console.warn("task_types load error:", tErr);
-        if (mErr) console.warn("smartvista_modules_catalog load error:", mErr);
-        if (cErr) console.warn("countries load error:", cErr);
-        if (aErr) console.warn("account_managers load error:", aErr);
-        if (sErr) console.warn("sales_stages load error:", sErr);
+        if (!pRes.error) setPresalesResources((pRes.data || []).map((x) => x.name).filter(Boolean));
+        if (!mRes.error) setModuleOptions((mRes.data || []).map((x) => x.name).filter(Boolean));
+        if (!cRes.error) setCountryOptions((cRes.data || []).map((x) => x.name).filter(Boolean));
+        if (!aRes.error) setAccountManagerOptions((aRes.data || []).map((x) => x.name).filter(Boolean));
+        if (!sRes.error) setSalesStageOptions((sRes.data || []).map((x) => x.name).filter(Boolean));
 
-        setPresalesResources((pData || []).map((x) => x.name).filter(Boolean));
+        if (!tRes.error) {
+          const types = (tRes.data || []).map((x) => x.name).filter(Boolean);
+          setTaskTypes(types);
 
-        const types = (tData || []).map((x) => x.name).filter(Boolean);
-        setTaskTypes(types);
-
-        const defaults = {};
-        (tData || []).forEach((row) => {
-          if (!row?.name) return;
-          defaults[row.name] = {
-            base_hours: row.base_hours ?? null,
-            buffer_pct: row.buffer_pct ?? null,
-            focus_hours_per_day: row.focus_hours_per_day ?? null,
-            review_buffer_days: row.review_buffer_days ?? null,
-          };
-        });
-        setTaskTypeDefaultsMap(defaults);
-
-        setModuleOptions((mData || []).map((x) => x.name).filter(Boolean));
-        setCountryOptions((cData || []).map((x) => x.name).filter(Boolean));
-        setAccountManagerOptions((aData || []).map((x) => x.name).filter(Boolean));
-        setSalesStageOptions((sData || []).map((x) => x.name).filter(Boolean));
+          const defaults = {};
+          (tRes.data || []).forEach((row) => {
+            if (!row?.name) return;
+            defaults[row.name] = {
+              base_hours: row.base_hours ?? null,
+              buffer_pct: row.buffer_pct ?? null,
+              focus_hours_per_day: row.focus_hours_per_day ?? null,
+              review_buffer_days: row.review_buffer_days ?? null,
+            };
+          });
+          setTaskTypeDefaultsMap(defaults);
+        }
       } catch (e) {
         console.warn("List load error:", e);
       }
     };
-
     loadLists();
   }, []);
 
-  // Customer ID lookup
+  /* ---------- Fetchers ---------- */
+  const fetchTasks = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const { data, error } = await supabase
+        .from("project_tasks")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (e) {
+      console.error("Fetch tasks error:", e);
+    }
+  }, [projectId]);
+
+  const fetchActivities = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const { data, error } = await supabase
+        .from("project_activities")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("activity_date", { ascending: false });
+
+      if (error) throw error;
+      setActivities(data || []);
+    } catch (e) {
+      console.error("Fetch activities error:", e);
+    }
+  }, [projectId]);
+
+  const fetchProject = useCallback(async () => {
+    if (!projectId) return;
+    setLoading(true);
+    setLoadError(null);
+
+    try {
+      // Prefer view for computed status, fallback to projects
+      const viewResp = await supabase.from("v_projects_status").select("*").eq("id", projectId).single();
+      if (!viewResp.error) {
+        setProject(viewResp.data);
+      } else {
+        const baseResp = await supabase.from("projects").select("*").eq("id", projectId).single();
+        if (baseResp.error) throw baseResp.error;
+        setProject(baseResp.data);
+      }
+
+      await Promise.all([fetchTasks(), fetchActivities()]);
+    } catch (e) {
+      console.error("Fetch project error:", e);
+      setLoadError(e?.message || "Failed to load project.");
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId, fetchTasks, fetchActivities]);
+
   useEffect(() => {
-    const sync = async () => {
+    fetchProject();
+  }, [fetchProject]);
+
+  /* ---------- Sync customer id ---------- */
+  useEffect(() => {
+    const syncCustomer = async () => {
       setCustomerId(null);
       const name = (project?.customer_name || "").trim();
       if (!name) return;
 
       try {
-        const { data, error: qErr } = await supabase
+        const { data, error } = await supabase
           .from("customers")
           .select("id, customer_name")
           .eq("is_archived", false)
           .eq("customer_name", name)
           .maybeSingle();
 
-        if (qErr) throw qErr;
+        if (error) throw error;
         setCustomerId(data?.id || null);
       } catch (e) {
-        console.warn("Customer ID lookup failed:", e);
-        setCustomerId(null);
+        console.warn("Customer lookup error:", e);
       }
     };
-    if (project?.customer_name) sync();
+
+    if (project?.customer_name) syncCustomer();
   }, [project?.customer_name]);
 
-  // Keep SmartVista modules selection synced
+  /* ---------- Sync modules state ---------- */
   useEffect(() => {
-    const raw = project?.smartvista_modules || "";
-    const list = raw
-      .split(",")
-      .map((x) => x.trim())
-      .filter(Boolean);
+    const list = parseModules(project?.smartvista_modules);
     setSelectedModules(list);
     setModulesDraft(list.join(", "));
   }, [project?.smartvista_modules]);
 
-  // Task stats
+  /* ---------- Derived: tasks grouping & stats ---------- */
+  const { parents, childrenByParent, orphans } = useMemo(() => groupTasks(tasks), [tasks]);
+
   const taskStats = useMemo(() => {
     const list = tasks || [];
     const open = list.filter((t) => !isCompletedStatus(t.status));
     const completed = list.filter((t) => isCompletedStatus(t.status));
-    const unassigned = open.filter((t) => !(t.assignee || "").trim());
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -547,25 +508,13 @@ function ProjectDetails() {
       return d.getTime() < today.getTime();
     });
 
-    const due7 = open.filter((t) => {
-      if (!t.due_date) return false;
-      const d = new Date(t.due_date);
-      d.setHours(0, 0, 0, 0);
-      const diffDays = Math.floor((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return diffDays >= 0 && diffDays <= 7;
-    });
-
     return {
       open: open.length,
-      completed: completed.length,
       overdue: overdue.length,
-      due7: due7.length,
-      unassigned: unassigned.length,
+      completed: completed.length,
       total: list.length,
     };
   }, [tasks]);
-
-  const { parents, childrenByParent, orphans } = useMemo(() => groupTasks(tasks), [tasks]);
 
   const visibleParents = useMemo(() => {
     if (showCompleted) return parents;
@@ -577,33 +526,34 @@ function ProjectDetails() {
     return orphans.filter((t) => !isCompletedStatus(t.status));
   }, [orphans, showCompleted]);
 
-  const health = useMemo(() => {
-    if (!project) return { label: "-", cls: "health-amber" };
-    return computeHealth(project);
-  }, [project]);
+  const health = useMemo(() => (project ? computeHealth(project) : { label: "—", cls: "health-amber" }), [project]);
 
   const stageBadgeClass = useMemo(() => {
-    const s = safeLower(project?.sales_stage);
-    if (!s) return "stage-badge stage-active";
-    if (stageIsClosedLike(project?.sales_stage)) return "metric-badge metric-muted";
+    if (!project?.sales_stage) return "stage-badge stage-active";
+    if (stageIsClosedLike(project.sales_stage)) return "metric-badge metric-muted";
     return "stage-badge stage-active";
   }, [project?.sales_stage]);
 
-  // Editing
-  const startEdit = () => {
+  /* ---------- Project info: edit mode ---------- */
+  const startEditProject = () => {
     if (!project) return;
-    setIsEditing(true);
+    setIsEditingProject(true);
+    setModulesOpen(false);
+    setModuleSearch("");
+
+    const foreseen = project.foreseen_closing_date || project.due_date;
+
     setEditProject({
       ...project,
-      // normalize dates into YYYY-MM-DD for inputs
-      foreseen_closing_date: asDateInput(project.foreseen_closing_date || project.due_date),
+      foreseen_closing_date: asDateInput(foreseen),
       contract_signed_date: asDateInput(project.contract_signed_date),
       last_activity_at: project.last_activity_at ? asDateTimeInput(project.last_activity_at) : "",
+      deal_value: project.deal_value ?? "",
     });
   };
 
-  const cancelEdit = () => {
-    setIsEditing(false);
+  const cancelEditProject = () => {
+    setIsEditingProject(false);
     setEditProject({});
     setModulesOpen(false);
     setModuleSearch("");
@@ -611,55 +561,75 @@ function ProjectDetails() {
 
   const saveProject = async () => {
     if (!project) return;
-    setSaving(true);
+    setSavingProject(true);
+
     try {
       const payload = {
         customer_name: editProject.customer_name ?? project.customer_name,
-        account_manager: editProject.account_manager || null,
-        scope: editProject.scope || null,
-        deal_value: editProject.deal_value === "" ? null : editProject.deal_value ?? null,
-        product: editProject.product || null,
-        backup_presales: editProject.backup_presales || null,
-        primary_presales: editProject.primary_presales || null,
-        sales_stage: editProject.sales_stage || null,
-        remarks: editProject.remarks || null,
         project_name: editProject.project_name || null,
-        project_type: editProject.project_type || null,
-        current_status: editProject.current_status || null,
         country: editProject.country || null,
-        is_corporate: !!editProject.is_corporate,
-        bid_manager_required: !!editProject.bid_manager_required,
-        bid_manager: editProject.bid_manager || null,
-
-        // New fields
+        account_manager: editProject.account_manager || null,
+        primary_presales: editProject.primary_presales || null,
+        backup_presales: editProject.backup_presales || null,
+        sales_stage: editProject.sales_stage || null,
+        current_status: editProject.current_status || null,
+        product: editProject.product || null,
+        project_type: editProject.project_type || null,
+        scope: editProject.scope || null,
+        remarks: editProject.remarks || null,
+        smartvista_modules: (selectedModules || []).join(", "),
+        deal_value: editProject.deal_value === "" ? null : Number(editProject.deal_value),
         foreseen_closing_date: editProject.foreseen_closing_date || null,
         contract_signed_date: editProject.contract_signed_date || null,
         is_inactive: !!editProject.is_inactive,
         last_activity_at: editProject.last_activity_at ? new Date(editProject.last_activity_at).toISOString() : null,
 
-        // keep old due_date in sync if you still use it elsewhere (optional)
+        // optional: keep due_date aligned (since you still have it in schema)
         due_date: editProject.foreseen_closing_date || project.due_date || null,
 
-        // smartvista_modules from selectedModules
-        smartvista_modules: (selectedModules || []).join(", "),
+        bid_manager_required: !!editProject.bid_manager_required,
+        bid_manager: editProject.bid_manager || null,
       };
 
-      const { error: qErr } = await supabase.from("projects").update(payload).eq("id", project.id);
-      if (qErr) throw qErr;
+      const { error } = await supabase.from("projects").update(payload).eq("id", project.id);
+      if (error) throw error;
 
-      // Refresh so computed view fields update too
-      await refresh();
-      setIsEditing(false);
+      await fetchProject();
+      setIsEditingProject(false);
       setEditProject({});
     } catch (e) {
       console.error("Save project error:", e);
       alert(`Failed to save project: ${e?.message || "Unknown error"}`);
     } finally {
-      setSaving(false);
+      setSavingProject(false);
     }
   };
 
-  // Tasks
+  /* ---------- Modules picker ---------- */
+  const filteredModules = useMemo(() => {
+    const q = safeLower(moduleSearch);
+    if (!q) return moduleOptions;
+    return (moduleOptions || []).filter((m) => safeLower(m).includes(q));
+  }, [moduleOptions, moduleSearch]);
+
+  const toggleModule = (name) => {
+    setSelectedModules((prev) => {
+      const set = new Set(prev || []);
+      if (set.has(name)) set.delete(name);
+      else set.add(name);
+      const next = Array.from(set);
+      setModulesDraft(next.join(", "));
+      return next;
+    });
+  };
+
+  /* ---------- Customer navigation ---------- */
+  const goToCustomer = () => {
+    if (customerId) navigate(`/customer/${customerId}`);
+    else alert("Customer record not found in customers table.");
+  };
+
+  /* ---------- Tasks: open modal ---------- */
   const openNewTask = () => {
     setEditingTask(null);
     setShowTaskModal(true);
@@ -675,18 +645,67 @@ function ProjectDetails() {
     setEditingTask(null);
   };
 
-  const saveTaskModal = async (payload) => {
-    // TaskModal in your app likely handles insert/update itself; but keep this safe:
-    // If your TaskModal expects onSave and does update, keep it consistent.
-    // Here we assume TaskModal returns updated payload and we refresh tasks.
-    await fetchTasks();
+  // Build parent task options (top-level tasks only)
+  const parentTaskOptions = useMemo(() => {
+    return (parents || []).map((t) => ({
+      value: t.id,
+      label: t.description || "(Untitled task)",
+    }));
+  }, [parents]);
+
+  const editingHasChildren = useMemo(() => {
+    if (!editingTask?.id) return false;
+    return (childrenByParent[editingTask.id] || []).length > 0;
+  }, [editingTask, childrenByParent]);
+
+  const onSaveTask = async (normalized) => {
+    // TaskModal DOES NOT save to DB; it calls onSave(normalized)
+    // So ProjectDetails must insert/update here.
+    try {
+      if (!project?.id) throw new Error("Project not loaded.");
+
+      const payload = {
+        project_id: project.id,
+        description: normalized.description ?? null,
+        status: normalized.status ?? "",
+        due_date: normalized.due_date || null,
+        notes: normalized.notes ?? null,
+        assignee: normalized.assignee ?? null,
+        start_date: normalized.start_date || null,
+        end_date: normalized.end_date || null,
+        estimated_hours:
+          normalized.estimated_hours === "" || normalized.estimated_hours == null
+            ? null
+            : Number(normalized.estimated_hours),
+        priority: normalized.priority ?? null,
+        task_type: normalized.task_type ?? null,
+        actual_hours:
+          normalized.actual_hours === "" || normalized.actual_hours == null ? null : Number(normalized.actual_hours),
+        parent_task_id: normalized.parent_task_id || null,
+        is_archived: normalized.is_archived ?? false,
+      };
+
+      if (editingTask?.id) {
+        const { error } = await supabase.from("project_tasks").update(payload).eq("id", editingTask.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("project_tasks").insert(payload);
+        if (error) throw error;
+      }
+
+      await fetchTasks();
+    } catch (e) {
+      console.error("Task save error:", e);
+      alert(`Failed to save task: ${e?.message || "Unknown error"}`);
+      throw e;
+    }
   };
 
   const deleteTask = async (taskId) => {
     if (!window.confirm("Delete this task?")) return;
     try {
-      const { error: qErr } = await supabase.from("project_tasks").delete().eq("id", taskId);
-      if (qErr) throw qErr;
+      const { error } = await supabase.from("project_tasks").delete().eq("id", taskId);
+      if (error) throw error;
       await fetchTasks();
     } catch (e) {
       console.error("Delete task error:", e);
@@ -698,7 +717,7 @@ function ProjectDetails() {
     setExpandedParents((prev) => ({ ...prev, [parentId]: !prev[parentId] }));
   };
 
-  // Activities
+  /* ---------- Activities ---------- */
   const openNewActivity = () => {
     setEditingActivity(null);
     setShowActivityModal(true);
@@ -714,33 +733,33 @@ function ProjectDetails() {
     setEditingActivity(null);
   };
 
-  const saveActivity = async (payload) => {
-    if (!project) return;
+  const onSaveActivity = async (payload) => {
+    if (!project?.id) return;
 
     if (editingActivity?.id) {
-      const { error: qErr } = await supabase.from("project_activities").update(payload).eq("id", editingActivity.id);
-      if (qErr) throw qErr;
+      const { error } = await supabase.from("project_activities").update(payload).eq("id", editingActivity.id);
+      if (error) throw error;
     } else {
-      const { error: qErr } = await supabase.from("project_activities").insert({ ...payload, project_id: project.id });
-      if (qErr) throw qErr;
+      const { error } = await supabase.from("project_activities").insert({ ...payload, project_id: project.id });
+      if (error) throw error;
     }
 
-    // Update last_activity_at on project using the activity date
+    // update last_activity_at from activity date
     try {
       const nextLast = payload.activity_date || new Date().toISOString();
       await supabase.from("projects").update({ last_activity_at: nextLast }).eq("id", project.id);
     } catch (e) {
-      console.warn("last_activity_at update failed (non-blocking):", e);
+      console.warn("last_activity_at update failed:", e);
     }
 
-    await Promise.all([fetchActivities(), refresh()]);
+    await Promise.all([fetchActivities(), fetchProject()]);
   };
 
   const deleteActivity = async (activityId) => {
     if (!window.confirm("Delete this activity?")) return;
     try {
-      const { error: qErr } = await supabase.from("project_activities").delete().eq("id", activityId);
-      if (qErr) throw qErr;
+      const { error } = await supabase.from("project_activities").delete().eq("id", activityId);
+      if (error) throw error;
       await fetchActivities();
     } catch (e) {
       console.error("Delete activity error:", e);
@@ -748,39 +767,412 @@ function ProjectDetails() {
     }
   };
 
-  // Modules filtering
-  const filteredModules = useMemo(() => {
-    const q = safeLower(moduleSearch);
-    if (!q) return moduleOptions;
-    return (moduleOptions || []).filter((m) => safeLower(m).includes(q));
-  }, [moduleOptions, moduleSearch]);
-
-  const toggleModule = (name) => {
-    setSelectedModules((prev) => {
-      const set = new Set(prev || []);
-      if (set.has(name)) set.delete(name);
-      else set.add(name);
-      return Array.from(set);
-    });
-  };
-
-  // Customer navigation
-  const goToCustomer = () => {
-    if (customerId) navigate(`/customer/${customerId}`);
-    else alert("Customer record not found (customers table).");
-  };
-
-  // ---------- Render ----------
+  /* ---------- Render guards ---------- */
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} onBack={() => navigate(-1)} />;
+  if (loadError) return <ErrorState message={loadError} onBack={() => navigate(-1)} />;
   if (!project) return <ErrorState message={"Project not found."} onBack={() => navigate(-1)} />;
 
+  const foreseen = project.foreseen_closing_date || project.due_date;
   const inactiveComputed = project.is_inactive_computed === true;
   const inactiveManual = project.is_inactive === true;
+  const modulesList = parseModules(project.smartvista_modules);
 
+  /* ---------- Read-only project info view ---------- */
+  const ProjectInfoReadOnly = () => (
+    <div className="info-grid">
+      <div className="info-block">
+        <div className="info-title">Ownership</div>
+        <div className="info-row">
+          <div className="info-label">Primary presales</div>
+          <div className="info-value">{project.primary_presales || "—"}</div>
+        </div>
+        <div className="info-row">
+          <div className="info-label">Backup presales</div>
+          <div className="info-value">{project.backup_presales || "—"}</div>
+        </div>
+        <div className="info-row">
+          <div className="info-label">Account manager</div>
+          <div className="info-value">{project.account_manager || "—"}</div>
+        </div>
+        <div className="info-row">
+          <div className="info-label">Bid manager</div>
+          <div className="info-value">
+            {project.bid_manager_required ? `Required • ${project.bid_manager || "Not assigned"}` : "Not required"}
+          </div>
+        </div>
+      </div>
+
+      <div className="info-block">
+        <div className="info-title">Commercial & timeline</div>
+        <div className="info-row">
+          <div className="info-label">Deal value</div>
+          <div className="info-value">{project.deal_value != null ? formatMoney(project.deal_value) : "—"}</div>
+        </div>
+        <div className="info-row">
+          <div className="info-label">Foreseen closing</div>
+          <div className="info-value">{formatNiceDate(foreseen)}</div>
+        </div>
+        <div className="info-row">
+          <div className="info-label">Contract signed</div>
+          <div className="info-value">{formatNiceDate(project.contract_signed_date)}</div>
+        </div>
+        <div className="info-row">
+          <div className="info-label">Last activity</div>
+          <div className="info-value">{formatNiceDateTime(project.last_activity_at)}</div>
+        </div>
+        <div className="info-row">
+          <div className="info-label">Inactive</div>
+          <div className="info-value">
+            <span className={`flag-pill ${inactiveComputed ? "bad" : "good"}`}>
+              Computed: {inactiveComputed ? "Yes" : "No"}
+            </span>
+            <span className={`flag-pill ${inactiveManual ? "bad" : "good"}`}>
+              Manual: {inactiveManual ? "Yes" : "No"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="info-block">
+        <div className="info-title">Project info</div>
+        <div className="info-row">
+          <div className="info-label">Customer</div>
+          <div className="info-value">{project.customer_name}</div>
+        </div>
+        <div className="info-row">
+          <div className="info-label">Country</div>
+          <div className="info-value">{project.country || "—"}</div>
+        </div>
+        <div className="info-row">
+          <div className="info-label">Project type</div>
+          <div className="info-value">{project.project_type || "—"}</div>
+        </div>
+        <div className="info-row">
+          <div className="info-label">Product</div>
+          <div className="info-value">{project.product || "—"}</div>
+        </div>
+
+        <div className="info-row info-row-full">
+          <div className="info-label">Modules</div>
+          <div className="info-value">
+            {modulesList.length ? (
+              <div className="tag-wrap">
+                {modulesList.map((m) => (
+                  <span key={m} className="tag">
+                    {m}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              "—"
+            )}
+          </div>
+        </div>
+
+        <div className="info-row info-row-full">
+          <div className="info-label">Scope</div>
+          <div className="info-value info-text">{project.scope || "—"}</div>
+        </div>
+
+        <div className="info-row info-row-full">
+          <div className="info-label">Remarks</div>
+          <div className="info-value info-text">{project.remarks || "—"}</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ---------- Edit project info view ---------- */
+  const ProjectInfoEdit = () => (
+    <div className="project-edit-grid">
+      <div className="form-group">
+        <label className="form-label">Project name</label>
+        <input
+          className="form-input"
+          value={editProject.project_name || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, project_name: e.target.value }))}
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Country</label>
+        <select
+          className="form-input"
+          value={editProject.country || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, country: e.target.value }))}
+        >
+          <option value="">—</option>
+          {countryOptions.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Account manager</label>
+        <select
+          className="form-input"
+          value={editProject.account_manager || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, account_manager: e.target.value }))}
+        >
+          <option value="">—</option>
+          {accountManagerOptions.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Primary presales</label>
+        <select
+          className="form-input"
+          value={editProject.primary_presales || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, primary_presales: e.target.value }))}
+        >
+          <option value="">—</option>
+          {presalesResources.map((x) => (
+            <option key={x} value={x}>
+              {x}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Backup presales</label>
+        <select
+          className="form-input"
+          value={editProject.backup_presales || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, backup_presales: e.target.value }))}
+        >
+          <option value="">—</option>
+          {presalesResources.map((x) => (
+            <option key={x} value={x}>
+              {x}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Sales stage</label>
+        <select
+          className="form-input"
+          value={editProject.sales_stage || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, sales_stage: e.target.value }))}
+        >
+          <option value="">—</option>
+          {salesStageOptions.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Deal value</label>
+        <input
+          className="form-input"
+          type="number"
+          value={editProject.deal_value ?? ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, deal_value: e.target.value }))}
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Foreseen closing date</label>
+        <input
+          className="form-input"
+          type="date"
+          value={editProject.foreseen_closing_date || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, foreseen_closing_date: e.target.value }))}
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Contract signed date</label>
+        <input
+          className="form-input"
+          type="date"
+          value={editProject.contract_signed_date || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, contract_signed_date: e.target.value }))}
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Last activity (timestamp)</label>
+        <input
+          className="form-input"
+          type="datetime-local"
+          value={editProject.last_activity_at || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, last_activity_at: e.target.value }))}
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Inactive (manual override)</label>
+        <select
+          className="form-input"
+          value={editProject.is_inactive ? "yes" : "no"}
+          onChange={(e) => setEditProject((p) => ({ ...p, is_inactive: e.target.value === "yes" }))}
+        >
+          <option value="no">No</option>
+          <option value="yes">Yes</option>
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Project type</label>
+        <input
+          className="form-input"
+          value={editProject.project_type || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, project_type: e.target.value }))}
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Product</label>
+        <input
+          className="form-input"
+          value={editProject.product || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, product: e.target.value }))}
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Bid manager required</label>
+        <select
+          className="form-input"
+          value={editProject.bid_manager_required ? "yes" : "no"}
+          onChange={(e) => setEditProject((p) => ({ ...p, bid_manager_required: e.target.value === "yes" }))}
+        >
+          <option value="no">No</option>
+          <option value="yes">Yes</option>
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Bid manager</label>
+        <input
+          className="form-input"
+          value={editProject.bid_manager || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, bid_manager: e.target.value }))}
+          placeholder="Name"
+        />
+      </div>
+
+      <div className="form-group form-group-full">
+        <label className="form-label">SmartVista modules</label>
+        <div className="modules-box">
+          <div className="modules-top">
+            <input
+              className="form-input"
+              value={modulesDraft}
+              onChange={(e) => {
+                setModulesDraft(e.target.value);
+              }}
+              placeholder="Comma-separated modules"
+            />
+            <button
+              type="button"
+              className="filter-button"
+              onClick={() => setModulesOpen((v) => !v)}
+              title="Open module selector"
+            >
+              {modulesOpen ? <FaChevronDown /> : <FaChevronRight />}
+              <span>Select</span>
+            </button>
+          </div>
+
+          {modulesOpen ? (
+            <div className="modules-panel">
+              <input
+                className="form-input"
+                value={moduleSearch}
+                onChange={(e) => setModuleSearch(e.target.value)}
+                placeholder="Search modules..."
+              />
+
+              <div className="modules-list">
+                {filteredModules.length === 0 ? (
+                  <div className="empty-state">No matching modules.</div>
+                ) : (
+                  filteredModules.map((m) => {
+                    const checked = selectedModules.includes(m);
+                    return (
+                      <label key={m} className={`module-row ${checked ? "checked" : ""}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleModule(m)} />
+                        <span>{m}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="modules-actions">
+                <button
+                  type="button"
+                  className="action-button secondary"
+                  onClick={() => {
+                    const list = (modulesDraft || "")
+                      .split(",")
+                      .map((x) => x.trim())
+                      .filter(Boolean);
+                    const next = Array.from(new Set(list));
+                    setSelectedModules(next);
+                    setModulesDraft(next.join(", "));
+                  }}
+                >
+                  <FaSave />
+                  <span>Sync from text</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="action-button secondary"
+                  onClick={() => {
+                    setSelectedModules([]);
+                    setModulesDraft("");
+                  }}
+                >
+                  <FaTimes />
+                  <span>Clear</span>
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="form-group form-group-full">
+        <label className="form-label">Scope</label>
+        <textarea
+          className="form-textarea"
+          value={editProject.scope || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, scope: e.target.value }))}
+        />
+      </div>
+
+      <div className="form-group form-group-full">
+        <label className="form-label">Remarks</label>
+        <textarea
+          className="form-textarea"
+          value={editProject.remarks || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, remarks: e.target.value }))}
+        />
+      </div>
+    </div>
+  );
+
+  /* ---------------- UI ---------------- */
   return (
-    <div className="project-details-container theme-light">
-      {/* Header / Hero */}
+    <div className="project-details-container">
+      {/* Header (minimal) */}
       <div className="project-header">
         <div className="project-hero">
           <div className="hero-title-line">
@@ -795,23 +1187,9 @@ function ProjectDetails() {
             </div>
 
             <div className="inline-actions">
-              {!isEditing ? (
-                <button className="action-button secondary" type="button" onClick={startEdit}>
-                  <FaEdit />
-                  <span>Edit</span>
-                </button>
-              ) : (
-                <>
-                  <button className="action-button secondary" type="button" onClick={cancelEdit} disabled={saving}>
-                    <FaTimes />
-                    <span>Cancel</span>
-                  </button>
-                  <button className="action-button primary" type="button" onClick={saveProject} disabled={saving}>
-                    <FaSave />
-                    <span>{saving ? "Saving..." : "Save"}</span>
-                  </button>
-                </>
-              )}
+              <button className="action-button secondary" type="button" onClick={() => navigate(-1)}>
+                <span>Back</span>
+              </button>
             </div>
           </div>
 
@@ -826,29 +1204,14 @@ function ProjectDetails() {
               <span>{health.label}</span>
             </span>
 
-            <span className="deal-badge">
-              <FaDollarSign />
-              <span>{project.deal_value ? formatMoney(project.deal_value) : "No deal value"}</span>
+            <span className="metric-badge metric-neutral">
+              <FaUsers />
+              <span>{project.primary_presales || "Primary: —"}</span>
             </span>
 
             <span className="metric-badge metric-neutral">
-              <FaUsers />
-              <span>Primary: {project.primary_presales || "—"}</span>
-            </span>
-
-            <span className="metric-badge metric-muted">
-              <FaUsers />
-              <span>Backup: {project.backup_presales || "—"}</span>
-            </span>
-
-            <span className="metric-badge metric-muted">
-              <FaBullseye />
-              <span>AM: {project.account_manager || "—"}</span>
-            </span>
-
-            <span className="metric-badge metric-neutral">
-              <FaClock />
-              <span>Foreseen: {formatNiceDate(project.foreseen_closing_date || project.due_date)}</span>
+              <FaCalendarAlt />
+              <span>Foreseen: {formatNiceDate(foreseen)}</span>
             </span>
 
             <span className="metric-badge metric-muted">
@@ -856,397 +1219,50 @@ function ProjectDetails() {
               <span>Contract: {formatNiceDate(project.contract_signed_date)}</span>
             </span>
 
-            <span className={`metric-badge ${taskStats.overdue ? "metric-danger" : taskStats.open ? "metric-warn" : "metric-muted"}`}>
+            <span className={`metric-badge ${taskStats.overdue ? "metric-danger" : "metric-warn"}`}>
               <FaTasks />
               <span>
                 Tasks: {taskStats.open} open{taskStats.overdue ? ` • ${taskStats.overdue} overdue` : ""}
               </span>
             </span>
-
-            {inactiveComputed ? (
-              <span className="metric-badge metric-danger">
-                <FaExclamationTriangle />
-                <span>Inactive (computed)</span>
-              </span>
-            ) : null}
-
-            {inactiveManual ? (
-              <span className="metric-badge metric-danger">
-                <FaExclamationTriangle />
-                <span>Inactive (manual)</span>
-              </span>
-            ) : null}
-          </div>
-
-          <div className="overview-grid">
-            <div className="overview-item">
-              <div className="overview-label">Scope</div>
-              <div className="overview-value">{project.scope || "—"}</div>
-            </div>
-
-            <div className="overview-item">
-              <div className="overview-label">Product</div>
-              <div className="overview-value">{project.product || "—"}</div>
-            </div>
-
-            <div className="overview-item">
-              <div className="overview-label">Project type</div>
-              <div className="overview-value">{project.project_type || "—"}</div>
-            </div>
-
-            <div className="overview-item">
-              <div className="overview-label">Bid manager</div>
-              <div className="overview-value">
-                {project.bid_manager_required ? (
-                  <span>
-                    Required • <b>{project.bid_manager || "Not assigned"}</b>
-                  </span>
-                ) : (
-                  "Not required"
-                )}
-              </div>
-            </div>
-
-            <div className="overview-item">
-              <div className="overview-label">Last activity</div>
-              <div className="overview-value">{formatNiceDateTime(project.last_activity_at)}</div>
-            </div>
-
-            <div className="overview-item">
-              <div className="overview-label">Status (current_status)</div>
-              <div className="overview-value">{project.current_status || "—"}</div>
-            </div>
           </div>
         </div>
       </div>
 
+      {/* Content */}
       <div className="main-content-grid">
-        {/* Left/Main column */}
+        {/* Main column */}
         <div className="main-column">
-          {/* Project Details (edit) */}
+          {/* Project Information */}
           <div className="content-card">
             <div className="card-header">
               <div className="card-title">
                 <FaInfo />
                 <span>Project information</span>
               </div>
+
               <div className="inline-actions">
-                <span className="pill">{project.id}</span>
+                {!isEditingProject ? (
+                  <button className="action-button secondary" type="button" onClick={startEditProject}>
+                    <FaEdit />
+                    <span>Edit</span>
+                  </button>
+                ) : (
+                  <>
+                    <button className="action-button secondary" type="button" onClick={cancelEditProject} disabled={savingProject}>
+                      <FaTimes />
+                      <span>Cancel</span>
+                    </button>
+                    <button className="action-button primary" type="button" onClick={saveProject} disabled={savingProject}>
+                      <FaSave />
+                      <span>{savingProject ? "Saving..." : "Save"}</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
-            {!isEditing ? (
-              <p className="muted">
-                Tip: The key details are in the header. Click <b>Edit</b> if you want to update ownership, dates, stage,
-                modules, etc.
-              </p>
-            ) : (
-              <div className="project-edit-grid">
-                <div className="form-group">
-                  <label className="form-label">Project name</label>
-                  <input
-                    className="form-input"
-                    value={editProject.project_name || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, project_name: e.target.value }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Customer name</label>
-                  <input
-                    className="form-input"
-                    value={editProject.customer_name || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, customer_name: e.target.value }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Country</label>
-                  <select
-                    className="form-input"
-                    value={editProject.country || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, country: e.target.value }))}
-                  >
-                    <option value="">—</option>
-                    {(countryOptions || []).map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Account manager</label>
-                  <select
-                    className="form-input"
-                    value={editProject.account_manager || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, account_manager: e.target.value }))}
-                  >
-                    <option value="">—</option>
-                    {(accountManagerOptions || []).map((a) => (
-                      <option key={a} value={a}>
-                        {a}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Primary presales</label>
-                  <select
-                    className="form-input"
-                    value={editProject.primary_presales || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, primary_presales: e.target.value }))}
-                  >
-                    <option value="">—</option>
-                    {(presalesResources || []).map((x) => (
-                      <option key={x} value={x}>
-                        {x}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Backup presales</label>
-                  <select
-                    className="form-input"
-                    value={editProject.backup_presales || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, backup_presales: e.target.value }))}
-                  >
-                    <option value="">—</option>
-                    {(presalesResources || []).map((x) => (
-                      <option key={x} value={x}>
-                        {x}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Sales stage</label>
-                  <select
-                    className="form-input"
-                    value={editProject.sales_stage || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, sales_stage: e.target.value }))}
-                  >
-                    <option value="">—</option>
-                    {(salesStageOptions || []).map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Current status</label>
-                  <input
-                    className="form-input"
-                    value={editProject.current_status || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, current_status: e.target.value }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Deal value</label>
-                  <input
-                    className="form-input"
-                    type="number"
-                    value={editProject.deal_value ?? ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, deal_value: e.target.value }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Foreseen closing date</label>
-                  <input
-                    className="form-input"
-                    type="date"
-                    value={editProject.foreseen_closing_date || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, foreseen_closing_date: e.target.value }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Contract signed date</label>
-                  <input
-                    className="form-input"
-                    type="date"
-                    value={editProject.contract_signed_date || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, contract_signed_date: e.target.value }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Last activity (timestamp)</label>
-                  <input
-                    className="form-input"
-                    type="datetime-local"
-                    value={editProject.last_activity_at || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, last_activity_at: e.target.value }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Product</label>
-                  <input
-                    className="form-input"
-                    value={editProject.product || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, product: e.target.value }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Project type</label>
-                  <input
-                    className="form-input"
-                    value={editProject.project_type || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, project_type: e.target.value }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Bid manager required</label>
-                  <select
-                    className="form-input"
-                    value={editProject.bid_manager_required ? "yes" : "no"}
-                    onChange={(e) => setEditProject((p) => ({ ...p, bid_manager_required: e.target.value === "yes" }))}
-                  >
-                    <option value="no">No</option>
-                    <option value="yes">Yes</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Bid manager</label>
-                  <input
-                    className="form-input"
-                    value={editProject.bid_manager || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, bid_manager: e.target.value }))}
-                    placeholder="Name"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Inactive (manual override)</label>
-                  <select
-                    className="form-input"
-                    value={editProject.is_inactive ? "yes" : "no"}
-                    onChange={(e) => setEditProject((p) => ({ ...p, is_inactive: e.target.value === "yes" }))}
-                  >
-                    <option value="no">No</option>
-                    <option value="yes">Yes</option>
-                  </select>
-                </div>
-
-                <div className="form-group form-group-full">
-                  <label className="form-label">Scope</label>
-                  <textarea
-                    className="form-textarea"
-                    value={editProject.scope || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, scope: e.target.value }))}
-                    placeholder="Scope summary..."
-                  />
-                </div>
-
-                <div className="form-group form-group-full">
-                  <label className="form-label">SmartVista modules</label>
-
-                  <div className="modules-box">
-                    <div className="modules-top">
-                      <input
-                        className="form-input"
-                        value={modulesDraft}
-                        onChange={(e) => setModulesDraft(e.target.value)}
-                        placeholder="Comma-separated modules (auto sync to selection)"
-                      />
-                      <button
-                        type="button"
-                        className="filter-button"
-                        onClick={() => setModulesOpen((v) => !v)}
-                        title="Open module selector"
-                      >
-                        {modulesOpen ? <FaChevronDown /> : <FaChevronRight />}
-                        <span>Select</span>
-                      </button>
-                    </div>
-
-                    {modulesOpen ? (
-                      <div className="modules-panel">
-                        <input
-                          className="form-input"
-                          value={moduleSearch}
-                          onChange={(e) => setModuleSearch(e.target.value)}
-                          placeholder="Search modules..."
-                        />
-
-                        <div className="modules-list">
-                          {filteredModules.length === 0 ? (
-                            <div className="empty-state">No matching modules.</div>
-                          ) : (
-                            filteredModules.map((m) => {
-                              const checked = selectedModules.includes(m);
-                              return (
-                                <label key={m} className={`module-row ${checked ? "checked" : ""}`}>
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => toggleModule(m)}
-                                  />
-                                  <span>{m}</span>
-                                </label>
-                              );
-                            })
-                          )}
-                        </div>
-
-                        <div className="modules-actions">
-                          <button
-                            type="button"
-                            className="action-button secondary"
-                            onClick={() => {
-                              // sync typed draft -> selection
-                              const list = (modulesDraft || "")
-                                .split(",")
-                                .map((x) => x.trim())
-                                .filter(Boolean);
-                              setSelectedModules(Array.from(new Set(list)));
-                            }}
-                          >
-                            <FaSave />
-                            <span>Sync from text</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            className="action-button secondary"
-                            onClick={() => {
-                              setSelectedModules([]);
-                              setModulesDraft("");
-                            }}
-                          >
-                            <FaTimes />
-                            <span>Clear</span>
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="form-group form-group-full">
-                  <label className="form-label">Remarks</label>
-                  <textarea
-                    className="form-textarea"
-                    value={editProject.remarks || ""}
-                    onChange={(e) => setEditProject((p) => ({ ...p, remarks: e.target.value }))}
-                    placeholder="Notes, risks, comments..."
-                  />
-                </div>
-              </div>
-            )}
+            {!isEditingProject ? <ProjectInfoReadOnly /> : <ProjectInfoEdit />}
           </div>
 
           {/* Tasks */}
@@ -1270,19 +1286,6 @@ function ProjectDetails() {
                   <span>Add task</span>
                 </button>
               </div>
-            </div>
-
-            <div className="task-stats-row">
-              <span className="metric-badge metric-neutral">Open: {taskStats.open}</span>
-              <span className={`metric-badge ${taskStats.overdue ? "metric-danger" : "metric-muted"}`}>
-                Overdue: {taskStats.overdue}
-              </span>
-              <span className={`metric-badge ${taskStats.due7 ? "metric-warn" : "metric-muted"}`}>
-                Due 7d: {taskStats.due7}
-              </span>
-              <span className={`metric-badge ${taskStats.unassigned ? "metric-warn" : "metric-muted"}`}>
-                Unassigned: {taskStats.unassigned}
-              </span>
             </div>
 
             <div className="list">
@@ -1330,11 +1333,6 @@ function ProjectDetails() {
                               <span>
                                 <FaCalendarAlt /> Due: {formatNiceDate(t.due_date)}
                               </span>
-                              {t.priority ? (
-                                <span>
-                                  <FaExclamationTriangle /> {t.priority}
-                                </span>
-                              ) : null}
                             </div>
 
                             {t.notes ? <div className="list-item-notes">{t.notes}</div> : null}
@@ -1344,12 +1342,7 @@ function ProjectDetails() {
                             <button className="icon-button" type="button" onClick={() => openEditTask(t)} title="Edit">
                               <FaEdit />
                             </button>
-                            <button
-                              className="icon-button danger"
-                              type="button"
-                              onClick={() => deleteTask(t.id)}
-                              title="Delete"
-                            >
+                            <button className="icon-button danger" type="button" onClick={() => deleteTask(t.id)} title="Delete">
                               <FaTrash />
                             </button>
                           </div>
@@ -1358,15 +1351,13 @@ function ProjectDetails() {
                         {hasChildren && expanded ? (
                           <div className="subtask-list">
                             {children.map((st) => (
-                              <div
-                                className={`list-item is-subtask ${isCompletedStatus(st.status) ? "is-done" : ""}`}
-                                key={st.id}
-                              >
+                              <div className={`list-item is-subtask ${isCompletedStatus(st.status) ? "is-done" : ""}`} key={st.id}>
                                 <div className="list-item-main" onClick={() => openEditTask(st)} role="button" tabIndex={0}>
                                   <div className="list-item-top">
                                     <span className={`status-tag ${getStatusClass(st.status)}`}>{st.status || "—"}</span>
                                     {st.task_type ? <span className="type-tag">{st.task_type}</span> : null}
                                   </div>
+
                                   <div className="list-item-title">{st.description || "(Untitled subtask)"}</div>
                                   <div className="list-item-meta">
                                     <span>
@@ -1376,6 +1367,7 @@ function ProjectDetails() {
                                       <FaCalendarAlt /> Due: {formatNiceDate(st.due_date)}
                                     </span>
                                   </div>
+
                                   {st.notes ? <div className="list-item-notes">{st.notes}</div> : null}
                                 </div>
 
@@ -1383,12 +1375,7 @@ function ProjectDetails() {
                                   <button className="icon-button" type="button" onClick={() => openEditTask(st)} title="Edit">
                                     <FaEdit />
                                   </button>
-                                  <button
-                                    className="icon-button danger"
-                                    type="button"
-                                    onClick={() => deleteTask(st.id)}
-                                    title="Delete"
-                                  >
+                                  <button className="icon-button danger" type="button" onClick={() => deleteTask(st.id)} title="Delete">
                                     <FaTrash />
                                   </button>
                                 </div>
@@ -1406,6 +1393,7 @@ function ProjectDetails() {
                       <div className="muted" style={{ fontWeight: 900 }}>
                         Orphan subtasks (parent not found)
                       </div>
+
                       {visibleOrphans.map((t) => (
                         <div className={`list-item is-subtask ${isCompletedStatus(t.status) ? "is-done" : ""}`} key={t.id}>
                           <div className="list-item-main" onClick={() => openEditTask(t)} role="button" tabIndex={0}>
@@ -1443,9 +1431,9 @@ function ProjectDetails() {
           </div>
         </div>
 
-        {/* Right/Side column */}
+        {/* Side column */}
         <div className="side-column">
-          {/* Activity timeline */}
+          {/* Activity history */}
           <div className="content-card">
             <div className="card-header">
               <div className="card-title">
@@ -1484,88 +1472,69 @@ function ProjectDetails() {
                           <button className="icon-button" type="button" title="Edit" onClick={() => openEditActivity(a)}>
                             <FaEdit />
                           </button>
-                          <button
-                            className="icon-button danger"
-                            type="button"
-                            title="Delete"
-                            onClick={() => deleteActivity(a.id)}
-                          >
+                          <button className="icon-button danger" type="button" title="Delete" onClick={() => deleteActivity(a.id)}>
                             <FaTrash />
                           </button>
                         </div>
                       </div>
 
                       {a.created_by ? <div className="activity-by">By: {a.created_by}</div> : null}
-
                       <div className="activity-notes">{a.notes || "—"}</div>
                     </div>
                   </div>
                 ))
               )}
             </div>
-
-            <div className="muted" style={{ marginTop: 10 }}>
-              Tip: activities update <b>last_activity_at</b> automatically.
-            </div>
           </div>
 
-          {/* Quick flags */}
+          {/* Quick flags (small) */}
           <div className="content-card">
             <div className="card-header">
               <div className="card-title">
-                <FaBookOpen />
+                <FaClock />
                 <span>Quick flags</span>
               </div>
             </div>
 
             <div className="quick-flags">
               <div className="flag-row">
-                <span className="flag-label">Inactive (computed)</span>
-                <span className={`flag-value ${inactiveComputed ? "bad" : "good"}`}>
-                  {inactiveComputed ? "Yes" : "No"}
-                </span>
+                <span className="flag-label">Computed inactive</span>
+                <span className={`flag-value ${inactiveComputed ? "bad" : "good"}`}>{inactiveComputed ? "Yes" : "No"}</span>
               </div>
               <div className="flag-row">
-                <span className="flag-label">Inactive (manual override)</span>
-                <span className={`flag-value ${inactiveManual ? "bad" : "good"}`}>
-                  {inactiveManual ? "Yes" : "No"}
-                </span>
+                <span className="flag-label">Manual inactive</span>
+                <span className={`flag-value ${inactiveManual ? "bad" : "good"}`}>{inactiveManual ? "Yes" : "No"}</span>
               </div>
               <div className="flag-row">
-                <span className="flag-label">Foreseen closing</span>
-                <span className="flag-value">
-                  {formatNiceDate(project.foreseen_closing_date || project.due_date)}
-                </span>
-              </div>
-              <div className="flag-row">
-                <span className="flag-label">Contract signed</span>
-                <span className="flag-value">{formatNiceDate(project.contract_signed_date)}</span>
+                <span className="flag-label">Last activity</span>
+                <span className="flag-value">{formatNiceDateTime(project.last_activity_at)}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Modals */}
+      {/* Task modal */}
       <TaskModal
         isOpen={showTaskModal}
         onClose={closeTaskModal}
-        onSave={saveTaskModal}
+        onSave={onSaveTask}
         editingTask={editingTask}
         projectId={project.id}
         presalesResources={presalesResources}
         taskTypes={taskTypes}
         taskTypeDefaultsMap={taskTypeDefaultsMap}
+        parentTaskOptions={parentTaskOptions}
+        editingHasChildren={editingHasChildren}
       />
 
+      {/* Activity modal */}
       <ActivityModal
         isOpen={showActivityModal}
         onClose={closeActivityModal}
-        onSave={saveActivity}
+        onSave={onSaveActivity}
         editingActivity={editingActivity}
       />
     </div>
   );
 }
-
-export default ProjectDetails;
