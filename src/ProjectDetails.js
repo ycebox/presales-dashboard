@@ -373,8 +373,7 @@ const useProjectData = (projectId) => {
 
   useEffect(() => {
     if (projectId) fetchProjectDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+   }, [projectId]);
 
   return {
     project,
