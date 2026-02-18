@@ -341,14 +341,7 @@ export default function ProjectDetails() {
   useEffect(() => {
     const loadLists = async () => {
       try {
-        const [
-          pRes,
-          tRes,
-          mRes,
-          cRes,
-          aRes,
-          sRes,
-        ] = await Promise.all([
+        const [pRes, tRes, mRes, cRes, aRes, sRes] = await Promise.all([
           supabase.from("presales_resources").select("name").order("name"),
           supabase
             .from("task_types")
@@ -457,6 +450,21 @@ export default function ProjectDetails() {
   useEffect(() => {
     fetchProject();
   }, [fetchProject]);
+
+  /* ---------- NEW: Touch last_activity_at when tasks change ---------- */
+  const touchProjectLastActivity = useCallback(
+    async (isoWhen = null) => {
+      if (!projectId) return;
+      try {
+        const when = isoWhen || new Date().toISOString();
+        const { error } = await supabase.from("projects").update({ last_activity_at: when }).eq("id", projectId);
+        if (error) throw error;
+      } catch (e) {
+        console.warn("last_activity_at touch failed:", e);
+      }
+    },
+    [projectId]
+  );
 
   /* ---------- Sync customer id ---------- */
   useEffect(() => {
@@ -685,6 +693,8 @@ export default function ProjectDetails() {
         is_archived: normalized.is_archived ?? false,
       };
 
+      const nowIso = new Date().toISOString();
+
       if (editingTask?.id) {
         const { error } = await supabase.from("project_tasks").update(payload).eq("id", editingTask.id);
         if (error) throw error;
@@ -693,7 +703,11 @@ export default function ProjectDetails() {
         if (error) throw error;
       }
 
-      await fetchTasks();
+      // ✅ Update last_activity_at when task is created/updated/status/assigned
+      await touchProjectLastActivity(nowIso);
+
+      // Refresh UI
+      await Promise.all([fetchTasks(), fetchProject()]);
     } catch (e) {
       console.error("Task save error:", e);
       alert(`Failed to save task: ${e?.message || "Unknown error"}`);
@@ -706,7 +720,11 @@ export default function ProjectDetails() {
     try {
       const { error } = await supabase.from("project_tasks").delete().eq("id", taskId);
       if (error) throw error;
-      await fetchTasks();
+
+      // Optional but useful: deleting a task is still activity
+      await touchProjectLastActivity(new Date().toISOString());
+
+      await Promise.all([fetchTasks(), fetchProject()]);
     } catch (e) {
       console.error("Delete task error:", e);
       alert(`Failed to delete task: ${e?.message || "Unknown error"}`);
@@ -1249,7 +1267,12 @@ export default function ProjectDetails() {
                   </button>
                 ) : (
                   <>
-                    <button className="action-button secondary" type="button" onClick={cancelEditProject} disabled={savingProject}>
+                    <button
+                      className="action-button secondary"
+                      type="button"
+                      onClick={cancelEditProject}
+                      disabled={savingProject}
+                    >
                       <FaTimes />
                       <span>Cancel</span>
                     </button>
@@ -1342,7 +1365,12 @@ export default function ProjectDetails() {
                             <button className="icon-button" type="button" onClick={() => openEditTask(t)} title="Edit">
                               <FaEdit />
                             </button>
-                            <button className="icon-button danger" type="button" onClick={() => deleteTask(t.id)} title="Delete">
+                            <button
+                              className="icon-button danger"
+                              type="button"
+                              onClick={() => deleteTask(t.id)}
+                              title="Delete"
+                            >
                               <FaTrash />
                             </button>
                           </div>
@@ -1351,7 +1379,10 @@ export default function ProjectDetails() {
                         {hasChildren && expanded ? (
                           <div className="subtask-list">
                             {children.map((st) => (
-                              <div className={`list-item is-subtask ${isCompletedStatus(st.status) ? "is-done" : ""}`} key={st.id}>
+                              <div
+                                className={`list-item is-subtask ${isCompletedStatus(st.status) ? "is-done" : ""}`}
+                                key={st.id}
+                              >
                                 <div className="list-item-main" onClick={() => openEditTask(st)} role="button" tabIndex={0}>
                                   <div className="list-item-top">
                                     <span className={`status-tag ${getStatusClass(st.status)}`}>{st.status || "—"}</span>
@@ -1375,7 +1406,12 @@ export default function ProjectDetails() {
                                   <button className="icon-button" type="button" onClick={() => openEditTask(st)} title="Edit">
                                     <FaEdit />
                                   </button>
-                                  <button className="icon-button danger" type="button" onClick={() => deleteTask(st.id)} title="Delete">
+                                  <button
+                                    className="icon-button danger"
+                                    type="button"
+                                    onClick={() => deleteTask(st.id)}
+                                    title="Delete"
+                                  >
                                     <FaTrash />
                                   </button>
                                 </div>
@@ -1499,11 +1535,15 @@ export default function ProjectDetails() {
             <div className="quick-flags">
               <div className="flag-row">
                 <span className="flag-label">Computed inactive</span>
-                <span className={`flag-value ${inactiveComputed ? "bad" : "good"}`}>{inactiveComputed ? "Yes" : "No"}</span>
+                <span className={`flag-value ${inactiveComputed ? "bad" : "good"}`}>
+                  {inactiveComputed ? "Yes" : "No"}
+                </span>
               </div>
               <div className="flag-row">
                 <span className="flag-label">Manual inactive</span>
-                <span className={`flag-value ${inactiveManual ? "bad" : "good"}`}>{inactiveManual ? "Yes" : "No"}</span>
+                <span className={`flag-value ${inactiveManual ? "bad" : "good"}`}>
+                  {inactiveManual ? "Yes" : "No"}
+                </span>
               </div>
               <div className="flag-row">
                 <span className="flag-label">Last activity</span>
