@@ -120,6 +120,13 @@ const parseModules = (raw) =>
     .map((x) => x.trim())
     .filter(Boolean);
 
+const truncateText = (text, max = 140) => {
+  const t = (text || "").toString().trim();
+  if (!t) return "—";
+  if (t.length <= max) return t;
+  return t.slice(0, max).trim() + "...";
+};
+
 const groupTasks = (tasks) => {
   const parents = [];
   const childrenByParent = {};
@@ -524,6 +531,11 @@ export default function ProjectDetails() {
     };
   }, [tasks]);
 
+  const latestActivity = useMemo(() => {
+    if (!activities || activities.length === 0) return null;
+    return activities[0];
+  }, [activities]);
+
   const visibleParents = useMemo(() => {
     if (showCompleted) return parents;
     return parents.filter((t) => !isCompletedStatus(t.status));
@@ -592,11 +604,14 @@ export default function ProjectDetails() {
         is_inactive: !!editProject.is_inactive,
         last_activity_at: editProject.last_activity_at ? new Date(editProject.last_activity_at).toISOString() : null,
 
-        // optional: keep due_date aligned (since you still have it in schema)
+        // keep due_date aligned (since you still have it in schema)
         due_date: editProject.foreseen_closing_date || project.due_date || null,
 
         bid_manager_required: !!editProject.bid_manager_required,
         bid_manager: editProject.bid_manager || null,
+
+        // keep next_key_activity + current_status editable via this section
+        next_key_activity: editProject.next_key_activity || null,
       };
 
       const { error } = await supabase.from("projects").update(payload).eq("id", project.id);
@@ -667,8 +682,6 @@ export default function ProjectDetails() {
   }, [editingTask, childrenByParent]);
 
   const onSaveTask = async (normalized) => {
-    // TaskModal DOES NOT save to DB; it calls onSave(normalized)
-    // So ProjectDetails must insert/update here.
     try {
       if (!project?.id) throw new Error("Project not loaded.");
 
@@ -706,7 +719,6 @@ export default function ProjectDetails() {
       // ✅ Update last_activity_at when task is created/updated/status/assigned
       await touchProjectLastActivity(nowIso);
 
-      // Refresh UI
       await Promise.all([fetchTasks(), fetchProject()]);
     } catch (e) {
       console.error("Task save error:", e);
@@ -721,9 +733,7 @@ export default function ProjectDetails() {
       const { error } = await supabase.from("project_tasks").delete().eq("id", taskId);
       if (error) throw error;
 
-      // Optional but useful: deleting a task is still activity
       await touchProjectLastActivity(new Date().toISOString());
-
       await Promise.all([fetchTasks(), fetchProject()]);
     } catch (e) {
       console.error("Delete task error:", e);
@@ -990,6 +1000,26 @@ export default function ProjectDetails() {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Current status</label>
+        <input
+          className="form-input"
+          value={editProject.current_status || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, current_status: e.target.value }))}
+          placeholder="What’s currently going on?"
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Next key activity</label>
+        <input
+          className="form-input"
+          value={editProject.next_key_activity || ""}
+          onChange={(e) => setEditProject((p) => ({ ...p, next_key_activity: e.target.value }))}
+          placeholder="Next step"
+        />
       </div>
 
       <div className="form-group">
@@ -1469,6 +1499,55 @@ export default function ProjectDetails() {
 
         {/* Side column */}
         <div className="side-column">
+          {/* Current snapshot */}
+          <div className="content-card">
+            <div className="card-header">
+              <div className="card-title">
+                <FaInfo />
+                <span>Current snapshot</span>
+              </div>
+            </div>
+
+            <div className="snapshot-panel">
+              <div className="snapshot-row">
+                <span className="snapshot-label">Current status</span>
+                <span className="snapshot-value">{project.current_status || "—"}</span>
+              </div>
+
+              <div className="snapshot-row">
+                <span className="snapshot-label">Next key activity</span>
+                <span className="snapshot-value">{project.next_key_activity || "—"}</span>
+              </div>
+
+              <div className="snapshot-row">
+                <span className="snapshot-label">Workload</span>
+                <span className="snapshot-value">
+                  {taskStats.open} open{taskStats.overdue ? ` • ${taskStats.overdue} overdue` : ""}
+                </span>
+              </div>
+
+              <div className="snapshot-row">
+                <span className="snapshot-label">Last activity</span>
+                <span className="snapshot-value">{formatNiceDateTime(project.last_activity_at)}</span>
+              </div>
+
+              <div className="snapshot-divider" />
+
+              <div className="snapshot-subtitle">Latest log</div>
+              {!latestActivity ? (
+                <div className="snapshot-empty">No activity logged yet.</div>
+              ) : (
+                <div className="snapshot-log">
+                  <div className="snapshot-log-top">
+                    <span className="snapshot-log-type">{latestActivity.activity_type || "Activity"}</span>
+                    <span className="snapshot-log-date">{formatNiceDateTime(latestActivity.activity_date)}</span>
+                  </div>
+                  <div className="snapshot-log-notes">{truncateText(latestActivity.notes, 180)}</div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Activity history */}
           <div className="content-card">
             <div className="card-header">
@@ -1508,7 +1587,12 @@ export default function ProjectDetails() {
                           <button className="icon-button" type="button" title="Edit" onClick={() => openEditActivity(a)}>
                             <FaEdit />
                           </button>
-                          <button className="icon-button danger" type="button" title="Delete" onClick={() => deleteActivity(a.id)}>
+                          <button
+                            className="icon-button danger"
+                            type="button"
+                            title="Delete"
+                            onClick={() => deleteActivity(a.id)}
+                          >
                             <FaTrash />
                           </button>
                         </div>
@@ -1569,12 +1653,7 @@ export default function ProjectDetails() {
       />
 
       {/* Activity modal */}
-      <ActivityModal
-        isOpen={showActivityModal}
-        onClose={closeActivityModal}
-        onSave={onSaveActivity}
-        editingActivity={editingActivity}
-      />
+      <ActivityModal isOpen={showActivityModal} onClose={closeActivityModal} onSave={onSaveActivity} editingActivity={editingActivity} />
     </div>
   );
 }
