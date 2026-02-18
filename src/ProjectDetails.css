@@ -326,7 +326,7 @@
   letter-spacing: -0.01em;
 }
 
-/* ---------- Read-only Project Info (NEW) ---------- */
+/* ---------- Read-only Project Info ---------- */
 .info-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -471,60 +471,6 @@
 .form-textarea {
   min-height: 70px;
   resize: vertical;
-}
-
-.modules-box {
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 10px;
-  background: rgba(15, 23, 42, 0.02);
-}
-
-.modules-top {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.modules-panel {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.modules-list {
-  max-height: 240px;
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: #fff;
-  padding: 8px;
-}
-
-.module-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 8px 10px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 800;
-}
-
-.module-row:hover {
-  background: rgba(29, 78, 216, 0.08);
-}
-
-.module-row.checked {
-  background: rgba(16, 185, 129, 0.10);
-  border: 1px solid rgba(16, 185, 129, 0.20);
-}
-
-.modules-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
 }
 
 /* ---------- Tasks list ---------- */
@@ -787,6 +733,99 @@
 
 .flag-value.good { color: #065f46; }
 .flag-value.bad  { color: #7f1d1d; }
+
+/* ---------- Current snapshot panel ---------- */
+.snapshot-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.snapshot-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.snapshot-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.snapshot-value {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--text);
+  text-align: right;
+  word-break: break-word;
+}
+
+.snapshot-divider {
+  height: 1px;
+  background: rgba(15, 23, 42, 0.08);
+  margin: 4px 0;
+}
+
+.snapshot-subtitle {
+  font-size: 12px;
+  font-weight: 950;
+  color: var(--text);
+  margin-top: 2px;
+}
+
+.snapshot-empty {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px dashed var(--border);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--muted);
+  font-weight: 800;
+  text-align: center;
+}
+
+.snapshot-log {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.snapshot-log-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.snapshot-log-type {
+  font-size: 12px;
+  font-weight: 950;
+  color: var(--text);
+}
+
+.snapshot-log-date {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.snapshot-log-notes {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 
 /* ---------- Modal ---------- */
 .modal-overlay {
