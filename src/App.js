@@ -46,263 +46,250 @@ function AppHeader() {
   );
 }
 
-// ----------------- HOME DASHBOARD -----------------
-function HomeDashboard() {
-  const navigate = useNavigate(); // ✅ FIX: define navigate
+// ----------------- HOME (CUSTOMERS LIST) -----------------
+function HomeCustomers() {
+  const navigate = useNavigate();
 
-  const [projects, setProjects] = useState([]);
-  const [customerIdMap, setCustomerIdMap] = useState({});
-  const [portfolioSummary, setPortfolioSummary] = useState({
-    totalCustomers: 0,
-    countries: 0,
-    accountManagers: 0
-  });
-
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [homeError, setHomeError] = useState(null);
 
+  const [search, setSearch] = useState('');
+
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState(null);
+
+  const [form, setForm] = useState({
+    customer_name: '',
+    country: '',
+    account_manager: ''
+  });
+
+  const loadCustomers = async () => {
+    setLoading(true);
+    setHomeError(null);
+
+    try {
+      const res = await supabase
+        .from('customers')
+        .select('id, customer_name, country, account_manager, is_archived')
+        .eq('is_archived', false)
+        .order('customer_name', { ascending: true });
+
+      if (res.error) throw res.error;
+      setCustomers(res.data || []);
+    } catch (err) {
+      console.error(err);
+      setHomeError('Failed to load customers.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadHomeData = async () => {
-      setLoading(true);
-      setHomeError(null);
-
-      try {
-        const projRes = await supabase
-          .from('projects')
-          .select('id, customer_name, project_name, sales_stage, deal_value, current_status, is_corporate')
-          .order('customer_name', { ascending: true });
-
-        if (projRes.error) throw projRes.error;
-
-        const projData = projRes.data || [];
-        setProjects(projData);
-
-        const custRes = await supabase
-          .from('customers')
-          .select('id, customer_name, country, account_manager')
-          .eq('is_archived', false);
-
-        if (custRes.error) throw custRes.error;
-
-        const map = {};
-        (custRes.data || []).forEach((c) => {
-          map[(c.customer_name || '').trim()] = c.id;
-        });
-        setCustomerIdMap(map);
-
-        const countries = new Set((custRes.data || []).map((c) => c.country).filter(Boolean));
-        const ams = new Set((custRes.data || []).map((c) => c.account_manager).filter(Boolean));
-
-        setPortfolioSummary({
-          totalCustomers: (custRes.data || []).length,
-          countries: countries.size,
-          accountManagers: ams.size
-        });
-      } catch (err) {
-        console.error(err);
-        setHomeError('Failed to load dashboard summary.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadHomeData();
+    loadCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // "openDeals" = deals not Done/Closed/Completed
-  const openDeals = useMemo(() => {
-    return (projects || []).filter((p) => {
-      const stage = (p.sales_stage || '').toLowerCase();
-      return stage !== 'done' && !stage.startsWith('closed') && !stage.includes('completed');
+  const filteredCustomers = useMemo(() => {
+    const q = (search || '').trim().toLowerCase();
+    if (!q) return customers;
+
+    return (customers || []).filter((c) => {
+      const name = (c.customer_name || '').toLowerCase();
+      const country = (c.country || '').toLowerCase();
+      const am = (c.account_manager || '').toLowerCase();
+      return name.includes(q) || country.includes(q) || am.includes(q);
     });
-  }, [projects]);
+  }, [customers, search]);
 
-  const leadCount = useMemo(
-    () => openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'lead').length,
-    [openDeals]
-  );
+  const openAdd = () => {
+    setAddError(null);
+    setForm({ customer_name: '', country: '', account_manager: '' });
+    setIsAddOpen(true);
+  };
 
-  const opportunityCount = useMemo(
-    () => openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'opportunity').length,
-    [openDeals]
-  );
+  const closeAdd = () => {
+    if (saving) return;
+    setIsAddOpen(false);
+  };
 
-  const proposalCount = useMemo(
-    () => openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'proposal').length,
-    [openDeals]
-  );
+  const onCreateCustomer = async () => {
+    setAddError(null);
 
-  const contractingCount = useMemo(
-    () => openDeals.filter((p) => (p.sales_stage || '').toLowerCase() === 'contracting').length,
-    [openDeals]
-  );
+    const name = (form.customer_name || '').trim();
+    if (!name) {
+      setAddError('Customer name is required.');
+      return;
+    }
 
-  const topDeals = useMemo(() => {
-    return [...openDeals]
-      .sort((a, b) => (Number(b.deal_value) || 0) - (Number(a.deal_value) || 0))
-      .slice(0, 5);
-  }, [openDeals]);
+    setSaving(true);
+    try {
+      const payload = {
+        customer_name: name,
+        country: (form.country || '').trim() || null,
+        account_manager: (form.account_manager || '').trim() || null,
+        is_archived: false
+      };
 
-  const formatCurrency = (v) =>
-    Number.isFinite(Number(v)) ? Number(v).toLocaleString() : '-';
+      const res = await supabase.from('customers').insert([payload]).select('id').single();
+      if (res.error) throw res.error;
 
-  if (loading) return <div className="home-loading">Loading…</div>;
+      setIsAddOpen(false);
+      await loadCustomers();
+
+      if (res.data?.id) {
+        navigate(`/customer/${res.data.id}`);
+      }
+    } catch (err) {
+      console.error(err);
+      setAddError('Failed to create customer. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner" />
+        <div className="loading-text">Loading customers…</div>
+      </div>
+    );
+  }
+
   if (homeError) return <div className="presales-error">{homeError}</div>;
 
   return (
     <div className="home-dashboard">
-      {/* KPI STRIP */}
-      <section className="home-kpi-strip">
-        <div className="home-kpi-section-label">Pipeline</div>
-
-        <div className="home-kpi-card" data-tone="blue">
-          <div className="home-kpi-top">
-            <div className="home-kpi-icon" aria-hidden>L</div>
-            <div className="home-kpi-top-text">
-              <div className="home-kpi-label">Lead</div>
-              <div className="home-kpi-sub">Early pipeline</div>
-            </div>
+      <section className="home-card home-card-wide">
+        <div className="home-card-header-row">
+          <div>
+            <h3 className="home-card-title home-page-title">Customers</h3>
+            <p className="home-card-subtitle">Quick list of active customers (not archived).</p>
           </div>
-          <div className="home-kpi-value">{leadCount}</div>
+
+          <div className="home-actions">
+            <button className="home-btn secondary" onClick={() => loadCustomers()} disabled={loading}>
+              Refresh
+            </button>
+            <button className="home-btn" onClick={openAdd}>
+              + New customer
+            </button>
+          </div>
         </div>
 
-        <div className="home-kpi-card" data-tone="teal">
-          <div className="home-kpi-top">
-            <div className="home-kpi-icon" aria-hidden>O</div>
-            <div className="home-kpi-top-text">
-              <div className="home-kpi-label">Opportunity</div>
-              <div className="home-kpi-sub">Discovery ongoing</div>
-            </div>
+        <div className="home-toolbar">
+          <input
+            className="home-input"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by customer, country, or account manager…"
+          />
+          <div className="home-toolbar-meta">
+            <span className="pill">{filteredCustomers.length}</span>
+            <span className="small-muted">showing</span>
           </div>
-          <div className="home-kpi-value">{opportunityCount}</div>
         </div>
 
-        <div className="home-kpi-card" data-tone="amber">
-          <div className="home-kpi-top">
-            <div className="home-kpi-icon" aria-hidden>P</div>
-            <div className="home-kpi-top-text">
-              <div className="home-kpi-label">Proposal</div>
-              <div className="home-kpi-sub">RFP / proposal</div>
-            </div>
+        {filteredCustomers.length === 0 ? (
+          <p className="small-muted">No customers found.</p>
+        ) : (
+          <div className="home-table-wrap">
+            <table className="home-table">
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Country</th>
+                  <th>Account manager</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCustomers.map((c) => (
+                  <tr key={c.id} onClick={() => navigate(`/customer/${c.id}`)} className="row-click">
+                    <td>
+                      <button
+                        className="table-link-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/customer/${c.id}`);
+                        }}
+                      >
+                        {c.customer_name || '-'}
+                      </button>
+                    </td>
+                    <td className="td-ellipsis">{c.country || '-'}</td>
+                    <td className="td-ellipsis">{c.account_manager || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div className="home-kpi-value">{proposalCount}</div>
-        </div>
-
-        <div className="home-kpi-card" data-tone="indigo">
-          <div className="home-kpi-top">
-            <div className="home-kpi-icon" aria-hidden>C</div>
-            <div className="home-kpi-top-text">
-              <div className="home-kpi-label">Contracting</div>
-              <div className="home-kpi-sub">Close to signature</div>
-            </div>
-          </div>
-          <div className="home-kpi-value">{contractingCount}</div>
-        </div>
-
-        <div className="home-kpi-section-label">Portfolio</div>
-
-        <div className="home-kpi-card" data-tone="blue">
-          <div className="home-kpi-top">
-            <div className="home-kpi-icon" aria-hidden>C</div>
-            <div className="home-kpi-top-text">
-              <div className="home-kpi-label">Customers</div>
-              <div className="home-kpi-sub">Active (not archived)</div>
-            </div>
-          </div>
-          <div className="home-kpi-value">{portfolioSummary.totalCustomers}</div>
-        </div>
-
-        <div className="home-kpi-card" data-tone="teal">
-          <div className="home-kpi-top">
-            <div className="home-kpi-icon" aria-hidden>🌏</div>
-            <div className="home-kpi-top-text">
-              <div className="home-kpi-label">Countries</div>
-              <div className="home-kpi-sub">Coverage</div>
-            </div>
-          </div>
-          <div className="home-kpi-value">{portfolioSummary.countries}</div>
-        </div>
-
-        <div className="home-kpi-card" data-tone="indigo">
-          <div className="home-kpi-top">
-            <div className="home-kpi-icon" aria-hidden>AM</div>
-            <div className="home-kpi-top-text">
-              <div className="home-kpi-label">Account managers</div>
-              <div className="home-kpi-sub">Unique AMs</div>
-            </div>
-          </div>
-          <div className="home-kpi-value">{portfolioSummary.accountManagers}</div>
-        </div>
-
-        <div className="home-kpi-card" data-tone="amber">
-          <div className="home-kpi-top">
-            <div className="home-kpi-icon" aria-hidden>$</div>
-            <div className="home-kpi-top-text">
-              <div className="home-kpi-label">Active deals</div>
-              <div className="home-kpi-sub">Not done / closed</div>
-            </div>
-          </div>
-          <div className="home-kpi-value">{openDeals.length}</div>
-        </div>
+        )}
       </section>
 
-      {/* Top Deals */}
-      <div className="home-top-row">
-        <section className="home-card home-card-wide">
-          <h3 className="home-card-title home-topdeals-title">Top deals to watch</h3>
-          <p className="home-card-subtitle">Highest-value active opportunities.</p>
-
-          {topDeals.length === 0 ? (
-            <p className="small-muted">No active deals found.</p>
-          ) : (
-            <div className="home-topdeals-wrap">
-              <table className="home-topdeals-table home-topdeals-table-wide">
-                <thead>
-                  <tr>
-                    <th>Customer</th>
-                    <th>Project</th>
-                    <th>Stage</th>
-                    <th className="th-right">Value</th>
-                    <th>Status</th>
-                    <th>Corporate</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topDeals.map((p) => (
-                    <tr key={p.id}>
-                      <td>
-                        {customerIdMap[(p.customer_name || '').trim()] ? (
-                          <button
-                            className="table-link-btn"
-                            onClick={() => navigate(`/customer/${customerIdMap[(p.customer_name || '').trim()]}`)}
-                          >
-                            {p.customer_name}
-                          </button>
-                        ) : (
-                          p.customer_name
-                        )}
-                      </td>
-                      <td>
-                        <button className="table-link-btn" onClick={() => navigate(`/project/${p.id}`)}>
-                          {p.project_name}
-                        </button>
-                      </td>
-                      <td>{p.sales_stage}</td>
-                      <td className="td-right">{formatCurrency(p.deal_value)}</td>
-                      <td>{p.current_status || '-'}</td>
-                      <td>{p.is_corporate ? 'Yes' : 'No'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {/* Add Customer Modal */}
+      {isAddOpen && (
+        <div className="modal-backdrop" onClick={closeAdd} role="dialog" aria-modal="true">
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <div className="modal-title">New customer</div>
+                <div className="modal-subtitle">Create a customer record for your portfolio.</div>
+              </div>
+              <button className="icon-btn" onClick={closeAdd} aria-label="Close">
+                ✕
+              </button>
             </div>
-          )}
-        </section>
-      </div>
 
-      <div className="home-main-column">
-        <Projects embedded />
-      </div>
+            <div className="modal-body">
+              {addError && <div className="inline-error">{addError}</div>}
+
+              <div className="form-grid">
+                <label className="field">
+                  <span className="label">Customer name *</span>
+                  <input
+                    className="home-input"
+                    value={form.customer_name}
+                    onChange={(e) => setForm((p) => ({ ...p, customer_name: e.target.value }))}
+                    placeholder="e.g., Security Bank"
+                  />
+                </label>
+
+                <label className="field">
+                  <span className="label">Country</span>
+                  <input
+                    className="home-input"
+                    value={form.country}
+                    onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))}
+                    placeholder="e.g., Philippines"
+                  />
+                </label>
+
+                <label className="field">
+                  <span className="label">Account manager</span>
+                  <input
+                    className="home-input"
+                    value={form.account_manager}
+                    onChange={(e) => setForm((p) => ({ ...p, account_manager: e.target.value }))}
+                    placeholder="e.g., Audrey"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="home-btn secondary" onClick={closeAdd} disabled={saving}>
+                Cancel
+              </button>
+              <button className="home-btn" onClick={onCreateCustomer} disabled={saving}>
+                {saving ? 'Saving…' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -315,7 +302,7 @@ export default function App() {
         <AppHeader />
         <main className="app-main">
           <Routes>
-            <Route path="/" element={<HomeDashboard />} />
+            <Route path="/" element={<HomeCustomers />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/project/:projectId" element={<ProjectDetails />} />
             <Route path="/customer/:customerId" element={<CustomerDetails />} />
