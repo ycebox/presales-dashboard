@@ -1,13 +1,5 @@
 /* App.css – PresalesOverview Light Theme Shell (Global)
-   Goals:
-   - system UI font
-   - 12–14px readable enterprise sizing
-   - warm light background w/ subtle radial gradients
-   - white rounded panels (14–16px radius) + thin slate borders + soft shadow
-   - deep blue primary actions, white secondary actions
-   - minimalist tables/inputs (12px headers)
-   - modals = white card + soft overlay
-   - all text dark/black for clarity
+   Updated: Home is now Customers list only (KPI + Top Deals removed)
 */
 
 :root {
@@ -16,9 +8,9 @@
   --bg-1: #ffffff;
 
   /* Text */
-  --ink-0: #0b1220;     /* main dark text */
-  --ink-1: #111827;     /* slightly softer */
-  --muted: #475569;     /* slate */
+  --ink-0: #0b1220;
+  --ink-1: #111827;
+  --muted: #475569;
   --muted-2: #64748b;
 
   /* Borders & shadow */
@@ -32,28 +24,25 @@
   --radius-sm: 12px;
 
   /* Primary */
-  --primary: #1d4ed8;     /* deep blue */
+  --primary: #1d4ed8;
   --primary-2: #1e40af;
   --primary-soft: rgba(29, 78, 216, 0.12);
   --focus: rgba(29, 78, 216, 0.22);
 
   /* Status */
   --success: #16a34a;
-  --success-soft: rgba(22, 163, 74, 0.12);
   --warning: #d97706;
-  --warning-soft: rgba(217, 119, 6, 0.14);
   --danger: #dc2626;
-  --danger-soft: rgba(220, 38, 38, 0.12);
 
   /* Typography */
   --font: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "Segoe UI", Roboto, sans-serif;
 
   /* Sizing */
-  --fz-body: 14px;     /* was 13px */
-  --fz-title: 24px;    /* page title target */
+  --fz-body: 14px;
+  --fz-title: 24px;
   --fz-h3: 14px;
-  --fz-small: 12px;    /* headers/labels */
+  --fz-small: 12px;
 }
 
 /* Reset */
@@ -75,7 +64,6 @@ body {
   line-height: 1.5;
   color: var(--ink-0);
 
-  /* Warm light background + subtle radial gradients */
   background:
     radial-gradient(circle at 12% 6%, rgba(29, 78, 216, 0.10), transparent 46%),
     radial-gradient(circle at 85% 14%, rgba(15, 118, 110, 0.08), transparent 48%),
@@ -190,24 +178,6 @@ a {
   align-items: flex-start;
 }
 
-.home-top-row {
-  grid-column: 1 / -1;
-}
-
-/* Single definition only (you had this twice) */
-.home-main-column {
-  max-width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.home-side-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 /* ========= Home Cards ========= */
 
 .home-card {
@@ -222,6 +192,12 @@ a {
   width: 100%;
 }
 
+.home-page-title {
+  font-size: var(--fz-title);
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
 .home-card-title {
   margin: 0 0 2px;
   font-size: var(--fz-h3);
@@ -229,286 +205,19 @@ a {
   color: var(--ink-0);
 }
 
-/* Make Top Deals title match Customer Portfolio */
-.home-topdeals-title {
-  font-size: var(--fz-title); /* 24px */
-  font-weight: 800;
-  margin-bottom: 4px;
-}
 .home-card-subtitle {
   margin: 0 0 10px;
   font-size: 12px;
   color: var(--muted);
 }
-/* ===== Home Top Deals: only Customer is bold ===== */
-.home-topdeals-table td:first-child .table-link-btn,
-.home-topdeals-table-wide td:first-child .table-link-btn {
-  font-weight: 850;
-}
 
-.home-topdeals-table td:nth-child(2) .table-link-btn,
-.home-topdeals-table-wide td:nth-child(2) .table-link-btn {
-  font-weight: 400; /* project name normal */
-}
 /* Utility muted text */
 .small-muted {
   font-size: 12px;
   color: var(--muted-2);
 }
 
-/* ========= KPI Strip ========= */
-
-
-.home-kpi-strip {
-  width: 100%;
-  max-width: 1220px;          /* ✅ centers the whole strip */
-  margin: 0 auto 12px;
-
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 12px 12px;
-
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)); /* ✅ 4 cards per row */
-  gap: 12px;
-}
-
-
-/* Section label inside KPI strip */
-.home-kpi-section-label {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 2px 2px;
-  font-size: 12px;
-  font-weight: 850;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.home-kpi-section-label::after {
-  content: "";
-  height: 1px;
-  flex: 1;
-  background: linear-gradient(
-    to right,
-    rgba(148, 163, 184, 0.55),
-    rgba(148, 163, 184, 0.10)
-  );
-}
-
-
-.home-kpi-card {
-  min-height: 104px;
-
-  position: relative;
-  overflow: hidden;
-
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.90));
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  padding: 12px 12px;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-
-  transition: transform 0.12s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-}
-
-.home-kpi-card::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 3px;
-  width: 100%;
-  background: rgba(29, 78, 216, 0.35);
-}
-
-.home-kpi-card::after {
-  content: "";
-  position: absolute;
-  inset: -40px -60px auto auto;
-  width: 160px;
-  height: 160px;
-  border-radius: 999px;
-  background: radial-gradient(circle at 30% 30%, rgba(29, 78, 216, 0.14), transparent 62%);
-  pointer-events: none;
-}
-
-.home-kpi-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-2);
-  border-color: rgba(29, 78, 216, 0.35);
-}
-
-/* Tone accents */
-.home-kpi-card[data-tone="blue"]::before {
-  background: rgba(29, 78, 216, 0.45);
-}
-.home-kpi-card[data-tone="teal"]::before {
-  background: rgba(15, 118, 110, 0.42);
-}
-.home-kpi-card[data-tone="amber"]::before {
-  background: rgba(217, 119, 6, 0.45);
-}
-.home-kpi-card[data-tone="indigo"]::before {
-  background: rgba(79, 70, 229, 0.42);
-}
-.home-kpi-card[data-tone="slate"]::before {
-  background: rgba(71, 85, 105, 0.38);
-}
-
-.home-kpi-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.home-kpi-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  font-size: 12px;
-  font-weight: 850;
-  color: var(--ink-0);
-  background: rgba(29, 78, 216, 0.10);
-  border: 1px solid rgba(29, 78, 216, 0.18);
-}
-
-.home-kpi-card[data-tone="teal"] .home-kpi-icon {
-  background: rgba(15, 118, 110, 0.10);
-  border-color: rgba(15, 118, 110, 0.18);
-}
-.home-kpi-card[data-tone="amber"] .home-kpi-icon {
-  background: rgba(217, 119, 6, 0.12);
-  border-color: rgba(217, 119, 6, 0.18);
-}
-.home-kpi-card[data-tone="indigo"] .home-kpi-icon {
-  background: rgba(79, 70, 229, 0.10);
-  border-color: rgba(79, 70, 229, 0.18);
-}
-.home-kpi-card[data-tone="slate"] .home-kpi-icon {
-  background: rgba(71, 85, 105, 0.10);
-  border-color: rgba(71, 85, 105, 0.18);
-}
-
-.home-kpi-top-text {
-  min-width: 0;
-}
-
-.home-kpi-label {
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 2px;
-}
-
-.home-kpi-value {
-  margin-top: 10px;
-  font-size: 24px;
-  font-weight: 900;
-  color: var(--ink-0);
-  line-height: 1.05;
-}
-
-.home-kpi-value-small {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ink-0);
-}
-
-.home-kpi-sub {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--muted-2);
-}
-
-/* ========= Top Deals Table (Home) ========= */
-
-/* keep it as-is. wide table may still need horizontal scroll on smaller screens */
-.home-topdeals-wrap {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.home-topdeals-table,
-.home-topdeals-table-wide {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: 14px;
-  color: var(--ink-0);
-}
-
-.home-topdeals-table th,
-.home-topdeals-table td,
-.home-topdeals-table-wide th,
-.home-topdeals-table-wide td {
-  padding: 8px 8px;
-  border-bottom: 1px solid var(--border-2);
-  vertical-align: top;
-}
-
-.home-topdeals-table th,
-.home-topdeals-table-wide th {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 750;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  background: transparent;
-}
-
-.th-right,
-.td-right {
-  text-align: right;
-}
-
-.td-ellipsis {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.td-nowrap {
-  white-space: nowrap;
-}
-
-/* Top Deals links */
-.home-link {
-  color: inherit;
-  text-decoration: underline;
-  font-weight: 700;
-}
-.home-link:hover {
-  opacity: 0.85;
-}
-
-/* Top Deals – make customer stand out + nicer hover */
-.home-topdeals-table td:first-child a,
-.home-topdeals-table-wide td:first-child a {
-  font-weight: 800;
-}
-
-.home-topdeals-table tbody tr:hover,
-.home-topdeals-table-wide tbody tr:hover {
-  background: rgba(29, 78, 216, 0.06);
-}
-
-/* ========= Notes ========= */
-
+/* Header row in card */
 .home-card-header-row {
   display: flex;
   justify-content: space-between;
@@ -516,14 +225,16 @@ a {
   gap: 12px;
 }
 
-.home-notes-actions {
+/* Actions */
+.home-actions {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 /* Buttons (primary + secondary) */
-.home-notes-btn {
+.home-btn {
   padding: 7px 12px;
   border-radius: 999px;
   border: 1px solid transparent;
@@ -536,79 +247,147 @@ a {
   box-shadow: 0 10px 18px rgba(29, 78, 216, 0.18);
 }
 
-.home-notes-btn:hover {
+.home-btn:hover {
   background: var(--primary-2);
   box-shadow: 0 14px 26px rgba(29, 78, 216, 0.22);
   transform: translateY(-1px);
 }
 
-.home-notes-btn:disabled {
+.home-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
-.home-notes-btn.secondary {
+.home-btn.secondary {
   border: 1px solid var(--border);
   background: #ffffff;
   color: var(--ink-0);
   box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06);
 }
 
-.home-notes-btn.secondary:hover {
+.home-btn.secondary:hover {
   background: rgba(148, 163, 184, 0.12);
   transform: translateY(-1px);
 }
 
-/* Notes view */
-.home-notes-view {
-  margin-top: 6px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: #ffffff;
-  padding: 10px 10px;
+/* Toolbar */
+.home-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 12px;
 }
 
-.home-notes-pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--ink-0);
+.home-toolbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
 }
 
-/* Notes edit */
-.home-notes-textarea {
+/* Inputs */
+.home-input {
   width: 100%;
-  min-height: 130px;
-  margin-top: 6px;
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   border: 1px solid var(--border);
   background: #ffffff;
   color: var(--ink-0);
   font-size: 14px;
-  padding: 10px 10px;
-  resize: vertical;
+  padding: 10px 12px;
   outline: none;
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-.home-notes-textarea::placeholder {
+.home-input::placeholder {
   color: var(--muted-2);
 }
 
-.home-notes-textarea:focus {
+.home-input:focus {
   border-color: rgba(29, 78, 216, 0.55);
   box-shadow: 0 0 0 4px var(--focus);
 }
 
-.home-notes-hint {
-  margin-top: 6px;
+/* Pills */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(29, 78, 216, 0.25);
+  background: rgba(29, 78, 216, 0.10);
+  color: var(--ink-0);
   font-size: 12px;
-  color: var(--muted-2);
+  font-weight: 800;
+}
+
+/* ========= Customers Table ========= */
+
+.home-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.home-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 14px;
+  color: var(--ink-0);
+}
+
+.home-table th,
+.home-table td {
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--border-2);
+  vertical-align: top;
+}
+
+.home-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: transparent;
+}
+
+.td-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-click:hover {
+  background: rgba(29, 78, 216, 0.06);
+}
+
+/* Reusable subtle table link */
+.table-link-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 850;
+  color: var(--ink-0);
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+}
+
+.table-link-btn:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--primary-2);
 }
 
 /* ========= Generic States used by pages ========= */
@@ -641,7 +420,7 @@ a {
   to { transform: rotate(360deg); }
 }
 
-/* ========= Modals (global helpers you can reuse) ========= */
+/* ========= Modals (global helpers) ========= */
 
 .modal-backdrop {
   position: fixed;
@@ -660,46 +439,96 @@ a {
   border-radius: var(--radius);
   background: #ffffff;
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
 }
 
-@media (max-width: 1200px) {
-  .home-kpi-strip {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--border-2);
 }
 
-/* Responsive */
-@media (max-width: 980px) {
-  .home-kpi-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 520px) {
-  .home-kpi-strip {
-    grid-template-columns: 1fr;
-  }
-}
-/* Reusable subtle table link (same as customer table) */
-.table-link-btn {
-  appearance: none;
-  border: none;
-  background: transparent;
-  padding: 0;
-  font: inherit;
+.modal-title {
+  font-size: 16px;
   font-weight: 850;
   color: var(--ink-0);
+}
+
+.modal-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.icon-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--ink-0);
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   cursor: pointer;
-  text-align: left;
-  text-decoration: none;
+  transition: transform 0.08s ease, background 0.18s ease;
 }
 
-.table-link-btn:hover {
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.icon-btn:hover {
+  background: rgba(148, 163, 184, 0.12);
+  transform: translateY(-1px);
 }
 
-/* When row is hovered, link becomes primary */
-.home-topdeals-table tbody tr:hover .table-link-btn {
-  color: var(--primary-2);
+.modal-body {
+  padding: 12px 14px;
+}
+
+.modal-footer {
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--border-2);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.inline-error {
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--ink-0);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+/* Form */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+@media (min-width: 720px) {
+  .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .form-grid .field:first-child {
+    grid-column: 1 / -1;
+  }
 }
