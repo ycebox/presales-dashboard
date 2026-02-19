@@ -1,675 +1,889 @@
-/* ReportsDashboard.css - Light theme + colorful accents (CEO-friendly) */
+// ReportsDashboard.js
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  FaChartLine,
+  FaDollarSign,
+  FaFlag,
+  FaFileExcel,
+  FaGlobeAsia,
+  FaTasks,
+  FaTrophy,
+  FaExclamationTriangle,
+  FaSyncAlt,
+  FaListAlt
+} from 'react-icons/fa';
+import { supabase } from './supabaseClient';
+import './ReportsDashboard.css';
+import * as XLSX from 'xlsx';
 
-.reports-page {
-  padding: 16px 20px 24px;
-  max-width: 1280px;
-  margin: 0 auto;
-  color: #0f172a;
+// formatted excel export
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Arial, sans-serif;
-  font-size: 14px;
-  line-height: 1.45;
+// Charts
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Cell,
+  ComposedChart,
+  Line,
+  Legend
+} from 'recharts';
 
-  background:
-    radial-gradient(900px 420px at 16% -10%, rgba(59, 130, 246, 0.13), rgba(255, 255, 255, 0) 60%),
-    radial-gradient(900px 420px at 92% 0%, rgba(14, 165, 233, 0.11), rgba(255, 255, 255, 0) 60%),
-    radial-gradient(700px 340px at 55% 115%, rgba(99, 102, 241, 0.09), rgba(255, 255, 255, 0) 55%),
-    radial-gradient(560px 280px at 5% 88%, rgba(34, 197, 94, 0.07), rgba(255, 255, 255, 0) 55%),
-    #f6f8fc;
-  border-radius: 16px;
-}
+const CLOSED_STAGES_FOR_PIPELINE = [
+  'Closed-Won',
+  'Closed-Lost',
+  'Closed-Cancelled/Hold',
+  'Done'
+];
 
-/* ===== Header ===== */
-.reports-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 16px;
-  margin-bottom: 18px;
-}
+const WON_STAGES = ['Closed-Won', 'Won'];
+const LOST_STAGES = ['Closed-Lost', 'Lost'];
 
-.reports-header-left {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+const PASTEL_BAR_COLORS = [
+  'rgba(59, 130, 246, 0.45)',
+  'rgba(14, 165, 233, 0.45)',
+  'rgba(99, 102, 241, 0.42)',
+  'rgba(34, 197, 94, 0.38)',
+  'rgba(245, 158, 11, 0.35)',
+  'rgba(236, 72, 153, 0.30)',
+  'rgba(20, 184, 166, 0.36)',
+  'rgba(168, 85, 247, 0.30)'
+];
 
-.reports-title {
-  font-size: 24px;
-  font-weight: 800;
-  margin: 0;
-  letter-spacing: -0.2px;
-  color: #0b1220;
-}
+// Trend colors (light, readable)
+const TREND_COLORS = {
+  opened: 'rgba(59, 130, 246, 0.35)',
+  won: 'rgba(34, 197, 94, 0.35)',
+  lost: 'rgba(239, 68, 68, 0.28)',
+  winRate: 'rgba(99, 102, 241, 0.85)'
+};
 
-.reports-subtitle {
-  font-size: 13px;
-  color: #475569;
-  margin: 0;
-}
+const formatCurrency = (value) => {
+  const num = Number(value);
+  if (value === null || value === undefined) return '–';
+  if (Number.isNaN(num)) return '–';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0
+  }).format(num);
+};
 
-/* ===== Filters / chips ===== */
-.reports-filters {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
+const formatPercent = (value) => {
+  if (value === null || value === undefined) return '–';
+  const n = Number(value);
+  if (Number.isNaN(n)) return '–';
+  return `${n.toFixed(0)}%`;
+};
 
-.reports-filter-chip {
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.75);
-  background: rgba(255, 255, 255, 0.92);
-  padding: 7px 12px;
-  font-size: 12px;
-  color: #0f172a;
-  cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
-}
+const startOfToday = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
 
-.reports-filter-chip:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
-  border-color: rgba(100, 116, 139, 0.85);
-  background: rgba(255, 255, 255, 0.98);
-}
+const diffDays = (fromDate, toDate) => {
+  const ms = toDate.getTime() - fromDate.getTime();
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+};
 
-.reports-filter-chip:active {
-  transform: translateY(0);
-}
+const toMonthKey = (d) => {
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return null;
+  const y = dt.getFullYear();
+  const m = `${dt.getMonth() + 1}`.padStart(2, '0');
+  return `${y}-${m}`;
+};
 
-.reports-filter-chip-active {
-  border-color: rgba(37, 99, 235, 0.55);
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0.08));
-  color: #0b1220;
-  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.12);
-}
+const monthKeyToLabel = (key) => {
+  const [y, m] = key.split('-');
+  const dt = new Date(Number(y), Number(m) - 1, 1);
+  return dt.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+};
 
-.reports-export-chip {
-  border-color: rgba(22, 163, 74, 0.45);
-  background: linear-gradient(180deg, rgba(22, 163, 74, 0.12), rgba(22, 163, 74, 0.06));
-}
+const fmtDate = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return '—';
+  return dt.toISOString().slice(0, 10);
+};
 
-.reports-export-chip:hover {
-  border-color: rgba(22, 163, 74, 0.65);
-}
+function ReportsDashboard() {
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-/* ===== Layout ===== */
-.reports-main {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+  const [period, setPeriod] = useState('last90'); // last90 | ytd | all
+  const [pipelineGroupBy, setPipelineGroupBy] = useState('country'); // country | account_manager
 
-/* ===== Section cards ===== */
-.reports-section {
-  position: relative;
-  background: rgba(255, 255, 255, 0.92);
-  border-radius: 16px;
-  padding: 14px 16px 12px;
-  border: 1px solid rgba(148, 163, 184, 0.55);
-  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
-  backdrop-filter: blur(6px);
-  overflow: hidden;
-}
+  // Active Projects report is hidden by default
+  const [showActiveProjects, setShowActiveProjects] = useState(false);
+  const [refreshingProjects, setRefreshingProjects] = useState(false);
+  const [exportingActive, setExportingActive] = useState(false);
 
-.reports-section::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 6px;
-  width: 100%;
-  background: linear-gradient(90deg,
-    rgba(37, 99, 235, 0.55),
-    rgba(14, 165, 233, 0.45),
-    rgba(99, 102, 241, 0.45),
-    rgba(34, 197, 94, 0.35),
-    rgba(245, 158, 11, 0.35)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [projectsRes, tasksRes] = await Promise.all([
+          supabase.from('projects').select('*'),
+          supabase.from('project_tasks').select('*')
+        ]);
+
+        if (projectsRes.error) throw projectsRes.error;
+        if (tasksRes.error) throw tasksRes.error;
+
+        setProjects(projectsRes.data || []);
+        setTasks(tasksRes.data || []);
+      } catch (err) {
+        console.error(err);
+        setError('Failed to load report data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const refreshProjectsFromDB = async () => {
+    try {
+      setRefreshingProjects(true);
+      const res = await supabase.from('projects').select('*');
+      if (res.error) throw res.error;
+      setProjects(res.data || []);
+    } catch (e) {
+      console.error(e);
+      alert(`Failed to refresh projects: ${e?.message || 'Unknown error'}`);
+    } finally {
+      setRefreshingProjects(false);
+    }
+  };
+
+  const { periodStart } = useMemo(() => {
+    if (period === 'last90') {
+      const d = new Date();
+      d.setDate(d.getDate() - 90);
+      return { periodStart: d };
+    }
+    if (period === 'ytd') {
+      return { periodStart: new Date(new Date().getFullYear(), 0, 1) };
+    }
+    return { periodStart: null };
+  }, [period]);
+
+  const projectsInPeriod = useMemo(() => {
+    if (!periodStart) return projects;
+    return projects.filter((p) => p.created_at && new Date(p.created_at) >= periodStart);
+  }, [projects, periodStart]);
+
+  const tasksInPeriod = useMemo(() => {
+    if (!periodStart) return tasks;
+    return tasks.filter((t) => t.created_at && new Date(t.created_at) >= periodStart);
+  }, [tasks, periodStart]);
+
+  /* ================= KPIs ================= */
+  const {
+    winRate,
+    closedWonValue,
+    activePipelineValue,
+    rfpCount,
+    demosPoCsCount,
+    overduePercent
+  } = useMemo(() => {
+    const won = projectsInPeriod.filter((p) => WON_STAGES.includes(p.sales_stage));
+    const lost = projectsInPeriod.filter((p) => LOST_STAGES.includes(p.sales_stage));
+
+    const active = projects.filter(
+      (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage)
+    );
+
+    const overdueTasks = tasks.filter(
+      (t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'Completed'
+    );
+
+    return {
+      winRate:
+        won.length + lost.length
+          ? (won.length / (won.length + lost.length)) * 100
+          : null,
+      closedWonValue: won.reduce((s, p) => s + (Number(p.deal_value) || 0), 0),
+      activePipelineValue: active.reduce((s, p) => s + (Number(p.deal_value) || 0), 0),
+      rfpCount: tasksInPeriod.filter((t) => (t.task_type || '').toLowerCase().includes('rfp')).length,
+      demosPoCsCount: tasksInPeriod.filter((t) => (t.task_type || '').toLowerCase().includes('demo')).length,
+      overduePercent: tasks.length ? (overdueTasks.length / tasks.length) * 100 : null
+    };
+  }, [projects, projectsInPeriod, tasks, tasksInPeriod]);
+
+  /* ================= TASKS WATCHLIST ================= */
+  const taskStatusDone = new Set(['Completed', 'Done']);
+
+  const projectById = useMemo(() => {
+    const m = new Map();
+    (projects || []).forEach((p) => m.set(p.id, p));
+    return m;
+  }, [projects]);
+
+  const { overdueTasksTop, dueSoonTasksTop } = useMemo(() => {
+    const today = startOfToday();
+    const soon = new Date(today);
+    soon.setDate(soon.getDate() + 14);
+
+    const openTasks = (tasks || []).filter((t) => !taskStatusDone.has(t.status));
+
+    const overdue = openTasks
+      .filter((t) => t.due_date && new Date(t.due_date) < today)
+      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
+      .slice(0, 10)
+      .map((t) => {
+        const p = projectById.get(t.project_id) || {};
+        return {
+          id: t.id,
+          description: t.description || t.title || '—',
+          due_date: t.due_date,
+          status: t.status || '—',
+          project_name: p.project_name || '—',
+          customer_name: p.customer_name || '—'
+        };
+      });
+
+    const dueSoon = openTasks
+      .filter((t) => t.due_date && new Date(t.due_date) >= today && new Date(t.due_date) <= soon)
+      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
+      .slice(0, 10)
+      .map((t) => {
+        const p = projectById.get(t.project_id) || {};
+        return {
+          id: t.id,
+          description: t.description || t.title || '—',
+          due_date: t.due_date,
+          status: t.status || '—',
+          project_name: p.project_name || '—',
+          customer_name: p.customer_name || '—'
+        };
+      });
+
+    return { overdueTasksTop: overdue, dueSoonTasksTop: dueSoon };
+  }, [tasks, projectById]);
+
+  /* ================= PIPELINE (COUNT opportunities, ALL active) ================= */
+  const pipelineGrouped = useMemo(() => {
+    const map = new Map();
+
+    projects.forEach((p) => {
+      if (CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage)) return;
+
+      const key =
+        pipelineGroupBy === 'account_manager'
+          ? (p.account_manager || 'Unassigned')
+          : (p.country || 'Unknown');
+
+      if (!map.has(key)) map.set(key, { name: key, opportunities: 0 });
+      map.get(key).opportunities += 1;
+    });
+
+    return Array.from(map.values())
+      .filter((x) => x.opportunities > 0)
+      .sort((a, b) => b.opportunities - a.opportunities);
+  }, [projects, pipelineGroupBy]);
+
+  // Smaller + capped height so it doesn’t look massive
+  const pipelineChartHeight = useMemo(() => {
+    const rowH = 28;
+    const base = 140;
+    const h = base + pipelineGrouped.length * rowH;
+    return Math.min(Math.max(260, h), 420);
+  }, [pipelineGrouped.length]);
+
+  /* ================= ACTIVE PROJECTS (HIDDEN BY DEFAULT) ================= */
+  const activeProjectsList = useMemo(() => {
+    const list = (projects || []).filter(
+      (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage)
+    );
+
+    return list.slice().sort((a, b) => {
+      const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
+      const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
+      if (ad !== bd) return ad - bd;
+      return (a.project_name || '').localeCompare(b.project_name || '');
+    });
+  }, [projects]);
+
+  const exportActiveProjectsByPresalesFormatted = async () => {
+    try {
+      setExportingActive(true);
+
+      // always pull fresh from DB for export
+      const res = await supabase.from('projects').select('*');
+      if (res.error) throw res.error;
+
+      const all = res.data || [];
+      const active = all.filter((p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage));
+
+      // group by primary presales
+      const groupedMap = new Map();
+      active.forEach((p) => {
+        const key = p.primary_presales || 'Unassigned';
+        if (!groupedMap.has(key)) groupedMap.set(key, []);
+        groupedMap.get(key).push(p);
+      });
+
+      const groups = Array.from(groupedMap.entries())
+        .map(([presales, items]) => ({
+          presales,
+          items: items.slice().sort((a, b) => {
+            const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
+            const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
+            if (ad !== bd) return ad - bd;
+            return (a.project_name || '').localeCompare(b.project_name || '');
+          })
+        }))
+        .sort((a, b) => a.presales.localeCompare(b.presales));
+
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('Active Projects');
+
+      ws.columns = [
+        { header: 'Project Name', key: 'project_name', width: 30 },
+        { header: 'Customer', key: 'customer_name', width: 22 },
+        { header: 'Country', key: 'country', width: 14 },
+        { header: 'Account Manager', key: 'account_manager', width: 18 },
+        { header: 'Primary Presales', key: 'primary_presales', width: 16 },
+        { header: 'Sales Stage', key: 'sales_stage', width: 14 },
+        { header: 'Deal Value (USD)', key: 'deal_value', width: 16 },
+        { header: 'Due Date', key: 'due_date', width: 12 },
+        { header: 'Last Activity', key: 'last_activity', width: 28 },
+        { header: 'Next Key Activity', key: 'next_key_activity', width: 28 }
+      ];
+
+      ws.getRow(1).font = { bold: true };
+      ws.getRow(1).alignment = { vertical: 'middle' };
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+      let rowCursor = 2;
+
+      groups.forEach((g) => {
+        // group header row
+        const groupHeaderRow = ws.addRow([`Presales: ${g.presales}`]);
+        groupHeaderRow.font = { bold: true };
+        groupHeaderRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFEFF6FF' }
+        };
+        ws.mergeCells(`A${rowCursor}:J${rowCursor}`);
+        rowCursor += 1;
+
+        // group table header row (repeat headers)
+        const hdr = ws.addRow(ws.columns.map((c) => c.header));
+        hdr.font = { bold: true };
+        hdr.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF1F5F9' }
+        };
+        rowCursor += 1;
+
+        g.items.forEach((p) => {
+          ws.addRow([
+            p.project_name || '',
+            p.customer_name || '',
+            p.country || '',
+            p.account_manager || '',
+            p.primary_presales || 'Unassigned',
+            p.sales_stage || '',
+            Number(p.deal_value) || 0,
+            fmtDate(p.due_date),
+            p.last_activity || '',
+            p.next_key_activity || ''
+          ]);
+          rowCursor += 1;
+        });
+
+        // blank row between groups
+        ws.addRow([]);
+        rowCursor += 1;
+      });
+
+      // Style numeric column
+      ws.getColumn('deal_value').numFmt = '"$"#,##0';
+
+      const buf = await wb.xlsx.writeBuffer();
+      saveAs(new Blob([buf]), 'active_projects_by_presales_formatted.xlsx');
+    } catch (e) {
+      console.error(e);
+      alert(`Export failed: ${e?.message || 'Unknown error'}`);
+    } finally {
+      setExportingActive(false);
+    }
+  };
+
+  /* ================= WIN/LOSS TREND ================= */
+  const winLossTrend = useMemo(() => {
+    const map = new Map();
+
+    projectsInPeriod.forEach((p) => {
+      const mk = toMonthKey(p.created_at);
+      if (!mk) return;
+
+      if (!map.has(mk)) {
+        map.set(mk, { monthKey: mk, month: monthKeyToLabel(mk), opened: 0, won: 0, lost: 0, winRate: 0 });
+      }
+      const row = map.get(mk);
+      row.opened += 1;
+
+      if (WON_STAGES.includes(p.sales_stage)) row.won += 1;
+      if (LOST_STAGES.includes(p.sales_stage)) row.lost += 1;
+    });
+
+    const rows = Array.from(map.values()).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+    rows.forEach((r) => {
+      const denom = r.won + r.lost;
+      r.winRate = denom ? Math.round((r.won / denom) * 100) : 0;
+    });
+
+    return rows;
+  }, [projectsInPeriod]);
+
+  // responsive chart height
+  const trendChartHeight = useMemo(() => {
+    return 320;
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="reports-page">
+        <header className="reports-header">
+          <div className="reports-header-left">
+            <h1 className="reports-title">Presales Reports & Analytics</h1>
+            <p className="reports-subtitle">Loading reports…</p>
+          </div>
+        </header>
+
+        <div className="reports-loading">
+          <div className="reports-loading-spinner" />
+          <div className="reports-loading-text">Fetching data from Supabase…</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="reports-page">
+        <header className="reports-header">
+          <div className="reports-header-left">
+            <h1 className="reports-title">Presales Reports & Analytics</h1>
+            <p className="reports-subtitle">Something went wrong</p>
+          </div>
+        </header>
+
+        <div className="reports-error">{error}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="reports-page">
+      <header className="reports-header">
+        <div className="reports-header-left">
+          <h1 className="reports-title">Presales Reports & Analytics</h1>
+          <p className="reports-subtitle">
+            Quick snapshot of performance, pipeline, tasks, and outcomes trend.
+          </p>
+        </div>
+
+        <div className="reports-filters">
+          <button
+            className={`reports-filter-chip ${period === 'last90' ? 'reports-filter-chip-active' : ''}`}
+            onClick={() => setPeriod('last90')}
+          >
+            Last 90 days
+          </button>
+          <button
+            className={`reports-filter-chip ${period === 'ytd' ? 'reports-filter-chip-active' : ''}`}
+            onClick={() => setPeriod('ytd')}
+          >
+            Year to date
+          </button>
+          <button
+            className={`reports-filter-chip ${period === 'all' ? 'reports-filter-chip-active' : ''}`}
+            onClick={() => setPeriod('all')}
+          >
+            All time
+          </button>
+        </div>
+      </header>
+
+      <main className="reports-main">
+        {/* KPIs */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div className="reports-section-title">
+              <FaChartLine className="reports-section-icon" />
+              <h2>Performance KPIs</h2>
+            </div>
+            <p className="reports-section-subtitle">High level numbers for quick review.</p>
+          </div>
+
+          <div className="reports-kpi-grid">
+            <div className="reports-kpi-card">
+              <div className="reports-kpi-label"><FaTrophy /><span>Win rate</span></div>
+              <div className="reports-kpi-value">{formatPercent(winRate)}</div>
+              <div className="reports-kpi-hint">Won vs lost (period)</div>
+            </div>
+
+            <div className="reports-kpi-card">
+              <div className="reports-kpi-label"><FaDollarSign /><span>Closed-won value</span></div>
+              <div className="reports-kpi-value">{formatCurrency(closedWonValue)}</div>
+              <div className="reports-kpi-hint">Total won (period)</div>
+            </div>
+
+            <div className="reports-kpi-card">
+              <div className="reports-kpi-label"><FaChartLine /><span>Active pipeline value</span></div>
+              <div className="reports-kpi-value">{formatCurrency(activePipelineValue)}</div>
+              <div className="reports-kpi-hint">Open only (current)</div>
+            </div>
+
+            <div className="reports-kpi-card">
+              <div className="reports-kpi-label"><FaTasks /><span>RFPs</span></div>
+              <div className="reports-kpi-value">{rfpCount || 0}</div>
+              <div className="reports-kpi-hint">Tasks tagged “RFP” (period)</div>
+            </div>
+
+            <div className="reports-kpi-card">
+              <div className="reports-kpi-label"><FaTasks /><span>Demos / PoCs</span></div>
+              <div className="reports-kpi-value">{demosPoCsCount || 0}</div>
+              <div className="reports-kpi-hint">Tasks tagged “Demo” (period)</div>
+            </div>
+
+            <div className="reports-kpi-card">
+              <div className="reports-kpi-label"><FaFlag /><span>Overdue tasks</span></div>
+              <div className="reports-kpi-value">{formatPercent(overduePercent)}</div>
+              <div className="reports-kpi-hint">Share of overdue tasks</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Tasks Watchlist */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div className="reports-section-title">
+              <FaExclamationTriangle className="reports-section-icon" />
+              <h2>Tasks Watchlist</h2>
+            </div>
+            <p className="reports-section-subtitle">
+              Open tasks only. Overdue items and tasks due in the next 14 days.
+            </p>
+          </div>
+
+          <div className="reports-watchlist-grid">
+            <div className="reports-panel">
+              <div className="reports-watchlist-title">Overdue (Top 10)</div>
+
+              {overdueTasksTop.length === 0 ? (
+                <div className="reports-empty">No overdue tasks right now. 👍</div>
+              ) : (
+                <div className="reports-watchlist-list">
+                  {overdueTasksTop.map((t) => (
+                    <div key={t.id} className="reports-watchlist-row">
+                      <div className="reports-watchlist-main">
+                        <div className="reports-watchlist-task">{t.description}</div>
+                        <div className="reports-watchlist-meta">
+                          <span>{t.customer_name}</span>
+                          <span className="reports-dotSep">•</span>
+                          <span>{t.project_name}</span>
+                          <span className="reports-dotSep">•</span>
+                          <span>Status: {t.status}</span>
+                        </div>
+                      </div>
+                      <div className="reports-watchlist-side">
+                        <div className="reports-watchlist-date">{fmtDate(t.due_date)}</div>
+                        <div className="reports-watchlist-badge danger">OVERDUE</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="reports-panel">
+              <div className="reports-watchlist-title">Due Soon (Next 14 days, Top 10)</div>
+
+              {dueSoonTasksTop.length === 0 ? (
+                <div className="reports-empty">No tasks due soon.</div>
+              ) : (
+                <div className="reports-watchlist-list">
+                  {dueSoonTasksTop.map((t) => (
+                    <div key={t.id} className="reports-watchlist-row">
+                      <div className="reports-watchlist-main">
+                        <div className="reports-watchlist-task">{t.description}</div>
+                        <div className="reports-watchlist-meta">
+                          <span>{t.customer_name}</span>
+                          <span className="reports-dotSep">•</span>
+                          <span>{t.project_name}</span>
+                          <span className="reports-dotSep">•</span>
+                          <span>Status: {t.status}</span>
+                        </div>
+                      </div>
+                      <div className="reports-watchlist-side">
+                        <div className="reports-watchlist-date">{fmtDate(t.due_date)}</div>
+                        <div className="reports-watchlist-badge">DUE SOON</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Win/Loss Trend */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div className="reports-section-title">
+              <FaChartLine className="reports-section-icon" />
+              <h2>Win / Loss Trend Over Time</h2>
+            </div>
+            <p className="reports-section-subtitle">
+              Based on project <strong>created_at</strong> month (close date is not stored). Win rate = Won / (Won + Lost).
+            </p>
+          </div>
+
+          <div className="reports-panel reports-chart-panel">
+            {winLossTrend.length === 0 ? (
+              <div className="reports-empty">No data in this period.</div>
+            ) : (
+              <div style={{ height: trendChartHeight }}>
+                <ResponsiveContainer>
+                  <ComposedChart
+                    data={winLossTrend}
+                    margin={{ top: 8, right: 14, left: 8, bottom: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis yAxisId="left" tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      tick={{ fontSize: 11 }}
+                      domain={[0, 100]}
+                      unit="%"
+                    />
+                    <Tooltip
+                      formatter={(v, name) => {
+                        if (name === 'winRate') return [`${v}%`, 'Win rate'];
+                        return [v, name];
+                      }}
+                    />
+                    <Legend />
+
+                    <Bar yAxisId="left" dataKey="opened" name="Opened" fill={TREND_COLORS.opened} radius={[7, 7, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="won" name="Won" fill={TREND_COLORS.won} radius={[7, 7, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="lost" name="Lost" fill={TREND_COLORS.lost} radius={[7, 7, 0, 0]} />
+
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="winRate"
+                      name="Win rate"
+                      stroke={TREND_COLORS.winRate}
+                      strokeWidth={3}
+                      dot={{ r: 2 }}
+                      activeDot={{ r: 4 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Pipeline */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <div className="reports-section-title">
+                  <FaGlobeAsia className="reports-section-icon" />
+                  <h2>
+                    {pipelineGroupBy === 'account_manager'
+                      ? 'Active Opportunities by Account Manager'
+                      : 'Active Opportunities by Country'}
+                  </h2>
+                </div>
+                <p className="reports-section-subtitle">
+                  Open opportunities only (excludes closed stages). Showing all active groups.
+                </p>
+              </div>
+
+              <div className="reports-filters" style={{ justifyContent: 'flex-end' }}>
+                <button
+                  className={`reports-filter-chip ${pipelineGroupBy === 'country' ? 'reports-filter-chip-active' : ''}`}
+                  onClick={() => setPipelineGroupBy('country')}
+                >
+                  By Country
+                </button>
+                <button
+                  className={`reports-filter-chip ${pipelineGroupBy === 'account_manager' ? 'reports-filter-chip-active' : ''}`}
+                  onClick={() => setPipelineGroupBy('account_manager')}
+                >
+                  By Account Manager
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="reports-panel reports-chart-panel reports-chart-scroll">
+            {pipelineGrouped.length === 0 ? (
+              <div className="reports-empty">
+                No active opportunities to show.
+              </div>
+            ) : (
+              <div style={{ height: pipelineChartHeight }}>
+                <ResponsiveContainer>
+                  <BarChart
+                    data={pipelineGrouped}
+                    layout="vertical"
+                    margin={{ top: 8, right: 14, left: 10, bottom: 8 }}
+                    barCategoryGap={6}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={180}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <Tooltip formatter={(v) => `${v} opportunities`} />
+                    <Bar dataKey="opportunities" radius={[9, 9, 9, 9]} barSize={14}>
+                      {pipelineGrouped.map((entry, idx) => (
+                        <Cell
+                          key={`cell-${entry.name}-${idx}`}
+                          fill={PASTEL_BAR_COLORS[idx % PASTEL_BAR_COLORS.length]}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Active Projects (Export-first, hidden by default) */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <div className="reports-section-title">
+                  <FaListAlt className="reports-section-icon" />
+                  <h2>Active Projects Export</h2>
+                </div>
+                <p className="reports-section-subtitle">
+                  Most of the time you only need the Excel. You can optionally expand the list.
+                </p>
+              </div>
+
+              <div className="reports-controls">
+                <button
+                  className="reports-filter-chip reports-export-chip"
+                  onClick={exportActiveProjectsByPresalesFormatted}
+                  disabled={exportingActive}
+                  title="Export active projects grouped by presales (formatted)"
+                >
+                  <FaFileExcel style={{ marginRight: 6 }} />
+                  {exportingActive ? 'Exporting…' : 'Download Excel (Grouped)'}
+                </button>
+
+                <button
+                  className="reports-filter-chip"
+                  onClick={() => setShowActiveProjects((v) => !v)}
+                  title="Show/hide the active projects list"
+                >
+                  {showActiveProjects ? 'Hide List' : 'View List'}
+                </button>
+
+                {showActiveProjects && (
+                  <button
+                    className="reports-filter-chip"
+                    onClick={refreshProjectsFromDB}
+                    disabled={refreshingProjects}
+                    title="Refresh projects list from DB"
+                  >
+                    <FaSyncAlt style={{ marginRight: 6 }} />
+                    {refreshingProjects ? 'Refreshing…' : 'Refresh'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {showActiveProjects && (
+            <div className="reports-panel">
+              {activeProjectsList.length === 0 ? (
+                <div className="reports-empty">No active projects found.</div>
+              ) : (
+                <>
+                  <div
+                    className="reports-table-header"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1.1fr 0.9fr 0.7fr 0.9fr 0.85fr 0.7fr 0.8fr 1.2fr 1.2fr',
+                      gap: 10
+                    }}
+                  >
+                    <span>Project</span>
+                    <span>Customer</span>
+                    <span>Country</span>
+                    <span>AM</span>
+                    <span>Presales</span>
+                    <span>Stage</span>
+                    <span>Due</span>
+                    <span>Last activity</span>
+                    <span>Next key activity</span>
+                  </div>
+
+                  {activeProjectsList.map((p) => (
+                    <div
+                      key={p.id}
+                      className="reports-table-row"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1.1fr 0.9fr 0.7fr 0.9fr 0.85fr 0.7fr 0.8fr 1.2fr 1.2fr',
+                        gap: 10,
+                        alignItems: 'start'
+                      }}
+                    >
+                      <span>{p.project_name || '—'}</span>
+                      <span>{p.customer_name || '—'}</span>
+                      <span>{p.country || '—'}</span>
+                      <span>{p.account_manager || '—'}</span>
+                      <span>{p.primary_presales || 'Unassigned'}</span>
+                      <span>{p.sales_stage || '—'}</span>
+                      <span>{fmtDate(p.due_date)}</span>
+                      <span className="reports-wrap">{p.last_activity || '—'}</span>
+                      <span className="reports-wrap">{p.next_key_activity || '—'}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
   );
-  opacity: 0.55;
 }
 
-.reports-section-header {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.reports-section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.reports-section-title h2 {
-  font-size: 15px;
-  margin: 0;
-  font-weight: 800;
-  color: #0b1220;
-}
-
-.reports-section-icon {
-  font-size: 16px;
-  color: #2563eb;
-}
-
-.reports-section-subtitle {
-  font-size: 12px;
-  color: #475569;
-  margin: 0;
-}
-
-/* ===== KPI grid ===== */
-.reports-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-@media (max-width: 900px) {
-  .reports-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (max-width: 640px) {
-  .reports-header { flex-direction: column; align-items: flex-start; }
-  .reports-kpi-grid { grid-template-columns: 1fr; }
-}
-
-.reports-kpi-card {
-  position: relative;
-  background: rgba(255, 255, 255, 0.97);
-  border-radius: 14px;
-  padding: 10px 12px;
-  border: 1px solid rgba(148, 163, 184, 0.55);
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow: hidden;
-}
-
-.reports-kpi-card::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 5px;
-  width: 100%;
-  background: linear-gradient(90deg, rgba(37, 99, 235, 0.55), rgba(14, 165, 233, 0.45));
-  opacity: 0.65;
-}
-
-.reports-kpi-card:nth-child(2)::before {
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.55), rgba(37, 99, 235, 0.45));
-}
-.reports-kpi-card:nth-child(3)::before {
-  background: linear-gradient(90deg, rgba(14, 165, 233, 0.55), rgba(34, 197, 94, 0.40));
-}
-.reports-kpi-card:nth-child(4)::before {
-  background: linear-gradient(90deg, rgba(245, 158, 11, 0.55), rgba(14, 165, 233, 0.35));
-}
-.reports-kpi-card:nth-child(5)::before {
-  background: linear-gradient(90deg, rgba(34, 197, 94, 0.55), rgba(22, 163, 74, 0.35));
-}
-.reports-kpi-card:nth-child(6)::before {
-  background: linear-gradient(90deg, rgba(239, 68, 68, 0.40), rgba(245, 158, 11, 0.35));
-}
-
-.reports-kpi-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #475569;
-  font-weight: 700;
-}
-
-.reports-kpi-label svg {
-  font-size: 14px;
-  color: #2563eb;
-}
-
-.reports-kpi-value {
-  font-size: 18px;
-  font-weight: 900;
-  margin-top: 2px;
-  color: #0b1220;
-}
-
-.reports-kpi-hint {
-  font-size: 12px;
-  color: #64748b;
-}
-
-/* ===== Panels ===== */
-.reports-panel {
-  margin-top: 6px;
-  border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.55);
-  background: rgba(255, 255, 255, 0.97);
-  overflow: hidden;
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
-}
-
-/* Chart panel */
-.reports-chart-panel {
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.85), rgba(255, 255, 255, 0.97));
-}
-
-/* Scroll container for long lists (smaller) */
-.reports-chart-scroll {
-  max-height: 440px;
-  overflow-y: auto;
-}
-
-/* Recharts polishing (tighter padding) */
-.reports-panel .recharts-wrapper {
-  padding: 4px 6px 6px;
-}
-
-.reports-panel .recharts-cartesian-grid-horizontal line,
-.reports-panel .recharts-cartesian-grid-vertical line {
-  stroke: rgba(148, 163, 184, 0.35);
-}
-
-.reports-panel .recharts-tooltip-wrapper {
-  font-size: 12px;
-}
-
-/* Soft shadow on bars (nice with pastel fills) */
-.reports-panel .recharts-bar-rectangle {
-  filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.08));
-}
-
-/* Empty state */
-.reports-empty {
-  padding: 14px 16px;
-  font-size: 13px;
-  color: #64748b;
-}
-
-/* ===== Controls (select) ===== */
-.reports-controls {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.reports-control {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.reports-control-label {
-  font-size: 12px;
-  color: #475569;
-  font-weight: 700;
-}
-
-.reports-select {
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.75);
-  padding: 0 10px;
-  background: rgba(255, 255, 255, 0.95);
-  font-size: 12px;
-  color: #0f172a;
-  outline: none;
-}
-
-.reports-select:focus {
-  border-color: rgba(37, 99, 235, 0.55);
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
-}
-
-/* ===== Presales grouping block ===== */
-.reports-presales-group {
-  margin-top: 12px;
-}
-
-.reports-presales-group-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 6px 4px 8px;
-}
-
-.reports-presales-name {
-  font-weight: 900;
-  color: #0b1220;
-}
-
-.reports-presales-count {
-  font-size: 12px;
-  color: #64748b;
-}
-
-/* Table rows */
-.reports-table-header,
-.reports-table-row {
-  display: grid;
-  grid-template-columns: 1.6fr 0.7fr 1fr;
-  padding: 10px 12px;
-  font-size: 13px;
-  column-gap: 10px;
-  align-items: center;
-  color: #0f172a;
-}
-
-.reports-table-header {
-  background: linear-gradient(180deg, rgba(248, 250, 252, 1), rgba(248, 250, 252, 0.75));
-  font-weight: 900;
-  font-size: 12px;
-  color: #334155;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.45);
-}
-
-.reports-table-row {
-  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
-}
-
-.reports-table-row:nth-child(even) {
-  background: rgba(248, 250, 252, 0.65);
-}
-
-.reports-table-row:hover {
-  background: rgba(219, 234, 254, 0.35);
-}
-
-.reports-table-row:last-child {
-  border-bottom: none;
-}
-
-/* 4-column layout for presales table rows */
-.reports-presales-simple-table {
-  grid-template-columns: 1.2fr 0.8fr 1.6fr 0.8fr;
-}
-
-.reports-wrap {
-  white-space: normal;
-  word-break: break-word;
-}
-
-/* ===== Loading + error ===== */
-.reports-loading,
-.reports-error {
-  margin-top: 10px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.55);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
-  color: #0f172a;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.reports-error {
-  border-color: rgba(239, 68, 68, 0.35);
-  background: rgba(254, 242, 242, 0.75);
-}
-
-.reports-loading-spinner {
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  border: 2px solid rgba(148, 163, 184, 0.55);
-  border-top-color: rgba(37, 99, 235, 0.85);
-  animation: reportsSpin 0.9s linear infinite;
-}
-
-@keyframes reportsSpin {
-  to { transform: rotate(360deg); }
-}
-
-/* ===========================
-   Deal Health Dashboard
-   =========================== */
-
-.reports-dealhealth-grid {
-  display: grid;
-  grid-template-columns: 1.05fr 1.35fr;
-  gap: 12px;
-}
-
-@media (max-width: 980px) {
-  .reports-dealhealth-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.reports-dealhealth-card {
-  padding: 10px 10px 12px;
-}
-
-/* Subtitle row with toggle */
-.reports-dealhealth-subrow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* Small toggle (CEO-friendly) */
-.reports-mini-toggle {
-  display: inline-flex;
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 999px;
-  overflow: hidden;
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.05);
-}
-
-.reports-mini-toggle-btn {
-  border: none;
-  background: transparent;
-  padding: 7px 12px;
-  font-size: 12px;
-  cursor: pointer;
-  color: #0f172a;
-  font-weight: 800;
-}
-
-.reports-mini-toggle-btn:hover {
-  background: rgba(219, 234, 254, 0.35);
-}
-
-.reports-mini-toggle-btn.active {
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0.08));
-  color: #0b1220;
-}
-
-.reports-dealhealth-chartWrap {
-  display: grid;
-  grid-template-columns: 210px 1fr;
-  gap: 10px;
-  align-items: start;
-  padding: 6px 6px 4px;
-}
-
-@media (max-width: 520px) {
-  .reports-dealhealth-chartWrap {
-    grid-template-columns: 1fr;
-  }
-}
-
-.reports-dealhealth-chart {
-  height: 200px; /* smaller + less whitespace */
-  width: 100%;
-}
-
-.reports-dealhealth-stats {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-  padding: 2px 8px 6px;
-}
-
-.reports-healthStat {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.45);
-  background: rgba(248, 250, 252, 0.75);
-}
-
-.reports-healthDot {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  display: inline-block;
-}
-
-.reports-healthDot.healthy { background: rgba(34, 197, 94, 0.70); }
-.reports-healthDot.risk { background: rgba(245, 158, 11, 0.70); }
-.reports-healthDot.critical { background: rgba(239, 68, 68, 0.65); }
-
-.reports-healthNum {
-  font-size: 18px;
-  font-weight: 900;
-  color: #0b1220;
-  line-height: 1.1;
-}
-
-.reports-healthLbl {
-  font-size: 12px;
-  font-weight: 700;
-  color: #475569;
-  margin-top: 2px;
-}
-
-.reports-healthFootnote {
-  font-size: 12px;
-  color: #64748b;
-  padding-left: 2px;
-}
-
-.reports-dealhealth-listHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 10px 12px 8px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
-  background: linear-gradient(180deg, rgba(248, 250, 252, 1), rgba(248, 250, 252, 0.75));
-}
-
-.reports-dealhealth-listTitle {
-  font-weight: 900;
-  color: #0b1220;
-}
-
-.reports-dealhealth-listSub {
-  font-size: 12px;
-  color: #64748b;
-  margin-top: 2px;
-}
-
-.reports-critical-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.reports-critical-row {
-  display: grid;
-  grid-template-columns: 1fr 180px;
-  gap: 10px;
-  padding: 12px 12px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
-}
-
-@media (max-width: 860px) {
-  .reports-critical-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-.reports-critical-row:nth-child(even) {
-  background: rgba(248, 250, 252, 0.65);
-}
-
-.reports-critical-row:hover {
-  background: rgba(254, 242, 242, 0.55);
-}
-
-.reports-critical-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.reports-critical-badge {
-  font-size: 11px;
-  font-weight: 900;
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  background: rgba(239, 68, 68, 0.12);
-  color: #7f1d1d;
-}
-
-.reports-critical-project {
-  font-weight: 900;
-  color: #0b1220;
-}
-
-.reports-critical-meta {
-  font-size: 12px;
-  color: #475569;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.reports-dotSep {
-  color: rgba(100, 116, 139, 0.6);
-}
-
-.reports-critical-reason {
-  margin-top: 6px;
-  font-size: 13px;
-  color: #b91c1c;
-  font-weight: 700;
-}
-
-.reports-critical-side {
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  justify-content: center;
-}
-
-@media (max-width: 860px) {
-  .reports-critical-side {
-    text-align: left;
-  }
-}
-
-.reports-critical-value {
-  font-weight: 900;
-  color: #0b1220;
-}
-
-.reports-critical-small {
-  font-size: 12px;
-  color: #475569;
-}
-
-/* Win/Loss Trend chart polish */
-.reports-panel .recharts-legend-wrapper {
-  font-size: 12px;
-}
-.reports-panel .recharts-default-legend {
-  padding-top: 4px;
-}
+export default ReportsDashboard;
