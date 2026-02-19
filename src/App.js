@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { supabase } from './supabaseClient';
@@ -66,7 +66,7 @@ function HomeCustomers() {
     account_manager: ''
   });
 
-  const loadCustomers = async () => {
+  const loadCustomers = useCallback(async () => {
     setLoading(true);
     setHomeError(null);
 
@@ -85,12 +85,11 @@ function HomeCustomers() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadCustomers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadCustomers]);
 
   const filteredCustomers = useMemo(() => {
     const q = (search || '').trim().toLowerCase();
@@ -171,7 +170,7 @@ function HomeCustomers() {
           </div>
 
           <div className="home-actions">
-            <button className="home-btn secondary" onClick={() => loadCustomers()} disabled={loading}>
+            <button className="home-btn secondary" onClick={loadCustomers} disabled={loading}>
               Refresh
             </button>
             <button className="home-btn" onClick={openAdd}>
