@@ -16,7 +16,7 @@ import { supabase } from './supabaseClient';
 import './ReportsDashboard.css';
 import * as XLSX from 'xlsx';
 
-// NEW: formatted excel export
+// formatted excel export
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
@@ -30,8 +30,6 @@ import {
   CartesianGrid,
   Tooltip,
   Cell,
-  PieChart,
-  Pie,
   ComposedChart,
   Line,
   Legend
@@ -57,13 +55,6 @@ const PASTEL_BAR_COLORS = [
   'rgba(20, 184, 166, 0.36)',
   'rgba(168, 85, 247, 0.30)'
 ];
-
-// Deal health colors
-const DEAL_HEALTH_COLORS = {
-  Healthy: 'rgba(34, 197, 94, 0.45)',     // green
-  'At Risk': 'rgba(245, 158, 11, 0.42)',  // amber
-  Critical: 'rgba(239, 68, 68, 0.40)'     // red
-};
 
 // Trend colors (light, readable)
 const TREND_COLORS = {
@@ -102,13 +93,6 @@ const diffDays = (fromDate, toDate) => {
   return Math.floor(ms / (1000 * 60 * 60 * 24));
 };
 
-// Priority for "worst wins" when grouping by customer
-const healthPriority = (status) => {
-  if (status === 'Critical') return 3;
-  if (status === 'At Risk') return 2;
-  return 1; // Healthy
-};
-
 const toMonthKey = (d) => {
   const dt = new Date(d);
   if (Number.isNaN(dt.getTime())) return null;
@@ -137,13 +121,9 @@ function ReportsDashboard() {
   const [error, setError] = useState(null);
 
   const [period, setPeriod] = useState('last90'); // last90 | ytd | all
-  const [presalesFilter, setPresalesFilter] = useState('All');
   const [pipelineGroupBy, setPipelineGroupBy] = useState('country'); // country | account_manager
 
-  // Deal health toggle: projects vs customers
-  const [dealHealthMode, setDealHealthMode] = useState('projects'); // 'projects' | 'customers'
-
-  // NEW: Active Projects report is hidden by default
+  // Active Projects report is hidden by default
   const [showActiveProjects, setShowActiveProjects] = useState(false);
   const [refreshingProjects, setRefreshingProjects] = useState(false);
   const [exportingActive, setExportingActive] = useState(false);
@@ -244,6 +224,57 @@ function ReportsDashboard() {
     };
   }, [projects, projectsInPeriod, tasks, tasksInPeriod]);
 
+  /* ================= TASKS WATCHLIST ================= */
+  const taskStatusDone = new Set(['Completed', 'Done']);
+
+  const projectById = useMemo(() => {
+    const m = new Map();
+    (projects || []).forEach((p) => m.set(p.id, p));
+    return m;
+  }, [projects]);
+
+  const { overdueTasksTop, dueSoonTasksTop } = useMemo(() => {
+    const today = startOfToday();
+    const soon = new Date(today);
+    soon.setDate(soon.getDate() + 14);
+
+    const openTasks = (tasks || []).filter((t) => !taskStatusDone.has(t.status));
+
+    const overdue = openTasks
+      .filter((t) => t.due_date && new Date(t.due_date) < today)
+      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
+      .slice(0, 10)
+      .map((t) => {
+        const p = projectById.get(t.project_id) || {};
+        return {
+          id: t.id,
+          description: t.description || t.title || '—',
+          due_date: t.due_date,
+          status: t.status || '—',
+          project_name: p.project_name || '—',
+          customer_name: p.customer_name || '—'
+        };
+      });
+
+    const dueSoon = openTasks
+      .filter((t) => t.due_date && new Date(t.due_date) >= today && new Date(t.due_date) <= soon)
+      .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
+      .slice(0, 10)
+      .map((t) => {
+        const p = projectById.get(t.project_id) || {};
+        return {
+          id: t.id,
+          description: t.description || t.title || '—',
+          due_date: t.due_date,
+          status: t.status || '—',
+          project_name: p.project_name || '—',
+          customer_name: p.customer_name || '—'
+        };
+      });
+
+    return { overdueTasksTop: overdue, dueSoonTasksTop: dueSoon };
+  }, [tasks, projectById]);
+
   /* ================= PIPELINE (COUNT opportunities, ALL active) ================= */
   const pipelineGrouped = useMemo(() => {
     const map = new Map();
@@ -267,10 +298,10 @@ function ReportsDashboard() {
 
   // Smaller + capped height so it doesn’t look massive
   const pipelineChartHeight = useMemo(() => {
-    const rowH = 28;     // smaller bar row height
-    const base = 140;    // smaller base padding
+    const rowH = 28;
+    const base = 140;
     const h = base + pipelineGrouped.length * rowH;
-    return Math.min(Math.max(260, h), 420); // min 260, max 420
+    return Math.min(Math.max(260, h), 420);
   }, [pipelineGrouped.length]);
 
   /* ================= ACTIVE PROJECTS (HIDDEN BY DEFAULT) ================= */
@@ -299,123 +330,92 @@ function ReportsDashboard() {
       const active = all.filter((p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage));
 
       // group by primary presales
-      const groupMap = new Map();
+      const groupedMap = new Map();
       active.forEach((p) => {
         const key = p.primary_presales || 'Unassigned';
-        if (!groupMap.has(key)) groupMap.set(key, []);
-        groupMap.get(key).push(p);
+        if (!groupedMap.has(key)) groupedMap.set(key, []);
+        groupedMap.get(key).push(p);
       });
 
-      const groups = Array.from(groupMap.entries())
+      const groups = Array.from(groupedMap.entries())
         .map(([presales, items]) => ({
           presales,
-          items: items.slice().sort((a, b) => (a.project_name || '').localeCompare(b.project_name || ''))
+          items: items.slice().sort((a, b) => {
+            const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
+            const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
+            if (ad !== bd) return ad - bd;
+            return (a.project_name || '').localeCompare(b.project_name || '');
+          })
         }))
         .sort((a, b) => a.presales.localeCompare(b.presales));
 
       const wb = new ExcelJS.Workbook();
-      wb.creator = 'Presales Dashboard';
-
-      const ws = wb.addWorksheet('Active Projects', {
-        views: [{ state: 'frozen', ySplit: 4 }]
-      });
+      const ws = wb.addWorksheet('Active Projects');
 
       ws.columns = [
-        { header: 'Project', key: 'project_name', width: 28 },
+        { header: 'Project Name', key: 'project_name', width: 30 },
         { header: 'Customer', key: 'customer_name', width: 22 },
         { header: 'Country', key: 'country', width: 14 },
         { header: 'Account Manager', key: 'account_manager', width: 18 },
         { header: 'Primary Presales', key: 'primary_presales', width: 16 },
-        { header: 'Stage', key: 'sales_stage', width: 16 },
-        { header: 'Deal Value', key: 'deal_value', width: 14 },
+        { header: 'Sales Stage', key: 'sales_stage', width: 14 },
+        { header: 'Deal Value (USD)', key: 'deal_value', width: 16 },
         { header: 'Due Date', key: 'due_date', width: 12 },
-        { header: 'Last Activity', key: 'last_activity', width: 34 },
-        { header: 'Next Key Activity', key: 'next_key_activity', width: 34 }
+        { header: 'Last Activity', key: 'last_activity', width: 28 },
+        { header: 'Next Key Activity', key: 'next_key_activity', width: 28 }
       ];
 
-      // title block
-      ws.addRow(['Active Projects (Not Closed) - Grouped by Presales']);
-      ws.addRow([`Generated: ${new Date().toISOString().slice(0, 10)}`]);
-      ws.addRow([`Total active projects: ${active.length}`]);
-      ws.addRow([]);
+      ws.getRow(1).font = { bold: true };
+      ws.getRow(1).alignment = { vertical: 'middle' };
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
 
-      ws.getRow(1).font = { size: 14, bold: true };
-      ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'left' };
-
-      const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
-      const headerFont = { bold: true, color: { argb: 'FFFFFFFF' } };
-      const sectionFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
-
-      const border = {
-        top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-        left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-        bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-        right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
-      };
-
-      const today = startOfToday();
-
-      const applyBorderWrap = (row) => {
-        row.eachCell((cell) => {
-          cell.border = border;
-          cell.alignment = { vertical: 'top', wrapText: true };
-        });
-      };
+      let rowCursor = 2;
 
       groups.forEach((g) => {
-        // presales band
+        // group header row
         const groupHeaderRow = ws.addRow([`Presales: ${g.presales}`]);
         groupHeaderRow.font = { bold: true };
-        groupHeaderRow.fill = sectionFill;
-        applyBorderWrap(groupHeaderRow);
+        groupHeaderRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFEFF6FF' }
+        };
+        ws.mergeCells(`A${rowCursor}:J${rowCursor}`);
+        rowCursor += 1;
 
-        const totalValue = g.items.reduce((s, p) => s + (Number(p.deal_value) || 0), 0);
-        const summaryRow = ws.addRow([`Projects: ${g.items.length}`, `Total Value: ${totalValue}`]);
-        summaryRow.font = { italic: true, color: { argb: 'FF374151' } };
-
-        // headers per group
+        // group table header row (repeat headers)
         const hdr = ws.addRow(ws.columns.map((c) => c.header));
-        hdr.eachCell((cell) => {
-          cell.fill = headerFill;
-          cell.font = headerFont;
-          cell.alignment = { vertical: 'middle', horizontal: 'left' };
-          cell.border = border;
-        });
+        hdr.font = { bold: true };
+        hdr.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF1F5F9' }
+        };
+        rowCursor += 1;
 
-        // data rows
         g.items.forEach((p) => {
-          const due = p.due_date ? new Date(p.due_date) : null;
-          if (due) due.setHours(0, 0, 0, 0);
-
-          const row = ws.addRow([
-            p.project_name || '—',
-            p.customer_name || '—',
-            p.country || '—',
-            p.account_manager || '—',
+          ws.addRow([
+            p.project_name || '',
+            p.customer_name || '',
+            p.country || '',
+            p.account_manager || '',
             p.primary_presales || 'Unassigned',
-            p.sales_stage || '—',
+            p.sales_stage || '',
             Number(p.deal_value) || 0,
-            p.due_date ? new Date(p.due_date) : '',
+            fmtDate(p.due_date),
             p.last_activity || '',
             p.next_key_activity || ''
           ]);
-
-          applyBorderWrap(row);
-
-          // formats
-          row.getCell(7).numFmt = '"$"#,##0';
-          if (p.due_date) row.getCell(8).numFmt = 'yyyy-mm-dd';
-
-          // overdue highlight
-          if (due && due < today) {
-            const dueCell = row.getCell(8);
-            dueCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
-            dueCell.font = { color: { argb: 'FF991B1B' }, bold: true };
-          }
+          rowCursor += 1;
         });
 
+        // blank row between groups
         ws.addRow([]);
+        rowCursor += 1;
       });
+
+      // Style numeric column
+      ws.getColumn('deal_value').numFmt = '"$"#,##0';
 
       const buf = await wb.xlsx.writeBuffer();
       saveAs(new Blob([buf]), 'active_projects_by_presales_formatted.xlsx');
@@ -427,317 +427,37 @@ function ReportsDashboard() {
     }
   };
 
-  /* ================= DEAL HEALTH DASHBOARD (30-day rule + toggle) ================= */
-  const {
-    dealHealthCounts,
-    dealHealthChartData,
-    criticalDeals,
-    scoredUnitsLabel
-  } = useMemo(() => {
-    const today = startOfToday();
-    const STUCK_DAYS = 30;
-
-    const activeProjects = projects.filter(
-      (p) => !CLOSED_STAGES_FOR_PIPELINE.includes(p.sales_stage)
-    );
-
-    const scoreProject = (p) => {
-      const nextActivity = (p.next_key_activity || '').trim();
-      const hasNextActivity = nextActivity.length > 0;
-
-      const due = p.due_date ? new Date(p.due_date) : null;
-      if (due) due.setHours(0, 0, 0, 0);
-      const isOverdue = !!(due && due < today);
-
-      const created = p.created_at ? new Date(p.created_at) : null;
-      if (created) created.setHours(0, 0, 0, 0);
-
-      const ageDays = created ? diffDays(created, today) : null;
-      const isStuck = ageDays !== null ? ageDays > STUCK_DAYS : true;
-
-      if (!hasNextActivity || isOverdue) {
-        let reason = '';
-        let severityScore = 0;
-
-        if (!hasNextActivity) {
-          reason = 'Missing next key activity';
-          severityScore += 50;
-        }
-
-        if (isOverdue) {
-          const overdueDays = diffDays(due, today);
-          reason = reason
-            ? `${reason} + overdue by ${overdueDays}d`
-            : `Overdue by ${overdueDays}d`;
-          severityScore += 100 + overdueDays;
-        }
-
-        return { status: 'Critical', reason, severityScore, ageDays };
-      }
-
-      if (isStuck) {
-        return {
-          status: 'At Risk',
-          reason: ageDays !== null ? `Stuck for ${ageDays}d` : 'Stuck (no created date)',
-          severityScore: 10 + (ageDays || 0),
-          ageDays
-        };
-      }
-
-      return { status: 'Healthy', reason: 'On track', severityScore: 1, ageDays };
-    };
-
-    if (dealHealthMode === 'projects') {
-      let healthy = 0;
-      let atRisk = 0;
-      let critical = 0;
-
-      const criticalList = [];
-
-      activeProjects.forEach((p) => {
-        const scored = scoreProject(p);
-
-        if (scored.status === 'Critical') {
-          critical += 1;
-          criticalList.push({
-            id: p.id,
-            unitKey: p.id,
-            project_name: p.project_name || '—',
-            customer_name: p.customer_name || '—',
-            account_manager: p.account_manager || '—',
-            country: p.country || '—',
-            sales_stage: p.sales_stage || '—',
-            primary_presales: p.primary_presales || 'Unassigned',
-            next_key_activity: (p.next_key_activity || '—'),
-            due_date: p.due_date || null,
-            deal_value: Number(p.deal_value) || 0,
-            age_days: scored.ageDays,
-            reason: scored.reason,
-            severityScore: scored.severityScore
-          });
-        } else if (scored.status === 'At Risk') {
-          atRisk += 1;
-        } else {
-          healthy += 1;
-        }
-      });
-
-      const counts = { Healthy: healthy, 'At Risk': atRisk, Critical: critical };
-      const chartData = [
-        { name: 'Healthy', value: counts.Healthy },
-        { name: 'At Risk', value: counts['At Risk'] },
-        { name: 'Critical', value: counts.Critical }
-      ].filter((x) => x.value > 0);
-
-      criticalList.sort((a, b) => {
-        if (b.severityScore !== a.severityScore) return b.severityScore - a.severityScore;
-        if (b.deal_value !== a.deal_value) return b.deal_value - a.deal_value;
-        return (a.project_name || '').localeCompare(b.project_name || '');
-      });
-
-      return {
-        dealHealthCounts: counts,
-        dealHealthChartData: chartData,
-        criticalDeals: criticalList.slice(0, 8),
-        scoredUnitsLabel: 'projects'
-      };
-    }
-
-    const customerMap = new Map();
-    activeProjects.forEach((p) => {
-      const cust = (p.customer_name || 'Unknown Customer').trim() || 'Unknown Customer';
-      if (!customerMap.has(cust)) customerMap.set(cust, []);
-      customerMap.get(cust).push(p);
-    });
-
-    let healthy = 0;
-    let atRisk = 0;
-    let critical = 0;
-
-    const criticalCustomers = [];
-
-    customerMap.forEach((custProjects, customer_name) => {
-      let worst = { status: 'Healthy', severityScore: 0, reason: 'On track', ageDays: null };
-      let worstProject = custProjects[0];
-
-      custProjects.forEach((p) => {
-        const scored = scoreProject(p);
-        if (healthPriority(scored.status) > healthPriority(worst.status)) {
-          worst = scored;
-          worstProject = p;
-        } else if (healthPriority(scored.status) === healthPriority(worst.status)) {
-          const curVal = Number(p.deal_value) || 0;
-          const bestVal = Number(worstProject?.deal_value) || 0;
-
-          if (scored.severityScore > worst.severityScore) {
-            worst = scored;
-            worstProject = p;
-          } else if (scored.severityScore === worst.severityScore && curVal > bestVal) {
-            worst = scored;
-            worstProject = p;
-          }
-        }
-      });
-
-      if (worst.status === 'Critical') {
-        critical += 1;
-
-        const totalValue = custProjects.reduce((s, p) => s + (Number(p.deal_value) || 0), 0);
-        const countries = [...new Set(custProjects.map((p) => p.country || '—'))].slice(0, 3);
-        const ams = [...new Set(custProjects.map((p) => p.account_manager || '—'))].slice(0, 2);
-
-        criticalCustomers.push({
-          id: customer_name,
-          unitKey: customer_name,
-          project_name: worstProject?.project_name || '—',
-          customer_name,
-          account_manager: ams.join(', '),
-          country: countries.join(', '),
-          sales_stage: worstProject?.sales_stage || '—',
-          primary_presales: worstProject?.primary_presales || 'Unassigned',
-          next_key_activity: (worstProject?.next_key_activity || '—'),
-          due_date: worstProject?.due_date || null,
-          deal_value: totalValue,
-          age_days: worst.ageDays,
-          reason: `Customer risk: ${worst.reason}`,
-          severityScore: worst.severityScore
-        });
-      } else if (worst.status === 'At Risk') {
-        atRisk += 1;
-      } else {
-        healthy += 1;
-      }
-    });
-
-    const counts = { Healthy: healthy, 'At Risk': atRisk, Critical: critical };
-    const chartData = [
-      { name: 'Healthy', value: counts.Healthy },
-      { name: 'At Risk', value: counts['At Risk'] },
-      { name: 'Critical', value: counts.Critical }
-    ].filter((x) => x.value > 0);
-
-    criticalCustomers.sort((a, b) => {
-      if (b.severityScore !== a.severityScore) return b.severityScore - a.severityScore;
-      if (b.deal_value !== a.deal_value) return b.deal_value - a.deal_value;
-      return (a.customer_name || '').localeCompare(b.customer_name || '');
-    });
-
-    return {
-      dealHealthCounts: counts,
-      dealHealthChartData: chartData,
-      criticalDeals: criticalCustomers.slice(0, 8),
-      scoredUnitsLabel: 'customers'
-    };
-  }, [projects, dealHealthMode]);
-
-  /* ================= WIN / LOSS TREND (Over Time) ================= */
+  /* ================= WIN/LOSS TREND ================= */
   const winLossTrend = useMemo(() => {
-    const dataSource = projectsInPeriod;
     const map = new Map();
 
-    dataSource.forEach((p) => {
-      if (!p.created_at) return;
-      const key = toMonthKey(p.created_at);
-      if (!key) return;
+    projectsInPeriod.forEach((p) => {
+      const mk = toMonthKey(p.created_at);
+      if (!mk) return;
 
-      if (!map.has(key)) {
-        map.set(key, {
-          monthKey: key,
-          month: monthKeyToLabel(key),
-          opened: 0,
-          won: 0,
-          lost: 0,
-          winRate: 0
-        });
+      if (!map.has(mk)) {
+        map.set(mk, { monthKey: mk, month: monthKeyToLabel(mk), opened: 0, won: 0, lost: 0, winRate: 0 });
       }
-
-      const row = map.get(key);
+      const row = map.get(mk);
       row.opened += 1;
 
       if (WON_STAGES.includes(p.sales_stage)) row.won += 1;
       if (LOST_STAGES.includes(p.sales_stage)) row.lost += 1;
     });
 
-    const sorted = Array.from(map.values()).sort((a, b) =>
-      (a.monthKey || '').localeCompare(b.monthKey || '')
-    );
-
-    sorted.forEach((r) => {
+    const rows = Array.from(map.values()).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+    rows.forEach((r) => {
       const denom = r.won + r.lost;
       r.winRate = denom ? Math.round((r.won / denom) * 100) : 0;
     });
 
-    return sorted;
+    return rows;
   }, [projectsInPeriod]);
 
-  // Smaller fixed height for CEO view
-  const trendChartHeight = useMemo(() => 260, []);
-
-  /* ================= PROJECTS BY PRESALES ================= */
-  const projectsGroupedByPresales = useMemo(() => {
-    const map = new Map();
-    projects.forEach((p) => {
-      const key = p.primary_presales || 'Unassigned';
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(p);
-    });
-
-    return Array.from(map.entries())
-      .map(([presales, items]) => ({
-        presales,
-        items: items
-          .slice()
-          .sort((a, b) => (a.project_name || '').localeCompare(b.project_name || ''))
-      }))
-      .filter((g) => presalesFilter === 'All' || g.presales === presalesFilter)
-      .sort((a, b) => a.presales.localeCompare(b.presales));
-  }, [projects, presalesFilter]);
-
-  const presalesOptions = useMemo(() => {
-    const list = [...new Set(projects.map((p) => p.primary_presales || 'Unassigned'))].sort();
-    return ['All', ...list];
-  }, [projects]);
-
-  /* ================= EXCEL EXPORT ================= */
-  const exportProjectsByPresalesToExcel = () => {
-    const rows = [];
-
-    rows.push(['Projects by Presales']);
-    rows.push([`Generated: ${new Date().toISOString().slice(0, 10)}`]);
-    rows.push([`Filter: ${presalesFilter}`]);
-    rows.push([]);
-
-    projectsGroupedByPresales.forEach((g) => {
-      rows.push([`Presales: ${g.presales}`]);
-      rows.push(['Project', 'Customer', 'Stage', 'Next key activity', 'Value']);
-
-      g.items.forEach((p) => {
-        rows.push([
-          p.project_name || '—',
-          p.customer_name || '—',
-          p.sales_stage || '—',
-          (p.next_key_activity || '—'),
-          Number(p.deal_value) || 0
-        ]);
-      });
-
-      rows.push([]);
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [
-      { wch: 28 },
-      { wch: 22 },
-      { wch: 16 },
-      { wch: 44 },
-      { wch: 14 }
-    ];
-    ws['!freeze'] = { xSplit: 0, ySplit: 4 };
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Projects by Presales');
-    XLSX.writeFile(wb, 'projects_by_presales.xlsx');
-  };
+  // responsive chart height
+  const trendChartHeight = useMemo(() => {
+    return 320;
+  }, []);
 
   if (loading) {
     return (
@@ -745,13 +465,13 @@ function ReportsDashboard() {
         <header className="reports-header">
           <div className="reports-header-left">
             <h1 className="reports-title">Presales Reports & Analytics</h1>
-            <p className="reports-subtitle">Loading report data…</p>
+            <p className="reports-subtitle">Loading reports…</p>
           </div>
         </header>
 
         <div className="reports-loading">
           <div className="reports-loading-spinner" />
-          <span>Loading reports…</span>
+          <div className="reports-loading-text">Fetching data from Supabase…</div>
         </div>
       </div>
     );
@@ -778,7 +498,7 @@ function ReportsDashboard() {
         <div className="reports-header-left">
           <h1 className="reports-title">Presales Reports & Analytics</h1>
           <p className="reports-subtitle">
-            Quick snapshot of performance, pipeline, deal health, and outcomes trend.
+            Quick snapshot of performance, pipeline, tasks, and outcomes trend.
           </p>
         </div>
 
@@ -854,6 +574,79 @@ function ReportsDashboard() {
           </div>
         </section>
 
+        {/* Tasks Watchlist */}
+        <section className="reports-section">
+          <div className="reports-section-header">
+            <div className="reports-section-title">
+              <FaExclamationTriangle className="reports-section-icon" />
+              <h2>Tasks Watchlist</h2>
+            </div>
+            <p className="reports-section-subtitle">
+              Open tasks only. Overdue items and tasks due in the next 14 days.
+            </p>
+          </div>
+
+          <div className="reports-watchlist-grid">
+            <div className="reports-panel">
+              <div className="reports-watchlist-title">Overdue (Top 10)</div>
+
+              {overdueTasksTop.length === 0 ? (
+                <div className="reports-empty">No overdue tasks right now. 👍</div>
+              ) : (
+                <div className="reports-watchlist-list">
+                  {overdueTasksTop.map((t) => (
+                    <div key={t.id} className="reports-watchlist-row">
+                      <div className="reports-watchlist-main">
+                        <div className="reports-watchlist-task">{t.description}</div>
+                        <div className="reports-watchlist-meta">
+                          <span>{t.customer_name}</span>
+                          <span className="reports-dotSep">•</span>
+                          <span>{t.project_name}</span>
+                          <span className="reports-dotSep">•</span>
+                          <span>Status: {t.status}</span>
+                        </div>
+                      </div>
+                      <div className="reports-watchlist-side">
+                        <div className="reports-watchlist-date">{fmtDate(t.due_date)}</div>
+                        <div className="reports-watchlist-badge danger">OVERDUE</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="reports-panel">
+              <div className="reports-watchlist-title">Due Soon (Next 14 days, Top 10)</div>
+
+              {dueSoonTasksTop.length === 0 ? (
+                <div className="reports-empty">No tasks due soon.</div>
+              ) : (
+                <div className="reports-watchlist-list">
+                  {dueSoonTasksTop.map((t) => (
+                    <div key={t.id} className="reports-watchlist-row">
+                      <div className="reports-watchlist-main">
+                        <div className="reports-watchlist-task">{t.description}</div>
+                        <div className="reports-watchlist-meta">
+                          <span>{t.customer_name}</span>
+                          <span className="reports-dotSep">•</span>
+                          <span>{t.project_name}</span>
+                          <span className="reports-dotSep">•</span>
+                          <span>Status: {t.status}</span>
+                        </div>
+                      </div>
+                      <div className="reports-watchlist-side">
+                        <div className="reports-watchlist-date">{fmtDate(t.due_date)}</div>
+                        <div className="reports-watchlist-badge">DUE SOON</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
         {/* Win/Loss Trend */}
         <section className="reports-section">
           <div className="reports-section-header">
@@ -912,163 +705,6 @@ function ReportsDashboard() {
                 </ResponsiveContainer>
               </div>
             )}
-          </div>
-        </section>
-
-        {/* Deal Health Dashboard */}
-        <section className="reports-section">
-          <div className="reports-section-header">
-            <div className="reports-section-title">
-              <FaExclamationTriangle className="reports-section-icon" />
-              <h2>Deal Health</h2>
-            </div>
-
-            <div className="reports-dealhealth-subrow">
-              <p className="reports-section-subtitle" style={{ margin: 0 }}>
-                Active only. Critical = overdue due date or missing next key activity. At Risk = stuck &gt; 30 days.
-              </p>
-
-              <div className="reports-mini-toggle">
-                <button
-                  className={`reports-mini-toggle-btn ${dealHealthMode === 'projects' ? 'active' : ''}`}
-                  onClick={() => setDealHealthMode('projects')}
-                  type="button"
-                >
-                  By Projects
-                </button>
-                <button
-                  className={`reports-mini-toggle-btn ${dealHealthMode === 'customers' ? 'active' : ''}`}
-                  onClick={() => setDealHealthMode('customers')}
-                  type="button"
-                >
-                  By Customers
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="reports-dealhealth-grid">
-            <div className="reports-panel reports-dealhealth-card">
-              {dealHealthChartData.length === 0 ? (
-                <div className="reports-empty">No active opportunities to score.</div>
-              ) : (
-                <div className="reports-dealhealth-chartWrap">
-                  <div className="reports-dealhealth-chart">
-                    <ResponsiveContainer>
-                      <PieChart>
-                        <Pie
-                          data={dealHealthChartData}
-                          dataKey="value"
-                          nameKey="name"
-                          innerRadius={50}
-                          outerRadius={74}
-                          paddingAngle={2}
-                        >
-                          {dealHealthChartData.map((entry) => (
-                            <Cell key={entry.name} fill={DEAL_HEALTH_COLORS[entry.name]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(v, n) => [`${v}`, `${n}`]} />
-                        {/* Removed Legend to avoid extra empty space */}
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="reports-dealhealth-stats">
-                    <div className="reports-healthStat">
-                      <span className="reports-healthDot healthy" />
-                      <div>
-                        <div className="reports-healthNum">{dealHealthCounts.Healthy}</div>
-                        <div className="reports-healthLbl">Healthy</div>
-                      </div>
-                    </div>
-
-                    <div className="reports-healthStat">
-                      <span className="reports-healthDot risk" />
-                      <div>
-                        <div className="reports-healthNum">{dealHealthCounts['At Risk']}</div>
-                        <div className="reports-healthLbl">At Risk</div>
-                      </div>
-                    </div>
-
-                    <div className="reports-healthStat">
-                      <span className="reports-healthDot critical" />
-                      <div>
-                        <div className="reports-healthNum">{dealHealthCounts.Critical}</div>
-                        <div className="reports-healthLbl">Critical</div>
-                      </div>
-                    </div>
-
-                    <div className="reports-healthFootnote">
-                      Counting by <strong>{scoredUnitsLabel}</strong>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="reports-panel reports-dealhealth-card">
-              <div className="reports-dealhealth-listHeader">
-                <div>
-                  <div className="reports-dealhealth-listTitle">
-                    Critical {dealHealthMode === 'customers' ? 'customers' : 'deals'} needing attention
-                  </div>
-                  <div className="reports-dealhealth-listSub">Top 8 based on urgency</div>
-                </div>
-              </div>
-
-              {criticalDeals.length === 0 ? (
-                <div className="reports-empty">No critical items right now. 👍</div>
-              ) : (
-                <div className="reports-critical-list">
-                  {criticalDeals.map((d) => (
-                    <div key={d.unitKey} className="reports-critical-row">
-                      <div className="reports-critical-main">
-                        <div className="reports-critical-title">
-                          <span className="reports-critical-badge">CRITICAL</span>
-                          <span className="reports-critical-project">
-                            {dealHealthMode === 'customers' ? d.customer_name : d.project_name}
-                          </span>
-                        </div>
-
-                        <div className="reports-critical-meta">
-                          {dealHealthMode === 'customers' ? (
-                            <>
-                              <span>Example: {d.project_name}</span>
-                              <span className="reports-dotSep">•</span>
-                              <span>{d.sales_stage}</span>
-                              <span className="reports-dotSep">•</span>
-                              <span>{d.country}</span>
-                              <span className="reports-dotSep">•</span>
-                              <span>AM: {d.account_manager}</span>
-                            </>
-                          ) : (
-                            <>
-                              <span>{d.customer_name}</span>
-                              <span className="reports-dotSep">•</span>
-                              <span>{d.sales_stage}</span>
-                              <span className="reports-dotSep">•</span>
-                              <span>{d.country}</span>
-                              <span className="reports-dotSep">•</span>
-                              <span>AM: {d.account_manager}</span>
-                            </>
-                          )}
-                        </div>
-
-                        <div className="reports-critical-reason">{d.reason}</div>
-                      </div>
-
-                      <div className="reports-critical-side">
-                        <div className="reports-critical-value">{formatCurrency(d.deal_value)}</div>
-                        <div className="reports-critical-small">
-                          Presales: <strong>{d.primary_presales}</strong>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         </section>
 
@@ -1243,80 +879,6 @@ function ReportsDashboard() {
                 </>
               )}
             </div>
-          )}
-        </section>
-
-        {/* Projects by Presales */}
-        <section className="reports-section">
-          <div className="reports-section-header">
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <div>
-                <div className="reports-section-title">
-                  <FaTasks className="reports-section-icon" />
-                  <h2>Projects by Presales</h2>
-                </div>
-                <p className="reports-section-subtitle">
-                  Grouped by primary presales assigned in the projects table.
-                </p>
-              </div>
-
-              <div className="reports-controls">
-                <div className="reports-control">
-                  <span className="reports-control-label">Presales</span>
-                  <select
-                    className="reports-select"
-                    value={presalesFilter}
-                    onChange={(e) => setPresalesFilter(e.target.value)}
-                  >
-                    {presalesOptions.map((p) => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <button
-                  className="reports-filter-chip reports-export-chip"
-                  onClick={exportProjectsByPresalesToExcel}
-                  title="Export grouped report"
-                >
-                  <FaFileExcel style={{ marginRight: 6 }} />
-                  Export Excel
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {projectsGroupedByPresales.length === 0 ? (
-            <div className="reports-panel">
-              <div className="reports-empty">No projects found.</div>
-            </div>
-          ) : (
-            projectsGroupedByPresales.map((g) => (
-              <div key={g.presales} className="reports-presales-group">
-                <div className="reports-presales-group-header">
-                  <div className="reports-presales-name">{g.presales}</div>
-                  <div className="reports-presales-count">{g.items.length} projects</div>
-                </div>
-
-                <div className="reports-panel">
-                  <div className="reports-table-header reports-presales-simple-table">
-                    <span>Project</span>
-                    <span>Stage</span>
-                    <span>Next key activity</span>
-                    <span>Value</span>
-                  </div>
-
-                  {g.items.map((p) => (
-                    <div key={p.id} className="reports-table-row reports-presales-simple-table">
-                      <span>{p.project_name || '—'}</span>
-                      <span>{p.sales_stage || '—'}</span>
-                      <span className="reports-wrap">{(p.next_key_activity || '—')}</span>
-                      <span>{formatCurrency(p.deal_value)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))
           )}
         </section>
       </main>
