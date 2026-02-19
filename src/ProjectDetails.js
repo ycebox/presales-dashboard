@@ -106,14 +106,6 @@ const stageIsClosedLike = (stage) => {
   return ["closed-lost", "close-won", "closed-won", "cancelled", "canceled", "done"].includes(s);
 };
 
-const computeHealth = ({ is_inactive, is_inactive_computed, sales_stage, current_status }) => {
-  if (is_inactive === true) return { label: "Inactive (manual)", cls: "health-red" };
-  if (is_inactive_computed === true) return { label: "Inactive", cls: "health-red" };
-  if (stageIsClosedLike(sales_stage)) return { label: "Inactive", cls: "health-red" };
-  if (safeLower(current_status).includes("inactive")) return { label: "Inactive", cls: "health-red" };
-  return { label: "Active", cls: "health-green" };
-};
-
 const parseModules = (raw) =>
   (raw || "")
     .split(",")
@@ -156,6 +148,60 @@ const groupTasks = (tasks) => {
 
   return { parents, childrenByParent, orphans };
 };
+
+/* ---------------- NEW: Computed Inactive (client-side) ----------------
+   Rule:
+   - Inactive if NO open tasks
+   - OR if last movement is older than 60 days
+   "Movement" = latest of:
+     - project.last_activity_at
+     - latest OPEN task updated_at / created_at (fallback)
+     - latest activity activity_date (fallback)
+----------------------------------------------------------------------- */
+const INACTIVE_DAYS_THRESHOLD = 60;
+
+const safeDate = (v) => {
+  if (!v) return null;
+  const d = v instanceof Date ? v : new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+};
+
+const daysSince = (v) => {
+  const d = safeDate(v);
+  if (!d) return null;
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+};
+
+const getLatestFromList = (dateValues) => {
+  const dates = (dateValues || []).map(safeDate).filter(Boolean);
+  if (!dates.length) return null;
+  return new Date(Math.max(...dates.map((d) => d.getTime())));
+};
+
+const computeInactiveClient = (project, tasks, activities) => {
+  const openTasks = (tasks || []).filter((t) => !isCompletedStatus(t?.status));
+  if (openTasks.length === 0) return true;
+
+  const projectLast = safeDate(project?.last_activity_at);
+
+  const latestOpenTaskMove = getLatestFromList(
+    openTasks.map((t) => t?.updated_at || t?.created_at || t?.due_date || t?.start_date || t?.end_date)
+  );
+
+  const latestActivityMove = getLatestFromList((activities || []).map((a) => a?.activity_date));
+
+  const lastMovementAt = getLatestFromList([projectLast, latestOpenTaskMove, latestActivityMove]);
+  if (!lastMovementAt) return true;
+
+  const ds = daysSince(lastMovementAt);
+  if (ds === null) return true;
+
+  return ds > INACTIVE_DAYS_THRESHOLD;
+};
+/* ------------------------------------------------------------------- */
 
 /* ---------------- Activity Modal ---------------- */
 const ActivityModal = ({ isOpen, onClose, onSave, editingActivity }) => {
@@ -458,7 +504,7 @@ export default function ProjectDetails() {
     fetchProject();
   }, [fetchProject]);
 
-  /* ---------- NEW: Touch last_activity_at when tasks change ---------- */
+  /* ---------- Touch last_activity_at when tasks change ---------- */
   const touchProjectLastActivity = useCallback(
     async (isoWhen = null) => {
       if (!projectId) return;
@@ -546,7 +592,22 @@ export default function ProjectDetails() {
     return orphans.filter((t) => !isCompletedStatus(t.status));
   }, [orphans, showCompleted]);
 
-  const health = useMemo(() => (project ? computeHealth(project) : { label: "—", cls: "health-amber" }), [project]);
+  // ✅ NEW: computed inactive (client)
+  const inactiveComputedClient = useMemo(() => {
+    if (!project) return false;
+    // If stage is closed-like, treat as inactive as well (keeps your old behavior)
+    if (stageIsClosedLike(project.sales_stage)) return true;
+    return computeInactiveClient(project, tasks, activities);
+  }, [project, tasks, activities]);
+
+  // ✅ NEW: health badge uses manual override first, then computed
+  const health = useMemo(() => {
+    if (!project) return { label: "—", cls: "health-amber" };
+    if (project.is_inactive === true) return { label: "Inactive (manual)", cls: "health-red" };
+    if (inactiveComputedClient === true) return { label: "Inactive", cls: "health-red" };
+    if (safeLower(project.current_status).includes("inactive")) return { label: "Inactive", cls: "health-red" };
+    return { label: "Active", cls: "health-green" };
+  }, [project, inactiveComputedClient]);
 
   const stageBadgeClass = useMemo(() => {
     if (!project?.sales_stage) return "stage-badge stage-active";
@@ -768,7 +829,9 @@ export default function ProjectDetails() {
       const { error } = await supabase.from("project_activities").update(payload).eq("id", editingActivity.id);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from("project_activities").insert({ ...payload, project_id: project.id });
+      const { error } = await supabase
+        .from("project_activities")
+        .insert({ ...payload, project_id: project.id });
       if (error) throw error;
     }
 
@@ -789,6 +852,7 @@ export default function ProjectDetails() {
       const { error } = await supabase.from("project_activities").delete().eq("id", activityId);
       if (error) throw error;
       await fetchActivities();
+      await fetchProject();
     } catch (e) {
       console.error("Delete activity error:", e);
       alert(`Failed to delete activity: ${e?.message || "Unknown error"}`);
@@ -801,8 +865,11 @@ export default function ProjectDetails() {
   if (!project) return <ErrorState message={"Project not found."} onBack={() => navigate(-1)} />;
 
   const foreseen = project.foreseen_closing_date || project.due_date;
-  const inactiveComputed = project.is_inactive_computed === true;
+
+  // ✅ Use client computed inactive (what you asked for)
+  const inactiveComputed = inactiveComputedClient === true;
   const inactiveManual = project.is_inactive === true;
+
   const modulesList = parseModules(project.smartvista_modules);
 
   /* ---------- Read-only project info view ---------- */
@@ -1633,6 +1700,12 @@ export default function ProjectDetails() {
                 <span className="flag-label">Last activity</span>
                 <span className="flag-value">{formatNiceDateTime(project.last_activity_at)}</span>
               </div>
+              <div className="flag-row">
+                <span className="flag-label">Rule</span>
+                <span className="flag-value">
+                  No open tasks OR no movement &gt; {INACTIVE_DAYS_THRESHOLD} days
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -1653,7 +1726,12 @@ export default function ProjectDetails() {
       />
 
       {/* Activity modal */}
-      <ActivityModal isOpen={showActivityModal} onClose={closeActivityModal} onSave={onSaveActivity} editingActivity={editingActivity} />
+      <ActivityModal
+        isOpen={showActivityModal}
+        onClose={closeActivityModal}
+        onSave={onSaveActivity}
+        editingActivity={editingActivity}
+      />
     </div>
   );
 }
