@@ -165,15 +165,47 @@ const isTaskOnDay = (task, day) => {
   return d.getTime() >= s.getTime() && d.getTime() <= e.getTime();
 };
 
-// General “active” guard
-const isProjectActive = (project) => {
-  const cs = (project?.current_status || '').toLowerCase().trim();
-  const ss = (project?.sales_stage || '').toLowerCase().trim();
-  const signal = cs || ss;
-  if (!signal) return true;
+// Project inactivity (computed)
+// Rule:
+// 1) Inactive if there are NO open/active tasks
+// 2) OR if the last movement (project last_activity_at OR latest open task updated/created date) is older than N days
+const DAYS_INACTIVE_THRESHOLD = 60;
 
-  const inactiveKeywords = ['archiv', 'inactive', 'closed', 'done', 'cancel', 'completed', 'on-hold', 'hold'];
-  return !inactiveKeywords.some((k) => signal.includes(k));
+const daysSinceDate = (value) => {
+  const d = value instanceof Date ? value : new Date(value);
+  if (!d || Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  const ms = now.getTime() - d.getTime();
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+};
+
+const getLatestOpenTaskMovementAt = (tasksForProject) => {
+  const open = (tasksForProject || []).filter((t) => !isCompletedStatus(t?.status));
+  if (open.length === 0) return null;
+
+  const candidates = open
+    .map((t) => t?.updated_at || t?.created_at || t?.start_date || t?.due_date)
+    .map((x) => (x ? new Date(x) : null))
+    .filter((d) => d && !Number.isNaN(d.getTime()));
+
+  if (candidates.length === 0) return null;
+  return new Date(Math.max(...candidates.map((d) => d.getTime())));
+};
+
+const computeProjectInactive = (project, tasksForProject, thresholdDays = DAYS_INACTIVE_THRESHOLD) => {
+  const openTaskCount = (tasksForProject || []).filter((t) => !isCompletedStatus(t?.status)).length;
+  if (openTaskCount === 0) return true;
+
+  const projectLast = project?.last_activity_at ? new Date(project.last_activity_at) : null;
+  const taskLast = getLatestOpenTaskMovementAt(tasksForProject);
+
+  const valid = [projectLast, taskLast].filter((d) => d && !Number.isNaN(d.getTime()));
+  const lastMovementAt = valid.length ? new Date(Math.max(...valid.map((d) => d.getTime()))) : null;
+  if (!lastMovementAt) return true;
+
+  const days = daysSinceDate(lastMovementAt);
+  if (days === null) return true;
+  return days > thresholdDays;
 };
 
 // Board filter: exclude these stages
@@ -437,7 +469,23 @@ function PresalesOverview() {
     setRangeError(validateDateRange(rangeStart, rangeEnd));
   }, [rangeStart, rangeEnd]);
 
-  const activeProjects = useMemo(() => (projects || []).filter(isProjectActive), [projects]);
+  // Build lookup once so computed inactivity can use tasks per project
+  const tasksByProjectId = useMemo(() => {
+    const map = {};
+    (tasks || []).forEach((t) => {
+      const pid = t?.project_id;
+      if (!pid) return;
+      if (!map[pid]) map[pid] = [];
+      map[pid].push(t);
+    });
+    return map;
+  }, [tasks]);
+
+  // A project is "active" if it is NOT computed as inactive
+  // (inactive = no open tasks OR no movement in the last 60 days)
+  const activeProjects = useMemo(() => {
+    return (projects || []).filter((p) => !computeProjectInactive(p, tasksByProjectId[p?.id] || []));
+  }, [projects, tasksByProjectId]);
 
   const activeProjectsByPresales = useMemo(() => {
     const by = {};
@@ -520,176 +568,116 @@ function PresalesOverview() {
       const e = parseDate(row.end_date) || s;
       if (!s) return;
 
-      const cur = new Date(s);
-      while (cur.getTime() <= e.getTime()) {
-        const key = ymd(cur);
-        if (!key) break;
+      const days = buildDayRange(s, e);
+      const status = normalizeScheduleTypeToStatus(row?.type, row?.block_hours);
+
+      days.forEach((d) => {
+        const key = ymd(d);
+        if (!key) return;
 
         if (!map[assignee]) map[assignee] = {};
         if (!map[assignee][key]) map[assignee][key] = { status: 'free', entries: [] };
 
-        const derived = normalizeScheduleTypeToStatus(row.type, row.block_hours);
+        map[assignee][key].entries.push(row);
 
-        map[assignee][key].entries.push({
-          type: row.type,
-          note: row.note,
-          block_hours: row.block_hours,
-          start_date: row.start_date,
-          end_date: row.end_date,
-          derivedStatus: derived,
-        });
-
-        const currentStatus = map[assignee][key].status || 'free';
-        const best = statusPriority(derived) > statusPriority(currentStatus) ? derived : currentStatus;
-        map[assignee][key].status = best;
-
-        cur.setDate(cur.getDate() + 1);
-      }
+        const cur = map[assignee][key].status;
+        if (statusPriority(status) > statusPriority(cur)) {
+          map[assignee][key].status = status;
+        }
+      });
     });
 
     return map;
   }, [scheduleRows]);
 
-  const getScheduleForDay = (assignee, day) => {
-    const a = (assignee || '').trim();
-    const key = ymd(day);
-    return scheduleLookup?.[a]?.[key] || { status: 'free', entries: [] };
-  };
-
-  const getScheduleStatusForDay = (assignee, day) => getScheduleForDay(assignee, day).status || 'free';
-
-  // ✅ Load hours per assignee (only from tasks) + capacity is based on schedule
-  const utilizationByPresales = useMemo(() => {
-    // init
-    const by = {};
+  const dayCapacityMatrix = useMemo(() => {
+    const matrix = {};
     (allPresalesNames || []).forEach((name) => {
-      by[name] = { name, taskHours: 0, capacityHours: 0, pct: 0 };
-    });
-
-    // capacity per assignee = sum(statusToAvailableHours(dayStatus)) across range
-    (allPresalesNames || []).forEach((name) => {
-      let cap = 0;
-      rangeDays.forEach((d) => {
-        const status = getScheduleStatusForDay(name, d);
-        cap += statusToAvailableHours(status);
+      matrix[name] = {};
+      (rangeDays || []).forEach((d) => {
+        const key = ymd(d);
+        const sched = scheduleLookup?.[name]?.[key];
+        const status = sched?.status || 'free';
+        matrix[name][key] = { status, availableHours: statusToAvailableHours(status), entries: sched?.entries || [] };
       });
-      if (!by[name]) by[name] = { name, taskHours: 0, capacityHours: 0, pct: 0 };
-      by[name].capacityHours = Math.round(cap * 10) / 10;
     });
+    return matrix;
+  }, [allPresalesNames, rangeDays, scheduleLookup]);
 
-    // tasks load (only tasks, no schedule)
-    (tasks || []).forEach((t) => {
-      if (isCompletedStatus(t?.status)) return;
+  const tasksInRange = useMemo(() => {
+    return (openTasks || []).filter((t) => {
+      const ts = parseDate(t.start_date) || parseDate(t.due_date) || parseDate(t.end_date);
+      const te = parseDate(t.end_date) || parseDate(t.due_date) || parseDate(t.start_date);
+      const start = ts || te;
+      const end = te || ts;
+      if (!start && !end) return false;
 
-      const a = (t?.assignee || '').trim();
-      if (!a) return;
-      if (!by[a]) by[a] = { name: a, taskHours: 0, capacityHours: 0, pct: 0 };
+      const rs = parseDate(rangeStart);
+      const re = parseDate(rangeEnd);
+      if (!rs || !re) return false;
 
-      const taskStart = t?.start_date || t?.due_date || t?.end_date;
-      const taskEnd = t?.end_date || t?.due_date || t?.start_date;
-      const overlapDays = getOverlapDays(rangeStart, rangeEnd, taskStart, taskEnd);
-      if (!overlapDays) return;
-
-      const est = safeNumber(t?.estimated_hours, DEFAULT_TASK_HOURS);
-      const mult = canonicalTypeMultiplier(t?.task_type);
-      const effort = est * mult;
-
-      const fullSpanDays = getOverlapDays(taskStart, taskEnd, taskStart, taskEnd) || overlapDays;
-      const perDay = effort / Math.max(1, fullSpanDays);
-      by[a].taskHours += perDay * overlapDays;
+      return !(end.getTime() < rs.getTime() || start.getTime() > re.getTime());
     });
+  }, [openTasks, rangeStart, rangeEnd]);
 
-    // pct = taskHours / capacityHours (capacity excludes leave/training/etc because those days are 0)
-    Object.keys(by).forEach((k) => {
-      const cap = safeNumber(by[k].capacityHours, 0);
-      const th = Math.round(safeNumber(by[k].taskHours, 0) * 10) / 10;
-      by[k].taskHours = th;
-      by[k].pct = cap > 0 ? Math.round((th / cap) * 100) : th > 0 ? 999 : 0;
+  const tasksByAssignee = useMemo(() => {
+    const map = {};
+    (tasksInRange || []).forEach((t) => {
+      const a = (t?.assignee || '').trim() || 'Unassigned';
+      if (!map[a]) map[a] = [];
+      map[a].push(t);
     });
+    return map;
+  }, [tasksInRange]);
 
-    return Object.values(by).sort((a, b) => {
-      if ((b.pct || 0) !== (a.pct || 0)) return (b.pct || 0) - (a.pct || 0);
-      return a.name.localeCompare(b.name);
-    });
-  }, [tasks, allPresalesNames, rangeStart, rangeEnd, rangeDays, scheduleLookup]);
+  const workloadSummary = useMemo(() => {
+    const rs = parseDate(rangeStart);
+    const re = parseDate(rangeEnd);
+    if (!rs || !re) return [];
 
-  const getDailyLoadHours = useMemo(() => {
-    return (assignee, dateValue) => {
-      const a = (assignee || '').trim();
-      const day = parseDate(dateValue);
-      if (!a || !day) return 0;
+    const rows = (allPresalesNames || []).map((assignee) => {
+      const items = tasksByAssignee?.[assignee] || [];
+      let totalHours = 0;
+      let weightedHours = 0;
 
-      let sum = 0;
+      items.forEach((t) => {
+        const overlapDays = getOverlapDays(rs, re, t.start_date, t.end_date);
+        if (overlapDays <= 0) return;
 
-      (tasks || []).forEach((t) => {
-        if (isCompletedStatus(t?.status)) return;
-        if ((t?.assignee || '').trim() !== a) return;
-        if (!isTaskOnDay(t, day)) return;
+        const hours = safeNumber(t.estimated_hours, DEFAULT_TASK_HOURS);
+        const perDay = hours / overlapDays;
+        totalHours += perDay * overlapDays;
 
-        const taskStart = t?.start_date || t?.due_date || t?.end_date || day;
-        const taskEnd = t?.end_date || t?.due_date || t?.start_date || day;
-
-        const est = safeNumber(t?.estimated_hours, DEFAULT_TASK_HOURS);
-        const mult = canonicalTypeMultiplier(t?.task_type);
-        const effort = est * mult;
-
-        const spanDays = getOverlapDays(taskStart, taskEnd, taskStart, taskEnd) || 1;
-        const perDay = effort / Math.max(1, spanDays);
-        sum += perDay;
+        const mult = canonicalTypeMultiplier(t.task_type);
+        weightedHours += perDay * overlapDays * mult;
       });
 
-      return Math.round(sum * 10) / 10;
-    };
-  }, [tasks]);
+      const totalDays = buildDayRange(rs, re).length || 1;
+      const avgPerDay = totalHours / totalDays;
+      const avgWeightedPerDay = weightedHours / totalDays;
 
-  // Assignment Helper (available only)
-  const helperTable = useMemo(() => {
-    const startDay = parseDate(helperStartDate);
-    const requiredBase = safeNumber(helperRequiredHours, DEFAULT_TASK_HOURS);
-    const required = Math.round(requiredBase * canonicalTypeMultiplier(helperTaskType) * 10) / 10;
+      return {
+        assignee,
+        tasks: items.length,
+        totalHours: Math.round(totalHours * 10) / 10,
+        weightedHours: Math.round(weightedHours * 10) / 10,
+        avgPerDay: Math.round(avgPerDay * 10) / 10,
+        avgWeightedPerDay: Math.round(avgWeightedPerDay * 10) / 10,
+      };
+    });
 
-    if (!startDay) return { required, rows: [] };
+    return rows.sort((a, b) => (b.weightedHours || 0) - (a.weightedHours || 0));
+  }, [allPresalesNames, tasksByAssignee, rangeStart, rangeEnd]);
 
-    const rows = (allPresalesNames || [])
-      .map((name) => {
-        const status = getScheduleStatusForDay(name, startDay);
-        const capacity = statusToAvailableHours(status);
-        const load = getDailyLoadHours(name, startDay);
-        const remaining = Math.round((capacity - load) * 10) / 10;
-
-        return {
-          name,
-          status,
-          capacity: Math.round(capacity * 10) / 10,
-          load,
-          remaining,
-          ok: remaining >= required,
-        };
-      })
-      .filter((r) => r.ok)
-      .sort((a, b) => {
-        if (b.remaining !== a.remaining) return b.remaining - a.remaining;
-        return a.name.localeCompare(b.name);
-      });
-
-    return { required, rows };
-  }, [helperStartDate, helperRequiredHours, helperTaskType, allPresalesNames, scheduleLookup, getDailyLoadHours]);
-
-  // Day detail: tasks + schedule entries
-  const dayDetailSchedule = useMemo(() => {
-    if (!dayDetailOpen || !dayDetailAssignee || !dayDetailDay) return { status: 'free', entries: [] };
-    return getScheduleForDay(dayDetailAssignee, dayDetailDay);
-  }, [dayDetailOpen, dayDetailAssignee, dayDetailDay, scheduleLookup]);
-
-  const tasksForDayAndAssignee = useMemo(() => {
+  const dayDetailTasks = useMemo(() => {
     if (!dayDetailOpen || !dayDetailAssignee || !dayDetailDay) return [];
-    const list = (tasks || []).filter((t) => (t?.assignee || '').trim() === dayDetailAssignee);
-    return list.filter((t) => isTaskOnDay(t, dayDetailDay) && !isCompletedStatus(t?.status));
-  }, [dayDetailOpen, dayDetailAssignee, dayDetailDay, tasks]);
+    const list = tasksByAssignee?.[dayDetailAssignee] || [];
+    return list.filter((t) => isTaskOnDay(t, dayDetailDay));
+  }, [dayDetailOpen, dayDetailAssignee, dayDetailDay, tasksByAssignee]);
 
-  const openDayDetail = (assignee, day) => {
-    setDayDetailAssignee((assignee || '').trim());
-    setDayDetailDay(day);
+  const openDayDetail = (assignee, d) => {
+    setDayDetailAssignee(assignee);
+    setDayDetailDay(d);
     setDayDetailOpen(true);
   };
 
@@ -699,41 +687,53 @@ function PresalesOverview() {
     setDayDetailDay(null);
   };
 
-  const openEditTask = (t) => {
-    setEditingTask(t);
-    setShowTaskModal(true);
-  };
-
-  const openNewTask = () => {
+  const openTaskModal = () => {
     setEditingTask(null);
     setShowTaskModal(true);
   };
 
   const closeTaskModal = () => {
-    setShowTaskModal(false);
     setEditingTask(null);
+    setShowTaskModal(false);
+  };
+
+  const onEditTask = (task) => {
+    setEditingTask(task);
+    setShowTaskModal(true);
   };
 
   const onSaveTaskModal = async (payload) => {
-    if (!editingTask?.id) return;
-    const { error: qErr } = await supabase.from('project_tasks').update(payload).eq('id', editingTask.id);
-    if (qErr) throw qErr;
-    setTasks((prev) => (prev || []).map((t) => (t.id === editingTask.id ? { ...t, ...payload } : t)));
+    try {
+      if (payload?.id) {
+        const { error: uErr } = await supabase.from('project_tasks').update(payload).eq('id', payload.id);
+        if (uErr) throw uErr;
+      } else {
+        const { error: iErr } = await supabase.from('project_tasks').insert(payload);
+        if (iErr) throw iErr;
+      }
+
+      const { data: tData, error: tErr } = await supabase.from('project_tasks').select('*').eq('is_archived', false);
+      if (tErr) throw tErr;
+      setTasks(tData || []);
+      closeTaskModal();
+    } catch (e) {
+      console.error('Save task error:', e);
+      alert(e?.message || 'Failed to save task');
+    }
   };
 
-  const startInlineEdit = (t) => {
-    setInlineEditingTaskId(t.id);
+  const startInlineEdit = (task) => {
+    setInlineEditingTaskId(task.id);
     setInlineDraft({
-      description: t.description || '',
-      status: t.status || '',
-      due_date: t.due_date || '',
-      assignee: (t.assignee || '').trim(),
-      task_type: t.task_type || '',
-      estimated_hours: t.estimated_hours ?? '',
-      priority: t.priority || '',
-      notes: t.notes || '',
-      start_date: t.start_date || '',
-      end_date: t.end_date || '',
+      description: task.description || '',
+      assignee: task.assignee || '',
+      start_date: task.start_date ? ymd(task.start_date) : '',
+      end_date: task.end_date ? ymd(task.end_date) : '',
+      due_date: task.due_date ? ymd(task.due_date) : '',
+      status: task.status || '',
+      task_type: task.task_type || '',
+      priority: task.priority || '',
+      estimated_hours: safeNumber(task.estimated_hours, DEFAULT_TASK_HOURS),
     });
   };
 
@@ -744,545 +744,442 @@ function PresalesOverview() {
 
   const saveInlineEdit = async (taskId) => {
     try {
-      const payload = {
+      const upd = {
         description: inlineDraft.description || null,
-        status: inlineDraft.status || null,
-        due_date: inlineDraft.due_date || null,
-        assignee: (inlineDraft.assignee || '').trim() || null,
-        task_type: inlineDraft.task_type || null,
-        estimated_hours: inlineDraft.estimated_hours === '' ? null : Number(inlineDraft.estimated_hours),
-        priority: inlineDraft.priority || null,
-        notes: inlineDraft.notes || null,
+        assignee: inlineDraft.assignee || null,
         start_date: inlineDraft.start_date || null,
         end_date: inlineDraft.end_date || null,
+        due_date: inlineDraft.due_date || null,
+        status: inlineDraft.status || null,
+        task_type: inlineDraft.task_type || null,
+        priority: inlineDraft.priority || null,
+        estimated_hours: safeNumber(inlineDraft.estimated_hours, DEFAULT_TASK_HOURS),
       };
 
-      const { error: qErr } = await supabase.from('project_tasks').update(payload).eq('id', taskId);
-      if (qErr) throw qErr;
+      const { error: uErr } = await supabase.from('project_tasks').update(upd).eq('id', taskId);
+      if (uErr) throw uErr;
 
-      setTasks((prev) => (prev || []).map((t) => (t.id === taskId ? { ...t, ...payload } : t)));
+      const { data: tData, error: tErr } = await supabase.from('project_tasks').select('*').eq('is_archived', false);
+      if (tErr) throw tErr;
+      setTasks(tData || []);
+
       cancelInlineEdit();
     } catch (e) {
       console.error('Inline save error:', e);
-      alert('Failed to save task: ' + (e?.message || 'Unknown error'));
+      alert(e?.message || 'Failed to save task');
     }
   };
 
   const deleteTask = async (taskId) => {
-    if (!window.confirm('Delete this task?')) return;
+    const ok = window.confirm('Delete task? This will archive it.');
+    if (!ok) return;
+
     try {
-      const { error: qErr } = await supabase.from('project_tasks').delete().eq('id', taskId);
-      if (qErr) throw qErr;
-      setTasks((prev) => (prev || []).filter((t) => t.id !== taskId));
+      const { error: dErr } = await supabase.from('project_tasks').update({ is_archived: true }).eq('id', taskId);
+      if (dErr) throw dErr;
+
+      const { data: tData, error: tErr } = await supabase.from('project_tasks').select('*').eq('is_archived', false);
+      if (tErr) throw tErr;
+      setTasks(tData || []);
     } catch (e) {
       console.error('Delete task error:', e);
-      alert('Failed to delete task: ' + (e?.message || 'Unknown error'));
+      alert(e?.message || 'Failed to delete task');
     }
   };
 
+  const helperSuggestions = useMemo(() => {
+    const start = parseDate(helperStartDate);
+    if (!start) return [];
+
+    const reqHours = safeNumber(helperRequiredHours, DEFAULT_TASK_HOURS);
+    const typeMult = canonicalTypeMultiplier(helperTaskType);
+    const weighted = reqHours * typeMult;
+
+    const suggestions = (allPresalesNames || []).map((assignee) => {
+      let totalAvail = 0;
+      let totalAssigned = 0;
+
+      const windowDays = buildDayRange(start, new Date(start.getTime() + 1000 * 60 * 60 * 24 * 4)); // 5 days window
+      windowDays.forEach((d) => {
+        const key = ymd(d);
+        const cap = dayCapacityMatrix?.[assignee]?.[key]?.availableHours ?? HOURS_PER_DAY;
+        totalAvail += cap;
+
+        const dayTasks = (tasksByAssignee?.[assignee] || []).filter((t) => isTaskOnDay(t, d));
+        dayTasks.forEach((t) => {
+          totalAssigned += safeNumber(t.estimated_hours, DEFAULT_TASK_HOURS) / 1;
+        });
+      });
+
+      const remaining = Math.max(0, totalAvail - totalAssigned);
+      const fitScore = remaining - weighted;
+
+      return { assignee, remainingHours: Math.round(remaining * 10) / 10, fitScore };
+    });
+
+    return suggestions
+      .sort((a, b) => (b.fitScore || 0) - (a.fitScore || 0))
+      .slice(0, 5);
+  }, [helperStartDate, helperRequiredHours, helperTaskType, allPresalesNames, dayCapacityMatrix, tasksByAssignee]);
+
   if (loading) {
     return (
-      <div className="presales-page-container">
-        <div className="presales-loading">
-          <div className="presales-spinner" />
-          <p>Loading presales overview…</p>
-        </div>
+      <div className="overview-loading">
+        <div className="overview-loading-spinner" />
+        <div className="overview-loading-text">Loading presales overview…</div>
       </div>
     );
   }
 
   if (error) {
-    return (
-      <div className="presales-page-container">
-        <div className="presales-error">
-          <AlertTriangle size={18} />
-          <p>{error}</p>
-        </div>
-      </div>
-    );
+    return <div className="overview-error">{error}</div>;
   }
 
   return (
-    <div className="presales-page-container">
-      <header className="presales-header">
-        <div className="presales-header-main">
-          <div>
-            <h2>Presales Overview</h2>
-            <p>Projects, workload, availability, and assignment helper.</p>
+    <div className="presales-overview">
+      <header className="overview-header">
+        <div className="overview-title">
+          <Users size={20} />
+          <h2>Presales Overview</h2>
+        </div>
+
+        <div className="overview-range">
+          <div className="range-chip">
+            <Filter size={14} />
+            <select value={selectedRangeKey} onChange={(e) => setSelectedRangeKey(e.target.value)}>
+              <option value="thisWeek">This Week</option>
+              <option value="nextWeek">Next Week</option>
+              <option value="last30">Last 30 Days</option>
+            </select>
           </div>
+
+          <div className="range-chip">
+            <CalendarDays size={14} />
+            <input type="date" value={ymd(rangeStart)} onChange={(e) => setRangeStart(e.target.value)} />
+            <span className="range-sep">to</span>
+            <input type="date" value={ymd(rangeEnd)} onChange={(e) => setRangeEnd(e.target.value)} />
+          </div>
+
+          <button type="button" className="btn-primary" onClick={openTaskModal}>
+            + New Task
+          </button>
         </div>
       </header>
 
-      {/* ACTIVE PROJECTS BOARD */}
-      <section className="presales-crunch-section">
-        <div className="presales-panel presales-panel-large">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <Users size={18} className="panel-icon" />
-                Active projects by presales
-              </h3>
-              <p>Grouped by primary presales. Excludes: closed-lost, close-won, on-hold, cancelled.</p>
-            </div>
+      {rangeError ? <div className="overview-warning">{rangeError}</div> : null}
+
+      <section className="overview-section">
+        <div className="section-header">
+          <div className="section-title">
+            <ListChecks size={18} />
+            <h3>Workload Summary</h3>
           </div>
+          <p>Workload is estimated hours within the selected range (weighted by task type).</p>
+        </div>
 
-          {activeProjectsByPresales.length === 0 ? (
-            <div className="presales-empty small">
-              <p>No matching projects found.</p>
-            </div>
-          ) : (
-            <div className="presales-board-wrapper">
-              {activeProjectsByPresales.map((g) => (
-                <div key={g.assignee} className="presales-board-column">
-                  <div className="presales-board-header">
-                    <div className="presales-board-header-left">
-                      <span className="td-ellipsis" title={g.assignee}>
-                        {g.assignee}
-                      </span>
-                      <span className="presales-board-meta">
-                        {g.projects.length} project{g.projects.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
+        <div className="summary-grid">
+          {workloadSummary.map((row) => (
+            <div key={row.assignee} className="summary-card">
+              <div className="summary-top">
+                <div className="summary-name">{row.assignee}</div>
+                <div className="summary-metric">
+                  <span className="metric-label">Weighted</span>
+                  <span className="metric-value">{row.weightedHours}h</span>
+                </div>
+              </div>
 
-                    <span className="presales-board-count">
-                      {g.projects.reduce((sum, p) => sum + (p.activeTaskCount || 0), 0)} tasks
-                    </span>
-                  </div>
+              <div className="summary-details">
+                <div className="detail">
+                  <span className="label">Tasks</span>
+                  <span className="value">{row.tasks}</span>
+                </div>
+                <div className="detail">
+                  <span className="label">Total</span>
+                  <span className="value">{row.totalHours}h</span>
+                </div>
+                <div className="detail">
+                  <span className="label">Avg/day</span>
+                  <span className="value">{row.avgWeightedPerDay}h</span>
+                </div>
+              </div>
 
-                  <div className="presales-board-cards">
-                    {g.projects.map((p) => (
-                      <div key={p.projectId} className="presales-board-card">
-                        <button
-                          type="button"
-                          className="table-link-btn project-link board-project-link"
-                          onClick={() => navigate(`/project/${p.projectId}`)}
-                          title="Open project details"
-                        >
-                          {p.projectName}
-                        </button>
+              <div className="summary-days">
+                {rangeDays.map((d) => {
+                  const key = ymd(d);
+                  const cap = dayCapacityMatrix?.[row.assignee]?.[key];
+                  const status = cap?.status || 'free';
+                  const avail = cap?.availableHours ?? HOURS_PER_DAY;
 
-                        <div className="board-card-sub">
-                          <span className="td-ellipsis" title={p.customerName}>
-                            {p.customerName}
-                          </span>
-                          <span className="dot">•</span>
-                          <span className="board-task-count">
-                            {p.activeTaskCount} active task{p.activeTaskCount !== 1 ? 's' : ''}
-                          </span>
-                        </div>
+                  const dayTasks = (tasksByAssignee?.[row.assignee] || []).filter((t) => isTaskOnDay(t, d));
+                  const dayAssigned = dayTasks.reduce((s, t) => s + safeNumber(t.estimated_hours, DEFAULT_TASK_HOURS), 0);
+                  const pct = avail ? Math.min(100, Math.round((dayAssigned / avail) * 100)) : 0;
+
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`day-cell status-${status}`}
+                      onClick={() => openDayDetail(row.assignee, d)}
+                      title={`${row.assignee} - ${key} | ${prettyStatus(status)} | ${dayAssigned}h assigned / ${avail}h available`}
+                    >
+                      <div className="day-top">
+                        <span className="day-date">{formatShortDate(d)}</span>
+                        <span className="day-status">{prettyStatus(status)}</span>
                       </div>
+                      <div className="day-bar">
+                        <div className="day-fill" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="day-foot">
+                        <span className="day-hours">{dayAssigned}h</span>
+                        <span className="day-avail">{avail}h</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="overview-section">
+        <div className="section-header">
+          <div className="section-title">
+            <AlertTriangle size={18} />
+            <h3>Unassigned Open Tasks</h3>
+          </div>
+          <p>These tasks are open but do not have an assignee yet.</p>
+        </div>
+
+        {unassignedOpenTasks.length === 0 ? (
+          <div className="empty-state">No unassigned tasks.</div>
+        ) : (
+          <div className="tasks-table">
+            <div className="tasks-header">
+              <span>Task</span>
+              <span>Due</span>
+              <span>Type</span>
+              <span>Status</span>
+              <span className="actions-col">Actions</span>
+            </div>
+
+            {unassignedOpenTasks.map((t) => (
+              <div key={t.id} className="tasks-row">
+                <span className="task-title">{t.description || '(Untitled task)'}</span>
+                <span>{formatShortDate(t.due_date)}</span>
+                <span>{t.task_type || '-'}</span>
+                <span>{t.status || '-'}</span>
+
+                <span className="row-actions">
+                  <button type="button" className="icon-btn" onClick={() => onEditTask(t)} title="Edit">
+                    <Edit3 size={16} />
+                  </button>
+                  <button type="button" className="icon-btn danger" onClick={() => deleteTask(t.id)} title="Delete">
+                    <Trash2 size={16} />
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="overview-section">
+        <div className="section-header">
+          <div className="section-title">
+            <Plane size={18} />
+            <h3>Active Projects by Presales</h3>
+          </div>
+          <p>
+            Active means: has open tasks AND last movement within 60 days. (Movement = last_activity_at or task updates)
+          </p>
+        </div>
+
+        {activeProjectsByPresales.length === 0 ? (
+          <div className="empty-state">No active projects found.</div>
+        ) : (
+          <div className="projects-by-presales">
+            {activeProjectsByPresales.map((g) => (
+              <div key={g.assignee} className="projects-group">
+                <div className="projects-group-header">
+                  <span className="group-name">{g.assignee}</span>
+                  <span className="group-count">{g.projects.length}</span>
+                </div>
+
+                {g.projects.length === 0 ? (
+                  <div className="projects-empty">No projects.</div>
+                ) : (
+                  <div className="projects-list">
+                    {g.projects.map((p) => (
+                      <button
+                        key={p.projectId}
+                        type="button"
+                        className="project-row"
+                        onClick={() => navigate(`/project/${p.projectId}`)}
+                        title="Open project"
+                      >
+                        <div className="project-main">
+                          <div className="project-title">{p.projectName}</div>
+                          <div className="project-sub">{p.customerName}</div>
+                        </div>
+
+                        <div className="project-meta">
+                          <span className="meta-pill">{p.activeTaskCount} open tasks</span>
+                        </div>
+                      </button>
                     ))}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* PRESALES ACTIVITIES */}
-      <section className="presales-crunch-section">
-        <div className="presales-panel presales-panel-large">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <ListChecks size={20} className="panel-icon" />
-                Presales activities
-              </h3>
-              <p>Overdue, In Progress, and Not Started tasks. Click a card to edit.</p>
-            </div>
+      <section className="overview-section">
+        <div className="section-header">
+          <div className="section-title">
+            <Filter size={18} />
+            <h3>Assignment Helper</h3>
+          </div>
+          <p>Quick suggestion of who has the most capacity in the next few days.</p>
+        </div>
+
+        <div className="helper-grid">
+          <div className="helper-row">
+            <label>
+              Start date
+              <input type="date" value={helperStartDate} onChange={(e) => setHelperStartDate(e.target.value)} />
+            </label>
+
+            <label>
+              Required hours
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={helperRequiredHours}
+                onChange={(e) => setHelperRequiredHours(e.target.value)}
+              />
+            </label>
+
+            <label>
+              Task type
+              <select value={helperTaskType} onChange={(e) => setHelperTaskType(e.target.value)}>
+                <option value="">(Any)</option>
+                {(taskTypes || []).map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
-          <ActivitiesKanban tasks={openTasks} today={today} onEditTask={openEditTask} />
-        </div>
-      </section>
-
-      {/* AVAILABILITY + LOAD + HELPER */}
-      <section className="presales-crunch-section">
-        <div className="presales-panel presales-panel-large">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <Filter size={18} className="panel-icon" />
-                Availability and load
-              </h3>
-              <p>Click a dot to see schedule entries (holiday/leave/training/etc) and tasks for that day.</p>
-            </div>
-
-            <div className="panel-actions">
-              <div className="field compact">
-                <label>Date range</label>
-                <select value={selectedRangeKey} onChange={(e) => setSelectedRangeKey(e.target.value)}>
-                  <option value="thisWeek">This week (Mon-Fri)</option>
-                  <option value="nextWeek">Next week (Mon-Fri)</option>
-                  <option value="last30">Last 30 days</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </div>
-
-              <div className="field compact">
-                <label>Start</label>
-                <input
-                  type="date"
-                  value={parseDate(rangeStart)?.toISOString().slice(0, 10) || ''}
-                  onChange={(e) => setRangeStart(e.target.value)}
-                  disabled={selectedRangeKey !== 'custom'}
-                />
-              </div>
-
-              <div className="field compact">
-                <label>End</label>
-                <input
-                  type="date"
-                  value={parseDate(rangeEnd)?.toISOString().slice(0, 10) || ''}
-                  onChange={(e) => setRangeEnd(e.target.value)}
-                  disabled={selectedRangeKey !== 'custom'}
-                />
-              </div>
-            </div>
+          <div className="helper-suggestions">
+            {helperSuggestions.length === 0 ? (
+              <div className="empty-state">No suggestions.</div>
+            ) : (
+              helperSuggestions.map((s) => (
+                <div key={s.assignee} className="helper-card">
+                  <div className="helper-name">{s.assignee}</div>
+                  <div className="helper-meta">
+                    <span className="meta-pill">{s.remainingHours}h available</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-
-          {rangeError ? (
-            <div className="presales-empty">
-              <p>{rangeError}</p>
-            </div>
-          ) : (
-            <>
-              <div className="unassigned-tasks-table-wrapper">
-                <div className="availability-grid-wrapper">
-                  <table className="availability-grid">
-                    <thead>
-                      <tr>
-                        <th className="sticky-col">Presales</th>
-                        {rangeDays.map((d) => (
-                          <th key={d.toISOString()}>
-                            <div>{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                            <div>{d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                          </th>
-                        ))}
-                        <th>Load</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {utilizationByPresales.map((u) => (
-                        <tr key={u.name}>
-                          <td className="sticky-col assignee-cell">{u.name}</td>
-
-                          {rangeDays.map((d) => {
-                            const status = getScheduleStatusForDay(u.name, d);
-                            return (
-                              <td
-                                key={`${u.name}-${ymd(d)}`}
-                                className={`avail-cell ${status}`}
-                                onClick={() => openDayDetail(u.name, d)}
-                                title="Click to view schedule + tasks"
-                              >
-                                <div className="avail-dot" />
-                              </td>
-                            );
-                          })}
-
-                          <td title={`Task hours: ${u.taskHours}h | Capacity: ${u.capacityHours}h`}>
-                            {Math.round(u.taskHours)}h ({u.pct}%)
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Assignment Helper */}
-              <div className="assignment-helper">
-                <div className="presales-panel-header" style={{ borderTop: '1px solid rgba(15,23,42,0.08)' }}>
-                  <div>
-                    <h3>
-                      <Users size={18} className="panel-icon" />
-                      Assignment Helper
-                    </h3>
-                    <p>Shows only presales who can take the task on the selected start date.</p>
-                  </div>
-                </div>
-
-                <div className="assignment-helper-controls">
-                  <div className="field">
-                    <label>Start date</label>
-                    <input type="date" value={helperStartDate || ''} onChange={(e) => setHelperStartDate(e.target.value)} />
-                  </div>
-
-                  <div className="field">
-                    <label>Required hours (base)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      value={helperRequiredHours}
-                      onChange={(e) => setHelperRequiredHours(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>Task type</label>
-                    <select value={helperTaskType} onChange={(e) => setHelperTaskType(e.target.value)}>
-                      <option value="">(No type)</option>
-                      {(taskTypes || []).map((x) => (
-                        <option key={x} value={x}>
-                          {x}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="assignment-helper-results">
-                  <div className="helper-note">
-                    Required effort (after multiplier): <b>{helperTable.required}h</b>
-                  </div>
-
-                  {helperTable.rows.length === 0 ? (
-                    <div className="presales-empty small">
-                      <p>No available presales found for that date.</p>
-                    </div>
-                  ) : (
-                    <div className="unassigned-tasks-table-wrapper">
-                      <table className="unassigned-tasks-table">
-                        <thead>
-                          <tr>
-                            <th>Presales</th>
-                            <th>Status</th>
-                            <th>Capacity (hrs)</th>
-                            <th>Load (hrs)</th>
-                            <th>Remaining (hrs)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {helperTable.rows.map((r) => (
-                            <tr key={r.name}>
-                              <td className="td-ellipsis" title={r.name}>{r.name}</td>
-                              <td className="td-ellipsis" title={r.status}>{prettyStatus(r.status)}</td>
-                              <td>{r.capacity}</td>
-                              <td>{r.load}</td>
-                              <td>{r.remaining}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Unassigned tasks */}
-              <div className="presales-panel-header" style={{ borderTop: '1px solid rgba(15,23,42,0.08)' }}>
-                <div>
-                  <h3>
-                    <CalendarDays size={18} className="panel-icon" />
-                    Unassigned open tasks
-                  </h3>
-                  <p>Assign these so they reflect in load and helper calculations.</p>
-                </div>
-
-                <button type="button" className="btn-primary" onClick={openNewTask}>
-                  + Add task
-                </button>
-              </div>
-
-              {unassignedOpenTasks.length === 0 ? (
-                <div className="presales-empty">
-                  <p>No unassigned open tasks.</p>
-                </div>
-              ) : (
-                <div className="unassigned-tasks-table-wrapper">
-                  <table className="unassigned-tasks-table">
-                    <thead>
-                      <tr>
-                        <th>Task</th>
-                        <th>Project</th>
-                        <th>Status</th>
-                        <th>Type</th>
-                        <th>Due</th>
-                        <th className="actions-cell">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unassignedOpenTasks.map((t) => {
-                        const isEditing = inlineEditingTaskId === t.id;
-                        const project = (projects || []).find((p) => p.id === t.project_id);
-
-                        return (
-                          <tr key={t.id}>
-                            <td>
-                              {isEditing ? (
-                                <input
-                                  value={inlineDraft.description || ''}
-                                  onChange={(e) => setInlineDraft((p) => ({ ...p, description: e.target.value }))}
-                                />
-                              ) : (
-                                <button type="button" className="unassigned-task-link" onClick={() => openEditTask(t)}>
-                                  {t.description || '(Untitled task)'}
-                                </button>
-                              )}
-                            </td>
-
-                            <td className="td-ellipsis" title={project?.project_name || '-'}>
-                              {project?.project_name || '-'}
-                            </td>
-
-                            <td>
-                              {isEditing ? (
-                                <input
-                                  value={inlineDraft.status || ''}
-                                  onChange={(e) => setInlineDraft((p) => ({ ...p, status: e.target.value }))}
-                                />
-                              ) : (
-                                t.status || '-'
-                              )}
-                            </td>
-
-                            <td>
-                              {isEditing ? (
-                                <select
-                                  value={inlineDraft.task_type || ''}
-                                  onChange={(e) => setInlineDraft((p) => ({ ...p, task_type: e.target.value }))}
-                                >
-                                  <option value="">-</option>
-                                  {(taskTypes || []).map((x) => (
-                                    <option key={x} value={x}>
-                                      {x}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                t.task_type || '-'
-                              )}
-                            </td>
-
-                            <td>
-                              {isEditing ? (
-                                <input
-                                  type="date"
-                                  value={inlineDraft.due_date || ''}
-                                  onChange={(e) => setInlineDraft((p) => ({ ...p, due_date: e.target.value }))}
-                                />
-                              ) : (
-                                formatShortDate(t.due_date)
-                              )}
-                            </td>
-
-                            <td className="actions-cell">
-                              {isEditing ? (
-                                <>
-                                  <button type="button" className="icon-btn" title="Save" onClick={() => saveInlineEdit(t.id)}>
-                                    <Save size={16} />
-                                  </button>
-                                  <button type="button" className="icon-btn" title="Cancel" onClick={cancelInlineEdit}>
-                                    <X size={16} />
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button type="button" className="icon-btn" title="Edit" onClick={() => startInlineEdit(t)}>
-                                    <Edit3 size={16} />
-                                  </button>
-                                  <button type="button" className="icon-btn danger" title="Delete" onClick={() => deleteTask(t.id)}>
-                                    <Trash2 size={16} />
-                                  </button>
-                                </>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
         </div>
       </section>
 
-      {/* Day detail modal (Schedule + Tasks) */}
+      <section className="overview-section">
+        <div className="section-header">
+          <div className="section-title">
+            <ListChecks size={18} />
+            <h3>Activities Board</h3>
+          </div>
+          <p>Quick view of tasks by status. Click a card to edit.</p>
+        </div>
+
+        <ActivitiesKanban tasks={openTasks} today={today} onEditTask={onEditTask} />
+      </section>
+
       {dayDetailOpen ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" onMouseDown={closeDayDetail}>
-          <div className="modal-card modal-wide" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-card">
             <div className="modal-header">
-              <h3>
-                <Plane size={16} />
-                {dayDetailAssignee} •{' '}
-                {dayDetailDay
-                  ? dayDetailDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                  : ''}
-              </h3>
+              <div className="modal-title">
+                {dayDetailAssignee} • {formatShortDate(dayDetailDay)}
+              </div>
+
               <button type="button" className="icon-btn" onClick={closeDayDetail} aria-label="Close">
                 <X size={16} />
               </button>
             </div>
 
             <div className="modal-body">
-              <div className="daydetail-grid">
-                <div>
-                  <div className="daydetail-title">Schedule</div>
-                  <div className="daydetail-schedule">
-                    <div style={{ fontSize: 13, marginBottom: 8 }}>
-                      Status: <b>{prettyStatus(dayDetailSchedule.status)}</b>
+              <div className="day-detail-list">
+                {dayDetailTasks.length === 0 ? (
+                  <div className="empty-state">No tasks on this day.</div>
+                ) : (
+                  dayDetailTasks.map((t) => (
+                    <div key={t.id} className="day-detail-row">
+                      <div className="day-detail-main">
+                        <div className="task-title">{t.description || '(Untitled task)'}</div>
+                        <div className="task-sub">
+                          <span>{t.project_name || '-'}</span>
+                          <span className="dot">•</span>
+                          <span>{t.task_type || '-'}</span>
+                          <span className="dot">•</span>
+                          <span>Due {formatShortDate(t.due_date)}</span>
+                        </div>
+                      </div>
+
+                      <div className="day-detail-actions">
+                        {inlineEditingTaskId === t.id ? (
+                          <>
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              onClick={() => saveInlineEdit(t.id)}
+                              title="Save"
+                            >
+                              <Save size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              onClick={cancelInlineEdit}
+                              title="Cancel"
+                            >
+                              <X size={16} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              onClick={() => startInlineEdit(t)}
+                              title="Inline Edit"
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-btn danger"
+                              onClick={() => deleteTask(t.id)}
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-
-                    {dayDetailSchedule.entries?.length ? (
-                      <div className="daydetail-list">
-                        {dayDetailSchedule.entries.map((e, idx) => (
-                          <div key={`${e.type}-${idx}`} className="daydetail-item" style={{ cursor: 'default' }}>
-                            <div className="daydetail-item-title">{e.type || 'Schedule item'}</div>
-                            <div className="daydetail-item-sub">
-                              <span>{e.note || '—'}</span>
-                              {safeNumber(e.block_hours, 0) ? (
-                                <>
-                                  <span className="dot">•</span>
-                                  <span>{e.block_hours}h</span>
-                                </>
-                              ) : null}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="presales-empty small">
-                        <p>No schedule entry for this day.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="daydetail-title">Assigned tasks on this day</div>
-                  <div className="daydetail-list">
-                    {tasksForDayAndAssignee.length === 0 ? (
-                      <div className="presales-empty small">
-                        <p>No tasks found for this day.</p>
-                      </div>
-                    ) : (
-                      tasksForDayAndAssignee.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          className="daydetail-item"
-                          onClick={() => {
-                            closeDayDetail();
-                            openEditTask(t);
-                          }}
-                        >
-                          <div className="daydetail-item-title">{t.description || '(Untitled task)'}</div>
-                          <div className="daydetail-item-sub">
-                            <span>{t.project_name || '—'}</span>
-                            <span className="dot">•</span>
-                            <span>Due: {formatShortDate(t.due_date)}</span>
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
+                  ))
+                )}
               </div>
             </div>
 
