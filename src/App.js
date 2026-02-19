@@ -28,19 +28,25 @@ function AppHeader() {
       </div>
 
       <nav className="app-nav">
-        <Link to="/" className={isActive('/') ? 'nav-link active' : 'nav-link'}>
-          Customers
+        {/* Customers menu removed, but Home route (/) remains */}
+        <Link
+          to="/projects"
+          className={isActive('/projects') ? 'nav-link active' : 'nav-link'}
+        >
+          Projects
         </Link>
+
         <Link
           to="/presales-overview"
           className={isActive('/presales-overview') ? 'nav-link active' : 'nav-link'}
         >
           Presales overview
         </Link>
-        <Link to="/projects" className={isActive('/projects') ? 'nav-link active' : 'nav-link'}>
-          Projects
-        </Link>
-        <Link to="/reports" className={isActive('/reports') ? 'nav-link active' : 'nav-link'}>
+
+        <Link
+          to="/reports"
+          className={isActive('/reports') ? 'nav-link active' : 'nav-link'}
+        >
           Reports
         </Link>
       </nav>
@@ -257,7 +263,6 @@ function HomeCustomers() {
           </div>
         </div>
 
-        {/* Filters row */}
         <div className="home-filterbar">
           <div className="home-filter-group">
             <label className="home-field">
@@ -369,7 +374,6 @@ function HomeCustomers() {
         )}
       </section>
 
-      {/* Modal */}
       {modalMode && (
         <div className="modal-backdrop" onClick={closeModal} role="dialog" aria-modal="true">
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
