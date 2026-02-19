@@ -3,10 +3,22 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { supabase } from './supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Trash2, UserPlus, Search, X, Edit3, Check, AlertTriangle } from 'lucide-react';
+import {
+  Building2,
+  Trash2,
+  User,
+  UserPlus,
+  Globe,
+  Search,
+  X,
+  Edit3,
+  Check,
+  AlertTriangle,
+  Briefcase
+} from 'lucide-react';
 import './Projects.css';
 
-// Modal outside component so inputs don't lose focus
+// ✅ Modal outside Projects() so inputs don't lose focus
 function Modal({ onClose, children }) {
   return ReactDOM.createPortal(
     <div
@@ -27,6 +39,7 @@ function Projects({ embedded = false }) {
   const [customers, setCustomers] = useState([]);
   const [customerStatuses, setCustomerStatuses] = useState([]);
 
+  // ✅ master dropdown data
   const [countries, setCountries] = useState([]); // string[]
   const [accountManagers, setAccountManagers] = useState([]); // {id,name,email,region}[]
 
@@ -38,22 +51,27 @@ function Projects({ embedded = false }) {
     country: '',
     account_manager: '',
     customer_type: '',
-    status_id: '',
-    is_inactive: '' // '', 'active', 'inactive'
+    status_id: ''
   });
 
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // Only DB-backed fields we want on this page
+  // ✅ Only DB-backed fields (and we exclude primary_presales from UI + payload)
   const [formCustomer, setFormCustomer] = useState({
     customer_name: '',
     account_manager: '',
     country: '',
     customer_type: 'New',
     status_id: '',
+    key_stakeholders_text: '', // UI helper; stored as text[]
     notes: ''
+  });
+
+  const [dealsSummary, setDealsSummary] = useState({
+    activeCount: 0,
+    byStage: {}
   });
 
   const showToast = useCallback((message, type = 'success') => {
@@ -61,74 +79,21 @@ function Projects({ embedded = false }) {
     setTimeout(() => setToast(null), 3200);
   }, []);
 
+  // helpers
+  const parseStakeholders = (text) => {
+    // "Ana, Ben, , Chris" -> ["Ana","Ben","Chris"]
+    return (text || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  };
+
+  const stakeholdersToText = (arr) => (Array.isArray(arr) ? arr.join(', ') : '');
+
   const closeModal = () => {
     setShowCustomerModal(false);
     setEditingCustomer(null);
   };
-
-  const resetForm = () => {
-    setFormCustomer({
-      customer_name: '',
-      account_manager: '',
-      country: '',
-      customer_type: 'New',
-      status_id: '',
-      notes: ''
-    });
-  };
-
-  const openAddCustomerModal = () => {
-    setEditingCustomer(null);
-    resetForm();
-    setShowCustomerModal(true);
-  };
-
-  const openEditCustomerModal = (customer) => {
-    setEditingCustomer(customer);
-    setFormCustomer({
-      customer_name: customer.customer_name || '',
-      account_manager: customer.account_manager || '',
-      country: customer.country || '',
-      customer_type: customer.customer_type || 'New',
-      status_id: customer.status_id ?? '',
-      notes: customer.notes || ''
-    });
-    setShowCustomerModal(true);
-  };
-
-  const openCustomer = (customer) => customer?.id && navigate(`/customer/${customer.id}`);
-
-  const getCustomerStatus = (customer) => {
-    const id = customer?.status_id;
-    if (!id) return null;
-    return customerStatuses.find((s) => String(s.id) === String(id)) || null;
-  };
-
-  const getStatusBadgeClass = (statusCodeOrLabel) => {
-    const s = String(statusCodeOrLabel || '').toLowerCase();
-    if (!s) return 'status-badge';
-    if (s.includes('at risk') || s.includes('risk')) return 'status-badge status-risk';
-    if (s.includes('active')) return 'status-badge status-active';
-    if (s.includes('prospect')) return 'status-badge status-prospect';
-    if (s.includes('hold')) return 'status-badge status-hold';
-    return 'status-badge';
-  };
-
-  const clearFilters = () => {
-    setFilters({ country: '', account_manager: '', customer_type: '', status_id: '', is_inactive: '' });
-    setSearchTerm('');
-  };
-
-  const hasActiveFilters = useMemo(() => {
-    return (
-      !!searchTerm.trim() ||
-      !!filters.country ||
-      !!filters.account_manager ||
-      !!filters.customer_type ||
-      !!filters.status_id ||
-      !!filters.is_inactive
-    );
-  }, [searchTerm, filters]);
 
   // Load master data + customers
   useEffect(() => {
@@ -176,6 +141,58 @@ function Projects({ embedded = false }) {
     fetchData();
   }, []);
 
+  // Deals summary
+  useEffect(() => {
+    const fetchDealsSummary = async () => {
+      try {
+        const { data, error } = await supabase.from('projects').select('id, sales_stage');
+        if (error) {
+          console.error('Error fetching projects for deals summary:', error);
+          setDealsSummary({ activeCount: 0, byStage: {} });
+          return;
+        }
+
+        const activeProjects = (data || []).filter((p) => {
+          const stage = String(p.sales_stage || '').trim().toLowerCase();
+          if (!stage) return true;
+          if (stage.startsWith('closed')) return false;
+          if (stage === 'done') return false;
+          if (stage.includes('completed')) return false;
+          return true;
+        });
+
+        const byStage = {};
+        activeProjects.forEach((p) => {
+          const stage = String(p.sales_stage || 'Unspecified').trim() || 'Unspecified';
+          byStage[stage] = (byStage[stage] || 0) + 1;
+        });
+
+        setDealsSummary({ activeCount: activeProjects.length, byStage });
+      } catch (err) {
+        console.error('Unexpected error in deals summary:', err);
+        setDealsSummary({ activeCount: 0, byStage: {} });
+      }
+    };
+
+    fetchDealsSummary();
+  }, []);
+
+  const kpiCounts = useMemo(() => {
+    const byStage = dealsSummary?.byStage || {};
+    const findCount = (label) => {
+      const target = String(label || '').toLowerCase();
+      const key = Object.keys(byStage).find((k) => String(k).toLowerCase() === target);
+      return key ? Number(byStage[key] || 0) : 0;
+    };
+
+    return {
+      lead: findCount('Lead'),
+      opportunity: findCount('Opportunity'),
+      proposal: findCount('Proposal'),
+      contracting: findCount('Contracting')
+    };
+  }, [dealsSummary]);
+
   const filteredCustomers = useMemo(() => {
     let list = [...customers];
 
@@ -196,17 +213,54 @@ function Projects({ embedded = false }) {
       list = list.filter((c) => String(c.customer_type || '') === String(filters.customer_type));
     if (filters.status_id) list = list.filter((c) => String(c.status_id || '') === String(filters.status_id));
 
-    if (filters.is_inactive === 'active') {
-      list = list.filter((c) => !c.is_inactive);
-    } else if (filters.is_inactive === 'inactive') {
-      list = list.filter((c) => !!c.is_inactive);
-    }
-
-    // Always keep name sort stable
-    list.sort((a, b) => String(a.customer_name || '').localeCompare(String(b.customer_name || '')));
-
     return list;
   }, [customers, searchTerm, filters]);
+
+  const uniqueCountriesInPortfolio = useMemo(() => {
+    const set = new Set();
+    customers.forEach((c) => c.country && set.add(c.country));
+    return Array.from(set).sort();
+  }, [customers]);
+
+  const uniqueAccountManagersInPortfolio = useMemo(() => {
+    const set = new Set();
+    customers.forEach((c) => c.account_manager && set.add(c.account_manager));
+    return Array.from(set).sort();
+  }, [customers]);
+
+  const portfolioStats = useMemo(() => {
+    if (!customers || customers.length === 0) return null;
+
+    const typesCount = customers.reduce((acc, c) => {
+      const t = c.customer_type || 'Unknown';
+      acc[t] = (acc[t] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      totalCustomers: customers.length,
+      uniqueCountries: uniqueCountriesInPortfolio.length,
+      byType: typesCount
+    };
+  }, [customers, uniqueCountriesInPortfolio]);
+
+  const getCustomerStatus = (customer) => {
+    const id = customer?.status_id;
+    if (!id) return null;
+    return customerStatuses.find((s) => String(s.id) === String(id)) || null;
+  };
+
+  const getStatusBadgeClass = (statusCodeOrLabel) => {
+    const s = String(statusCodeOrLabel || '').toLowerCase();
+    if (!s) return 'status-badge';
+    if (s.includes('at risk') || s.includes('risk')) return 'status-badge status-risk';
+    if (s.includes('active')) return 'status-badge status-active';
+    if (s.includes('prospect')) return 'status-badge status-prospect';
+    if (s.includes('hold')) return 'status-badge status-hold';
+    return 'status-badge';
+  };
+
+  const openCustomer = (customer) => customer?.id && navigate(`/customer/${customer.id}`);
 
   const deleteCustomer = async (customer) => {
     if (!customer?.id) return;
@@ -225,6 +279,7 @@ function Projects({ embedded = false }) {
     }
   };
 
+  // ✅ payload matches your customers table columns
   const buildCustomerPayload = () => {
     return {
       customer_name: (formCustomer.customer_name || '').trim(),
@@ -232,7 +287,10 @@ function Projects({ embedded = false }) {
       country: formCustomer.country || null,
       customer_type: formCustomer.customer_type || null,
       status_id: formCustomer.status_id === '' || formCustomer.status_id == null ? null : Number(formCustomer.status_id),
+      key_stakeholders: parseStakeholders(formCustomer.key_stakeholders_text),
       notes: formCustomer.notes || null
+      // NOT sending primary_presales (as requested)
+      // NOT sending any other non-existent columns
     };
   };
 
@@ -255,7 +313,12 @@ function Projects({ embedded = false }) {
         const { data, error } = await supabase.from('customers').insert([payload]).select('*').single();
         if (error) throw error;
 
-        setCustomers((prev) => [...prev, data]);
+        setCustomers((prev) => {
+          const next = [...prev, data];
+          next.sort((a, b) => String(a.customer_name || '').localeCompare(String(b.customer_name || '')));
+          return next;
+        });
+
         showToast('Customer added.');
       }
 
@@ -266,16 +329,63 @@ function Projects({ embedded = false }) {
     }
   };
 
+  const resetForm = () => {
+    setFormCustomer({
+      customer_name: '',
+      account_manager: '',
+      country: '',
+      customer_type: 'New',
+      status_id: '',
+      key_stakeholders_text: '',
+      notes: ''
+    });
+  };
+
+  const openAddCustomerModal = () => {
+    setEditingCustomer(null);
+    resetForm();
+    setShowCustomerModal(true);
+  };
+
+  const openEditCustomerModal = (customer) => {
+    setEditingCustomer(customer);
+    setFormCustomer({
+      customer_name: customer.customer_name || '',
+      account_manager: customer.account_manager || '',
+      country: customer.country || '',
+      customer_type: customer.customer_type || 'New',
+      status_id: customer.status_id ?? '',
+      key_stakeholders_text: stakeholdersToText(customer.key_stakeholders),
+      notes: customer.notes || ''
+    });
+    setShowCustomerModal(true);
+  };
+
+  const clearFilters = () => {
+    setFilters({ country: '', account_manager: '', customer_type: '', status_id: '' });
+    setSearchTerm('');
+  };
+
+  const hasActiveFilters = useMemo(() => {
+    return (
+      !!searchTerm.trim() ||
+      !!filters.country ||
+      !!filters.account_manager ||
+      !!filters.customer_type ||
+      !!filters.status_id
+    );
+  }, [searchTerm, filters]);
+
   const EmptyState = () => (
     <div className="empty-state">
       <div className="empty-state-icon">
         <Building2 size={22} />
       </div>
-      <h3>No customers yet</h3>
-      <p>Add your first customer to start tracking opportunities and delivery work.</p>
+      <h3>No customers found</h3>
+      <p>Try adjusting your search or filters, or add a new customer.</p>
       <button className="action-button primary" onClick={openAddCustomerModal}>
         <UserPlus size={12} className="button-icon" />
-        New Customer
+        Add Customer
       </button>
     </div>
   );
@@ -285,7 +395,7 @@ function Projects({ embedded = false }) {
       <div className="projects-container">
         <div className="loading-container">
           <div className="loading-spinner" />
-          <div className="loading-text">Loading customers…</div>
+          <div className="loading-text">Loading customer portfolio…</div>
         </div>
       </div>
     );
@@ -303,7 +413,7 @@ function Projects({ embedded = false }) {
   }
 
   return (
-    <div className={`projects-container ${embedded ? 'is-embedded' : ''}`}>
+    <div className="projects-container">
       {toast && (
         <div className={`toast ${toast.type === 'error' ? 'toast-error' : ''}`}>
           {toast.type === 'error' ? <AlertTriangle size={16} /> : <Check size={16} />}
@@ -312,21 +422,102 @@ function Projects({ embedded = false }) {
       )}
 
       <div className="projects-inner">
-        <header className="projects-header sticky">
+        <header className="projects-header">
           <div className="header-title-section">
-            <h2>Customers</h2>
+            <h2>Customer Portfolio</h2>
             <p className="header-subtitle">
-              {filteredCustomers.length} shown • {customers.length} total
+              {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}
+              {portfolioStats && (
+                <>
+                  {' • '}
+                  {portfolioStats.uniqueCountries} countr{portfolioStats.uniqueCountries === 1 ? 'y' : 'ies'}
+                </>
+              )}
             </p>
           </div>
 
           <div className="header-actions">
             <button className="action-button primary" onClick={openAddCustomerModal}>
               <UserPlus size={12} className="button-icon" />
-              New Customer
+              Add Customer
             </button>
           </div>
         </header>
+
+        {!embedded && (
+          <section className="portfolio-kpi-strip">
+            <div className="portfolio-kpi-card">
+              <div className="portfolio-kpi-label">Lead</div>
+              <div className="portfolio-kpi-value">{kpiCounts.lead}</div>
+            </div>
+            <div className="portfolio-kpi-card">
+              <div className="portfolio-kpi-label">Opportunity</div>
+              <div className="portfolio-kpi-value">{kpiCounts.opportunity}</div>
+            </div>
+            <div className="portfolio-kpi-card">
+              <div className="portfolio-kpi-label">Proposal</div>
+              <div className="portfolio-kpi-value">{kpiCounts.proposal}</div>
+            </div>
+            <div className="portfolio-kpi-card">
+              <div className="portfolio-kpi-label">Contracting</div>
+              <div className="portfolio-kpi-value">{kpiCounts.contracting}</div>
+            </div>
+          </section>
+        )}
+
+        {!embedded && portfolioStats && (
+          <section className="portfolio-summary-section">
+            <div className="portfolio-summary-grid">
+              <div className="summary-card">
+                <div className="summary-card-icon summary-card-icon-primary">
+                  <Building2 size={18} />
+                </div>
+                <div className="summary-card-content">
+                  <div className="summary-card-label">Total Customers</div>
+                  <div className="summary-card-value">{portfolioStats.totalCustomers}</div>
+                </div>
+              </div>
+
+              <div className="summary-card">
+                <div className="summary-card-icon summary-card-icon-secondary">
+                  <Globe size={18} />
+                </div>
+                <div className="summary-card-content">
+                  <div className="summary-card-label">Countries</div>
+                  <div className="summary-card-value">{portfolioStats.uniqueCountries}</div>
+                </div>
+              </div>
+
+              <div className="summary-card">
+                <div className="summary-card-icon summary-card-icon-tertiary">
+                  <User size={18} />
+                </div>
+                <div className="summary-card-content">
+                  <div className="summary-card-label">Account Managers</div>
+                  <div className="summary-card-value">{uniqueAccountManagersInPortfolio.length}</div>
+                </div>
+              </div>
+
+              <div className="summary-card">
+                <div className="summary-card-icon summary-card-icon-warning">
+                  <Briefcase size={18} />
+                </div>
+                <div className="summary-card-content">
+                  <div className="summary-card-label">Active Deals</div>
+                  <div className="summary-card-value">{dealsSummary.activeCount}</div>
+                  <div className="summary-card-sub">
+                    {Object.keys(dealsSummary.byStage).length > 0
+                      ? Object.entries(dealsSummary.byStage)
+                          .slice(0, 2)
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join(' • ')
+                      : '—'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         <section className="filters-section">
           <div className="filters-row">
@@ -395,16 +586,6 @@ function Projects({ embedded = false }) {
                   </option>
                 ))}
               </select>
-
-              <select
-                className="filter-select"
-                value={filters.is_inactive}
-                onChange={(e) => setFilters((p) => ({ ...p, is_inactive: e.target.value }))}
-              >
-                <option value="">All (Active + Inactive)</option>
-                <option value="active">Active only</option>
-                <option value="inactive">Inactive only</option>
-              </select>
             </div>
           </div>
 
@@ -412,68 +593,88 @@ function Projects({ embedded = false }) {
             <div className="filters-footer">
               <button className="action-button secondary" onClick={clearFilters}>
                 <X size={12} className="button-icon" />
-                Clear
+                Clear All
               </button>
             </div>
           )}
         </section>
 
-        <section className="list-section">
-          {filteredCustomers.length === 0 ? (
-            <EmptyState />
-          ) : (
-            <div className="customers-list">
-              {filteredCustomers.map((customer) => {
-                const statusObj = getCustomerStatus(customer);
-                const statusLabel = statusObj?.label || 'Not Set';
-                const statusClass = getStatusBadgeClass(statusObj?.code || statusObj?.label);
-
-                const isInactive = !!customer.is_inactive;
-
-                return (
-                  <div key={customer.id} className={`customer-card ${isInactive ? 'inactive' : ''}`}>
-                    <div className="customer-card-main">
-                      <button
-                        className="customer-name"
-                        onClick={() => openCustomer(customer)}
-                        title="Open customer"
-                      >
-                        {customer.customer_name}
-                      </button>
-
-                      <div className="customer-meta">
-                        <span className="meta-pill">{customer.country || '—'}</span>
-                        <span className="meta-pill">{customer.account_manager || '—'}</span>
-                        <span className="meta-pill">{customer.customer_type || '—'}</span>
-                      </div>
-                    </div>
-
-                    <div className="customer-card-right">
-                      <div className="customer-badges">
-                        {isInactive ? <span className="status-badge status-hold">Inactive</span> : null}
-                        <span className={statusClass}>{statusLabel}</span>
-                      </div>
-
-                      <div className="actions-wrap">
-                        <button className="icon-btn" onClick={() => openEditCustomerModal(customer)} title="Edit">
-                          <Edit3 size={14} />
-                        </button>
-                        <button className="icon-btn danger" onClick={() => deleteCustomer(customer)} title="Archive">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+        <section className="table-section">
+          <div className="table-section-header">
+            <div className="table-section-header-left">
+              <h3 className="table-section-title">Customers</h3>
+              <p className="table-section-sub">{filteredCustomers.length} shown</p>
             </div>
-          )}
+
+            <button className="action-button primary" onClick={openAddCustomerModal}>
+              <UserPlus size={12} className="button-icon" />
+              Add Customer
+            </button>
+          </div>
+
+          <div className="table-wrapper">
+            {filteredCustomers.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <div className="customers-table-scroll">
+                <table className="customers-table">
+                  <thead>
+                    <tr>
+                      <th className="th-customer">Customer</th>
+                      <th>Country</th>
+                      <th>Account Manager</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th className="th-actions">Actions</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {filteredCustomers.map((customer) => {
+                      const statusObj = getCustomerStatus(customer);
+                      const statusLabel = statusObj?.label || 'Not Set';
+                      const statusClass = getStatusBadgeClass(statusObj?.code || statusObj?.label);
+
+                      return (
+                        <tr key={customer.id} className="table-row">
+                          <td className="cell-customer">
+                            <button className="link-btn" onClick={() => openCustomer(customer)} title="Open customer">
+                              {customer.customer_name}
+                            </button>
+                          </td>
+
+                          <td className="td-center">{customer.country || '—'}</td>
+                          <td className="td-center">{customer.account_manager || '—'}</td>
+                          <td className="td-center">{customer.customer_type || '—'}</td>
+
+                          <td className="td-center">
+                            <span className={statusClass}>{statusLabel}</span>
+                          </td>
+
+                          <td className="cell-actions">
+                            <div className="actions-wrap">
+                              <button className="icon-btn" onClick={() => openEditCustomerModal(customer)} title="Edit">
+                                <Edit3 size={14} />
+                              </button>
+                              <button className="icon-btn danger" onClick={() => deleteCustomer(customer)} title="Archive">
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </section>
 
         {showCustomerModal && (
           <Modal onClose={closeModal}>
             <div className="modal-header">
-              <h3>{editingCustomer ? 'Edit Customer' : 'New Customer'}</h3>
+              <h3>{editingCustomer ? 'Edit Customer' : 'Add Customer'}</h3>
               <button className="icon-btn" onClick={closeModal}>
                 <X size={16} />
               </button>
@@ -548,11 +749,20 @@ function Projects({ embedded = false }) {
                 </div>
 
                 <div className="form-field full">
+                  <label>Key Stakeholders</label>
+                  <input
+                    value={formCustomer.key_stakeholders_text}
+                    onChange={(e) => setFormCustomer((p) => ({ ...p, key_stakeholders_text: e.target.value }))}
+                    placeholder="Comma separated (e.g., Ana Cruz, Ben Lim)"
+                  />
+                </div>
+
+                <div className="form-field full">
                   <label>Notes</label>
                   <textarea
                     value={formCustomer.notes}
                     onChange={(e) => setFormCustomer((p) => ({ ...p, notes: e.target.value }))}
-                    placeholder="Short notes only (optional)"
+                    placeholder="Any useful context, next steps, risks…"
                   />
                 </div>
               </div>
