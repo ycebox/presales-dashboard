@@ -66,11 +66,6 @@ const validateDateRange = (start, end) => {
   return '';
 };
 
-const isCompletedStatus = (status) => {
-  const s = (status || '').toLowerCase().trim();
-  return s === 'completed' || s === 'done' || s === 'closed';
-};
-
 const safeNumber = (v, fallback = 0) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
@@ -256,13 +251,26 @@ const prettyStatus = (status) => {
   return status;
 };
 
-// Weekly snapshot helpers
-const getTaskWindow = (t) => {
-  const start = t?.start_date || t?.due_date || t?.end_date || null;
-  const end = t?.end_date || t?.due_date || t?.start_date || null;
-  return { start, end };
+/** ---- Long-term weekly accuracy helpers ---- */
+const normalizeTaskStatus = (status) => (status || '').toLowerCase().trim();
+
+const isCompletedStrict = (status) => normalizeTaskStatus(status) === 'completed';
+const isInProgressStrict = (status) => normalizeTaskStatus(status) === 'in progress';
+const isNotStartedStrict = (status) => normalizeTaskStatus(status) === 'not started';
+
+const isCancelledOrOnHold = (status) => {
+  const s = normalizeTaskStatus(status);
+  // covers "Cancelled/On-hold" and also slightly different entries if someone typed it
+  return s.includes('cancel') || s.includes('on-hold') || s.includes('on hold');
 };
 
+// For other parts of the page (load tables etc) keep generic completed check
+const isCompletedStatus = (status) => {
+  const s = normalizeTaskStatus(status);
+  return s === 'completed' || s === 'done' || s === 'closed';
+};
+
+// Week overlap logic (date-based, inclusive)
 const overlapsRange = (rangeStart, rangeEnd, taskStart, taskEnd) => {
   const rs = parseDate(rangeStart);
   const re = parseDate(rangeEnd);
@@ -280,9 +288,34 @@ const overlapsRange = (rangeStart, rangeEnd, taskStart, taskEnd) => {
   return !(e.getTime() < rs.getTime() || s.getTime() > re.getTime());
 };
 
-const getCompletedDate = (t) => {
-  // best guess
-  return t?.end_date || t?.updated_at || t?.due_date || t?.created_at || null;
+const isDateInRange = (dateValue, rangeStart, rangeEnd) => {
+  const d = parseDate(dateValue);
+  const rs = parseDate(rangeStart);
+  const re = parseDate(rangeEnd);
+  if (!d || !rs || !re) return false;
+  return d.getTime() >= rs.getTime() && d.getTime() <= re.getTime();
+};
+
+const getCompletedAt = (t) => t?.completed_at || null;
+
+const getOngoingWindow = (t, weekStart, weekEnd) => {
+  // For in-progress tasks: prefer explicit dates. If missing, use started_at as anchor.
+  const start =
+    t?.start_date ||
+    t?.started_at || // timestamptz
+    t?.due_date ||
+    null;
+
+  const end =
+    t?.end_date ||
+    t?.due_date ||
+    null;
+
+  // If only started_at exists and no end/due, treat as open-ended through weekEnd
+  const resolvedStart = start || null;
+  const resolvedEnd = end || weekEnd;
+
+  return { start: resolvedStart, end: resolvedEnd };
 };
 
 function PresalesOverview() {
@@ -305,7 +338,7 @@ function PresalesOverview() {
   const [rangeEnd, setRangeEnd] = useState(weeks.thisWeek.end);
   const [rangeError, setRangeError] = useState('');
 
-  // ✅ Weekly snapshot range selector
+  // Weekly snapshot range selector
   const [snapshotWeek, setSnapshotWeek] = useState('thisWeek'); // thisWeek | lastWeek | nextWeek | custom
   const [customWeekDate, setCustomWeekDate] = useState(ymd(weeks.thisWeek.start));
 
@@ -656,7 +689,45 @@ function PresalesOverview() {
     };
   }, [tasks]);
 
-  // ✅ Weekly snapshot per presales (selected week + prev + next)
+  /** ✅ Assignment Helper table (was missing in the uploaded file) */
+  const helperTable = useMemo(() => {
+    const day = parseDate(helperStartDate);
+    const requiredBase = safeNumber(helperRequiredHours, DEFAULT_TASK_HOURS);
+    const mult = canonicalTypeMultiplier(helperTaskType);
+    const required = Math.round(requiredBase * mult * 10) / 10;
+
+    if (!day || required <= 0) {
+      return { required: required || 0, rows: [] };
+    }
+
+    const candidates = (allPresalesNames || []).filter((n) => n && n !== 'Unassigned');
+
+    const rows = candidates
+      .map((name) => {
+        const status = getScheduleStatusForDay(name, day);
+        const capacity = statusToAvailableHours(status);
+        const load = getDailyLoadHours(name, day);
+        const remaining = Math.round((capacity - load) * 10) / 10;
+
+        return {
+          name,
+          status,
+          capacity: Math.round(capacity * 10) / 10,
+          load,
+          remaining,
+          canTake: capacity > 0 && remaining >= required,
+        };
+      })
+      .filter((r) => r.canTake)
+      .sort((a, b) => {
+        if (b.remaining !== a.remaining) return b.remaining - a.remaining;
+        return a.name.localeCompare(b.name);
+      });
+
+    return { required, rows };
+  }, [helperStartDate, helperRequiredHours, helperTaskType, allPresalesNames, scheduleLookup, tasks, getDailyLoadHours]);
+
+  // ✅ Weekly snapshot per presales (selected week + prev + next) — LONG-TERM accurate version
   const weeklySnapshot = useMemo(() => {
     const map = {};
     const ensure = (assignee) => {
@@ -666,28 +737,55 @@ function PresalesOverview() {
       return map[assignee];
     };
 
+    const weekStart = selectedWeekRange.start;
+    const weekEnd = selectedWeekRange.end;
+
     (tasks || []).forEach((t) => {
+      const status = t?.status || '';
       const assignee = (t?.assignee || '').trim() || 'Unassigned';
       const bucket = ensure(assignee);
 
-      const { start, end } = getTaskWindow(t);
+      // Exclude cancelled/on-hold from weekly buckets (no movement)
+      if (isCancelledOrOnHold(status)) return;
 
-      // 1) Doing this selected week
-      if (!isCompletedStatus(t?.status) && overlapsRange(selectedWeekRange.start, selectedWeekRange.end, start, end)) {
-        bucket.thisWeek.push(t);
+      // 1) Completed previous week (strict + accurate): status Completed AND completed_at inside prev week
+      if (isCompletedStrict(status)) {
+        const completedAt = getCompletedAt(t);
+        if (completedAt && isDateInRange(completedAt, selectedPrevWeek.start, selectedPrevWeek.end)) {
+          bucket.completedPrevWeek.push(t);
+        }
+        return; // completed tasks won't appear in "ongoing/coming"
       }
 
-      // 2) Completed previous week
-      if (isCompletedStatus(t?.status)) {
-        const cd = getCompletedDate(t);
-        if (overlapsRange(selectedPrevWeek.start, selectedPrevWeek.end, cd, cd)) {
-          bucket.completedPrevWeek.push(t);
+      // 2) Doing this selected week
+      // - In Progress: overlaps week (start/end) with started_at fallback
+      // - Not Started: due_date inside this week (as you requested)
+      if (isInProgressStrict(status)) {
+        const window = getOngoingWindow(t, weekStart, weekEnd);
+        if (overlapsRange(weekStart, weekEnd, window.start, window.end)) {
+          bucket.thisWeek.push(t);
+        }
+      } else if (isNotStartedStrict(status)) {
+        // Due this week -> show it as "doing/planned this week"
+        if (t?.due_date && isDateInRange(t.due_date, weekStart, weekEnd)) {
+          bucket.thisWeek.push(t);
+        } else if (t?.start_date && isDateInRange(t.start_date, weekStart, weekEnd)) {
+          // also include if explicitly scheduled to start this week
+          bucket.thisWeek.push(t);
         }
       }
 
-      // 3) Coming next week
-      if (!isCompletedStatus(t?.status) && overlapsRange(selectedNextWeek.start, selectedNextWeek.end, start, end)) {
-        bucket.nextWeek.push(t);
+      // 3) Coming next week (clean):
+      // Not Started tasks that start next week, fallback to due_date next week if no start_date.
+      if (isNotStartedStrict(status)) {
+        const hasStart = !!t?.start_date;
+        const startInNext = hasStart && isDateInRange(t.start_date, selectedNextWeek.start, selectedNextWeek.end);
+        const dueInNext =
+          !hasStart && t?.due_date && isDateInRange(t.due_date, selectedNextWeek.start, selectedNextWeek.end);
+
+        if (startInNext || dueInNext) {
+          bucket.nextWeek.push(t);
+        }
       }
     });
 
@@ -947,7 +1045,7 @@ function PresalesOverview() {
                                   {getProjectLabel(t)}
                                 </span>
                                 <span className="dot">•</span>
-                                <span>Done {formatShortDate(getCompletedDate(t))}</span>
+                                <span>Done {formatShortDate(getCompletedAt(t))}</span>
                               </div>
                             </button>
                           ))
@@ -983,7 +1081,7 @@ function PresalesOverview() {
                   </div>
 
                   <div style={{ padding: '0 12px 12px', fontSize: 12, color: 'rgba(15,23,42,0.65)' }}>
-                    Tip: Click a task to edit. “Completed last week” uses end_date, then updated_at as fallback.
+                    Tip: Click a task to edit. “Completed last week” uses completed_at (DB) for accuracy.
                   </div>
                 </div>
               ))}
