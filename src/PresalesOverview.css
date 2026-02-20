@@ -235,6 +235,27 @@
   grid-column: 1 / -1;
 }
 
+/* basic inputs used in tables and helper controls */
+.field select,
+.field input,
+.unassigned-tasks-table input,
+.unassigned-tasks-table select {
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.98);
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.field select:focus,
+.field input:focus,
+.unassigned-tasks-table input:focus,
+.unassigned-tasks-table select:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
 /* ===== SMALL UTILITIES ===== */
 
 .truncate,
@@ -264,6 +285,8 @@
   border-radius: 16px;
   overflow: hidden;
   min-height: 120px;
+  display: flex;
+  flex-direction: column;
 }
 
 .presales-board-header {
@@ -306,6 +329,25 @@
   gap: 8px;
 }
 
+/* ✅ Scroll after roughly 5 items */
+.presales-board-cards-scroll {
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* scrollbar */
+.presales-board-cards-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.presales-board-cards-scroll::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.18);
+  border-radius: 999px;
+}
+.presales-board-cards-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .presales-board-card {
   border: 1px solid rgba(15, 23, 42, 0.10);
   border-radius: 14px;
@@ -344,71 +386,133 @@
   color: rgba(15, 23, 42, 0.70);
 }
 
-/* ===== ACTIVITIES KANBAN ===== */
+/* ===== TASKS BY PRESALES (NEW SECTION) ===== */
 
-.activities-kanban {
+.tasks-by-presales-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 12px;
   padding: 12px 16px 16px;
 }
 
-@media (max-width: 980px) {
-  .activities-kanban {
-    grid-template-columns: 1fr;
-  }
-}
-
-.activities-col {
-  border: 1px solid rgba(15, 23, 42, 0.10);
+.tasks-presales-card {
   border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
   background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
   overflow: hidden;
-}
-
-.activities-col.is-overdue {
-  border-color: rgba(220, 38, 38, 0.20);
-  background: rgba(220, 38, 38, 0.03);
-}
-
-.activities-col-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+}
+
+.tasks-presales-header {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
   background: rgba(255, 255, 255, 0.96);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.activities-col-title {
+.tasks-presales-name {
   font-size: 13px;
   font-weight: 750;
-  color: rgba(15, 23, 42, 0.90);
+  color: rgba(15, 23, 42, 0.92);
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.activities-col-count {
+.tasks-presales-count {
   font-size: 11px;
   padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid rgba(15, 23, 42, 0.12);
   background: rgba(15, 23, 42, 0.03);
   color: rgba(15, 23, 42, 0.75);
+  white-space: nowrap;
 }
 
-.activities-empty {
-  padding: 12px;
-  color: rgba(15, 23, 42, 0.65);
-  font-size: 12px;
-}
-
-.activities-cards {
+.tasks-presales-groups {
   padding: 10px 12px 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.tasks-status-group {
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(15, 23, 42, 0.02);
+  overflow: hidden;
+}
+
+.tasks-status-group.group-danger {
+  border-color: rgba(220, 38, 38, 0.22);
+  background: rgba(220, 38, 38, 0.05);
+}
+
+.tasks-status-group.group-warn {
+  border-color: rgba(245, 158, 11, 0.24);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.tasks-status-group.group-neutral {
+  border-color: rgba(15, 23, 42, 0.10);
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.tasks-status-header {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tasks-status-title {
+  font-size: 12px;
+  font-weight: 750;
+  color: rgba(15, 23, 42, 0.86);
+}
+
+.tasks-status-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(15, 23, 42, 0.75);
+  white-space: nowrap;
+}
+
+.tasks-status-list {
+  padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+
+  /* internal scroll when many tasks */
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
-.activity-card {
+.tasks-status-list::-webkit-scrollbar {
+  width: 8px;
+}
+.tasks-status-list::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.16);
+  border-radius: 999px;
+}
+.tasks-status-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tasks-status-item {
   width: 100%;
   text-align: left;
   border-radius: 14px;
@@ -419,61 +523,18 @@
   box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
 }
 
-.activity-card:hover {
+.tasks-status-item:hover {
   background: rgba(15, 23, 42, 0.03);
 }
 
-.activity-card.is-overdue {
-  border-color: rgba(220, 38, 38, 0.25);
-  background: rgba(220, 38, 38, 0.04);
-}
-
-.activity-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.activity-card-title {
+.tasks-item-title {
   font-size: 13px;
   font-weight: 750;
   color: rgba(15, 23, 42, 0.92);
   line-height: 1.2;
 }
 
-.activity-card-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.activity-card-iconbtn {
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.92);
-  color: rgba(15, 23, 42, 0.78);
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.activity-card-iconbtn:hover {
-  background: rgba(15, 23, 42, 0.03);
-}
-
-.activity-card-iconbtn.danger {
-  border-color: rgba(220, 38, 38, 0.28);
-  color: rgba(185, 28, 28, 0.92);
-}
-
-.activity-card-iconbtn.danger:hover {
-  background: rgba(220, 38, 38, 0.06);
-}
-
-.activity-card-sub {
+.tasks-item-sub {
   margin-top: 6px;
   font-size: 12px;
   color: rgba(15, 23, 42, 0.70);
@@ -481,44 +542,6 @@
   gap: 6px;
   align-items: center;
   flex-wrap: wrap;
-}
-
-.activity-card-meta {
-  margin-top: 8px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.meta-chip {
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(15, 23, 42, 0.03);
-  color: rgba(15, 23, 42, 0.76);
-}
-
-.meta-chip.chip-overdue {
-  border-color: rgba(220, 38, 38, 0.30);
-  background: rgba(220, 38, 38, 0.08);
-  color: rgba(185, 28, 28, 0.95);
-}
-
-.activities-more {
-  margin: 10px 12px 12px;
-  width: calc(100% - 24px);
-  border-radius: 12px;
-  padding: 9px 12px;
-  font-size: 12px;
-  font-weight: 650;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(15, 23, 42, 0.03);
-  cursor: pointer;
-}
-
-.activities-more:hover {
-  background: rgba(15, 23, 42, 0.06);
 }
 
 /* ===== TABLES (unassigned + schedule) ===== */
