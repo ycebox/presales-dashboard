@@ -7,7 +7,6 @@ import {
   Filter,
   Plane,
   X,
-  ListChecks,
   Edit3,
   Trash2,
   Save,
@@ -70,13 +69,6 @@ const validateDateRange = (start, end) => {
 const isCompletedStatus = (status) => {
   const s = (status || '').toLowerCase().trim();
   return s === 'completed' || s === 'done' || s === 'closed';
-};
-
-const normalizeStatusGroup = (status) => {
-  const s = (status || '').toLowerCase().trim();
-  if (s.includes('progress')) return 'In Progress';
-  if (s.includes('not started') || s === 'open' || s === 'new') return 'Not Started';
-  return 'Other';
 };
 
 const safeNumber = (v, fallback = 0) => {
@@ -717,96 +709,6 @@ function PresalesOverview() {
       .sort((a, b) => a.assignee.localeCompare(b.assignee));
   }, [tasks, selectedWeekRange, selectedPrevWeek, selectedNextWeek]);
 
-  // ✅ Tasks by presales (grouped by assignee then status)
-  const tasksByPresalesAndStatus = useMemo(() => {
-    const map = {};
-    const startOfToday = toMidnight(new Date());
-
-    const ensure = (assignee) => {
-      if (!map[assignee]) {
-        map[assignee] = {
-          assignee,
-          groups: { Overdue: [], 'In Progress': [], 'Not Started': [], Other: [] },
-          total: 0,
-        };
-      }
-      return map[assignee];
-    };
-
-    (openTasks || []).forEach((t) => {
-      const assignee = (t?.assignee || '').trim() || 'Unassigned';
-      const bucket = ensure(assignee);
-
-      const due = parseDate(t?.due_date);
-      const isOverdue = due && startOfToday && due.getTime() < startOfToday.getTime();
-
-      if (isOverdue) {
-        bucket.groups.Overdue.push(t);
-        bucket.total += 1;
-        return;
-      }
-
-      const sg = normalizeStatusGroup(t?.status);
-      if (sg === 'In Progress') bucket.groups['In Progress'].push(t);
-      else if (sg === 'Not Started') bucket.groups['Not Started'].push(t);
-      else bucket.groups.Other.push(t);
-
-      bucket.total += 1;
-    });
-
-    Object.values(map).forEach((row) => {
-      Object.keys(row.groups).forEach((k) => {
-        row.groups[k].sort((a, b) => {
-          const ad = parseDate(a?.due_date)?.getTime() ?? Number.POSITIVE_INFINITY;
-          const bd = parseDate(b?.due_date)?.getTime() ?? Number.POSITIVE_INFINITY;
-          if (ad !== bd) return ad - bd;
-          return String(a?.description || '').localeCompare(String(b?.description || ''));
-        });
-      });
-    });
-
-    return Object.values(map)
-      .sort((a, b) => {
-        if (b.total !== a.total) return b.total - a.total;
-        return a.assignee.localeCompare(b.assignee);
-      })
-      .filter((x) => x.total > 0);
-  }, [openTasks]);
-
-  // Assignment Helper (available only)
-  const helperTable = useMemo(() => {
-    const startDay = parseDate(helperStartDate);
-    const requiredBase = safeNumber(helperRequiredHours, DEFAULT_TASK_HOURS);
-    const required = Math.round(requiredBase * canonicalTypeMultiplier(helperTaskType) * 10) / 10;
-
-    if (!startDay) return { required, rows: [] };
-
-    const rows = (allPresalesNames || [])
-      .filter((name) => name !== 'Unassigned')
-      .map((name) => {
-        const status = getScheduleStatusForDay(name, startDay);
-        const capacity = statusToAvailableHours(status);
-        const load = getDailyLoadHours(name, startDay);
-        const remaining = Math.round((capacity - load) * 10) / 10;
-
-        return {
-          name,
-          status,
-          capacity: Math.round(capacity * 10) / 10,
-          load,
-          remaining,
-          ok: remaining >= required,
-        };
-      })
-      .filter((r) => r.ok)
-      .sort((a, b) => {
-        if (b.remaining !== a.remaining) return b.remaining - a.remaining;
-        return a.name.localeCompare(b.name);
-      });
-
-    return { required, rows };
-  }, [helperStartDate, helperRequiredHours, helperTaskType, allPresalesNames, scheduleLookup, getDailyLoadHours]);
-
   // Day detail: tasks + schedule entries
   const dayDetailSchedule = useMemo(() => {
     if (!dayDetailOpen || !dayDetailAssignee || !dayDetailDay) return { status: 'free', entries: [] };
@@ -1149,84 +1051,6 @@ function PresalesOverview() {
                         </div>
                       </div>
                     ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* TASKS BY PRESALES */}
-      <section className="presales-crunch-section">
-        <div className="presales-panel presales-panel-large">
-          <div className="presales-panel-header">
-            <div>
-              <h3>
-                <ListChecks size={20} className="panel-icon" />
-                Tasks by presales
-              </h3>
-              <p>Grouped by assignee, then by task status. Click a task to edit.</p>
-            </div>
-          </div>
-
-          {tasksByPresalesAndStatus.length === 0 ? (
-            <div className="presales-empty small">
-              <p>No open tasks found.</p>
-            </div>
-          ) : (
-            <div className="tasks-by-presales-grid">
-              {tasksByPresalesAndStatus.map((row) => (
-                <div key={row.assignee} className="tasks-presales-card">
-                  <div className="tasks-presales-header">
-                    <div className="tasks-presales-name" title={row.assignee}>
-                      {row.assignee}
-                    </div>
-                    <div className="tasks-presales-count">{row.total} open</div>
-                  </div>
-
-                  <div className="tasks-presales-groups">
-                    {['Overdue', 'In Progress', 'Not Started', 'Other'].map((k) => {
-                      const items = row.groups[k] || [];
-                      if (items.length === 0) return null;
-
-                      const cls =
-                        k === 'Overdue'
-                          ? 'group-danger'
-                          : k === 'In Progress'
-                            ? 'group-warn'
-                            : 'group-neutral';
-
-                      return (
-                        <div key={k} className={`tasks-status-group ${cls}`}>
-                          <div className="tasks-status-header">
-                            <span className="tasks-status-title">{k}</span>
-                            <span className="tasks-status-badge">{items.length}</span>
-                          </div>
-
-                          <div className="tasks-status-list">
-                            {items.map((t) => (
-                              <button
-                                key={t.id}
-                                type="button"
-                                className="tasks-status-item"
-                                onClick={() => openEditTask(t)}
-                                title="Click to edit"
-                              >
-                                <div className="tasks-item-title">{t.description || '(Untitled task)'}</div>
-                                <div className="tasks-item-sub">
-                                  <span className="td-ellipsis" title={getProjectLabel(t)}>
-                                    {getProjectLabel(t)}
-                                  </span>
-                                  <span className="dot">•</span>
-                                  <span>Due: {formatShortDate(t.due_date)}</span>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 </div>
               ))}
