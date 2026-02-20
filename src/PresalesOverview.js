@@ -103,13 +103,19 @@ const buildDayRange = (start, end) => {
   return arr;
 };
 
+const snapToMonday = (d) => {
+  const dd = parseDate(d);
+  if (!dd) return null;
+  const monday = new Date(dd);
+  const day = monday.getDay();
+  const diff = (day === 0 ? -6 : 1) - day; // Monday
+  monday.setDate(monday.getDate() + diff);
+  return monday;
+};
+
 const getWeekRanges = () => {
   const today = toMidnight(new Date());
-
-  const thisWeekStart = new Date(today);
-  const day = thisWeekStart.getDay();
-  const diff = (day === 0 ? -6 : 1) - day; // Monday
-  thisWeekStart.setDate(thisWeekStart.getDate() + diff);
+  const thisWeekStart = snapToMonday(today);
 
   const thisWeekEnd = new Date(thisWeekStart);
   thisWeekEnd.setDate(thisWeekStart.getDate() + 4);
@@ -119,6 +125,11 @@ const getWeekRanges = () => {
   const nextWeekEnd = new Date(nextWeekStart);
   nextWeekEnd.setDate(nextWeekStart.getDate() + 4);
 
+  const lastWeekStart = new Date(thisWeekStart);
+  lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+  const lastWeekEnd = new Date(lastWeekStart);
+  lastWeekEnd.setDate(lastWeekStart.getDate() + 4);
+
   const last30Start = new Date(today);
   last30Start.setDate(today.getDate() - 30);
   const last30End = new Date(today);
@@ -126,6 +137,7 @@ const getWeekRanges = () => {
   return {
     thisWeek: { start: thisWeekStart, end: thisWeekEnd },
     nextWeek: { start: nextWeekStart, end: nextWeekEnd },
+    lastWeek: { start: lastWeekStart, end: lastWeekEnd },
     last30: { start: last30Start, end: last30End },
   };
 };
@@ -165,7 +177,6 @@ const isTaskOnDay = (task, day) => {
   return d.getTime() >= s.getTime() && d.getTime() <= e.getTime();
 };
 
-// General “active” guard
 const isProjectActive = (project) => {
   const cs = (project?.current_status || '').toLowerCase().trim();
   const ss = (project?.sales_stage || '').toLowerCase().trim();
@@ -176,10 +187,9 @@ const isProjectActive = (project) => {
   return !inactiveKeywords.some((k) => signal.includes(k));
 };
 
-// Board filter: exclude these stages
 const isStageAllowedForBoard = (project) => {
   const stage = (project?.sales_stage || '').toLowerCase().trim();
-  const s = stage.replace(/\s+/g, '-'); // normalize
+  const s = stage.replace(/\s+/g, '-');
   const blocked = new Set(['closed-lost', 'close-won', 'closed-won', 'on-hold', 'cancelled', 'canceled']);
   return !blocked.has(s);
 };
@@ -254,10 +264,38 @@ const prettyStatus = (status) => {
   return status;
 };
 
+// Weekly snapshot helpers
+const getTaskWindow = (t) => {
+  const start = t?.start_date || t?.due_date || t?.end_date || null;
+  const end = t?.end_date || t?.due_date || t?.start_date || null;
+  return { start, end };
+};
+
+const overlapsRange = (rangeStart, rangeEnd, taskStart, taskEnd) => {
+  const rs = parseDate(rangeStart);
+  const re = parseDate(rangeEnd);
+  const ts = parseDate(taskStart);
+  const te = parseDate(taskEnd);
+  if (!rs || !re) return false;
+
+  const start = ts || te || null;
+  const end = te || ts || null;
+  if (!start && !end) return false;
+
+  const s = start || end;
+  const e = end || start;
+
+  return !(e.getTime() < rs.getTime() || s.getTime() > re.getTime());
+};
+
+const getCompletedDate = (t) => {
+  // best guess
+  return t?.end_date || t?.updated_at || t?.due_date || t?.created_at || null;
+};
+
 function PresalesOverview() {
   const navigate = useNavigate();
 
-  const today = useMemo(() => toMidnight(new Date()), []);
   const weeks = useMemo(() => getWeekRanges(), []);
 
   const [projects, setProjects] = useState([]);
@@ -269,11 +307,47 @@ function PresalesOverview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Availability table range
   const [selectedRangeKey, setSelectedRangeKey] = useState('thisWeek');
   const [rangeStart, setRangeStart] = useState(weeks.thisWeek.start);
   const [rangeEnd, setRangeEnd] = useState(weeks.thisWeek.end);
   const [rangeError, setRangeError] = useState('');
 
+  // ✅ Weekly snapshot range selector
+  const [snapshotWeek, setSnapshotWeek] = useState('thisWeek'); // thisWeek | lastWeek | nextWeek | custom
+  const [customWeekDate, setCustomWeekDate] = useState(ymd(weeks.thisWeek.start));
+
+  const selectedWeekRange = useMemo(() => {
+    if (snapshotWeek === 'thisWeek') return weeks.thisWeek;
+    if (snapshotWeek === 'nextWeek') return weeks.nextWeek;
+    if (snapshotWeek === 'lastWeek') return weeks.lastWeek;
+
+    const d = parseDate(customWeekDate);
+    const monday = snapToMonday(d);
+    if (!monday) return weeks.thisWeek;
+
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4);
+    return { start: monday, end: friday };
+  }, [snapshotWeek, customWeekDate, weeks]);
+
+  const selectedPrevWeek = useMemo(() => {
+    const s = new Date(selectedWeekRange.start);
+    s.setDate(s.getDate() - 7);
+    const e = new Date(s);
+    e.setDate(s.getDate() + 4);
+    return { start: s, end: e };
+  }, [selectedWeekRange]);
+
+  const selectedNextWeek = useMemo(() => {
+    const s = new Date(selectedWeekRange.start);
+    s.setDate(s.getDate() + 7);
+    const e = new Date(s);
+    e.setDate(s.getDate() + 4);
+    return { start: s, end: e };
+  }, [selectedWeekRange]);
+
+  // Modals
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
 
@@ -281,6 +355,7 @@ function PresalesOverview() {
   const [dayDetailAssignee, setDayDetailAssignee] = useState('');
   const [dayDetailDay, setDayDetailDay] = useState(null);
 
+  // Inline edits for unassigned table
   const [inlineEditingTaskId, setInlineEditingTaskId] = useState(null);
   const [inlineDraft, setInlineDraft] = useState({});
 
@@ -289,6 +364,7 @@ function PresalesOverview() {
   const [helperRequiredHours, setHelperRequiredHours] = useState(DEFAULT_TASK_HOURS);
   const [helperTaskType, setHelperTaskType] = useState('');
 
+  // Load all data
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -347,6 +423,7 @@ function PresalesOverview() {
     load();
   }, []);
 
+  // Availability range sync
   useEffect(() => {
     if (selectedRangeKey === 'thisWeek') {
       setRangeStart(weeks.thisWeek.start);
@@ -363,6 +440,19 @@ function PresalesOverview() {
   useEffect(() => {
     setRangeError(validateDateRange(rangeStart, rangeEnd));
   }, [rangeStart, rangeEnd]);
+
+  const projectsById = useMemo(() => {
+    const map = {};
+    (projects || []).forEach((p) => {
+      map[p.id] = p;
+    });
+    return map;
+  }, [projects]);
+
+  const getProjectLabel = (task) => {
+    const p = projectsById?.[task?.project_id];
+    return p?.project_name || '—';
+  };
 
   const activeProjects = useMemo(() => (projects || []).filter(isProjectActive), [projects]);
 
@@ -411,7 +501,11 @@ function PresalesOverview() {
   }, [activeProjects, tasks]);
 
   const openTasks = useMemo(() => (tasks || []).filter((t) => !isCompletedStatus(t?.status)), [tasks]);
-  const unassignedOpenTasks = useMemo(() => openTasks.filter((t) => !(t?.assignee || '').trim()), [openTasks]);
+
+  const unassignedOpenTasks = useMemo(
+    () => openTasks.filter((t) => !(t?.assignee || '').trim()),
+    [openTasks]
+  );
 
   const rangeDays = useMemo(() => buildDayRange(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
@@ -433,7 +527,6 @@ function PresalesOverview() {
       if (a) set.add(a);
     });
 
-    // include "Unassigned" in the grouped view so it shows up
     set.add('Unassigned');
 
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -489,16 +582,14 @@ function PresalesOverview() {
 
   const getScheduleStatusForDay = (assignee, day) => getScheduleForDay(assignee, day).status || 'free';
 
-  // ✅ Load hours per assignee (only from tasks) + capacity is based on schedule
+  // Utilization table
   const utilizationByPresales = useMemo(() => {
-    // init
     const by = {};
     (allPresalesNames || []).forEach((name) => {
-      if (name === 'Unassigned') return; // "Unassigned" doesn't have schedule capacity
+      if (name === 'Unassigned') return;
       by[name] = { name, taskHours: 0, capacityHours: 0, pct: 0 };
     });
 
-    // capacity per assignee = sum(statusToAvailableHours(dayStatus)) across range
     (allPresalesNames || []).forEach((name) => {
       if (name === 'Unassigned') return;
       let cap = 0;
@@ -510,7 +601,6 @@ function PresalesOverview() {
       by[name].capacityHours = Math.round(cap * 10) / 10;
     });
 
-    // tasks load (only tasks, no schedule)
     (tasks || []).forEach((t) => {
       if (isCompletedStatus(t?.status)) return;
 
@@ -532,7 +622,6 @@ function PresalesOverview() {
       by[a].taskHours += perDay * overlapDays;
     });
 
-    // pct = taskHours / capacityHours
     Object.keys(by).forEach((k) => {
       const cap = safeNumber(by[k].capacityHours, 0);
       const th = Math.round(safeNumber(by[k].taskHours, 0) * 10) / 10;
@@ -574,6 +663,115 @@ function PresalesOverview() {
       return Math.round(sum * 10) / 10;
     };
   }, [tasks]);
+
+  // ✅ Weekly snapshot per presales (selected week + prev + next)
+  const weeklySnapshot = useMemo(() => {
+    const map = {};
+    const ensure = (assignee) => {
+      if (!map[assignee]) {
+        map[assignee] = { assignee, thisWeek: [], completedPrevWeek: [], nextWeek: [] };
+      }
+      return map[assignee];
+    };
+
+    (tasks || []).forEach((t) => {
+      const assignee = (t?.assignee || '').trim() || 'Unassigned';
+      const bucket = ensure(assignee);
+
+      const { start, end } = getTaskWindow(t);
+
+      // 1) Doing this selected week
+      if (!isCompletedStatus(t?.status) && overlapsRange(selectedWeekRange.start, selectedWeekRange.end, start, end)) {
+        bucket.thisWeek.push(t);
+      }
+
+      // 2) Completed previous week
+      if (isCompletedStatus(t?.status)) {
+        const cd = getCompletedDate(t);
+        if (overlapsRange(selectedPrevWeek.start, selectedPrevWeek.end, cd, cd)) {
+          bucket.completedPrevWeek.push(t);
+        }
+      }
+
+      // 3) Coming next week
+      if (!isCompletedStatus(t?.status) && overlapsRange(selectedNextWeek.start, selectedNextWeek.end, start, end)) {
+        bucket.nextWeek.push(t);
+      }
+    });
+
+    const sorter = (a, b) => {
+      const ad = parseDate(a?.due_date)?.getTime() ?? Number.POSITIVE_INFINITY;
+      const bd = parseDate(b?.due_date)?.getTime() ?? Number.POSITIVE_INFINITY;
+      if (ad !== bd) return ad - bd;
+      return String(a?.description || '').localeCompare(String(b?.description || ''));
+    };
+
+    Object.values(map).forEach((row) => {
+      row.thisWeek.sort(sorter);
+      row.completedPrevWeek.sort(sorter);
+      row.nextWeek.sort(sorter);
+    });
+
+    return Object.values(map)
+      .filter((r) => r.thisWeek.length || r.completedPrevWeek.length || r.nextWeek.length)
+      .sort((a, b) => a.assignee.localeCompare(b.assignee));
+  }, [tasks, selectedWeekRange, selectedPrevWeek, selectedNextWeek]);
+
+  // ✅ Tasks by presales (grouped by assignee then status)
+  const tasksByPresalesAndStatus = useMemo(() => {
+    const map = {};
+    const startOfToday = toMidnight(new Date());
+
+    const ensure = (assignee) => {
+      if (!map[assignee]) {
+        map[assignee] = {
+          assignee,
+          groups: { Overdue: [], 'In Progress': [], 'Not Started': [], Other: [] },
+          total: 0,
+        };
+      }
+      return map[assignee];
+    };
+
+    (openTasks || []).forEach((t) => {
+      const assignee = (t?.assignee || '').trim() || 'Unassigned';
+      const bucket = ensure(assignee);
+
+      const due = parseDate(t?.due_date);
+      const isOverdue = due && startOfToday && due.getTime() < startOfToday.getTime();
+
+      if (isOverdue) {
+        bucket.groups.Overdue.push(t);
+        bucket.total += 1;
+        return;
+      }
+
+      const sg = normalizeStatusGroup(t?.status);
+      if (sg === 'In Progress') bucket.groups['In Progress'].push(t);
+      else if (sg === 'Not Started') bucket.groups['Not Started'].push(t);
+      else bucket.groups.Other.push(t);
+
+      bucket.total += 1;
+    });
+
+    Object.values(map).forEach((row) => {
+      Object.keys(row.groups).forEach((k) => {
+        row.groups[k].sort((a, b) => {
+          const ad = parseDate(a?.due_date)?.getTime() ?? Number.POSITIVE_INFINITY;
+          const bd = parseDate(b?.due_date)?.getTime() ?? Number.POSITIVE_INFINITY;
+          if (ad !== bd) return ad - bd;
+          return String(a?.description || '').localeCompare(String(b?.description || ''));
+        });
+      });
+    });
+
+    return Object.values(map)
+      .sort((a, b) => {
+        if (b.total !== a.total) return b.total - a.total;
+        return a.assignee.localeCompare(b.assignee);
+      })
+      .filter((x) => x.total > 0);
+  }, [openTasks]);
 
   // Assignment Helper (available only)
   const helperTable = useMemo(() => {
@@ -714,70 +912,6 @@ function PresalesOverview() {
     }
   };
 
-  // ✅ NEW: tasks grouped by presales then status
-  const tasksByPresalesAndStatus = useMemo(() => {
-    const map = {};
-
-    const startOfToday = toMidnight(new Date());
-
-    const ensure = (assignee) => {
-      if (!map[assignee]) {
-        map[assignee] = {
-          assignee,
-          groups: {
-            Overdue: [],
-            'In Progress': [],
-            'Not Started': [],
-            Other: [],
-          },
-          total: 0,
-        };
-      }
-      return map[assignee];
-    };
-
-    (openTasks || []).forEach((t) => {
-      const assignee = (t?.assignee || '').trim() || 'Unassigned';
-      const bucket = ensure(assignee);
-
-      const due = parseDate(t?.due_date);
-      const isOverdue = due && startOfToday && due.getTime() < startOfToday.getTime();
-
-      if (isOverdue) {
-        bucket.groups.Overdue.push(t);
-        bucket.total += 1;
-        return;
-      }
-
-      const sg = normalizeStatusGroup(t?.status);
-      if (sg === 'In Progress') bucket.groups['In Progress'].push(t);
-      else if (sg === 'Not Started') bucket.groups['Not Started'].push(t);
-      else bucket.groups.Other.push(t);
-
-      bucket.total += 1;
-    });
-
-    // sort tasks inside each group
-    Object.values(map).forEach((row) => {
-      Object.keys(row.groups).forEach((k) => {
-        row.groups[k].sort((a, b) => {
-          const ad = parseDate(a?.due_date)?.getTime() ?? Number.POSITIVE_INFINITY;
-          const bd = parseDate(b?.due_date)?.getTime() ?? Number.POSITIVE_INFINITY;
-          if (ad !== bd) return ad - bd;
-          return String(a?.description || '').localeCompare(String(b?.description || ''));
-        });
-      });
-    });
-
-    // sort presales: most tasks first, then name
-    return Object.values(map)
-      .sort((a, b) => {
-        if (b.total !== a.total) return b.total - a.total;
-        return a.assignee.localeCompare(b.assignee);
-      })
-      .filter((x) => x.total > 0); // hide empty assignees
-  }, [openTasks]);
-
   if (loading) {
     return (
       <div className="presales-page-container">
@@ -806,10 +940,155 @@ function PresalesOverview() {
         <div className="presales-header-main">
           <div>
             <h2>Presales Overview</h2>
-            <p>Projects, workload, availability, and assignment helper.</p>
+            <p>Weekly tasks, active projects, workload, availability, and assignment helper.</p>
           </div>
         </div>
       </header>
+
+      {/* ✅ WEEKLY TASK VIEW */}
+      <section className="presales-crunch-section">
+        <div className="presales-panel presales-panel-large">
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <CalendarDays size={18} className="panel-icon" />
+                Weekly task view
+              </h3>
+              <p>
+                Selected week ({formatShortDate(selectedWeekRange.start)} to {formatShortDate(selectedWeekRange.end)}),
+                completed from previous week, and tasks coming next week.
+              </p>
+            </div>
+
+            <div className="panel-actions">
+              <div className="field compact">
+                <label>Week</label>
+                <select value={snapshotWeek} onChange={(e) => setSnapshotWeek(e.target.value)}>
+                  <option value="thisWeek">This week</option>
+                  <option value="lastWeek">Last week</option>
+                  <option value="nextWeek">Next week</option>
+                  <option value="custom">Pick a date</option>
+                </select>
+              </div>
+
+              <div className="field compact">
+                <label>Custom date</label>
+                <input
+                  type="date"
+                  value={customWeekDate || ''}
+                  onChange={(e) => setCustomWeekDate(e.target.value)}
+                  disabled={snapshotWeek !== 'custom'}
+                />
+              </div>
+            </div>
+          </div>
+
+          {weeklySnapshot.length === 0 ? (
+            <div className="presales-empty small">
+              <p>No tasks found for these weekly buckets.</p>
+            </div>
+          ) : (
+            <div className="weekly-grid">
+              {weeklySnapshot.map((row) => (
+                <div key={row.assignee} className="weekly-presales-card">
+                  <div className="weekly-presales-header">
+                    <div className="weekly-name" title={row.assignee}>
+                      {row.assignee}
+                    </div>
+                    <div className="weekly-mini">
+                      {row.thisWeek.length + row.completedPrevWeek.length + row.nextWeek.length} items
+                    </div>
+                  </div>
+
+                  <div className="weekly-columns">
+                    {/* 1) This week */}
+                    <div className="weekly-col">
+                      <div className="weekly-col-head">
+                        <span>Doing this week</span>
+                        <span className="weekly-badge">{row.thisWeek.length}</span>
+                      </div>
+                      <div className="weekly-list">
+                        {row.thisWeek.length === 0 ? (
+                          <div className="weekly-empty">No tasks.</div>
+                        ) : (
+                          row.thisWeek.map((t) => (
+                            <button key={t.id} type="button" className="weekly-item" onClick={() => openEditTask(t)}>
+                              <div className="weekly-item-title">{t.description || '(Untitled task)'}</div>
+                              <div className="weekly-item-sub">
+                                <span className="td-ellipsis" title={getProjectLabel(t)}>
+                                  {getProjectLabel(t)}
+                                </span>
+                                <span className="dot">•</span>
+                                <span>Due {formatShortDate(t.due_date)}</span>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 2) Completed previous week */}
+                    <div className="weekly-col weekly-col-done">
+                      <div className="weekly-col-head">
+                        <span>Completed last week</span>
+                        <span className="weekly-badge">{row.completedPrevWeek.length}</span>
+                      </div>
+                      <div className="weekly-list">
+                        {row.completedPrevWeek.length === 0 ? (
+                          <div className="weekly-empty">None completed.</div>
+                        ) : (
+                          row.completedPrevWeek.map((t) => (
+                            <button key={t.id} type="button" className="weekly-item" onClick={() => openEditTask(t)}>
+                              <div className="weekly-item-title">{t.description || '(Untitled task)'}</div>
+                              <div className="weekly-item-sub">
+                                <span className="td-ellipsis" title={getProjectLabel(t)}>
+                                  {getProjectLabel(t)}
+                                </span>
+                                <span className="dot">•</span>
+                                <span>Done {formatShortDate(getCompletedDate(t))}</span>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 3) Next week */}
+                    <div className="weekly-col weekly-col-next">
+                      <div className="weekly-col-head">
+                        <span>Coming next week</span>
+                        <span className="weekly-badge">{row.nextWeek.length}</span>
+                      </div>
+                      <div className="weekly-list">
+                        {row.nextWeek.length === 0 ? (
+                          <div className="weekly-empty">No upcoming tasks.</div>
+                        ) : (
+                          row.nextWeek.map((t) => (
+                            <button key={t.id} type="button" className="weekly-item" onClick={() => openEditTask(t)}>
+                              <div className="weekly-item-title">{t.description || '(Untitled task)'}</div>
+                              <div className="weekly-item-sub">
+                                <span className="td-ellipsis" title={getProjectLabel(t)}>
+                                  {getProjectLabel(t)}
+                                </span>
+                                <span className="dot">•</span>
+                                <span>Due {formatShortDate(t.due_date)}</span>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '0 12px 12px', fontSize: 12, color: 'rgba(15,23,42,0.65)' }}>
+                    Tip: Click a task to edit. “Completed last week” uses end_date, then updated_at as fallback.
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* ACTIVE PROJECTS BOARD */}
       <section className="presales-crunch-section">
@@ -847,7 +1126,6 @@ function PresalesOverview() {
                     </span>
                   </div>
 
-                  {/* ✅ scroll after ~5 items */}
                   <div className="presales-board-cards presales-board-cards-scroll">
                     {g.projects.map((p) => (
                       <div key={p.projectId} className="presales-board-card">
@@ -879,7 +1157,7 @@ function PresalesOverview() {
         </div>
       </section>
 
-      {/* ✅ NEW: TASKS BY PRESALES (replaces Presales activities) */}
+      {/* TASKS BY PRESALES */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
@@ -937,8 +1215,8 @@ function PresalesOverview() {
                               >
                                 <div className="tasks-item-title">{t.description || '(Untitled task)'}</div>
                                 <div className="tasks-item-sub">
-                                  <span className="td-ellipsis" title={t.project_name || ''}>
-                                    {t.project_name || '—'}
+                                  <span className="td-ellipsis" title={getProjectLabel(t)}>
+                                    {getProjectLabel(t)}
                                   </span>
                                   <span className="dot">•</span>
                                   <span>Due: {formatShortDate(t.due_date)}</span>
@@ -966,7 +1244,7 @@ function PresalesOverview() {
                 <Filter size={18} className="panel-icon" />
                 Availability and load
               </h3>
-              <p>Click a dot to see schedule entries (holiday/leave/training/etc) and tasks for that day.</p>
+              <p>Click a dot to see schedule entries and tasks for that day.</p>
             </div>
 
             <div className="panel-actions">
@@ -1119,8 +1397,12 @@ function PresalesOverview() {
                         <tbody>
                           {helperTable.rows.map((r) => (
                             <tr key={r.name}>
-                              <td className="td-ellipsis" title={r.name}>{r.name}</td>
-                              <td className="td-ellipsis" title={r.status}>{prettyStatus(r.status)}</td>
+                              <td className="td-ellipsis" title={r.name}>
+                                {r.name}
+                              </td>
+                              <td className="td-ellipsis" title={r.status}>
+                                {prettyStatus(r.status)}
+                              </td>
                               <td>{r.capacity}</td>
                               <td>{r.load}</td>
                               <td>{r.remaining}</td>
@@ -1168,7 +1450,6 @@ function PresalesOverview() {
                     <tbody>
                       {unassignedOpenTasks.map((t) => {
                         const isEditing = inlineEditingTaskId === t.id;
-                        const project = (projects || []).find((p) => p.id === t.project_id);
 
                         return (
                           <tr key={t.id}>
@@ -1185,8 +1466,8 @@ function PresalesOverview() {
                               )}
                             </td>
 
-                            <td className="td-ellipsis" title={project?.project_name || '-'}>
-                              {project?.project_name || '-'}
+                            <td className="td-ellipsis" title={getProjectLabel(t)}>
+                              {getProjectLabel(t)}
                             </td>
 
                             <td>
@@ -1334,7 +1615,9 @@ function PresalesOverview() {
                         >
                           <div className="daydetail-item-title">{t.description || '(Untitled task)'}</div>
                           <div className="daydetail-item-sub">
-                            <span>{t.project_name || '—'}</span>
+                            <span className="td-ellipsis" title={getProjectLabel(t)}>
+                              {getProjectLabel(t)}
+                            </span>
                             <span className="dot">•</span>
                             <span>Due: {formatShortDate(t.due_date)}</span>
                           </div>
