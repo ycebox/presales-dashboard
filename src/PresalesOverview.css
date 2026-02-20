@@ -1,6 +1,3 @@
-/* Updated to match latest PresalesOverview.js (weekly snapshot + existing sections) */
-/*  [oai_citation:0‡PresalesOverview (3).css](sediment://file_00000000570872089a7079581f6a1a2e) */
-
 /* ===== PAGE CONTAINER & GLOBAL LAYOUT ===== */
 
 .presales-page-container {
@@ -273,9 +270,9 @@
   opacity: 0.55;
 }
 
-/* ========================================================= */
-/* ===== WEEKLY SNAPSHOT (NEW / USED BY LATEST JS) ===== */
-/* ========================================================= */
+/* =================================================================== */
+/* ===== WEEKLY TASK SNAPSHOT (NEW - USED BY LATEST JS) ===== */
+/* =================================================================== */
 
 .weekly-grid {
   display: grid;
@@ -306,10 +303,10 @@
   font-size: 13px;
   font-weight: 750;
   color: rgba(15, 23, 42, 0.92);
+  max-width: 70%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 70%;
 }
 
 .weekly-mini {
@@ -323,10 +320,10 @@
 }
 
 .weekly-columns {
+  padding: 10px 12px 12px;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
-  padding: 10px 12px 12px;
 }
 
 @media (max-width: 980px) {
@@ -345,10 +342,20 @@
   min-height: 120px;
 }
 
+.weekly-col-done {
+  border-color: rgba(34, 197, 94, 0.22);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.weekly-col-next {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: rgba(37, 99, 235, 0.05);
+}
+
 .weekly-col-head {
   padding: 8px 10px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.75);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -366,7 +373,7 @@
   padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.9);
   color: rgba(15, 23, 42, 0.75);
   white-space: nowrap;
 }
@@ -376,17 +383,22 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+
   max-height: 240px;
   overflow-y: auto;
   padding-right: 6px;
 }
 
-.weekly-list::-webkit-scrollbar { width: 8px; }
+.weekly-list::-webkit-scrollbar {
+  width: 8px;
+}
 .weekly-list::-webkit-scrollbar-thumb {
   background: rgba(15, 23, 42, 0.16);
   border-radius: 999px;
 }
-.weekly-list::-webkit-scrollbar-track { background: transparent; }
+.weekly-list::-webkit-scrollbar-track {
+  background: transparent;
+}
 
 .weekly-item {
   width: 100%;
@@ -424,17 +436,6 @@
   padding: 10px;
   font-size: 12px;
   color: rgba(15, 23, 42, 0.60);
-}
-
-/* small visual cues for done/next columns */
-.weekly-col-done {
-  border-color: rgba(34, 197, 94, 0.20);
-  background: rgba(34, 197, 94, 0.05);
-}
-
-.weekly-col-next {
-  border-color: rgba(37, 99, 235, 0.20);
-  background: rgba(37, 99, 235, 0.04);
 }
 
 /* ===== ACTIVE PROJECTS BOARD ===== */
@@ -553,7 +554,7 @@
   color: rgba(15, 23, 42, 0.70);
 }
 
-/* ===== TABLES (unassigned + helper) ===== */
+/* ===== TABLES (unassigned + schedule) ===== */
 
 .unassigned-tasks-table-wrapper {
   padding: 12px 16px 16px;
@@ -604,7 +605,7 @@
   text-align: right;
 }
 
-/* ===== ASSIGNMENT HELPER ===== */
+/* ===== ASSIGNMENT HELPER (UPDATED) ===== */
 
 .assignment-helper {
   margin-top: 14px;
@@ -649,6 +650,64 @@
   padding: 0 2px;
 }
 
+.helper-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.helper-card {
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.98);
+  padding: 14px 14px 12px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+}
+
+.helper-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.10);
+}
+
+.helper-card.ok {
+  border-color: rgba(34, 197, 94, 0.30);
+  background: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.08),
+    rgba(255, 255, 255, 0.98)
+  );
+}
+
+.helper-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.helper-name {
+  font-size: 14px;
+  font-weight: 750;
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.helper-free {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(37, 99, 235, 0.85);
+  white-space: nowrap;
+}
+
+.helper-meta {
+  margin-top: 8px;
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.68);
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 @media (max-width: 768px) {
   .assignment-helper-controls {
     grid-template-columns: 1fr;
@@ -659,6 +718,9 @@
 
 .availability-grid-wrapper {
   padding: 12px 16px 16px;
+}
+
+.availability-grid-wrapper {
   border-radius: 14px;
   border: 1px solid rgba(15, 23, 42, 0.10);
   background: rgba(255, 255, 255, 0.98);
@@ -729,6 +791,7 @@
 .avail-cell.travel .avail-dot { background: rgba(249, 115, 22, 0.60); }
 .avail-cell.training .avail-dot { background: rgba(168, 85, 247, 0.55); }
 .avail-cell.other .avail-dot { background: rgba(234, 179, 8, 0.60); }
+.avail-cell.holiday .avail-dot { background: rgba(2, 132, 199, 0.65); }
 .avail-cell.internal .avail-dot {
   background:
     repeating-linear-gradient(
