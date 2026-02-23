@@ -271,7 +271,7 @@
 }
 
 /* =================================================================== */
-/* ===== WEEKLY TASK SNAPSHOT (NEW - USED BY LATEST JS) ===== */
+/* ===== WEEKLY TASK SNAPSHOT ===== */
 /* =================================================================== */
 
 .weekly-grid {
@@ -415,11 +415,34 @@
   background: rgba(15, 23, 42, 0.03);
 }
 
+/* ✅ NEW: title row supports badge on the right */
+.weekly-item-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
 .weekly-item-title {
   font-size: 13px;
   font-weight: 750;
   color: rgba(15, 23, 42, 0.92);
   line-height: 1.2;
+  min-width: 0;
+}
+
+/* ✅ NEW: progress badge */
+.weekly-progress-badge {
+  font-size: 11px;
+  font-weight: 750;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.04);
+  color: rgba(15, 23, 42, 0.78);
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .weekly-item-sub {
@@ -429,13 +452,42 @@
   display: flex;
   gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+/* ✅ Keep 2nd line clean + ellipsis friendly */
+.weekly-sub-customer,
+.weekly-sub-project {
+  min-width: 0;
+  max-width: 42%;
+}
+
+.weekly-sub-date {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* Subhead inside Activities last week */
+.weekly-subhead {
+  margin: 6px 2px 2px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  color: rgba(15, 23, 42, 0.72);
+  text-transform: uppercase;
 }
 
 .weekly-empty {
   padding: 10px;
   font-size: 12px;
   color: rgba(15, 23, 42, 0.60);
+}
+
+.weekly-tip {
+  padding: 0 12px 12px;
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.65);
 }
 
 /* ===== ACTIVE PROJECTS BOARD ===== */
@@ -504,7 +556,6 @@
   padding-right: 6px;
 }
 
-/* scrollbar */
 .presales-board-cards-scroll::-webkit-scrollbar {
   width: 8px;
 }
@@ -605,7 +656,7 @@
   text-align: right;
 }
 
-/* ===== ASSIGNMENT HELPER (UPDATED) ===== */
+/* ===== ASSIGNMENT HELPER ===== */
 
 .assignment-helper {
   margin-top: 14px;
@@ -622,22 +673,6 @@
   align-items: end;
 }
 
-.assignment-helper-controls .field input,
-.assignment-helper-controls .field select {
-  border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.98);
-  padding: 8px 10px;
-  font-size: 13px;
-}
-
-.assignment-helper-controls .field input:focus,
-.assignment-helper-controls .field select:focus {
-  outline: none;
-  border-color: rgba(37, 99, 235, 0.55);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-}
-
 .assignment-helper-results {
   display: flex;
   flex-direction: column;
@@ -650,64 +685,6 @@
   padding: 0 2px;
 }
 
-.helper-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px;
-}
-
-.helper-card {
-  border-radius: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  background: rgba(255, 255, 255, 0.98);
-  padding: 14px 14px 12px;
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
-  transition: transform 0.08s ease, box-shadow 0.15s ease;
-}
-
-.helper-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.10);
-}
-
-.helper-card.ok {
-  border-color: rgba(34, 197, 94, 0.30);
-  background: linear-gradient(
-    135deg,
-    rgba(34, 197, 94, 0.08),
-    rgba(255, 255, 255, 0.98)
-  );
-}
-
-.helper-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.helper-name {
-  font-size: 14px;
-  font-weight: 750;
-  color: rgba(15, 23, 42, 0.92);
-}
-
-.helper-free {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(37, 99, 235, 0.85);
-  white-space: nowrap;
-}
-
-.helper-meta {
-  margin-top: 8px;
-  font-size: 12px;
-  color: rgba(15, 23, 42, 0.68);
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-}
-
 @media (max-width: 768px) {
   .assignment-helper-controls {
     grid-template-columns: 1fr;
@@ -718,9 +695,6 @@
 
 .availability-grid-wrapper {
   padding: 12px 16px 16px;
-}
-
-.availability-grid-wrapper {
   border-radius: 14px;
   border: 1px solid rgba(15, 23, 42, 0.10);
   background: rgba(255, 255, 255, 0.98);
@@ -858,41 +832,6 @@
   gap: 10px;
 }
 
-.modal-error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  margin: 12px 16px 0;
-  border-radius: 12px;
-  border: 1px solid rgba(220, 38, 38, 0.30);
-  background: rgba(220, 38, 38, 0.08);
-  color: rgba(185, 28, 28, 0.95);
-  font-size: 12px;
-}
-
-.form-error {
-  margin-top: 10px;
-  font-size: 12px;
-  color: rgba(185, 28, 28, 0.95);
-  background: rgba(220, 38, 38, 0.08);
-  border: 1px solid rgba(220, 38, 38, 0.20);
-  padding: 8px 10px;
-  border-radius: 12px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-@media (max-width: 768px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* ===== DAY DETAIL MODAL ===== */
 
 .daydetail-grid {
@@ -947,12 +886,6 @@
   display: flex;
   gap: 8px;
   align-items: center;
-}
-
-.daydetail-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
 }
 
 .daydetail-schedule {
