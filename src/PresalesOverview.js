@@ -260,7 +260,6 @@ const isNotStartedStrict = (status) => normalizeTaskStatus(status) === 'not star
 
 const isCancelledOrOnHold = (status) => {
   const s = normalizeTaskStatus(status);
-  // covers "Cancelled/On-hold" and also slightly different entries if someone typed it
   return s.includes('cancel') || s.includes('on-hold') || s.includes('on hold');
 };
 
@@ -298,24 +297,73 @@ const isDateInRange = (dateValue, rangeStart, rangeEnd) => {
 
 const getCompletedAt = (t) => t?.completed_at || null;
 
-const getOngoingWindow = (t, weekStart, weekEnd) => {
-  // For in-progress tasks: prefer explicit dates. If missing, use started_at as anchor.
-  const start =
-    t?.start_date ||
-    t?.started_at || // timestamptz
-    t?.due_date ||
-    null;
+// For in-progress overlap checks, prefer explicit dates. If missing, use started_at.
+const getOngoingWindow = (t, weekEnd) => {
+  const start = t?.start_date || t?.started_at || t?.due_date || null;
+  const end = t?.end_date || t?.due_date || null;
 
-  const end =
-    t?.end_date ||
-    t?.due_date ||
-    null;
-
-  // If only started_at exists and no end/due, treat as open-ended through weekEnd
   const resolvedStart = start || null;
-  const resolvedEnd = end || weekEnd;
+  const resolvedEnd = end || weekEnd; // open-ended through week end
 
   return { start: resolvedStart, end: resolvedEnd };
+};
+
+/** ---- Workday-based time progress (approximation) ---- */
+const isWeekday = (dateObj) => {
+  const d = dateObj?.getDay?.();
+  return d !== 0 && d !== 6; // Mon-Fri
+};
+
+const workdaysBetweenInclusive = (startValue, endValue) => {
+  const s = parseDate(startValue);
+  const e = parseDate(endValue);
+  if (!s || !e) return 0;
+  if (s.getTime() > e.getTime()) return 0;
+
+  let count = 0;
+  const cur = new Date(s);
+  while (cur.getTime() <= e.getTime()) {
+    if (isWeekday(cur)) count += 1;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
+};
+
+const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+
+const getTimeProgressPct = (task, asOfValue) => {
+  // For completed tasks, show 100% (clean + intuitive)
+  if (isCompletedStrict(task?.status)) return 100;
+
+  // Exclude cancelled/on-hold from progress
+  if (isCancelledOrOnHold(task?.status)) return null;
+
+  const startAnchor = task?.start_date || task?.started_at || null;
+  const endAnchor = task?.end_date || task?.due_date || null;
+  if (!startAnchor || !endAnchor) return null;
+
+  const start = parseDate(startAnchor);
+  const end = parseDate(endAnchor);
+  if (!start || !end) return null;
+  if (start.getTime() > end.getTime()) return null;
+
+  const asOf = parseDate(asOfValue);
+  if (!asOf) return null;
+
+  // before start
+  if (asOf.getTime() < start.getTime()) return 0;
+
+  const cappedAsOf = asOf.getTime() > end.getTime() ? end : asOf;
+
+  const total = workdaysBetweenInclusive(start, end);
+  if (total <= 0) {
+    // Same-day task fallback
+    return asOf.getTime() >= end.getTime() ? 100 : 0;
+  }
+
+  const elapsed = workdaysBetweenInclusive(start, cappedAsOf);
+  const pct = Math.round((elapsed / total) * 100);
+  return clamp(pct, 0, 100);
 };
 
 function PresalesOverview() {
@@ -689,7 +737,7 @@ function PresalesOverview() {
     };
   }, [tasks]);
 
-  /** ✅ Assignment Helper table (was missing in the uploaded file) */
+  /** ✅ Assignment Helper table */
   const helperTable = useMemo(() => {
     const day = parseDate(helperStartDate);
     const requiredBase = safeNumber(helperRequiredHours, DEFAULT_TASK_HOURS);
@@ -727,12 +775,21 @@ function PresalesOverview() {
     return { required, rows };
   }, [helperStartDate, helperRequiredHours, helperTaskType, allPresalesNames, scheduleLookup, tasks, getDailyLoadHours]);
 
-  // ✅ Weekly snapshot per presales (selected week + prev + next) — LONG-TERM accurate version
+  // ✅ Weekly snapshot per presales (selected week + activities last week + next week)
   const weeklySnapshot = useMemo(() => {
     const map = {};
     const ensure = (assignee) => {
       if (!map[assignee]) {
-        map[assignee] = { assignee, thisWeek: [], completedPrevWeek: [], nextWeek: [] };
+        map[assignee] = {
+          assignee,
+          thisWeek: [],
+          nextWeek: [],
+          activitiesLastWeek: {
+            completed: [],
+            started: [],
+            carriedOver: [],
+          },
+        };
       }
       return map[assignee];
     };
@@ -740,49 +797,88 @@ function PresalesOverview() {
     const weekStart = selectedWeekRange.start;
     const weekEnd = selectedWeekRange.end;
 
+    const prevStart = selectedPrevWeek.start;
+    const prevEnd = selectedPrevWeek.end;
+
+    const nextStart = selectedNextWeek.start;
+    const nextEnd = selectedNextWeek.end;
+
+    const addUnique = (arr, set, task) => {
+      if (!task?.id) return;
+      if (set.has(task.id)) return;
+      set.add(task.id);
+      arr.push(task);
+    };
+
     (tasks || []).forEach((t) => {
       const status = t?.status || '';
       const assignee = (t?.assignee || '').trim() || 'Unassigned';
       const bucket = ensure(assignee);
 
-      // Exclude cancelled/on-hold from weekly buckets (no movement)
+      // Always exclude cancelled/on-hold from weekly movement views
       if (isCancelledOrOnHold(status)) return;
 
-      // 1) Completed previous week (strict + accurate): status Completed AND completed_at inside prev week
+      // ---------- Activities last week (Completed / Started / Carried over) ----------
+      // No duplicates, priority: completed -> started -> carriedOver
+      const actAdded = new Set(); // per task evaluation, but we want per assignee card; keep it per assignee below
+      // We'll use a per-assignee set stored on the bucket itself:
+      if (!bucket._activitiesSet) bucket._activitiesSet = new Set();
+
+      // A) Completed last week (strict): status=Completed AND completed_at in prev week
       if (isCompletedStrict(status)) {
         const completedAt = getCompletedAt(t);
-        if (completedAt && isDateInRange(completedAt, selectedPrevWeek.start, selectedPrevWeek.end)) {
-          bucket.completedPrevWeek.push(t);
+        if (completedAt && isDateInRange(completedAt, prevStart, prevEnd)) {
+          addUnique(bucket.activitiesLastWeek.completed, bucket._activitiesSet, t);
         }
-        return; // completed tasks won't appear in "ongoing/coming"
+        // completed tasks should not be in ongoing/coming lists
+        return;
       }
 
-      // 2) Doing this selected week
-      // - In Progress: overlaps week (start/end) with started_at fallback
-      // - Not Started: due_date inside this week (as you requested)
+      // B) Started last week (not completed): started_at in prev week
+      // Fallback: if started_at is missing, allow start_date as a backup signal
+      const startedSignal = t?.started_at || t?.start_date || null;
+      const startedInPrev = startedSignal ? isDateInRange(startedSignal, prevStart, prevEnd) : false;
+
+      if (startedInPrev) {
+        addUnique(bucket.activitiesLastWeek.started, bucket._activitiesSet, t);
+      } else {
+        // C) Carried over: In Progress + overlaps prev week + started before prev week
+        if (isInProgressStrict(status)) {
+          const win = getOngoingWindow(t, prevEnd);
+          const overlapsPrev = overlapsRange(prevStart, prevEnd, win.start, win.end);
+
+          // "carried over" means it started before prev week started
+          const startedAnchor = parseDate(t?.start_date || t?.started_at || null);
+          const startedBeforePrev = startedAnchor ? startedAnchor.getTime() < parseDate(prevStart).getTime() : false;
+
+          if (overlapsPrev && startedBeforePrev) {
+            addUnique(bucket.activitiesLastWeek.carriedOver, bucket._activitiesSet, t);
+          }
+        }
+      }
+
+      // ---------- Doing this week ----------
+      // In Progress: overlaps selected week (start/end) with started_at fallback
+      // Not Started: due_date inside this week OR start_date inside this week (planning)
       if (isInProgressStrict(status)) {
-        const window = getOngoingWindow(t, weekStart, weekEnd);
-        if (overlapsRange(weekStart, weekEnd, window.start, window.end)) {
+        const win = getOngoingWindow(t, weekEnd);
+        if (overlapsRange(weekStart, weekEnd, win.start, win.end)) {
           bucket.thisWeek.push(t);
         }
       } else if (isNotStartedStrict(status)) {
-        // Due this week -> show it as "doing/planned this week"
-        if (t?.due_date && isDateInRange(t.due_date, weekStart, weekEnd)) {
-          bucket.thisWeek.push(t);
-        } else if (t?.start_date && isDateInRange(t.start_date, weekStart, weekEnd)) {
-          // also include if explicitly scheduled to start this week
+        const dueInWeek = t?.due_date && isDateInRange(t.due_date, weekStart, weekEnd);
+        const startInWeek = t?.start_date && isDateInRange(t.start_date, weekStart, weekEnd);
+        if (dueInWeek || startInWeek) {
           bucket.thisWeek.push(t);
         }
       }
 
-      // 3) Coming next week (clean):
-      // Not Started tasks that start next week, fallback to due_date next week if no start_date.
+      // ---------- Coming next week ----------
+      // Not Started tasks that start next week, fallback to due_date next week if no start_date
       if (isNotStartedStrict(status)) {
         const hasStart = !!t?.start_date;
-        const startInNext = hasStart && isDateInRange(t.start_date, selectedNextWeek.start, selectedNextWeek.end);
-        const dueInNext =
-          !hasStart && t?.due_date && isDateInRange(t.due_date, selectedNextWeek.start, selectedNextWeek.end);
-
+        const startInNext = hasStart && isDateInRange(t.start_date, nextStart, nextEnd);
+        const dueInNext = !hasStart && t?.due_date && isDateInRange(t.due_date, nextStart, nextEnd);
         if (startInNext || dueInNext) {
           bucket.nextWeek.push(t);
         }
@@ -798,12 +894,27 @@ function PresalesOverview() {
 
     Object.values(map).forEach((row) => {
       row.thisWeek.sort(sorter);
-      row.completedPrevWeek.sort(sorter);
       row.nextWeek.sort(sorter);
+
+      row.activitiesLastWeek.completed.sort(sorter);
+      row.activitiesLastWeek.started.sort(sorter);
+      row.activitiesLastWeek.carriedOver.sort(sorter);
+
+      // cleanup internal set
+      delete row._activitiesSet;
     });
 
     return Object.values(map)
-      .filter((r) => r.thisWeek.length || r.completedPrevWeek.length || r.nextWeek.length)
+      .filter((r) => {
+        const a = r.activitiesLastWeek;
+        return (
+          r.thisWeek.length ||
+          r.nextWeek.length ||
+          a.completed.length ||
+          a.started.length ||
+          a.carriedOver.length
+        );
+      })
       .sort((a, b) => a.assignee.localeCompare(b.assignee));
   }, [tasks, selectedWeekRange, selectedPrevWeek, selectedNextWeek]);
 
@@ -934,6 +1045,39 @@ function PresalesOverview() {
     );
   }
 
+  // For Activities last week % progress, use "as of" prev week Friday
+  const activitiesAsOf = selectedPrevWeek.end;
+
+  const renderWeeklyItem = (t, showDoneLabel = false, doneDateValue = null, showTimeProgress = false) => {
+    const pct = showTimeProgress ? getTimeProgressPct(t, activitiesAsOf) : null;
+
+    return (
+      <button key={t.id} type="button" className="weekly-item" onClick={() => openEditTask(t)}>
+        <div className="weekly-item-title-row">
+          <div className="weekly-item-title">{t.description || '(Untitled task)'}</div>
+          {showTimeProgress && pct !== null ? (
+            <span className="weekly-progress-badge" title="Time progress (approx)">
+              {pct}%
+            </span>
+          ) : null}
+        </div>
+
+        <div className="weekly-item-sub">
+          <span className="td-ellipsis" title={getProjectLabel(t)}>
+            {getProjectLabel(t)}
+          </span>
+          <span className="dot">•</span>
+
+          {showDoneLabel ? (
+            <span>Done {formatShortDate(doneDateValue)}</span>
+          ) : (
+            <span>Due {formatShortDate(t.due_date)}</span>
+          )}
+        </div>
+      </button>
+    );
+  };
+
   return (
     <div className="presales-page-container">
       <header className="presales-header">
@@ -956,7 +1100,7 @@ function PresalesOverview() {
               </h3>
               <p>
                 Selected week ({formatShortDate(selectedWeekRange.start)} to {formatShortDate(selectedWeekRange.end)}),
-                completed from previous week, and tasks coming next week.
+                activities last week (includes carried over), and tasks coming next week.
               </p>
             </div>
 
@@ -989,102 +1133,102 @@ function PresalesOverview() {
             </div>
           ) : (
             <div className="weekly-grid">
-              {weeklySnapshot.map((row) => (
-                <div key={row.assignee} className="weekly-presales-card">
-                  <div className="weekly-presales-header">
-                    <div className="weekly-name" title={row.assignee}>
-                      {row.assignee}
+              {weeklySnapshot.map((row) => {
+                const act = row.activitiesLastWeek || { completed: [], started: [], carriedOver: [] };
+                const activitiesCount = act.completed.length + act.started.length + act.carriedOver.length;
+
+                return (
+                  <div key={row.assignee} className="weekly-presales-card">
+                    <div className="weekly-presales-header">
+                      <div className="weekly-name" title={row.assignee}>
+                        {row.assignee}
+                      </div>
+                      <div className="weekly-mini">
+                        {row.thisWeek.length + activitiesCount + row.nextWeek.length} items
+                      </div>
                     </div>
-                    <div className="weekly-mini">
-                      {row.thisWeek.length + row.completedPrevWeek.length + row.nextWeek.length} items
+
+                    <div className="weekly-columns">
+                      {/* 1) Doing this week */}
+                      <div className="weekly-col">
+                        <div className="weekly-col-head">
+                          <span>Doing this week</span>
+                          <span className="weekly-badge">{row.thisWeek.length}</span>
+                        </div>
+                        <div className="weekly-list">
+                          {row.thisWeek.length === 0 ? (
+                            <div className="weekly-empty">No tasks.</div>
+                          ) : (
+                            row.thisWeek.map((t) => renderWeeklyItem(t, false, null, false))
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 2) Activities last week */}
+                      <div className="weekly-col weekly-col-done">
+                        <div className="weekly-col-head">
+                          <span>Activities last week</span>
+                          <span className="weekly-badge">{activitiesCount}</span>
+                        </div>
+
+                        <div className="weekly-list">
+                          {activitiesCount === 0 ? (
+                            <div className="weekly-empty">No activity.</div>
+                          ) : (
+                            <>
+                              {/* Completed */}
+                              {act.completed.length ? (
+                                <>
+                                  <div className="weekly-subhead">Completed</div>
+                                  {act.completed.map((t) =>
+                                    renderWeeklyItem(t, true, getCompletedAt(t), true)
+                                  )}
+                                </>
+                              ) : null}
+
+                              {/* Started */}
+                              {act.started.length ? (
+                                <>
+                                  <div className="weekly-subhead">Started</div>
+                                  {act.started.map((t) => renderWeeklyItem(t, false, null, true))}
+                                </>
+                              ) : null}
+
+                              {/* Carried over */}
+                              {act.carriedOver.length ? (
+                                <>
+                                  <div className="weekly-subhead">Carried over</div>
+                                  {act.carriedOver.map((t) => renderWeeklyItem(t, false, null, true))}
+                                </>
+                              ) : null}
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 3) Coming next week */}
+                      <div className="weekly-col weekly-col-next">
+                        <div className="weekly-col-head">
+                          <span>Coming next week</span>
+                          <span className="weekly-badge">{row.nextWeek.length}</span>
+                        </div>
+                        <div className="weekly-list">
+                          {row.nextWeek.length === 0 ? (
+                            <div className="weekly-empty">No upcoming tasks.</div>
+                          ) : (
+                            row.nextWeek.map((t) => renderWeeklyItem(t, false, null, false))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '0 12px 12px', fontSize: 12, color: 'rgba(15,23,42,0.65)' }}>
+                      Tip: “Activities last week” includes completed, started, and carried-over work. Progress % is time-based
+                      (workdays elapsed vs planned window).
                     </div>
                   </div>
-
-                  <div className="weekly-columns">
-                    {/* 1) This week */}
-                    <div className="weekly-col">
-                      <div className="weekly-col-head">
-                        <span>Doing this week</span>
-                        <span className="weekly-badge">{row.thisWeek.length}</span>
-                      </div>
-                      <div className="weekly-list">
-                        {row.thisWeek.length === 0 ? (
-                          <div className="weekly-empty">No tasks.</div>
-                        ) : (
-                          row.thisWeek.map((t) => (
-                            <button key={t.id} type="button" className="weekly-item" onClick={() => openEditTask(t)}>
-                              <div className="weekly-item-title">{t.description || '(Untitled task)'}</div>
-                              <div className="weekly-item-sub">
-                                <span className="td-ellipsis" title={getProjectLabel(t)}>
-                                  {getProjectLabel(t)}
-                                </span>
-                                <span className="dot">•</span>
-                                <span>Due {formatShortDate(t.due_date)}</span>
-                              </div>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 2) Completed previous week */}
-                    <div className="weekly-col weekly-col-done">
-                      <div className="weekly-col-head">
-                        <span>Completed last week</span>
-                        <span className="weekly-badge">{row.completedPrevWeek.length}</span>
-                      </div>
-                      <div className="weekly-list">
-                        {row.completedPrevWeek.length === 0 ? (
-                          <div className="weekly-empty">None completed.</div>
-                        ) : (
-                          row.completedPrevWeek.map((t) => (
-                            <button key={t.id} type="button" className="weekly-item" onClick={() => openEditTask(t)}>
-                              <div className="weekly-item-title">{t.description || '(Untitled task)'}</div>
-                              <div className="weekly-item-sub">
-                                <span className="td-ellipsis" title={getProjectLabel(t)}>
-                                  {getProjectLabel(t)}
-                                </span>
-                                <span className="dot">•</span>
-                                <span>Done {formatShortDate(getCompletedAt(t))}</span>
-                              </div>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 3) Next week */}
-                    <div className="weekly-col weekly-col-next">
-                      <div className="weekly-col-head">
-                        <span>Coming next week</span>
-                        <span className="weekly-badge">{row.nextWeek.length}</span>
-                      </div>
-                      <div className="weekly-list">
-                        {row.nextWeek.length === 0 ? (
-                          <div className="weekly-empty">No upcoming tasks.</div>
-                        ) : (
-                          row.nextWeek.map((t) => (
-                            <button key={t.id} type="button" className="weekly-item" onClick={() => openEditTask(t)}>
-                              <div className="weekly-item-title">{t.description || '(Untitled task)'}</div>
-                              <div className="weekly-item-sub">
-                                <span className="td-ellipsis" title={getProjectLabel(t)}>
-                                  {getProjectLabel(t)}
-                                </span>
-                                <span className="dot">•</span>
-                                <span>Due {formatShortDate(t.due_date)}</span>
-                              </div>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ padding: '0 12px 12px', fontSize: 12, color: 'rgba(15,23,42,0.65)' }}>
-                    Tip: Click a task to edit. “Completed last week” uses completed_at (DB) for accuracy.
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
