@@ -894,3 +894,81 @@
   background: rgba(255, 255, 255, 0.98);
   padding: 10px 10px;
 }
+/* Weekly customer link inside task card */
+.weekly-customer-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  max-width: 180px;
+}
+
+.weekly-customer-link:hover {
+  opacity: 0.85;
+}
+
+/* Active projects board collapsible header */
+.presales-board-header-toggle {
+  width: 100%;
+  cursor: pointer;
+}
+
+.presales-board-name {
+  font-weight: 600;
+}
+
+.presales-board-caret {
+  margin-left: 8px;
+  opacity: 0.7;
+  font-size: 14px;
+}
+
+.presales-board-metrics {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+.presales-board-metrics .metric {
+  text-align: right;
+}
+
+.presales-board-metrics .metric-value {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.presales-board-metrics .metric-label {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.presales-board-collapsed-hint {
+  padding: 10px 12px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* Assignment helper remaining color */
+.helper-remaining {
+  font-weight: 700;
+}
+
+.helper-remaining.is-green {
+  color: #15803d;
+}
+
+.helper-remaining.is-orange {
+  color: #b45309;
+}
+
+.helper-remaining.is-red {
+  color: #b91c1c;
+}
