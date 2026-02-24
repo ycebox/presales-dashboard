@@ -361,6 +361,14 @@ const getTimeProgressPct = (task, asOfValue) => {
   return clamp(pct, 0, 100);
 };
 
+// helper: remaining -> color class
+const remainingToClass = (remaining) => {
+  const r = safeNumber(remaining, 0);
+  if (r <= 0) return 'is-red';
+  if (r < 6) return 'is-orange';
+  return 'is-green';
+};
+
 function PresalesOverview() {
   const navigate = useNavigate();
 
@@ -431,6 +439,18 @@ function PresalesOverview() {
   const [helperStartDate, setHelperStartDate] = useState(ymd(new Date()));
   const [helperRequiredHours, setHelperRequiredHours] = useState(DEFAULT_TASK_HOURS);
   const [helperTaskType, setHelperTaskType] = useState('');
+
+  // Active projects board collapse state (collapsed by default)
+  const [expandedPresales, setExpandedPresales] = useState(() => new Set());
+
+  const togglePresalesExpanded = (assignee) => {
+    setExpandedPresales((prev) => {
+      const next = new Set(prev);
+      if (next.has(assignee)) next.delete(assignee);
+      else next.add(assignee);
+      return next;
+    });
+  };
 
   // Load all data
   useEffect(() => {
@@ -522,10 +542,19 @@ function PresalesOverview() {
     return p?.project_name || '—';
   };
 
-  // ✅ NEW: customer label for weekly view (compact, ellipsis)
+  // customer label for weekly view
   const getCustomerLabel = (task) => {
     const p = projectsById?.[task?.project_id];
     return p?.customer_name || '-';
+  };
+
+  // customer navigation target
+  const getCustomerNavTarget = (task) => {
+    const p = projectsById?.[task?.project_id];
+    const cid = p?.customer_id;
+    if (cid) return `/customer/${cid}`;
+    const cname = p?.customer_name || '';
+    return `/customer/${encodeURIComponent(cname)}`;
   };
 
   const activeProjects = useMemo(() => (projects || []).filter(isProjectActive), [projects]);
@@ -738,7 +767,7 @@ function PresalesOverview() {
     };
   }, [tasks]);
 
-  /** ✅ Assignment Helper table */
+  /** Assignment Helper table */
   const helperTable = useMemo(() => {
     const day = parseDate(helperStartDate);
     const requiredBase = safeNumber(helperRequiredHours, DEFAULT_TASK_HOURS);
@@ -776,7 +805,7 @@ function PresalesOverview() {
     return { required, rows };
   }, [helperStartDate, helperRequiredHours, helperTaskType, allPresalesNames, scheduleLookup, tasks, getDailyLoadHours]);
 
-  // ✅ Weekly snapshot per presales (selected week + activities last week + next week)
+  // Weekly snapshot per presales
   const weeklySnapshot = useMemo(() => {
     const map = {};
     const ensure = (assignee) => {
@@ -931,11 +960,6 @@ function PresalesOverview() {
     setShowTaskModal(true);
   };
 
-  const openNewTask = () => {
-    setEditingTask(null);
-    setShowTaskModal(true);
-  };
-
   const closeTaskModal = () => {
     setShowTaskModal(false);
     setEditingTask(null);
@@ -1050,9 +1074,20 @@ function PresalesOverview() {
         </div>
 
         <div className="weekly-item-sub">
-          <span className="td-ellipsis weekly-sub-customer" title={customer}>
+          {/* customer hyperlink */}
+          <button
+            type="button"
+            className="weekly-customer-link td-ellipsis"
+            title={customer}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(getCustomerNavTarget(t));
+            }}
+          >
             {customer}
-          </span>
+          </button>
+
           <span className="dot">•</span>
           <span className="td-ellipsis weekly-sub-project" title={project}>
             {project}
@@ -1080,7 +1115,7 @@ function PresalesOverview() {
         </div>
       </header>
 
-      {/* ✅ WEEKLY TASK VIEW */}
+      {/* WEEKLY TASK VIEW */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
           <div className="presales-panel-header">
@@ -1140,7 +1175,6 @@ function PresalesOverview() {
                     </div>
 
                     <div className="weekly-columns">
-                      {/* 1) Doing this week */}
                       <div className="weekly-col">
                         <div className="weekly-col-head">
                           <span>Doing this week</span>
@@ -1155,7 +1189,6 @@ function PresalesOverview() {
                         </div>
                       </div>
 
-                      {/* 2) Activities last week */}
                       <div className="weekly-col weekly-col-done">
                         <div className="weekly-col-head">
                           <span>Activities last week</span>
@@ -1170,9 +1203,7 @@ function PresalesOverview() {
                               {act.completed.length ? (
                                 <>
                                   <div className="weekly-subhead">Completed</div>
-                                  {act.completed.map((t) =>
-                                    renderWeeklyItem(t, true, getCompletedAt(t), true)
-                                  )}
+                                  {act.completed.map((t) => renderWeeklyItem(t, true, getCompletedAt(t), true))}
                                 </>
                               ) : null}
 
@@ -1194,7 +1225,6 @@ function PresalesOverview() {
                         </div>
                       </div>
 
-                      {/* 3) Coming next week */}
                       <div className="weekly-col weekly-col-next">
                         <div className="weekly-col-head">
                           <span>Coming next week</span>
@@ -1241,49 +1271,70 @@ function PresalesOverview() {
             </div>
           ) : (
             <div className="presales-board-wrapper">
-              {activeProjectsByPresales.map((g) => (
-                <div key={g.assignee} className="presales-board-column">
-                  <div className="presales-board-header">
-                    <div className="presales-board-header-left">
-                      <span className="td-ellipsis" title={g.assignee}>
-                        {g.assignee}
-                      </span>
-                      <span className="presales-board-meta">
-                        {g.projects.length} project{g.projects.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
+              {activeProjectsByPresales.map((g) => {
+                const totalActiveTasks = g.projects.reduce((sum, p) => sum + (p.activeTaskCount || 0), 0);
+                const isExpanded = expandedPresales.has(g.assignee);
 
-                    <span className="presales-board-count">
-                      {g.projects.reduce((sum, p) => sum + (p.activeTaskCount || 0), 0)} tasks
-                    </span>
-                  </div>
+                return (
+                  <div key={g.assignee} className={`presales-board-column ${isExpanded ? 'expanded' : 'collapsed'}`}>
+                    {/* clickable header */}
+                    <button
+                      type="button"
+                      className="presales-board-header presales-board-header-toggle"
+                      onClick={() => togglePresalesExpanded(g.assignee)}
+                      aria-expanded={isExpanded}
+                      title="Click to expand/collapse"
+                    >
+                      <div className="presales-board-header-left">
+                        <span className="td-ellipsis presales-board-name" title={g.assignee}>
+                          {g.assignee}
+                        </span>
+                        <span className="presales-board-caret">{isExpanded ? '▾' : '▸'}</span>
+                      </div>
 
-                  <div className="presales-board-cards presales-board-cards-scroll">
-                    {g.projects.map((p) => (
-                      <div key={p.projectId} className="presales-board-card">
-                        <button
-                          type="button"
-                          className="table-link-btn project-link board-project-link"
-                          onClick={() => navigate(`/project/${p.projectId}`)}
-                          title="Open project details"
-                        >
-                          {p.projectName}
-                        </button>
-
-                        <div className="board-card-sub">
-                          <span className="td-ellipsis" title={p.customerName}>
-                            {p.customerName}
-                          </span>
-                          <span className="dot">•</span>
-                          <span className="board-task-count">
-                            {p.activeTaskCount} active task{p.activeTaskCount !== 1 ? 's' : ''}
-                          </span>
+                      <div className="presales-board-metrics">
+                        <div className="metric">
+                          <div className="metric-value">{g.projects.length}</div>
+                          <div className="metric-label">Projects</div>
+                        </div>
+                        <div className="metric">
+                          <div className="metric-value">{totalActiveTasks}</div>
+                          <div className="metric-label">Active tasks</div>
                         </div>
                       </div>
-                    ))}
+                    </button>
+
+                    {isExpanded ? (
+                      <div className="presales-board-cards presales-board-cards-scroll">
+                        {g.projects.map((p) => (
+                          <div key={p.projectId} className="presales-board-card">
+                            <button
+                              type="button"
+                              className="table-link-btn project-link board-project-link"
+                              onClick={() => navigate(`/project/${p.projectId}`)}
+                              title="Open project details"
+                            >
+                              {p.projectName}
+                            </button>
+
+                            <div className="board-card-sub">
+                              <span className="td-ellipsis" title={p.customerName}>
+                                {p.customerName}
+                              </span>
+                              <span className="dot">•</span>
+                              <span className="board-task-count">
+                                {p.activeTaskCount} active task{p.activeTaskCount !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="presales-board-collapsed-hint">Click to show projects</div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -1459,7 +1510,7 @@ function PresalesOverview() {
                               </td>
                               <td>{r.capacity}</td>
                               <td>{r.load}</td>
-                              <td>{r.remaining}</td>
+                              <td className={`helper-remaining ${remainingToClass(r.remaining)}`}>{r.remaining}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1479,9 +1530,7 @@ function PresalesOverview() {
                   <p>Assign these so they reflect in load and helper calculations.</p>
                 </div>
 
-                <button type="button" className="btn-primary" onClick={openNewTask}>
-                  + Add task
-                </button>
+                {/* removed + Add task button */}
               </div>
 
               {unassignedOpenTasks.length === 0 ? (
