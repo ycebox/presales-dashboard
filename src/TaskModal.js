@@ -14,11 +14,33 @@ const normalizeToStrings = (arr) => {
       if (x === null || x === undefined) return "";
       if (typeof x === "string") return x;
       if (typeof x === "number") return String(x);
-
-      // common shapes from DB rows
       return x.name || x.label || x.value || x.title || x.text || "";
     })
     .map((s) => String(s).trim())
+    .filter(Boolean);
+};
+
+// ✅ Normalize to "rows" for customer/project dropdowns
+// Accepts rows like: { id, name } or { id, customer_name } etc.
+const normalizeToRows = (arr, { idKey = "id", nameKeys = ["name", "title", "label", "customer_name", "project_name"] } = {}) => {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((r) => {
+      if (!r) return null;
+      const id = r[idKey] ?? r.id ?? r.value;
+      const name =
+        nameKeys.map((k) => r[k]).find((v) => typeof v === "string" && v.trim()) ||
+        (typeof r.name === "string" ? r.name : "") ||
+        (typeof r.title === "string" ? r.title : "") ||
+        "";
+
+      if (!id) return null;
+      return {
+        ...r,
+        _id: String(id),
+        _name: String(name || "(Unnamed)").trim(),
+      };
+    })
     .filter(Boolean);
 };
 
@@ -92,11 +114,19 @@ const roundToHalf = (x) => {
  * - ProjectDetails (task list edit/add)
  * - PresalesOverview (kanban task edit)
  *
- * Enhancements:
- * - Parent task / Sub-task support via parent_task_id
- * - Parent task grouping mode (no estimated hours)
+ * New:
+ * - Customer + Project linking (customer_id, project_id)
+ * - If opened from Project page: pass initialCustomerId + initialProjectId and lockCustomer/lockProject
  *
  * Optional props:
+ * - customers: [{ id, name }]
+ * - projects: [{ id, name, customer_id }]
+ * - initialCustomerId: string|number
+ * - initialProjectId: string|number
+ * - lockCustomer: boolean
+ * - lockProject: boolean
+ *
+ * Existing optional props:
  * - parentTaskOptions: [{ id, description }]
  * - editingHasChildren: boolean
  * - disableParentSelection: boolean
@@ -110,6 +140,14 @@ export default function TaskModal({
   taskTypes = [],
   taskTypeDefaultsMap = {},
 
+  // NEW
+  customers = [],
+  projects = [],
+  initialCustomerId = "",
+  initialProjectId = "",
+  lockCustomer = false,
+  lockProject = false,
+
   parentTaskOptions = [],
   editingHasChildren = false,
   disableParentSelection = false,
@@ -117,6 +155,12 @@ export default function TaskModal({
   // ✅ Normalize dropdown options once
   const presalesOptions = useMemo(() => normalizeToStrings(presalesResources), [presalesResources]);
   const taskTypeOptions = useMemo(() => normalizeToStrings(taskTypes), [taskTypes]);
+
+  const customerRows = useMemo(() => normalizeToRows(customers, { nameKeys: ["name", "customer_name", "title", "label"] }), [customers]);
+  const projectRows = useMemo(
+    () => normalizeToRows(projects, { nameKeys: ["name", "project_name", "title", "label"] }),
+    [projects]
+  );
 
   const [taskData, setTaskData] = useState({
     description: "",
@@ -130,6 +174,10 @@ export default function TaskModal({
     assignee: "",
     task_type: "",
     parent_task_id: "",
+
+    // NEW
+    customer_id: "",
+    project_id: "",
   });
 
   const [isParentTask, setIsParentTask] = useState(false);
@@ -139,6 +187,14 @@ export default function TaskModal({
   const isLockedAsParentContainer = !!editingTask?.id && !!editingHasChildren;
   const isSubTask = !!String(taskData.parent_task_id || "").trim();
   const isParentContainer = isLockedAsParentContainer || !!isParentTask;
+
+  // Helps: if we only get project id, infer customer id from the projects list
+  const inferCustomerFromProject = (projId) => {
+    const pid = String(projId || "").trim();
+    if (!pid) return "";
+    const p = projectRows.find((x) => String(x._id) === pid);
+    return p?.customer_id ? String(p.customer_id) : "";
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -166,12 +222,21 @@ export default function TaskModal({
         assignee: editingTask.assignee || "",
         task_type: editingTask.task_type || "",
         parent_task_id: existingParentId || "",
+
+        // NEW (support either customer_id/project_id fields on task)
+        customer_id: editingTask.customer_id ? String(editingTask.customer_id) : "",
+        project_id: editingTask.project_id ? String(editingTask.project_id) : "",
       });
 
       if (editingHasChildren) setIsParentTask(true);
     } else {
       setOriginalTaskType("");
       setIsParentTask(false);
+
+      // NEW: seed from project page context
+      const seededProjectId = String(initialProjectId || "").trim();
+      const seededCustomerId = String(initialCustomerId || "").trim() || inferCustomerFromProject(seededProjectId);
+
       setTaskData({
         description: "",
         status: "Not Started",
@@ -184,9 +249,12 @@ export default function TaskModal({
         assignee: "",
         task_type: "",
         parent_task_id: "",
+
+        customer_id: seededCustomerId,
+        project_id: seededProjectId,
       });
     }
-  }, [editingTask, isOpen, editingHasChildren]);
+  }, [editingTask, isOpen, editingHasChildren, initialCustomerId, initialProjectId]); // inferCustomerFromProject uses memoized rows
 
   const handleChange = (field, value) => setTaskData((prev) => ({ ...prev, [field]: value }));
 
@@ -207,6 +275,45 @@ export default function TaskModal({
     const v = parentId || "";
     setTaskData((prev) => ({ ...prev, parent_task_id: v }));
     if (v) setIsParentTask(false);
+  };
+
+  // NEW: customer -> project filter
+  const filteredProjects = useMemo(() => {
+    const cid = String(taskData.customer_id || "").trim();
+    if (!cid) return projectRows;
+    return projectRows.filter((p) => String(p.customer_id || "") === cid);
+  }, [projectRows, taskData.customer_id]);
+
+  const selectedCustomerName = useMemo(() => {
+    const cid = String(taskData.customer_id || "").trim();
+    if (!cid) return "";
+    return customerRows.find((c) => String(c._id) === cid)?._name || "";
+  }, [customerRows, taskData.customer_id]);
+
+  const selectedProjectName = useMemo(() => {
+    const pid = String(taskData.project_id || "").trim();
+    if (!pid) return "";
+    return projectRows.find((p) => String(p._id) === pid)?._name || "";
+  }, [projectRows, taskData.project_id]);
+
+  const handleCustomerPick = (cid) => {
+    const v = String(cid || "");
+    setTaskData((prev) => {
+      // If customer changes, clear project (unless locked and already set)
+      if (lockProject && String(prev.project_id || "").trim()) return { ...prev, customer_id: v };
+      return { ...prev, customer_id: v, project_id: "" };
+    });
+  };
+
+  const handleProjectPick = (pid) => {
+    const v = String(pid || "");
+    // If user picks project first, also infer customer if missing
+    const inferredCustomer = inferCustomerFromProject(v);
+    setTaskData((prev) => ({
+      ...prev,
+      project_id: v,
+      customer_id: prev.customer_id || inferredCustomer || prev.customer_id,
+    }));
   };
 
   const suggestedPlan = useMemo(() => {
@@ -317,6 +424,12 @@ export default function TaskModal({
       return;
     }
 
+    // Optional: If you want to force linking to a project when created from Project page
+    // if (lockProject && !String(taskData.project_id || "").trim()) {
+    //   alert("Project is required for tasks created inside a project.");
+    //   return;
+    // }
+
     const shouldForceNoHours = isParentContainer;
 
     setLoading(true);
@@ -324,6 +437,11 @@ export default function TaskModal({
       const normalized = {
         ...taskData,
         parent_task_id: String(taskData.parent_task_id || "").trim() === "" ? null : taskData.parent_task_id,
+
+        // NEW
+        customer_id: String(taskData.customer_id || "").trim() === "" ? null : taskData.customer_id,
+        project_id: String(taskData.project_id || "").trim() === "" ? null : taskData.project_id,
+
         estimated_hours:
           shouldForceNoHours || taskData.estimated_hours === "" || taskData.estimated_hours == null
             ? null
@@ -354,6 +472,8 @@ export default function TaskModal({
   const isEditing = !!editingTask?.id;
   const typeChanged = isEditing && (taskData.task_type || "").trim() !== (originalTaskType || "").trim();
 
+  const showLockedLinking = (lockCustomer || lockProject) && (selectedCustomerName || selectedProjectName);
+
   return (
     <div
       className="task-modal-backdrop"
@@ -381,6 +501,63 @@ export default function TaskModal({
         {/* Body */}
         <form onSubmit={handleSubmit} className="task-modal-body">
           <div className="task-form-grid">
+            {/* NEW: Customer + Project linking */}
+            <div className="task-form-group">
+              <label className="task-form-label">Customer</label>
+
+              {lockCustomer && selectedCustomerName ? (
+                <div className="task-locked-pill" title="Customer is set by Project context">
+                  {selectedCustomerName}
+                </div>
+              ) : (
+                <select
+                  className="task-select"
+                  value={taskData.customer_id || ""}
+                  onChange={(e) => handleCustomerPick(e.target.value)}
+                  disabled={lockCustomer}
+                >
+                  <option value="">Select customer</option>
+                  {customerRows.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c._name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="task-form-group">
+              <label className="task-form-label">Project</label>
+
+              {lockProject && selectedProjectName ? (
+                <div className="task-locked-pill" title="Project is set by Project context">
+                  {selectedProjectName}
+                </div>
+              ) : (
+                <select
+                  className="task-select"
+                  value={taskData.project_id || ""}
+                  onChange={(e) => handleProjectPick(e.target.value)}
+                  disabled={lockProject}
+                >
+                  <option value="">Select project</option>
+                  {filteredProjects.map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p._name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {showLockedLinking ? (
+              <div className="task-form-group full">
+                <div className="task-hint">
+                  This task is being created inside a project page, so customer/project are auto-filled.
+                </div>
+              </div>
+            ) : null}
+
             {/* Parent task / Subtask controls */}
             <div className="task-form-group full">
               <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -408,9 +585,7 @@ export default function TaskModal({
                   value={taskData.parent_task_id || ""}
                   onChange={(e) => handleParentSelection(e.target.value)}
                   disabled={disableParentSelection || isParentContainer}
-                  title={
-                    isParentContainer ? "Parent tasks cannot be placed under another parent." : "Link this task as a sub-task."
-                  }
+                  title={isParentContainer ? "Parent tasks cannot be placed under another parent." : "Link this task as a sub-task."}
                 >
                   <option value="">None (top-level task)</option>
                   {filteredParentOptions.map((t) => (
@@ -444,11 +619,7 @@ export default function TaskModal({
 
             <div className="task-form-group">
               <label className="task-form-label">Status</label>
-              <select
-                className="task-select"
-                value={taskData.status}
-                onChange={(e) => handleChange("status", e.target.value)}
-              >
+              <select className="task-select" value={taskData.status} onChange={(e) => handleChange("status", e.target.value)}>
                 {TASK_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -459,11 +630,7 @@ export default function TaskModal({
 
             <div className="task-form-group">
               <label className="task-form-label">Priority</label>
-              <select
-                className="task-select"
-                value={taskData.priority}
-                onChange={(e) => handleChange("priority", e.target.value)}
-              >
+              <select className="task-select" value={taskData.priority} onChange={(e) => handleChange("priority", e.target.value)}>
                 {TASK_PRIORITIES.map((p) => (
                   <option key={p} value={p}>
                     {p}
@@ -494,11 +661,7 @@ export default function TaskModal({
 
             <div className="task-form-group">
               <label className="task-form-label">Assignee</label>
-              <select
-                className="task-select"
-                value={taskData.assignee}
-                onChange={(e) => handleChange("assignee", e.target.value)}
-              >
+              <select className="task-select" value={taskData.assignee} onChange={(e) => handleChange("assignee", e.target.value)}>
                 <option value="">Unassigned</option>
                 {presalesOptions.map((p) => (
                   <option key={p} value={p}>
@@ -510,11 +673,7 @@ export default function TaskModal({
 
             <div className="task-form-group">
               <label className="task-form-label">Task Type</label>
-              <select
-                className="task-select"
-                value={taskData.task_type}
-                onChange={(e) => handleChange("task_type", e.target.value)}
-              >
+              <select className="task-select" value={taskData.task_type} onChange={(e) => handleChange("task_type", e.target.value)}>
                 <option value="">Select type</option>
                 {taskTypeOptions.map((t) => (
                   <option key={t} value={t}>
@@ -526,7 +685,10 @@ export default function TaskModal({
 
             {/* Suggested plan */}
             <div className="task-form-group full">
-              <div className="subtask-info" style={{ background: "rgba(15, 23, 42, 0.03)", borderColor: "rgba(15, 23, 42, 0.12)" }}>
+              <div
+                className="subtask-info"
+                style={{ background: "rgba(15, 23, 42, 0.03)", borderColor: "rgba(15, 23, 42, 0.12)" }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800, color: "#0f172a" }}>
                     <FaInfo />
@@ -550,9 +712,7 @@ export default function TaskModal({
 
                 <div style={{ marginTop: 10, fontSize: 12 }}>
                   {isParentContainer ? (
-                    <div className="task-hint">
-                      Parent tasks are grouping-only. Create sub-tasks to apply suggested hours and dates.
-                    </div>
+                    <div className="task-hint">Parent tasks are grouping-only. Create sub-tasks to apply suggested hours and dates.</div>
                   ) : !taskData.task_type ? (
                     <div className="task-hint">Select a Task Type to see recommended hours and dates.</div>
                   ) : suggestedPlan?.missing ? (
@@ -591,9 +751,7 @@ export default function TaskModal({
                       </div>
 
                       <div className="task-hint">
-                        {suggestedPlan.planned_from_due_date
-                          ? "Planned backward from Due Date."
-                          : "Planned forward from next working day."}{" "}
+                        {suggestedPlan.planned_from_due_date ? "Planned backward from Due Date." : "Planned forward from next working day."}{" "}
                         You can still override any fields.
                       </div>
                     </div>
@@ -604,32 +762,17 @@ export default function TaskModal({
 
             <div className="task-form-group">
               <label className="task-form-label">Start Date</label>
-              <input
-                type="date"
-                className="task-input"
-                value={taskData.start_date || ""}
-                onChange={(e) => handleChange("start_date", e.target.value)}
-              />
+              <input type="date" className="task-input" value={taskData.start_date || ""} onChange={(e) => handleChange("start_date", e.target.value)} />
             </div>
 
             <div className="task-form-group">
               <label className="task-form-label">End Date</label>
-              <input
-                type="date"
-                className="task-input"
-                value={taskData.end_date || ""}
-                onChange={(e) => handleChange("end_date", e.target.value)}
-              />
+              <input type="date" className="task-input" value={taskData.end_date || ""} onChange={(e) => handleChange("end_date", e.target.value)} />
             </div>
 
             <div className="task-form-group">
               <label className="task-form-label">Due Date</label>
-              <input
-                type="date"
-                className="task-input"
-                value={taskData.due_date || ""}
-                onChange={(e) => handleChange("due_date", e.target.value)}
-              />
+              <input type="date" className="task-input" value={taskData.due_date || ""} onChange={(e) => handleChange("due_date", e.target.value)} />
             </div>
 
             <div className="task-form-group full">
