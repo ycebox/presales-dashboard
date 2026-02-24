@@ -369,6 +369,21 @@ const remainingToClass = (remaining) => {
   return 'is-green';
 };
 
+// ✅ NEW: only allow real IDs in /customer/:id route
+const isValidCustomerId = (id) => {
+  const s = String(id || '').trim();
+  if (!s) return false;
+
+  // UUID (Supabase default)
+  const uuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  // If you ever use numeric IDs, keep this too
+  const numeric = /^\d+$/;
+
+  return uuid.test(s) || numeric.test(s);
+};
+
 function PresalesOverview() {
   const navigate = useNavigate();
 
@@ -548,13 +563,13 @@ function PresalesOverview() {
     return p?.customer_name || '-';
   };
 
-  // customer navigation target
+  // ✅ FIXED: Only navigate when we have a valid customer_id
+  // If missing/invalid, return null so we render plain text (no broken navigation).
   const getCustomerNavTarget = (task) => {
     const p = projectsById?.[task?.project_id];
     const cid = p?.customer_id;
-    if (cid) return `/customer/${cid}`;
-    const cname = p?.customer_name || '';
-    return `/customer/${encodeURIComponent(cname)}`;
+    if (!isValidCustomerId(cid)) return null;
+    return `/customer/${String(cid).trim()}`;
   };
 
   const activeProjects = useMemo(() => (projects || []).filter(isProjectActive), [projects]);
@@ -1062,6 +1077,9 @@ function PresalesOverview() {
     const customer = getCustomerLabel(t);
     const project = getProjectLabel(t);
 
+    // ✅ FIXED: if no valid customer_id, don't navigate (render as plain text)
+    const customerTarget = getCustomerNavTarget(t);
+
     return (
       <button key={t.id} type="button" className="weekly-item" onClick={() => openEditTask(t)}>
         <div className="weekly-item-title-row">
@@ -1074,19 +1092,24 @@ function PresalesOverview() {
         </div>
 
         <div className="weekly-item-sub">
-          {/* customer hyperlink */}
-          <button
-            type="button"
-            className="weekly-customer-link td-ellipsis"
-            title={customer}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              navigate(getCustomerNavTarget(t));
-            }}
-          >
-            {customer}
-          </button>
+          {customerTarget ? (
+            <button
+              type="button"
+              className="weekly-customer-link td-ellipsis"
+              title={customer}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigate(customerTarget);
+              }}
+            >
+              {customer}
+            </button>
+          ) : (
+            <span className="weekly-sub-customer td-ellipsis" title={customer}>
+              {customer}
+            </span>
+          )}
 
           <span className="dot">•</span>
           <span className="td-ellipsis weekly-sub-project" title={project}>
