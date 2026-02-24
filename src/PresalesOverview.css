@@ -415,7 +415,7 @@
   background: rgba(15, 23, 42, 0.03);
 }
 
-/* ✅ NEW: title row supports badge on the right */
+/* title row supports badge on the right */
 .weekly-item-title-row {
   display: flex;
   align-items: center;
@@ -432,7 +432,7 @@
   min-width: 0;
 }
 
-/* ✅ NEW: progress badge */
+/* progress badge */
 .weekly-progress-badge {
   font-size: 11px;
   font-weight: 750;
@@ -456,7 +456,7 @@
   min-width: 0;
 }
 
-/* ✅ Keep 2nd line clean + ellipsis friendly */
+/* Keep 2nd line clean + ellipsis friendly */
 .weekly-sub-customer,
 .weekly-sub-project {
   min-width: 0;
@@ -490,7 +490,27 @@
   color: rgba(15, 23, 42, 0.65);
 }
 
+/* ✅ NEW: customer hyperlink button inside weekly sub row */
+.weekly-customer-link {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: rgba(30, 64, 175, 0.95);
+  text-decoration: underline;
+  max-width: 180px;
+}
+
+.weekly-customer-link:hover {
+  opacity: 0.85;
+}
+
+/* =================================================================== */
 /* ===== ACTIVE PROJECTS BOARD ===== */
+/* =================================================================== */
 
 .presales-board-wrapper {
   display: grid;
@@ -509,6 +529,7 @@
   flex-direction: column;
 }
 
+/* header is now a button (toggle) so we reset default button styles */
 .presales-board-header {
   display: flex;
   align-items: center;
@@ -519,11 +540,65 @@
   background: rgba(255, 255, 255, 0.92);
 }
 
+/* NEW: header toggle button reset + hover */
+.presales-board-header-toggle {
+  width: 100%;
+  cursor: pointer;
+
+  border: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.presales-board-header-toggle:hover {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.presales-board-header-toggle:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
 .presales-board-header-left {
   display: flex;
   align-items: baseline;
   gap: 8px;
   min-width: 0;
+}
+
+/* NEW: name + caret */
+.presales-board-name {
+  font-weight: 700;
+}
+
+.presales-board-caret {
+  margin-left: 8px;
+  opacity: 0.7;
+  font-size: 14px;
+}
+
+/* NEW: bigger metrics */
+.presales-board-metrics {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+.presales-board-metrics .metric {
+  text-align: right;
+}
+
+.presales-board-metrics .metric-value {
+  font-size: 20px;
+  font-weight: 750;
+  line-height: 1.05;
+}
+
+.presales-board-metrics .metric-label {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 2px;
 }
 
 .presales-board-meta {
@@ -549,7 +624,7 @@
   gap: 8px;
 }
 
-/* ✅ Scroll after roughly 5 items */
+/* Scroll after roughly 5 items */
 .presales-board-cards-scroll {
   max-height: 360px;
   overflow-y: auto;
@@ -605,7 +680,16 @@
   color: rgba(15, 23, 42, 0.70);
 }
 
+/* NEW: collapsed hint */
+.presales-board-collapsed-hint {
+  padding: 10px 12px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* =================================================================== */
 /* ===== TABLES (unassigned + schedule) ===== */
+/* =================================================================== */
 
 .unassigned-tasks-table-wrapper {
   padding: 12px 16px 16px;
@@ -656,7 +740,9 @@
   text-align: right;
 }
 
+/* =================================================================== */
 /* ===== ASSIGNMENT HELPER ===== */
+/* =================================================================== */
 
 .assignment-helper {
   margin-top: 14px;
@@ -685,13 +771,32 @@
   padding: 0 2px;
 }
 
+/* NEW: Remaining color coding */
+.helper-remaining {
+  font-weight: 750;
+}
+
+.helper-remaining.is-green {
+  color: #15803d;
+}
+
+.helper-remaining.is-orange {
+  color: #b45309;
+}
+
+.helper-remaining.is-red {
+  color: #b91c1c;
+}
+
 @media (max-width: 768px) {
   .assignment-helper-controls {
     grid-template-columns: 1fr;
   }
 }
 
+/* =================================================================== */
 /* ===== AVAILABILITY GRID (TABLE) ===== */
+/* =================================================================== */
 
 .availability-grid-wrapper {
   padding: 12px 16px 16px;
@@ -777,7 +882,9 @@
     );
 }
 
+/* =================================================================== */
 /* ===== MODALS ===== */
+/* =================================================================== */
 
 .modal-backdrop {
   position: fixed;
@@ -832,7 +939,9 @@
   gap: 10px;
 }
 
+/* =================================================================== */
 /* ===== DAY DETAIL MODAL ===== */
+/* =================================================================== */
 
 .daydetail-grid {
   display: grid;
@@ -893,82 +1002,4 @@
   border: 1px solid rgba(15, 23, 42, 0.10);
   background: rgba(255, 255, 255, 0.98);
   padding: 10px 10px;
-}
-/* Weekly customer link inside task card */
-.weekly-customer-link {
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin: 0;
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-  text-decoration: underline;
-  max-width: 180px;
-}
-
-.weekly-customer-link:hover {
-  opacity: 0.85;
-}
-
-/* Active projects board collapsible header */
-.presales-board-header-toggle {
-  width: 100%;
-  cursor: pointer;
-}
-
-.presales-board-name {
-  font-weight: 600;
-}
-
-.presales-board-caret {
-  margin-left: 8px;
-  opacity: 0.7;
-  font-size: 14px;
-}
-
-.presales-board-metrics {
-  display: flex;
-  gap: 14px;
-  align-items: flex-end;
-}
-
-.presales-board-metrics .metric {
-  text-align: right;
-}
-
-.presales-board-metrics .metric-value {
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.05;
-}
-
-.presales-board-metrics .metric-label {
-  font-size: 12px;
-  opacity: 0.75;
-  margin-top: 2px;
-}
-
-.presales-board-collapsed-hint {
-  padding: 10px 12px;
-  font-size: 13px;
-  opacity: 0.7;
-}
-
-/* Assignment helper remaining color */
-.helper-remaining {
-  font-weight: 700;
-}
-
-.helper-remaining.is-green {
-  color: #15803d;
-}
-
-.helper-remaining.is-orange {
-  color: #b45309;
-}
-
-.helper-remaining.is-red {
-  color: #b91c1c;
 }
