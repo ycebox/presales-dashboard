@@ -9,7 +9,6 @@ import {
   FaChevronDown,
   FaChevronRight,
   FaClock,
-  FaDollarSign,
   FaEdit,
   FaExclamationTriangle,
   FaEye,
@@ -592,15 +591,14 @@ export default function ProjectDetails() {
     return orphans.filter((t) => !isCompletedStatus(t.status));
   }, [orphans, showCompleted]);
 
-  // ✅ NEW: computed inactive (client)
+  // ✅ computed inactive (client)
   const inactiveComputedClient = useMemo(() => {
     if (!project) return false;
-    // If stage is closed-like, treat as inactive as well (keeps your old behavior)
     if (stageIsClosedLike(project.sales_stage)) return true;
     return computeInactiveClient(project, tasks, activities);
   }, [project, tasks, activities]);
 
-  // ✅ NEW: health badge uses manual override first, then computed
+  // ✅ health badge uses manual override first, then computed
   const health = useMemo(() => {
     if (!project) return { label: "—", cls: "health-amber" };
     if (project.is_inactive === true) return { label: "Inactive (manual)", cls: "health-red" };
@@ -671,7 +669,6 @@ export default function ProjectDetails() {
         bid_manager_required: !!editProject.bid_manager_required,
         bid_manager: editProject.bid_manager || null,
 
-        // keep next_key_activity + current_status editable via this section
         next_key_activity: editProject.next_key_activity || null,
       };
 
@@ -729,11 +726,11 @@ export default function ProjectDetails() {
     setEditingTask(null);
   };
 
-  // Build parent task options (top-level tasks only)
+  // ✅ FIX: TaskModal expects parentTaskOptions with { id, description }
   const parentTaskOptions = useMemo(() => {
     return (parents || []).map((t) => ({
-      value: t.id,
-      label: t.description || "(Untitled task)",
+      id: t.id,
+      description: t.description || "(Untitled task)",
     }));
   }, [parents]);
 
@@ -747,7 +744,7 @@ export default function ProjectDetails() {
       if (!project?.id) throw new Error("Project not loaded.");
 
       const payload = {
-        project_id: project.id,
+        project_id: project.id, // ✅ always enforce project_id from this page
         description: normalized.description ?? null,
         status: normalized.status ?? "",
         due_date: normalized.due_date || null,
@@ -777,9 +774,7 @@ export default function ProjectDetails() {
         if (error) throw error;
       }
 
-      // ✅ Update last_activity_at when task is created/updated/status/assigned
       await touchProjectLastActivity(nowIso);
-
       await Promise.all([fetchTasks(), fetchProject()]);
     } catch (e) {
       console.error("Task save error:", e);
@@ -866,7 +861,6 @@ export default function ProjectDetails() {
 
   const foreseen = project.foreseen_closing_date || project.due_date;
 
-  // ✅ Use client computed inactive (what you asked for)
   const inactiveComputed = inactiveComputedClient === true;
   const inactiveManual = project.is_inactive === true;
 
@@ -1717,12 +1711,16 @@ export default function ProjectDetails() {
         onClose={closeTaskModal}
         onSave={onSaveTask}
         editingTask={editingTask}
-        projectId={project.id}
         presalesResources={presalesResources}
         taskTypes={taskTypes}
         taskTypeDefaultsMap={taskTypeDefaultsMap}
         parentTaskOptions={parentTaskOptions}
         editingHasChildren={editingHasChildren}
+        // ✅ NEW: auto-capture + lock context when opened inside Project page
+        initialProjectId={project?.id || ""}
+        initialCustomerId={customerId || ""}
+        lockProject={true}
+        lockCustomer={true}
       />
 
       {/* Activity modal */}
