@@ -228,3 +228,18 @@
     grid-template-columns: 1fr;
   }
 }
+/* Add this near your inputs section (or at the bottom) */
+
+.task-locked-pill {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: #f1f5f9;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+}
