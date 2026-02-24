@@ -369,16 +369,14 @@ const remainingToClass = (remaining) => {
   return 'is-green';
 };
 
-// ✅ NEW: only allow real IDs in /customer/:id route
+// ✅ allow UUID or numeric IDs
 const isValidCustomerId = (id) => {
   const s = String(id || '').trim();
   if (!s) return false;
 
-  // UUID (Supabase default)
   const uuid =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-  // If you ever use numeric IDs, keep this too
   const numeric = /^\d+$/;
 
   return uuid.test(s) || numeric.test(s);
@@ -465,6 +463,91 @@ function PresalesOverview() {
       else next.add(assignee);
       return next;
     });
+  };
+
+  // ✅ NEW: cache customer lookup results by name
+  const [customerIdCache, setCustomerIdCache] = useState({}); // { [lowerName]: id }
+  const [resolvingCustomerKey, setResolvingCustomerKey] = useState(''); // optional: to show "loading" state if you want later
+
+  const resolveCustomerIdByName = async (customerName) => {
+    const name = String(customerName || '').trim();
+    if (!name) return null;
+
+    const key = name.toLowerCase();
+    if (customerIdCache[key]) return customerIdCache[key];
+
+    setResolvingCustomerKey(key);
+
+    // Try common schemas safely (if columns don't exist, we just skip)
+    const tries = [
+      { table: 'customers', idCol: 'id', nameCol: 'customer_name' },
+      { table: 'customers', idCol: 'id', nameCol: 'name' },
+      { table: 'customers', idCol: 'customer_id', nameCol: 'customer_name' },
+      { table: 'customers', idCol: 'customer_id', nameCol: 'name' },
+    ];
+
+    const tryQuery = async (t, pattern, exact = true) => {
+      try {
+        const sel = `${t.idCol}, ${t.nameCol}`;
+        const q = supabase.from(t.table).select(sel);
+
+        // exact match first
+        const { data, error } = exact
+          ? await q.ilike(t.nameCol, pattern).limit(1)
+          : await q.ilike(t.nameCol, pattern).limit(1);
+
+        if (error || !data || !data.length) return null;
+
+        const found = data[0]?.[t.idCol];
+        return found || null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    // exact match
+    for (const t of tries) {
+      const found = await tryQuery(t, name, true);
+      if (found) {
+        setCustomerIdCache((prev) => ({ ...prev, [key]: found }));
+        setResolvingCustomerKey('');
+        return found;
+      }
+    }
+
+    // partial match (helpful if naming differs slightly)
+    for (const t of tries) {
+      const found = await tryQuery(t, `%${name}%`, false);
+      if (found) {
+        setCustomerIdCache((prev) => ({ ...prev, [key]: found }));
+        setResolvingCustomerKey('');
+        return found;
+      }
+    }
+
+    setResolvingCustomerKey('');
+    return null;
+  };
+
+  const goToCustomerPage = async (task, customerLabelFallback) => {
+    const pid = task?.project_id;
+    const p = pid ? projectsById?.[pid] : null;
+
+    const directId = p?.customer_id;
+    if (isValidCustomerId(directId)) {
+      navigate(`/customer/${String(directId).trim()}`);
+      return;
+    }
+
+    const cname = (p?.customer_name || customerLabelFallback || '').trim();
+    const resolved = await resolveCustomerIdByName(cname);
+
+    if (isValidCustomerId(resolved)) {
+      navigate(`/customer/${String(resolved).trim()}`);
+      return;
+    }
+
+    alert(`Could not load customer.\nMissing customer ID for: ${cname || 'Unknown'}`);
   };
 
   // Load all data
@@ -557,19 +640,9 @@ function PresalesOverview() {
     return p?.project_name || '—';
   };
 
-  // customer label for weekly view
   const getCustomerLabel = (task) => {
     const p = projectsById?.[task?.project_id];
     return p?.customer_name || '-';
-  };
-
-  // ✅ FIXED: Only navigate when we have a valid customer_id
-  // If missing/invalid, return null so we render plain text (no broken navigation).
-  const getCustomerNavTarget = (task) => {
-    const p = projectsById?.[task?.project_id];
-    const cid = p?.customer_id;
-    if (!isValidCustomerId(cid)) return null;
-    return `/customer/${String(cid).trim()}`;
   };
 
   const activeProjects = useMemo(() => (projects || []).filter(isProjectActive), [projects]);
@@ -650,7 +723,6 @@ function PresalesOverview() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [presales, tasks, scheduleRows]);
 
-  // schedule lookup: assignee -> ymd -> {status, entries[]}
   const scheduleLookup = useMemo(() => {
     const map = {};
 
@@ -700,7 +772,6 @@ function PresalesOverview() {
 
   const getScheduleStatusForDay = (assignee, day) => getScheduleForDay(assignee, day).status || 'free';
 
-  // Utilization table
   const utilizationByPresales = useMemo(() => {
     const by = {};
     (allPresalesNames || []).forEach((name) => {
@@ -782,7 +853,6 @@ function PresalesOverview() {
     };
   }, [tasks]);
 
-  /** Assignment Helper table */
   const helperTable = useMemo(() => {
     const day = parseDate(helperStartDate);
     const requiredBase = safeNumber(helperRequiredHours, DEFAULT_TASK_HOURS);
@@ -820,7 +890,6 @@ function PresalesOverview() {
     return { required, rows };
   }, [helperStartDate, helperRequiredHours, helperTaskType, allPresalesNames, scheduleLookup, tasks, getDailyLoadHours]);
 
-  // Weekly snapshot per presales
   const weeklySnapshot = useMemo(() => {
     const map = {};
     const ensure = (assignee) => {
@@ -946,7 +1015,6 @@ function PresalesOverview() {
       .sort((a, b) => a.assignee.localeCompare(b.assignee));
   }, [tasks, selectedWeekRange, selectedPrevWeek, selectedNextWeek]);
 
-  // Day detail: tasks + schedule entries
   const dayDetailSchedule = useMemo(() => {
     if (!dayDetailOpen || !dayDetailAssignee || !dayDetailDay) return { status: 'free', entries: [] };
     return getScheduleForDay(dayDetailAssignee, dayDetailDay);
@@ -1068,7 +1136,6 @@ function PresalesOverview() {
     );
   }
 
-  // For Activities last week % progress, use "as of" prev week Friday
   const activitiesAsOf = selectedPrevWeek.end;
 
   const renderWeeklyItem = (t, showDoneLabel = false, doneDateValue = null, showTimeProgress = false) => {
@@ -1077,8 +1144,8 @@ function PresalesOverview() {
     const customer = getCustomerLabel(t);
     const project = getProjectLabel(t);
 
-    // ✅ FIXED: if no valid customer_id, don't navigate (render as plain text)
-    const customerTarget = getCustomerNavTarget(t);
+    const isResolvingThisCustomer =
+      resolvingCustomerKey && resolvingCustomerKey === String(customer || '').trim().toLowerCase();
 
     return (
       <button key={t.id} type="button" className="weekly-item" onClick={() => openEditTask(t)}>
@@ -1092,24 +1159,20 @@ function PresalesOverview() {
         </div>
 
         <div className="weekly-item-sub">
-          {customerTarget ? (
-            <button
-              type="button"
-              className="weekly-customer-link td-ellipsis"
-              title={customer}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                navigate(customerTarget);
-              }}
-            >
-              {customer}
-            </button>
-          ) : (
-            <span className="weekly-sub-customer td-ellipsis" title={customer}>
-              {customer}
-            </span>
-          )}
+          {/* ✅ ALWAYS clickable customer name */}
+          <button
+            type="button"
+            className="weekly-customer-link td-ellipsis"
+            title={customer}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              void goToCustomerPage(t, customer);
+            }}
+          >
+            {customer}
+            {isResolvingThisCustomer ? '…' : ''}
+          </button>
 
           <span className="dot">•</span>
           <span className="td-ellipsis weekly-sub-project" title={project}>
@@ -1300,7 +1363,6 @@ function PresalesOverview() {
 
                 return (
                   <div key={g.assignee} className={`presales-board-column ${isExpanded ? 'expanded' : 'collapsed'}`}>
-                    {/* clickable header */}
                     <button
                       type="button"
                       className="presales-board-header presales-board-header-toggle"
@@ -1552,8 +1614,6 @@ function PresalesOverview() {
                   </h3>
                   <p>Assign these so they reflect in load and helper calculations.</p>
                 </div>
-
-                {/* removed + Add task button */}
               </div>
 
               {unassignedOpenTasks.length === 0 ? (
