@@ -465,9 +465,9 @@ function PresalesOverview() {
     });
   };
 
-  // ✅ cache customer lookup results by name
+  // ✅ NEW: cache customer lookup results by name
   const [customerIdCache, setCustomerIdCache] = useState({}); // { [lowerName]: id }
-  const [resolvingCustomerKey, setResolvingCustomerKey] = useState('');
+  const [resolvingCustomerKey, setResolvingCustomerKey] = useState(''); // optional: to show "loading" state if you want later
 
   const resolveCustomerIdByName = async (customerName) => {
     const name = String(customerName || '').trim();
@@ -478,6 +478,7 @@ function PresalesOverview() {
 
     setResolvingCustomerKey(key);
 
+    // Try common schemas safely (if columns don't exist, we just skip)
     const tries = [
       { table: 'customers', idCol: 'id', nameCol: 'customer_name' },
       { table: 'customers', idCol: 'id', nameCol: 'name' },
@@ -485,20 +486,28 @@ function PresalesOverview() {
       { table: 'customers', idCol: 'customer_id', nameCol: 'name' },
     ];
 
-    const tryQuery = async (t, pattern) => {
+    const tryQuery = async (t, pattern, exact = true) => {
       try {
         const sel = `${t.idCol}, ${t.nameCol}`;
         const q = supabase.from(t.table).select(sel);
-        const { data, error } = await q.ilike(t.nameCol, pattern).limit(1);
+
+        // exact match first
+        const { data, error } = exact
+          ? await q.ilike(t.nameCol, pattern).limit(1)
+          : await q.ilike(t.nameCol, pattern).limit(1);
+
         if (error || !data || !data.length) return null;
-        return data[0]?.[t.idCol] || null;
-      } catch {
+
+        const found = data[0]?.[t.idCol];
+        return found || null;
+      } catch (e) {
         return null;
       }
     };
 
+    // exact match
     for (const t of tries) {
-      const found = await tryQuery(t, name);
+      const found = await tryQuery(t, name, true);
       if (found) {
         setCustomerIdCache((prev) => ({ ...prev, [key]: found }));
         setResolvingCustomerKey('');
@@ -506,8 +515,9 @@ function PresalesOverview() {
       }
     }
 
+    // partial match (helpful if naming differs slightly)
     for (const t of tries) {
-      const found = await tryQuery(t, `%${name}%`);
+      const found = await tryQuery(t, `%${name}%`, false);
       if (found) {
         setCustomerIdCache((prev) => ({ ...prev, [key]: found }));
         setResolvingCustomerKey('');
@@ -517,6 +527,27 @@ function PresalesOverview() {
 
     setResolvingCustomerKey('');
     return null;
+  };
+
+  const goToCustomerPage = async (task, customerLabelFallback) => {
+    const pid = task?.project_id;
+    const p = pid ? projectsById?.[pid] : null;
+
+    const directId = p?.customer_id;
+    if (isValidCustomerId(directId)) {
+      navigate(`/customer/${String(directId).trim()}`);
+      return;
+    }
+
+    const cname = (p?.customer_name || customerLabelFallback || '').trim();
+    const resolved = await resolveCustomerIdByName(cname);
+
+    if (isValidCustomerId(resolved)) {
+      navigate(`/customer/${String(resolved).trim()}`);
+      return;
+    }
+
+    alert(`Could not load customer.\nMissing customer ID for: ${cname || 'Unknown'}`);
   };
 
   // Load all data
@@ -612,27 +643,6 @@ function PresalesOverview() {
   const getCustomerLabel = (task) => {
     const p = projectsById?.[task?.project_id];
     return p?.customer_name || '-';
-  };
-
-  const goToCustomerPage = async (task, customerLabelFallback) => {
-    const pid = task?.project_id;
-    const p = pid ? projectsById?.[pid] : null;
-
-    const directId = p?.customer_id;
-    if (isValidCustomerId(directId)) {
-      navigate(`/customer/${String(directId).trim()}`);
-      return;
-    }
-
-    const cname = (p?.customer_name || customerLabelFallback || '').trim();
-    const resolved = await resolveCustomerIdByName(cname);
-
-    if (isValidCustomerId(resolved)) {
-      navigate(`/customer/${String(resolved).trim()}`);
-      return;
-    }
-
-    alert(`Could not load customer.\nMissing customer ID for: ${cname || 'Unknown'}`);
   };
 
   const activeProjects = useMemo(() => (projects || []).filter(isProjectActive), [projects]);
@@ -1033,7 +1043,7 @@ function PresalesOverview() {
     setShowTaskModal(true);
   };
 
-  // ✅ NEW: open modal in "create" mode with optional prefill
+  // Open TaskModal in create mode (no id) with optional prefill
   const openNewTask = (prefill = {}) => {
     setEditingTask({
       id: null,
@@ -1058,9 +1068,8 @@ function PresalesOverview() {
     setEditingTask(null);
   };
 
-  // ✅ UPDATED: support update + insert
   const onSaveTaskModal = async (payload) => {
-    // If we have an id, update. Otherwise insert.
+    // If we have an id, update. Otherwise insert (create new task).
     if (editingTask?.id) {
       const { error: qErr } = await supabase.from('project_tasks').update(payload).eq('id', editingTask.id);
       if (qErr) throw qErr;
@@ -1080,7 +1089,6 @@ function PresalesOverview() {
       .single();
 
     if (iErr) throw iErr;
-
     setTasks((prev) => [data, ...(prev || [])]);
   };
 
@@ -1188,6 +1196,7 @@ function PresalesOverview() {
         </div>
 
         <div className="weekly-item-sub">
+          {/* ✅ ALWAYS clickable customer name */}
           <button
             type="button"
             className="weekly-customer-link td-ellipsis"
@@ -1245,7 +1254,6 @@ function PresalesOverview() {
             </div>
 
             <div className="panel-actions">
-              {/* ✅ NEW: Add task button for weekly view */}
               <button
                 type="button"
                 className="btn-primary"
@@ -1258,7 +1266,6 @@ function PresalesOverview() {
               >
                 Add task
               </button>
-
               <div className="field compact">
                 <label>Week</label>
                 <select value={snapshotWeek} onChange={(e) => setSnapshotWeek(e.target.value)}>
@@ -1297,12 +1304,9 @@ function PresalesOverview() {
                       <div className="weekly-name" title={row.assignee}>
                         {row.assignee}
                       </div>
-
                       <div className="weekly-mini">
                         {row.thisWeek.length + activitiesCount + row.nextWeek.length} items
                       </div>
-
-                      {/* ✅ NEW: per-presales quick add */}
                       <button
                         type="button"
                         className="icon-btn"
@@ -1487,9 +1491,305 @@ function PresalesOverview() {
       {/* AVAILABILITY + LOAD + HELPER */}
       <section className="presales-crunch-section">
         <div className="presales-panel presales-panel-large">
-          <div className="presales-panel presales-panel-large">
-            {/* (rest of your file remains unchanged from here down) */}
+          <div className="presales-panel-header">
+            <div>
+              <h3>
+                <Filter size={18} className="panel-icon" />
+                Availability and load
+              </h3>
+              <p>Click a dot to see schedule entries and tasks for that day.</p>
+            </div>
+
+            <div className="panel-actions">
+              <div className="field compact">
+                <label>Date range</label>
+                <select value={selectedRangeKey} onChange={(e) => setSelectedRangeKey(e.target.value)}>
+                  <option value="thisWeek">This week (Mon-Fri)</option>
+                  <option value="nextWeek">Next week (Mon-Fri)</option>
+                  <option value="last30">Last 30 days</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+
+              <div className="field compact">
+                <label>Start</label>
+                <input
+                  type="date"
+                  value={parseDate(rangeStart)?.toISOString().slice(0, 10) || ''}
+                  onChange={(e) => setRangeStart(e.target.value)}
+                  disabled={selectedRangeKey !== 'custom'}
+                />
+              </div>
+
+              <div className="field compact">
+                <label>End</label>
+                <input
+                  type="date"
+                  value={parseDate(rangeEnd)?.toISOString().slice(0, 10) || ''}
+                  onChange={(e) => setRangeEnd(e.target.value)}
+                  disabled={selectedRangeKey !== 'custom'}
+                />
+              </div>
+            </div>
           </div>
+
+          {rangeError ? (
+            <div className="presales-empty">
+              <p>{rangeError}</p>
+            </div>
+          ) : (
+            <>
+              <div className="unassigned-tasks-table-wrapper">
+                <div className="availability-grid-wrapper">
+                  <table className="availability-grid">
+                    <thead>
+                      <tr>
+                        <th className="sticky-col">Presales</th>
+                        {rangeDays.map((d) => (
+                          <th key={d.toISOString()}>
+                            <div>{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                            <div>{d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                          </th>
+                        ))}
+                        <th>Load</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {utilizationByPresales.map((u) => (
+                        <tr key={u.name}>
+                          <td className="sticky-col assignee-cell">{u.name}</td>
+
+                          {rangeDays.map((d) => {
+                            const status = getScheduleStatusForDay(u.name, d);
+                            return (
+                              <td
+                                key={`${u.name}-${ymd(d)}`}
+                                className={`avail-cell ${status}`}
+                                onClick={() => openDayDetail(u.name, d)}
+                                title="Click to view schedule + tasks"
+                              >
+                                <div className="avail-dot" />
+                              </td>
+                            );
+                          })}
+
+                          <td title={`Task hours: ${u.taskHours}h | Capacity: ${u.capacityHours}h`}>
+                            {Math.round(u.taskHours)}h ({u.pct}%)
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Assignment Helper */}
+              <div className="assignment-helper">
+                <div className="presales-panel-header" style={{ borderTop: '1px solid rgba(15,23,42,0.08)' }}>
+                  <div>
+                    <h3>
+                      <Users size={18} className="panel-icon" />
+                      Assignment Helper
+                    </h3>
+                    <p>Shows only presales who can take the task on the selected start date.</p>
+                  </div>
+                </div>
+
+                <div className="assignment-helper-controls">
+                  <div className="field">
+                    <label>Start date</label>
+                    <input type="date" value={helperStartDate || ''} onChange={(e) => setHelperStartDate(e.target.value)} />
+                  </div>
+
+                  <div className="field">
+                    <label>Required hours (base)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={helperRequiredHours}
+                      onChange={(e) => setHelperRequiredHours(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label>Task type</label>
+                    <select value={helperTaskType} onChange={(e) => setHelperTaskType(e.target.value)}>
+                      <option value="">(No type)</option>
+                      {(taskTypes || []).map((x) => (
+                        <option key={x} value={x}>
+                          {x}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="assignment-helper-results">
+                  <div className="helper-note">
+                    Required effort (after multiplier): <b>{helperTable.required}h</b>
+                  </div>
+
+                  {helperTable.rows.length === 0 ? (
+                    <div className="presales-empty small">
+                      <p>No available presales found for that date.</p>
+                    </div>
+                  ) : (
+                    <div className="unassigned-tasks-table-wrapper">
+                      <table className="unassigned-tasks-table">
+                        <thead>
+                          <tr>
+                            <th>Presales</th>
+                            <th>Status</th>
+                            <th>Capacity (hrs)</th>
+                            <th>Load (hrs)</th>
+                            <th>Remaining (hrs)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {helperTable.rows.map((r) => (
+                            <tr key={r.name}>
+                              <td className="td-ellipsis" title={r.name}>
+                                {r.name}
+                              </td>
+                              <td className="td-ellipsis" title={r.status}>
+                                {prettyStatus(r.status)}
+                              </td>
+                              <td>{r.capacity}</td>
+                              <td>{r.load}</td>
+                              <td className={`helper-remaining ${remainingToClass(r.remaining)}`}>{r.remaining}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Unassigned tasks */}
+              <div className="presales-panel-header" style={{ borderTop: '1px solid rgba(15,23,42,0.08)' }}>
+                <div>
+                  <h3>
+                    <CalendarDays size={18} className="panel-icon" />
+                    Unassigned open tasks
+                  </h3>
+                  <p>Assign these so they reflect in load and helper calculations.</p>
+                </div>
+              </div>
+
+              {unassignedOpenTasks.length === 0 ? (
+                <div className="presales-empty">
+                  <p>No unassigned open tasks.</p>
+                </div>
+              ) : (
+                <div className="unassigned-tasks-table-wrapper">
+                  <table className="unassigned-tasks-table">
+                    <thead>
+                      <tr>
+                        <th>Task</th>
+                        <th>Project</th>
+                        <th>Status</th>
+                        <th>Type</th>
+                        <th>Due</th>
+                        <th className="actions-cell">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unassignedOpenTasks.map((t) => {
+                        const isEditing = inlineEditingTaskId === t.id;
+
+                        return (
+                          <tr key={t.id}>
+                            <td>
+                              {isEditing ? (
+                                <input
+                                  value={inlineDraft.description || ''}
+                                  onChange={(e) => setInlineDraft((p) => ({ ...p, description: e.target.value }))}
+                                />
+                              ) : (
+                                <button type="button" className="unassigned-task-link" onClick={() => openEditTask(t)}>
+                                  {t.description || '(Untitled task)'}
+                                </button>
+                              )}
+                            </td>
+
+                            <td className="td-ellipsis" title={getProjectLabel(t)}>
+                              {getProjectLabel(t)}
+                            </td>
+
+                            <td>
+                              {isEditing ? (
+                                <input
+                                  value={inlineDraft.status || ''}
+                                  onChange={(e) => setInlineDraft((p) => ({ ...p, status: e.target.value }))}
+                                />
+                              ) : (
+                                t.status || '-'
+                              )}
+                            </td>
+
+                            <td>
+                              {isEditing ? (
+                                <select
+                                  value={inlineDraft.task_type || ''}
+                                  onChange={(e) => setInlineDraft((p) => ({ ...p, task_type: e.target.value }))}
+                                >
+                                  <option value="">-</option>
+                                  {(taskTypes || []).map((x) => (
+                                    <option key={x} value={x}>
+                                      {x}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                t.task_type || '-'
+                              )}
+                            </td>
+
+                            <td>
+                              {isEditing ? (
+                                <input
+                                  type="date"
+                                  value={inlineDraft.due_date || ''}
+                                  onChange={(e) => setInlineDraft((p) => ({ ...p, due_date: e.target.value }))}
+                                />
+                              ) : (
+                                formatShortDate(t.due_date)
+                              )}
+                            </td>
+
+                            <td className="actions-cell">
+                              {isEditing ? (
+                                <>
+                                  <button type="button" className="icon-btn" title="Save" onClick={() => saveInlineEdit(t.id)}>
+                                    <Save size={16} />
+                                  </button>
+                                  <button type="button" className="icon-btn" title="Cancel" onClick={cancelInlineEdit}>
+                                    <X size={16} />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button type="button" className="icon-btn" title="Edit" onClick={() => startInlineEdit(t)}>
+                                    <Edit3 size={16} />
+                                  </button>
+                                  <button type="button" className="icon-btn danger" title="Delete" onClick={() => deleteTask(t.id)}>
+                                    <Trash2 size={16} />
+                                  </button>
+                                </>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </section>
 
