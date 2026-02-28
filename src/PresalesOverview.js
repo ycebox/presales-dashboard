@@ -1484,10 +1484,6 @@ function PresalesOverview() {
               </div>
             </div>
           </div>
-
-          
-          <div className="schedule-add-box" style={{ marginTop: 10, marginBottom: 14 }}>
-            <div className="schedule-add-title">Add leave / activity</div>
             <div className="schedule-add-row">
               <select
                 value={scheduleAddAssignee}
