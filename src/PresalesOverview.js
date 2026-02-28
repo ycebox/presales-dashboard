@@ -446,6 +446,12 @@ function PresalesOverview() {
   const [dayDetailAssignee, setDayDetailAssignee] = useState('');
   const [dayDetailDay, setDayDetailDay] = useState(null);
 
+  // Add schedule entry (leave/travel/etc.) in Day Detail modal
+  const [newScheduleType, setNewScheduleType] = useState('');
+  const [newScheduleHours, setNewScheduleHours] = useState('');
+  const [newScheduleNote, setNewScheduleNote] = useState('');
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+
   // Inline edits for unassigned table
   const [inlineEditingTaskId, setInlineEditingTaskId] = useState(null);
   const [inlineDraft, setInlineDraft] = useState({});
@@ -962,13 +968,64 @@ function PresalesOverview() {
     setDayDetailAssignee((assignee || '').trim());
     setDayDetailDay(day);
     setDayDetailOpen(true);
+
+    // reset add-schedule controls
+    setNewScheduleType('');
+    setNewScheduleHours('');
+    setNewScheduleNote('');
   };
 
   const closeDayDetail = () => {
     setDayDetailOpen(false);
     setDayDetailAssignee('');
     setDayDetailDay(null);
+
+    // reset add-schedule controls
+    setNewScheduleType('');
+    setNewScheduleHours('');
+    setNewScheduleNote('');
+    setScheduleSaving(false);
   };
+
+  const handleAddSchedule = async () => {
+    try {
+      if (!dayDetailAssignee || dayDetailAssignee === 'Unassigned') return;
+      if (!dayDetailDay) return;
+      if (!newScheduleType) return;
+
+      setScheduleSaving(true);
+
+      const payload = {
+        assignee: dayDetailAssignee,
+        type: newScheduleType,
+        block_hours: newScheduleHours === '' ? null : Number(newScheduleHours),
+        note: newScheduleNote ? newScheduleNote : null,
+        start_date: ymd(dayDetailDay),
+        end_date: ymd(dayDetailDay),
+      };
+
+      const { data, error } = await supabase
+        .from('presales_schedule')
+        .insert([payload])
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      // update local cache so availability grid reflects immediately
+      setScheduleRows((prev) => [data, ...(prev || [])]);
+
+      setNewScheduleType('');
+      setNewScheduleHours('');
+      setNewScheduleNote('');
+    } catch (e) {
+      console.error('Add schedule error:', e);
+      alert('Failed to add schedule: ' + (e?.message || 'Unknown error'));
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
 
   const openEditTask = (t) => {
     setEditingTask(t);
@@ -1191,9 +1248,6 @@ function PresalesOverview() {
                     <div className="weekly-presales-header">
                       <div className="weekly-name" title={row.assignee}>
                         {row.assignee}
-                      </div>
-                      <div className="weekly-mini">
-                        {row.thisWeek.length + activitiesCount + row.nextWeek.length} items
                       </div>
                     </div>
 
@@ -1718,6 +1772,60 @@ function PresalesOverview() {
                         <p>No schedule entry for this day.</p>
                       </div>
                     )}
+
+                    {/* Add schedule entry */}
+                    <div className="schedule-add-box">
+                      <div className="schedule-add-title">Add leave / activity</div>
+                      <div className="schedule-add-row">
+                        <select
+                          value={newScheduleType}
+                          onChange={(e) => setNewScheduleType(e.target.value)}
+                          aria-label="Schedule type"
+                        >
+                          <option value="">Select type</option>
+                          <option value="Leave">Leave</option>
+                          <option value="Travel">Travel / Trip</option>
+                          <option value="Holiday">Holiday</option>
+                          <option value="Training">Training</option>
+                          <option value="Busy">Blocked</option>
+                          <option value="Internal">Internal</option>
+                          <option value="Other">Other</option>
+                        </select>
+
+                        <input
+                          type="number"
+                          min="0"
+                          max="8"
+                          step="0.5"
+                          placeholder="Hours"
+                          value={newScheduleHours}
+                          onChange={(e) => setNewScheduleHours(e.target.value)}
+                          aria-label="Blocked hours"
+                        />
+
+                        <input
+                          type="text"
+                          placeholder="Note"
+                          value={newScheduleNote}
+                          onChange={(e) => setNewScheduleNote(e.target.value)}
+                          aria-label="Note"
+                        />
+
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          onClick={handleAddSchedule}
+                          disabled={scheduleSaving || !newScheduleType}
+                          title={dayDetailAssignee === 'Unassigned' ? 'Select a presales row (not Unassigned)' : 'Add schedule'}
+                        >
+                          {scheduleSaving ? 'Adding…' : 'Add'}
+                        </button>
+                      </div>
+
+                      <div className="schedule-add-hint">
+                        Tip: Leave/Travel/Training/Holiday = 0h capacity. Blocked = 2h capacity. Internal/Other = 4h.
+                      </div>
+                    </div>
                   </div>
                 </div>
 
