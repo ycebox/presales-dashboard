@@ -1010,26 +1010,6 @@ function PresalesOverview() {
         end_date: ymd(day),
       };
 
-      const { data, error } = await supabase
-        .from('presales_schedule')
-        .insert([payload])
-        .select('*')
-        .single();
-
-      if (error) throw error;
-
-      setScheduleRows((prev) => [data, ...(prev || [])]);
-
-      setNewScheduleType('');
-      setNewScheduleHours('');
-      setNewScheduleNote('');
-    } catch (e) {
-      console.error('Add schedule error:', e);
-      alert('Failed to add schedule: ' + (e?.message || 'Unknown error'));
-    } finally {
-      setScheduleSaving(false);
-    }
-  };
 
 
       const { data, error } = await supabase
