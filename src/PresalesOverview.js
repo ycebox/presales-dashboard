@@ -1453,7 +1453,7 @@ function PresalesOverview() {
                 Add task
               </button>
 
-              <div className=\"field compact\">
+              <div className="field compact">
                 <label>Date range</label>
                 <select value={selectedRangeKey} onChange={(e) => setSelectedRangeKey(e.target.value)}>
                   <option value="thisWeek">This week (Mon-Fri)</option>
