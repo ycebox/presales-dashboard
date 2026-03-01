@@ -1453,7 +1453,7 @@ function PresalesOverview() {
                 Add task
               </button>
 
-<div className="field compact">
+              <div className=\"field compact\">
                 <label>Date range</label>
                 <select value={selectedRangeKey} onChange={(e) => setSelectedRangeKey(e.target.value)}>
                   <option value="thisWeek">This week (Mon-Fri)</option>
@@ -1484,79 +1484,8 @@ function PresalesOverview() {
               </div>
             </div>
           </div>
-            <div className="schedule-add-row">
-              <select
-                value={scheduleAddAssignee}
-                onChange={(e) => setScheduleAddAssignee(e.target.value)}
-                aria-label="Presales"
-              >
-                <option value="">Select presales</option>
-                {allPresalesNames
-                  .filter((x) => x && x !== 'Unassigned')
-                  .map((x) => (
-                    <option key={x} value={x}>
-                      {x}
-                    </option>
-                  ))}
-              </select>
 
-              <input
-                type="date"
-                value={scheduleAddDate || ''}
-                onChange={(e) => setScheduleAddDate(e.target.value)}
-                aria-label="Date"
-              />
-
-              <select
-                value={newScheduleType}
-                onChange={(e) => setNewScheduleType(e.target.value)}
-                aria-label="Schedule type"
-              >
-                <option value="">Select type</option>
-                <option value="Leave">Leave</option>
-                <option value="Travel">Travel / Trip</option>
-                <option value="Holiday">Holiday</option>
-                <option value="Training">Training</option>
-                <option value="Busy">Blocked</option>
-                <option value="Internal">Internal</option>
-                <option value="Other">Other</option>
-              </select>
-
-              <input
-                type="number"
-                min="0"
-                max="8"
-                step="0.5"
-                placeholder="Hours"
-                value={newScheduleHours}
-                onChange={(e) => setNewScheduleHours(e.target.value)}
-                aria-label="Blocked hours"
-              />
-
-              <input
-                type="text"
-                placeholder="Note"
-                value={newScheduleNote}
-                onChange={(e) => setNewScheduleNote(e.target.value)}
-                aria-label="Note"
-              />
-
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={handleAddSchedule}
-                disabled={scheduleSaving || !newScheduleType || !scheduleAddAssignee || !scheduleAddDate}
-              >
-                {scheduleSaving ? 'Adding…' : 'Add'}
-              </button>
-            </div>
-
-            <div className="schedule-add-hint">
-              Tip: Leave/Travel/Training/Holiday = 0h capacity. Blocked = 2h capacity. Internal/Other = 4h.
-            </div>
-          </div>
-
-{rangeError ? (
+          {rangeError ? (
             <div className="presales-empty">
               <p>{rangeError}</p>
             </div>
